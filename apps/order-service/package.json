@@ -28,7 +28,8 @@
     "@rmf/shared-types": "^0.1.0",
     "@rmf/shared-utils": "^0.1.0",
     "reflect-metadata": "^0.2.2",
-    "rxjs": "^7.8.1"
+    "rxjs": "^7.8.1",
+    "@rmf/location": "^0.1.0"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3.2.0",

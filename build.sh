@@ -11,12 +11,12 @@ fi
 
 echo "--- BUILDING SERVICE: $SERVICE ---"
 
-# Install dependencies at root
+# Install all workspace dependencies
 echo "Installing dependencies..."
-npm install
+npm ci
 
-# Build the specific service using turbo
-echo "Running turbo build for $SERVICE..."
-npx turbo run build --filter=$SERVICE
+# Build the specific service AND all its internal workspace dependencies (shared packages)
+echo "Running turbo build for $SERVICE (with dependencies)..."
+npx turbo run build --filter=$SERVICE...
 
 echo "--- BUILD COMPLETE: $SERVICE ---"

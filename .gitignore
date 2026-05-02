@@ -11,4 +11,4 @@ packages/**/dist
 apps/**/.turbo
 apps/**/node_modules
 packages/**/node_modules
-package-lock.json
+# package-lock.json (removed from ignore to support npm ci)

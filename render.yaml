@@ -5,6 +5,8 @@ services:
     buildCommand: ./build.sh user-service
     startCommand: ./start.sh user-service
     envVars:
+      - key: NODE_VERSION
+        value: "20"
       - key: MONGODB_URI
         sync: false
       - key: JWT_SECRET
@@ -16,6 +18,8 @@ services:
     buildCommand: ./build.sh market-service
     startCommand: ./start.sh market-service
     envVars:
+      - key: NODE_VERSION
+        value: "20"
       - key: MONGODB_URI
         sync: false
 
@@ -25,6 +29,8 @@ services:
     buildCommand: ./build.sh product-service
     startCommand: ./start.sh product-service
     envVars:
+      - key: NODE_VERSION
+        value: "20"
       - key: MONGODB_URI
         sync: false
       - key: REDIS_URL
@@ -36,6 +42,8 @@ services:
     buildCommand: ./build.sh seller-service
     startCommand: ./start.sh seller-service
     envVars:
+      - key: NODE_VERSION
+        value: "20"
       - key: MONGODB_URI
         sync: false
 
@@ -45,6 +53,8 @@ services:
     buildCommand: ./build.sh rider-service
     startCommand: ./start.sh rider-service
     envVars:
+      - key: NODE_VERSION
+        value: "20"
       - key: MONGODB_URI
         sync: false
 
@@ -54,6 +64,8 @@ services:
     buildCommand: ./build.sh order-service
     startCommand: ./start.sh order-service
     envVars:
+      - key: NODE_VERSION
+        value: "20"
       - key: MONGODB_URI
         sync: false
 
@@ -63,6 +75,8 @@ services:
     buildCommand: ./build.sh wallet-service
     startCommand: ./start.sh wallet-service
     envVars:
+      - key: NODE_VERSION
+        value: "20"
       - key: MONGODB_URI
         sync: false
 
@@ -72,6 +86,8 @@ services:
     buildCommand: ./build.sh delivery-service
     startCommand: ./start.sh delivery-service
     envVars:
+      - key: NODE_VERSION
+        value: "20"
       - key: MONGODB_URI
         sync: false
 
@@ -81,6 +97,8 @@ services:
     buildCommand: ./build.sh notification-service
     startCommand: ./start.sh notification-service
     envVars:
+      - key: NODE_VERSION
+        value: "20"
       - key: MONGODB_URI
         sync: false
       - key: SENDGRID_API_KEY
@@ -92,6 +110,8 @@ services:
     buildCommand: ./build.sh review-service
     startCommand: ./start.sh review-service
     envVars:
+      - key: NODE_VERSION
+        value: "20"
       - key: MONGODB_URI
         sync: false
 
@@ -101,6 +121,8 @@ services:
     buildCommand: ./build.sh admin-service
     startCommand: ./start.sh admin-service
     envVars:
+      - key: NODE_VERSION
+        value: "20"
       - key: MONGODB_URI
         sync: false
 
@@ -109,3 +131,6 @@ services:
     env: node
     buildCommand: ./build.sh frontend
     startCommand: "cd apps/frontend && npx next start"
+    envVars:
+      - key: NODE_VERSION
+        value: "20"
