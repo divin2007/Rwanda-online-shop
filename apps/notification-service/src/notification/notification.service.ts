@@ -26,7 +26,7 @@ export class NotificationService {
       }
     };
     
-    return templates[type]?.[lang] || `Notification: ${type}`;
+    return (templates as Record<string, { en: string; rw: string }>)[type]?.[lang] || `Notification: ${type}`;
   }
 
   async sendSms(userId: string, phone: string, type: string, params: any, lang: 'rw' | 'en' = 'rw'): Promise<any> {

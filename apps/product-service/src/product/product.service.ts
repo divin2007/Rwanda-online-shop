@@ -2,7 +2,7 @@ import { Injectable, NotFoundException, BadRequestException, Inject } from '@nes
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
-import { Cache } from 'cache-manager';
+import type { Cache } from 'cache-manager';
 
 @Injectable()
 export class ProductService {

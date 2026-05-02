@@ -1,6 +1,6 @@
 import { Controller, Get, Post, Put, Body, Param } from '@nestjs/common';
 import { RiderService } from './rider.service';
-import { Coordinates } from '@rmf/location';
+import type { Coordinates } from '@rmf/location';
 
 @Controller('riders')
 export class RiderController {

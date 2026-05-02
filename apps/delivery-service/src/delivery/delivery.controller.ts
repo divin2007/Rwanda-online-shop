@@ -1,6 +1,6 @@
 import { Controller, Get, Post, Put, Body, Param } from '@nestjs/common';
 import { DeliveryService } from './delivery.service';
-import { Coordinates } from '@rmf/location';
+import type { Coordinates } from '@rmf/location';
 import { DeliveryStatus } from '@rmf/shared-types';
 
 @Controller('deliveries')

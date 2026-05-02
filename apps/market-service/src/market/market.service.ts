@@ -4,7 +4,7 @@ import { Model } from 'mongoose';
 import { LocationService } from '@rmf/location';
 import { MarketType } from '@rmf/shared-types';
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
-import { Cache } from 'cache-manager';
+import type { Cache } from 'cache-manager';
 
 @Injectable()
 export class MarketService {
