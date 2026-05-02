@@ -1,0 +1,32 @@
+{
+  "name": "rmf-platform",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "build": "turbo run build",
+    "dev": "turbo run dev",
+    "lint": "turbo run lint",
+    "test": "turbo run test"
+  },
+  "devDependencies": {
+    "@types/bcrypt": "^6.0.0",
+    "@types/passport-jwt": "^4.0.1",
+    "turbo": "^1.10.16"
+  },
+  "dependencies": {
+    "@nestjs/jwt": "^11.0.2",
+    "@nestjs/mongoose": "^11.0.4",
+    "@nestjs/passport": "^11.0.5",
+    "@rmf/database": "^0.1.0",
+    "@rmf/location": "^0.1.0",
+    "@rmf/shared-types": "^0.1.0",
+    "@rmf/shared-utils": "^0.1.0",
+    "bcrypt": "^6.0.0",
+    "mongoose": "^9.6.1",
+    "passport": "^0.7.0",
+    "passport-jwt": "^4.0.1"
+  }
+}

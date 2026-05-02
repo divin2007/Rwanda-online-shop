@@ -1,0 +1,16 @@
+{
+  "name": "@rmf/health-check",
+  "version": "0.1.0",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc"
+  },
+  "dependencies": {
+    "@nestjs/common": "^11.0.1",
+    "@nestjs/terminus": "^11.0.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.0.0"
+  }
+}

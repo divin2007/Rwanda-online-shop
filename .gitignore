@@ -1,0 +1,14 @@
+node_modules
+.next
+dist
+.env
+.DS_Store
+coverage
+.turbo
+apps/**/dist
+apps/**/coverage
+packages/**/dist
+apps/**/.turbo
+apps/**/node_modules
+packages/**/node_modules
+package-lock.json

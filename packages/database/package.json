@@ -1,0 +1,17 @@
+{
+  "name": "@rmf/database",
+  "version": "0.1.0",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc"
+  },
+  "dependencies": {
+    "mongoose": "^8.3.4",
+    "@rmf/shared-types": "*"
+  },
+  "devDependencies": {
+    "typescript": "^5.0.0",
+    "@types/mongoose": "^5.11.97"
+  }
+}
