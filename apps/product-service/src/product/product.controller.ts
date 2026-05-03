@@ -34,4 +34,13 @@ export class ProductController {
     const product = await this.productService.updateStock(id, data.change);
     return { success: true, data: product };
   }
+
+  @Post('upload-image')
+  async uploadImage(@Body() data: any) {
+    // Mock upload logic
+    return { 
+      success: true, 
+      data: { url: "https://placehold.co/600x400/000000/FFFFFF/png?text=Product+Photo" } 
+    };
+  }
 }

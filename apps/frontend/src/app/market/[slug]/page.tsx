@@ -45,6 +45,8 @@ export default function MarketPage({ params }: { params: { slug: string } }) {
     }
   }, [market?._id]);
 
+  const [isFullMap, setIsFullMap] = useState(false);
+  
   if (marketLoading) return <Layout><div className="flex justify-center p-20"><div className="animate-spin w-10 h-10 border-4 border-primary border-t-transparent rounded-full"></div></div></Layout>;
   if (!market) return <Layout><div className="p-20 text-center">Market not found</div></Layout>;
 
@@ -55,6 +57,24 @@ export default function MarketPage({ params }: { params: { slug: string } }) {
 
   return (
     <Layout marketName={market.name}>
+      {/* Full Map Overlay */}
+      {isFullMap && (
+        <div className="fixed inset-0 z-[100] bg-white flex flex-col">
+          <div className="p-4 border-b border-border flex justify-between items-center bg-background-card">
+            <h2 className="font-heading font-bold text-xl">{market.name} - Full Marketplace View</h2>
+            <Button size="sm" variant="outline" onClick={() => setIsFullMap(false)}>Exit Map View</Button>
+          </div>
+          <div className="flex-grow relative">
+             <RiderMap 
+                marketId={market._id} 
+                centerLat={market.location?.coordinates[1]} 
+                centerLng={market.location?.coordinates[0]} 
+                marketName={market.name}
+             />
+          </div>
+        </div>
+      )}
+
       {/* Live Rider Availability Banner with Map */}
       <div className="bg-background-card border border-border rounded-lg p-4 mb-8">
         <div className="flex items-center justify-between mb-4">
@@ -68,6 +88,7 @@ export default function MarketPage({ params }: { params: { slug: string } }) {
               <p className="text-sm text-text-secondary">Riders currently near {market.name}</p>
             </div>
           </div>
+          <Button size="sm" variant="outline" onClick={() => setIsFullMap(true)}>View Full Map</Button>
         </div>
         <div className="h-48 rounded bg-background-surface overflow-hidden border border-border">
           <RiderMap 
