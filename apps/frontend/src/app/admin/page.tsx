@@ -78,7 +78,7 @@ export default function AdminDashboard() {
             <div className="bg-white p-3 rounded border border-border flex justify-between items-center">
               <div>
                 <p className="font-bold">ORD-9921</p>
-                <p className="text-xs text-status-error font-medium">F002: Delivery coordinates > 50km from market</p>
+                <p className="text-xs text-status-error font-medium">F002: Delivery coordinates &gt; 50km from market</p>
               </div>
               <Button size="sm" variant="outline">Review</Button>
             </div>
