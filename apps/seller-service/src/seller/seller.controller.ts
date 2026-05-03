@@ -11,6 +11,13 @@ export class SellerController {
     return { success: true, data: seller };
   }
 
+  @Post('upload-document')
+  async uploadDocument(@Body() data: any) {
+    // In a full implementation, we would process the file and return an S3/Cloudinary URL
+    // For now, return a placeholder URL
+    return { success: true, data: { url: "https://via.placeholder.com/300x400.png?text=Verified+Document" } };
+  }
+
   @Get('me')
   async findMe(@Request() req: any) {
     try {

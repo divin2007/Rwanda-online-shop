@@ -12,6 +12,12 @@ export class MarketController {
     return { success: true, data: market };
   }
 
+  @Get('agreement')
+  async getAgreement() {
+    const agreement = await this.marketService.getAgreement();
+    return { success: true, data: agreement };
+  }
+
   @Get()
   async findAll(@Query('activeOnly') activeOnly: string) {
     const markets = await this.marketService.findAll(activeOnly !== 'false');

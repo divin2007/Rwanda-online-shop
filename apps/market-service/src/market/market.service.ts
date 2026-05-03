@@ -112,4 +112,16 @@ export class MarketService {
     console.log(`Penalty applied to market ${id}: ${penaltyType} - ${reason}`);
     return this.update(id, updates);
   }
+
+  async getAgreement(): Promise<string> {
+    return `
+      MARKET RWANDA SELLER AGREEMENT
+      
+      1. Acceptance of Terms: By registering as a seller on Market Rwanda, you agree to comply with all local laws and platform regulations.
+      2. Stall Management: Sellers are responsible for maintaining accurate stock levels and pricing.
+      3. Commissions: A standard commission of 2% is applied to all successful transactions.
+      4. Quality Standards: All goods must meet Rwanda's national quality and hygiene standards.
+      5. Delivery Participation: Sellers agree to hand over goods to authorized Market Rwanda riders within 30 minutes of order confirmation.
+    `;
+  }
 }
