@@ -6,8 +6,9 @@ export class SellerController {
   constructor(private readonly sellerService: SellerService) {}
 
   @Post('onboard')
-  async create(@Body() sellerData: any) {
-    const seller = await this.sellerService.create(sellerData);
+  async create(@Request() req: any, @Body() sellerData: any) {
+    const userId = req.user?.id || "dummy";
+    const seller = await this.sellerService.create({ ...sellerData, userId });
     return { success: true, data: seller };
   }
 

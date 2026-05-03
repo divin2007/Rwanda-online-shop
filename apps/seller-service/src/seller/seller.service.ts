@@ -22,31 +22,33 @@ export class SellerService {
     }
 
     let marketId = sellerData.marketId;
+    // Map frontend 'stallLocation' to 'location' and determine type
+    const location = sellerData.stallLocation || sellerData.location;
+    const isIndividual = !marketId;
+    const marketType = isIndividual ? MarketType.INDIVIDUAL : MarketType.PUBLIC;
 
     // Handle Individual Market creation flow
-    if (sellerData.marketType === MarketType.INDIVIDUAL) {
-      // Validate map coordinates for the stall/market
-      if (!sellerData.location || !this.locationService.validateCoordinates(sellerData.location.coordinates)) {
-        throw new BadRequestException('Invalid map coordinates provided for individual market');
+    if (marketType === MarketType.INDIVIDUAL) {
+      if (!location) {
+        throw new BadRequestException('Location is required for individual shops');
       }
 
+      const shopDetails = sellerData.shopDetails || {};
       const newMarket = new this.marketModel({
-        name: sellerData.shopName,
-        slug: sellerData.slug,
-        code: sellerData.slug.substring(0, 3).toUpperCase(),
+        name: shopDetails.name || sellerData.shopName,
+        slug: shopDetails.slug || sellerData.slug || `shop-${Date.now()}`,
+        code: (shopDetails.slug || sellerData.slug || 'SHOP').substring(0, 3).toUpperCase(),
         type: MarketType.INDIVIDUAL,
         ownerId: sellerData.userId,
-        location: sellerData.location,
-        operatingHours: sellerData.operatingHours || { open: '08:00', close: '20:00', daysOpen: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'] }
+        location: {
+            type: 'Point',
+            coordinates: [location.lng, location.lat]
+        },
+        operatingHours: { open: '08:00', close: '20:00', daysOpen: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'] }
       });
       
       const savedMarket = await newMarket.save();
       marketId = savedMarket._id;
-    } else {
-      // Joining a public market
-      if (!marketId) {
-        throw new BadRequestException('marketId is required when joining a public market');
-      }
     }
 
     // Generate Stall ID
@@ -55,7 +57,6 @@ export class SellerService {
       throw new NotFoundException('Market not found');
     }
     
-    // Simple ID generation strategy: CODE-XXX
     const count = await this.sellerModel.countDocuments({ marketId });
     const stallId = `${market.code}-${String(count + 1).padStart(3, '0')}`;
 
@@ -63,11 +64,12 @@ export class SellerService {
       userId: sellerData.userId,
       marketId,
       stallId,
-      stallName: sellerData.stallName || sellerData.shopName,
-      description: sellerData.description,
-      businessPermitUrl: sellerData.businessPermitUrl,
-      idCardUrl: sellerData.idCardUrl,
-      stallPhotoUrl: sellerData.stallPhotoUrl
+      stallName: sellerData.shopDetails?.name || sellerData.stallName || sellerData.shopName,
+      description: sellerData.shopDetails?.description || sellerData.description,
+      businessPermitUrl: sellerData.documents?.rdb || sellerData.businessPermitUrl,
+      idCardUrl: sellerData.documents?.id || sellerData.idCardUrl,
+      stallPhotoUrl: sellerData.documents?.photo || sellerData.stallPhotoUrl,
+      isApproved: false
     });
 
     return await newSeller.save();
