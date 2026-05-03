@@ -42,7 +42,9 @@ export class SellerService {
         ownerId: sellerData.userId,
         location: {
             type: 'Point',
-            coordinates: [location.lng, location.lat]
+            coordinates: [location.lng, location.lat],
+            address: sellerData.address || "Rwanda Market",
+            city: sellerData.city || "Kigali"
         },
         operatingHours: { open: '08:00', close: '20:00', daysOpen: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'] }
       });
@@ -54,11 +56,11 @@ export class SellerService {
     // Generate Stall ID
     const market = await this.marketModel.findById(marketId);
     if (!market) {
-      throw new NotFoundException('Market not found');
+      throw new NotFoundException('Selected market not found');
     }
     
     const count = await this.sellerModel.countDocuments({ marketId });
-    const stallId = `${market.code}-${String(count + 1).padStart(3, '0')}`;
+    const stallId = `${market.code || 'SHOP'}-${String(count + 1).padStart(3, '0')}`;
 
     const newSeller = new this.sellerModel({
       userId: sellerData.userId,

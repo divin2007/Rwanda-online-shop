@@ -28,17 +28,19 @@ export default function SellerOnboardingPage() {
   
   const [documents, setDocuments] = useState({ rdb: '', rra: '', id: '', photo: '' });
   const [location, setLocation] = useState<{lat: number, lng: number} | null>(null);
+  const [address, setAddress] = useState('');
+  const [city, setCity] = useState('Kigali');
   const [agreed, setAgreed] = useState(false);
 
   useEffect(() => {
     fetchMarkets();
-    marketApi.get('/markets/agreement').then(res => setAgreement(res.data?.data?.text || 'Partnership Agreement v3.0...'));
+    marketApi.get('/markets/agreement').then(res => setAgreement(res.data?.data || 'Partnership Agreement v3.0...'));
   }, [fetchMarkets]);
 
   const handleNext = () => {
     if (step === 1 && !marketId && !shopName) return toast.error('Select a market or enter a shop name');
     if (step === 2 && (!documents.rdb || !documents.rra || !documents.id || !documents.photo)) return toast.error('All documents are required');
-    if (step === 3 && !location) return toast.error('Please pin your stall location');
+    if (step === 3 && (!location || !address || !city)) return toast.error('Please pin your location and provide an address/city');
     setStep(s => s + 1);
   };
 
@@ -52,6 +54,8 @@ export default function SellerOnboardingPage() {
         shopDetails: marketId ? null : { name: shopName, slug, description },
         documents,
         stallLocation: location,
+        address,
+        city,
         agreedToTerms: agreed
       });
       toast.success('Application submitted successfully!');
@@ -119,6 +123,16 @@ export default function SellerOnboardingPage() {
           {step === 3 && (
             <div className="space-y-6 animate-fade-in">
               <h2 className="text-xl font-bold">Step 3: Stall Location</h2>
+              <div className="grid grid-cols-2 gap-4 mb-4">
+                <div>
+                  <label className="block text-sm font-medium mb-1">City</label>
+                  <input type="text" className="w-full p-2 border border-border rounded" value={city} onChange={e => setCity(e.target.value)} placeholder="e.g. Kigali" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1">Street Address / Landmark</label>
+                  <input type="text" className="w-full p-2 border border-border rounded" value={address} onChange={e => setAddress(e.target.value)} placeholder="e.g. KN 2 St, Near BK Building" />
+                </div>
+              </div>
               <p className="text-sm text-text-secondary">Drop a pin exactly where your stall or shop is located.</p>
               <div className="h-80 border border-border rounded overflow-hidden">
                 <MapPinPicker onLocationSelected={setLocation} />
