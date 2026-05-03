@@ -16,4 +16,10 @@ export class PromotionController {
     const promos = await this.promotionService.getActivePromotions(marketId);
     return { success: true, data: promos };
   }
+
+  @Get()
+  async findAll(@Query('sellerId') sellerId?: string, @Query('marketId') marketId?: string) {
+    const promos = await this.promotionService.findAll(sellerId, marketId);
+    return { success: true, data: promos };
+  }
 }

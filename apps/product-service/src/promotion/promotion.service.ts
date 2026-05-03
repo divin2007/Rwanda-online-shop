@@ -47,13 +47,25 @@ export class PromotionService {
     // In a real scenario we might need an aggregation to join with products, 
     // or keep a denormalized cache. We fetch all active valid promos:
     const now = new Date();
-    const query = {
+    const query: any = {
       isActive: true,
       startDate: { $lte: now },
       endDate: { $gt: now }
     };
     
     // Stub implementation: finding promos and populating product
+    return this.promotionModel.find(query).populate('productId').exec();
+  }
+
+  async findAll(sellerId?: string, marketId?: string): Promise<any[]> {
+    const query: any = { deletedAt: null };
+    
+    if (sellerId) {
+      // Map User ID to SellerProfile ID
+      const seller = await this.productModel.db.model('SellerProfile').findOne({ userId: sellerId }).exec();
+      query.sellerId = seller ? seller._id : sellerId;
+    }
+    
     return this.promotionModel.find(query).populate('productId').exec();
   }
 }
