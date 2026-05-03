@@ -44,7 +44,7 @@ export class MarketService {
   }
 
   async findAll(activeOnly = true): Promise<any[]> {
-    const cacheKey = \`markets:all:\${activeOnly}\`;
+    const cacheKey = `markets:all:${activeOnly}`;
     const cached = await this.cacheManager.get<any[]>(cacheKey);
     
     if (cached) return cached;
@@ -58,7 +58,7 @@ export class MarketService {
   }
 
   async findById(id: string): Promise<any> {
-    const cacheKey = \`market:id:\${id}\`;
+    const cacheKey = `market:id:${id}`;
     const cached = await this.cacheManager.get(cacheKey);
     if (cached) return cached;
 
@@ -70,7 +70,7 @@ export class MarketService {
   }
 
   async findBySlug(slug: string): Promise<any> {
-    const cacheKey = \`market:slug:\${slug}\`;
+    const cacheKey = `market:slug:${slug}`;
     const cached = await this.cacheManager.get(cacheKey);
     if (cached) return cached;
 
@@ -96,8 +96,8 @@ export class MarketService {
 
     if (!updatedMarket) throw new NotFoundException('Market not found');
 
-    await this.cacheManager.del(\`market:id:\${id}\`);
-    await this.cacheManager.del(\`market:slug:\${updatedMarket.slug}\`);
+    await this.cacheManager.del(`market:id:${id}`);
+    await this.cacheManager.del(`market:slug:${updatedMarket.slug}`);
     await this.cacheManager.del('markets:all:true');
     await this.cacheManager.del('markets:all:false');
 
