@@ -70,7 +70,12 @@ export default function MarketPage({ params }: { params: { slug: string } }) {
           </div>
         </div>
         <div className="h-48 rounded bg-background-surface overflow-hidden border border-border">
-          <RiderMap marketId={market._id} centerLat={market.location?.coordinates?.lat} centerLng={market.location?.coordinates?.lng} />
+          <RiderMap 
+            marketId={market._id} 
+            centerLat={market.location?.coordinates[1]} 
+            centerLng={market.location?.coordinates[0]} 
+            marketName={market.name}
+          />
         </div>
       </div>
 
