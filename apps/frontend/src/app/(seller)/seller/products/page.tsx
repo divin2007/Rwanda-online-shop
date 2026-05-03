@@ -40,8 +40,8 @@ export default function SellerProductsPage() {
       setIsModalOpen(false);
       setFormData({ name: '', description: '', category: '', price: '', unit: '', stockQuantity: '', weight: '', images: [] });
       fetchProducts();
-    } catch (error) {
-      toast.error('Failed to create product');
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || 'Failed to create product');
     } finally {
       setIsSubmitting(false);
     }

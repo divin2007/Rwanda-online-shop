@@ -17,8 +17,8 @@ export class ProductService {
       throw new BadRequestException('At least one product image is required.');
     }
 
-    if (!productData.name || !productData.price || !productData.category) {
-      throw new BadRequestException('Product Name, Price, and Category are required.');
+    if (!productData.name || !productData.price || !productData.category || !productData.unit) {
+      throw new BadRequestException('Product Name, Price, Category, and Unit are required.');
     }
 
     // Map authenticated User ID to SellerProfile ID and Market ID
@@ -39,6 +39,10 @@ export class ProductService {
       }
     }
 
+    if (!productData.marketId) {
+      throw new BadRequestException('Your shop is not correctly linked to a market. Please contact support.');
+    }
+
     // Sanitize numeric fields
     productData.price = Number(productData.price);
     productData.stockQuantity = Number(productData.stockQuantity || 0);
@@ -47,13 +51,23 @@ export class ProductService {
 
     if (isNaN(productData.price)) throw new BadRequestException('Price must be a valid number.');
 
-    const newProduct = new this.productModel(productData);
-    const saved = await newProduct.save();
-    
-    // Invalidate list cache
-    await this.cacheManager.del('products:all');
-    
-    return saved;
+    try {
+      const newProduct = new this.productModel(productData);
+      const saved = await newProduct.save();
+      
+      // Invalidate list cache
+      await this.cacheManager.del('products:all');
+      
+      return saved;
+    } catch (err: any) {
+      console.error('Product creation failed:', err);
+      // Catch Mongoose validation errors and return a clean message
+      if (err.name === 'ValidationError') {
+        const firstError = Object.values(err.errors)[0] as any;
+        throw new BadRequestException(`Validation Failed: ${firstError.message}`);
+      }
+      throw err;
+    }
   }
 
   async findAll(marketId?: string, sellerId?: string): Promise<any[]> {
