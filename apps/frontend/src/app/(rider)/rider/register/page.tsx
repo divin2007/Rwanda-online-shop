@@ -6,23 +6,39 @@ import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { ImageUpload } from '@/components/ui/ImageUpload';
 import { riderApi } from '@/lib/api';
+import { useAuth } from '@/context/AuthContext';
 import toast from 'react-hot-toast';
 
 export default function RiderRegistrationPage() {
   const router = useRouter();
+  const { user, isAuthenticated } = useAuth();
   const [plateNumber, setPlateNumber] = useState('');
   const [documents, setDocuments] = useState({ license: '', vehicle: '', id: '', insurance: '' });
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (!isAuthenticated || !user?.id) {
+      toast.error('You must be logged in to register as a rider');
+      router.push('/login');
+      return;
+    }
+
     if (!documents.license || !documents.vehicle || !documents.id || !documents.insurance) {
       return toast.error('All documents must be uploaded');
     }
 
     setIsSubmitting(true);
     try {
-      await riderApi.post('/riders/register', { plateNumber, documents });
+      await riderApi.post('/riders/register', { 
+        userId: user.id,
+        plateNumber, 
+        licenseUrl: documents.license,
+        vehiclePhotoUrl: documents.vehicle,
+        idCardUrl: documents.id,
+        insuranceUrl: documents.insurance
+      });
       toast.success('Registration submitted for approval!');
       router.push('/rider/dashboard');
     } catch (err: any) {
