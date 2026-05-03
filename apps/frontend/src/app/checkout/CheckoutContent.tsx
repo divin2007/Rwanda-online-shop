@@ -94,7 +94,7 @@ export const CheckoutContent = () => {
           },
           payment: {
             method: paymentMethod,
-            status: 'PENDING'
+            status: 'pending'
           }
         });
       });

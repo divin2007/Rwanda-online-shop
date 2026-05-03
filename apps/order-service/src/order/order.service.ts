@@ -46,10 +46,18 @@ export class OrderService {
 
     const orderNumber = `ORD-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
 
+    const status = orderData.schedule ? OrderStatus.SCHEDULED : OrderStatus.PLACED;
+
     const newOrder = new this.orderModel({
       ...orderData,
       orderNumber,
-      status: orderData.schedule ? OrderStatus.SCHEDULED : OrderStatus.PLACED,
+      status,
+      statusHistory: [{
+        status,
+        changedBy: orderData.buyer.userId,
+        changedAt: new Date(),
+        note: 'Order placed by customer'
+      }],
       security: {
         ...orderData.security,
         isFlagged: fraudCheck.isFlagged,
