@@ -7,12 +7,11 @@
     "build": "tsc"
   },
   "dependencies": {
-    "mongoose": "^8.3.4",
+    "mongoose": "^9.6.1",
     "@rmf/shared-types": "*"
   },
   "devDependencies": {
-    "typescript": "^5.0.0",
-    "@types/mongoose": "^5.11.97"
+    "typescript": "^5.0.0"
   },
   "exports": {
     ".": {
