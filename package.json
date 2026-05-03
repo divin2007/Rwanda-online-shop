@@ -28,8 +28,10 @@
     "@rmf/shared-utils": "^0.1.0",
     "ansis": "^4.2.0",
     "bcrypt": "^6.0.0",
+    "chokidar": "^4.0.3",
     "mongoose": "^9.6.1",
     "passport": "^0.7.0",
-    "passport-jwt": "^4.0.1"
+    "passport-jwt": "^4.0.1",
+    "readdirp": "^4.1.2"
   }
 }

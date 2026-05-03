@@ -13,7 +13,7 @@ echo "--- BUILDING SERVICE: $SERVICE ---"
 
 # Install all workspace dependencies
 echo "Installing dependencies..."
-npm ci
+npm install
 
 # Build the specific service AND all its internal workspace dependencies (shared packages)
 echo "Running turbo build for $SERVICE (with dependencies)..."
