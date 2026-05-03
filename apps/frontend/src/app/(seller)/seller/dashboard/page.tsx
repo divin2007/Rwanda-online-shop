@@ -13,7 +13,7 @@ import toast from 'react-hot-toast';
 export default function SellerDashboardPage() {
   const { user } = useAuth();
   
-  const { data: profile, loading: pLoad, execute: fetchProfile } = useApi(sellerApi, 'get', '/sellers/me');
+  const { data: profile, loading: pLoad, execute: fetchProfile } = useApi(sellerApi, 'get', `/sellers/me?userId=${user?.id}`);
   const { data: analytics, loading: aLoad, execute: fetchAnalytics } = useApi(adminApi, 'get', `/analytics/seller/${user?.id}`);
   const { data: activeOrders, loading: oLoad, execute: fetchOrders } = useApi(orderApi, 'get', `/orders?sellerId=${user?.id}&status=placed,confirmed`);
   

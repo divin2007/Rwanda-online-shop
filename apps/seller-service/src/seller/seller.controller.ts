@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Put, Body, Param, Request, Query } from '@nestjs/common';
+import { Controller, Get, Post, Put, Body, Param, Request, Query, BadRequestException } from '@nestjs/common';
 import { SellerService } from './seller.service';
 
 @Controller('sellers')
@@ -17,7 +17,11 @@ export class SellerController {
 
   @Post('onboard')
   async create(@Request() req: any, @Body() sellerData: any) {
-    const userId = req.user?.userId || "65f12345678901234567890a";
+    // Priority: JWT user > body userId. Never fall back to a hardcoded test ID.
+    const userId = req.user?.userId || sellerData.userId;
+    if (!userId) {
+      throw new BadRequestException('User ID is required. Please log in before onboarding.');
+    }
     const seller = await this.sellerService.create({ ...sellerData, userId });
     return { success: true, data: seller };
   }
@@ -30,9 +34,13 @@ export class SellerController {
   }
 
   @Get('me')
-  async findMe(@Request() req: any) {
+  async findMe(@Request() req: any, @Query('userId') queryUserId?: string) {
     try {
-        const userId = req.user?.userId || "65f12345678901234567890a";
+        // Priority: JWT user > query param userId
+        const userId = req.user?.userId || queryUserId;
+        if (!userId) {
+          return { success: true, data: null };
+        }
         const seller = await this.sellerService.findByUserId(userId);
         return { success: true, data: seller };
     } catch (e) {

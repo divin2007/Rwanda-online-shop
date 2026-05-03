@@ -9,10 +9,12 @@ import dynamic from 'next/dynamic';
 const MapPinPicker = dynamic(() => import('@/components/ui/MapPinPicker').then(mod => mod.MapPinPicker), { ssr: false });
 import { useApi } from '@/hooks/useApi';
 import { marketApi, sellerApi } from '@/lib/api';
+import { useAuth } from '@/context/AuthContext';
 import toast from 'react-hot-toast';
 
 export default function SellerOnboardingPage() {
   const router = useRouter();
+  const { user, isAuthenticated } = useAuth();
   const [step, setStep] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
   
@@ -50,7 +52,14 @@ export default function SellerOnboardingPage() {
     setIsSubmitting(true);
     
     try {
+      if (!isAuthenticated || !user?.id) {
+        toast.error('You must be logged in to onboard. Please log in first.');
+        router.push('/login');
+        return;
+      }
+
       await sellerApi.post('/sellers/onboard', {
+        userId: user.id,
         marketId: marketId || null,
         shopDetails: marketId ? null : { name: shopName, slug, description },
         documents,

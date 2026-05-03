@@ -6,7 +6,7 @@ import { OrderModule } from './order/order.module';
 @Module({
   imports: [
     ScheduleModule.forRoot(),
-    MongooseModule.forRoot(process.env.MONGODB_URI || 'mongodb://localhost:27017/rmf_order'),
+    MongooseModule.forRoot(process.env.MONGODB_URI || 'mongodb://localhost:27017/market_rwanda'),
     OrderModule
   ],
 })
