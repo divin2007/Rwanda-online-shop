@@ -39,7 +39,7 @@ export default function RegisterPage() {
     try {
       // Exclude confirmPassword before sending
       const { confirmPassword, ...payload } = data;
-      const res = await userApi.post('/auth/register', payload);
+      const res = await userApi.post('/users/register', payload);
       
       if (res.data?.success) {
         toast.success('Registration successful! Please log in.');

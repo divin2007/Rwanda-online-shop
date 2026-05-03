@@ -57,14 +57,14 @@ const createClient = (baseURL: string) => {
   return client;
 };
 
-export const userApi = createClient(process.env.NEXT_PUBLIC_USER_SERVICE_URL || 'http://localhost:3001');
-export const marketApi = createClient(process.env.NEXT_PUBLIC_MARKET_SERVICE_URL || 'http://localhost:3002');
-export const productApi = createClient(process.env.NEXT_PUBLIC_PRODUCT_SERVICE_URL || 'http://localhost:3003');
-export const sellerApi = createClient(process.env.NEXT_PUBLIC_SELLER_SERVICE_URL || 'http://localhost:3004');
-export const riderApi = createClient(process.env.NEXT_PUBLIC_RIDER_SERVICE_URL || 'http://localhost:3005');
-export const orderApi = createClient(process.env.NEXT_PUBLIC_ORDER_SERVICE_URL || 'http://localhost:3006');
-export const walletApi = createClient(process.env.NEXT_PUBLIC_WALLET_SERVICE_URL || 'http://localhost:3007');
-export const deliveryApi = createClient(process.env.NEXT_PUBLIC_DELIVERY_SERVICE_URL || 'http://localhost:3008');
-export const notificationApi = createClient(process.env.NEXT_PUBLIC_NOTIFICATION_SERVICE_URL || 'http://localhost:3009');
-export const reviewApi = createClient(process.env.NEXT_PUBLIC_REVIEW_SERVICE_URL || 'http://localhost:3010');
-export const adminApi = createClient(process.env.NEXT_PUBLIC_ADMIN_SERVICE_URL || 'http://localhost:3011');
+export const userApi = createClient((process.env.NEXT_PUBLIC_USER_SERVICE_URL || 'http://localhost:3001') + '/api/v1');
+export const marketApi = createClient((process.env.NEXT_PUBLIC_MARKET_SERVICE_URL || 'http://localhost:3002') + '/api/v1');
+export const productApi = createClient((process.env.NEXT_PUBLIC_PRODUCT_SERVICE_URL || 'http://localhost:3003') + '/api/v1');
+export const sellerApi = createClient((process.env.NEXT_PUBLIC_SELLER_SERVICE_URL || 'http://localhost:3004') + '/api/v1');
+export const riderApi = createClient((process.env.NEXT_PUBLIC_RIDER_SERVICE_URL || 'http://localhost:3005') + '/api/v1');
+export const orderApi = createClient((process.env.NEXT_PUBLIC_ORDER_SERVICE_URL || 'http://localhost:3006') + '/api/v1');
+export const walletApi = createClient((process.env.NEXT_PUBLIC_WALLET_SERVICE_URL || 'http://localhost:3007') + '/api/v1');
+export const deliveryApi = createClient((process.env.NEXT_PUBLIC_DELIVERY_SERVICE_URL || 'http://localhost:3008') + '/api/v1');
+export const notificationApi = createClient((process.env.NEXT_PUBLIC_NOTIFICATION_SERVICE_URL || 'http://localhost:3009') + '/api/v1');
+export const reviewApi = createClient((process.env.NEXT_PUBLIC_REVIEW_SERVICE_URL || 'http://localhost:3010') + '/api/v1');
+export const adminApi = createClient((process.env.NEXT_PUBLIC_ADMIN_SERVICE_URL || 'http://localhost:3011') + '/api/v1');

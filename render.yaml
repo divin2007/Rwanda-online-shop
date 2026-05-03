@@ -134,3 +134,25 @@ services:
     envVars:
       - key: NODE_VERSION
         value: "20"
+      - key: NEXT_PUBLIC_USER_SERVICE_URL
+        value: "https://rmf-user-service.onrender.com"
+      - key: NEXT_PUBLIC_MARKET_SERVICE_URL
+        value: "https://rmf-market-service.onrender.com"
+      - key: NEXT_PUBLIC_PRODUCT_SERVICE_URL
+        value: "https://rmf-product-service.onrender.com"
+      - key: NEXT_PUBLIC_SELLER_SERVICE_URL
+        value: "https://rmf-seller-service.onrender.com"
+      - key: NEXT_PUBLIC_RIDER_SERVICE_URL
+        value: "https://rmf-rider-service.onrender.com"
+      - key: NEXT_PUBLIC_ORDER_SERVICE_URL
+        value: "https://rmf-order-service.onrender.com"
+      - key: NEXT_PUBLIC_WALLET_SERVICE_URL
+        value: "https://rmf-wallet-service.onrender.com"
+      - key: NEXT_PUBLIC_DELIVERY_SERVICE_URL
+        value: "https://rmf-delivery-service.onrender.com"
+      - key: NEXT_PUBLIC_NOTIFICATION_SERVICE_URL
+        value: "https://rmf-notification-service.onrender.com"
+      - key: NEXT_PUBLIC_REVIEW_SERVICE_URL
+        value: "https://rmf-review-service.onrender.com"
+      - key: NEXT_PUBLIC_ADMIN_SERVICE_URL
+        value: "https://rmf-admin-service.onrender.com"
