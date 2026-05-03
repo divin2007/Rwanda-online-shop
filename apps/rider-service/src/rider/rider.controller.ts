@@ -61,4 +61,13 @@ export class RiderController {
     const rider = await this.riderService.updateLocation(userId, location);
     return { success: true, data: rider };
   }
+
+  @Post('upload-document')
+  async uploadDocument(@Body() data: any) {
+    // Mock upload logic (Document 6 requirement: simulated for now)
+    return { 
+      success: true, 
+      data: { url: "https://placehold.co/800x600/000000/FFFFFF/png?text=Rider+Document" } 
+    };
+  }
 }

@@ -1,7 +1,7 @@
 'use client';
 import React, { useState } from 'react';
 import { useApi } from '@/hooks/useApi';
-import { productApi, sellerApi, deliveryApi } from '@/lib/api'; // Depends on context
+import { productApi, sellerApi, deliveryApi, riderApi } from '@/lib/api'; // Depends on context
 
 interface ImageUploadProps {
   onUploadSuccess: (url: string) => void;
@@ -19,6 +19,7 @@ export const ImageUpload = ({ onUploadSuccess, service, endpoint, capture, label
     if (service === 'product') return productApi;
     if (service === 'seller') return sellerApi;
     if (service === 'delivery') return deliveryApi;
+    if (service === 'rider') return riderApi;
     return productApi; // fallback
   };
   
