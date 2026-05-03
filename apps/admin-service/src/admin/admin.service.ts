@@ -70,4 +70,27 @@ export class AdminService {
     .sort({ createdAt: -1 })
     .exec();
   }
+
+  async getSellerAnalytics(sellerId: string): Promise<any> {
+    const orders = await this.orderModel.aggregate([
+      { $match: { 'seller.userId': sellerId } },
+      {
+        $group: {
+          _id: null,
+          totalSales: { $sum: '$financials.totalAmount' },
+          totalOrders: { $sum: 1 },
+          completedOrders: {
+            $sum: { $cond: [{ $in: ['$status', ['delivered', 'resolved']] }, 1, 0] }
+          }
+        }
+      }
+    ]);
+
+    return {
+      salesToday: orders[0]?.totalSales || 0,
+      totalOrders: orders[0]?.totalOrders || 0,
+      completedOrders: orders[0]?.completedOrders || 0,
+      avgPrepTime: 15, // Mock value
+    };
+  }
 }

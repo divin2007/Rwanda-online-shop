@@ -186,4 +186,12 @@ export class OrderService {
   async getOrderById(id: string): Promise<any> {
     return this.orderModel.findById(id).exec();
   }
+
+  async findAll(query: any): Promise<any> {
+    const { sellerId, status } = query;
+    const filter: any = {};
+    if (sellerId) filter['seller.userId'] = sellerId;
+    if (status) filter.status = { $in: status.split(',') };
+    return this.orderModel.find(filter).sort({ createdAt: -1 }).exec();
+  }
 }

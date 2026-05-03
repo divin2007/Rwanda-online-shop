@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Put, Body, Param } from '@nestjs/common';
+import { Controller, Get, Post, Put, Body, Param, Query } from '@nestjs/common';
 import { OrderService } from './order.service';
 import { OrderStatus, PaymentStatus, DisputeResolution } from '@rmf/shared-types';
 
@@ -10,6 +10,12 @@ export class OrderController {
   async createOrder(@Body() orderData: any) {
     const order = await this.orderService.createOrder(orderData);
     return { success: true, data: order };
+  }
+
+  @Get()
+  async getOrders(@Query() query: any) {
+    const orders = await this.orderService.findAll(query);
+    return { success: true, data: orders };
   }
 
   @Get(':id')

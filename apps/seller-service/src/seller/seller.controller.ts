@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Put, Body, Param } from '@nestjs/common';
+import { Controller, Get, Post, Put, Body, Param, Request } from '@nestjs/common';
 import { SellerService } from './seller.service';
 
 @Controller('sellers')
@@ -8,6 +8,19 @@ export class SellerController {
   @Post('onboard')
   async create(@Body() sellerData: any) {
     const seller = await this.sellerService.create(sellerData);
+    return { success: true, data: seller };
+  }
+
+  @Get('me')
+  async findMe(@Request() req: any) {
+    // In a full implementation, we extract user.id from the JWT in req.user
+    // For now, we'll return a 404 or mock if user is not present
+    if (!req.user) {
+        // Return first seller for testing if no auth yet
+        const sellers = await this.sellerService.findByUserId("dummy"); 
+        return { success: true, data: sellers };
+    }
+    const seller = await this.sellerService.findByUserId(req.user.id);
     return { success: true, data: seller };
   }
 

@@ -1,4 +1,4 @@
-import { Controller, Get, Query } from '@nestjs/common';
+import { Controller, Get, Query, Param } from '@nestjs/common';
 import { AdminService } from './admin.service';
 
 @Controller('admin')
@@ -20,6 +20,12 @@ export class AdminController {
   @Get('analytics')
   async getSystemAnalytics() {
     const analytics = await this.adminService.getSystemAnalytics();
+    return { success: true, data: analytics };
+  }
+
+  @Get('analytics/seller/:id')
+  async getSellerAnalytics(@Param('id') id: string) {
+    const analytics = await this.adminService.getSellerAnalytics(id);
     return { success: true, data: analytics };
   }
 

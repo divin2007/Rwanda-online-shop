@@ -7,14 +7,16 @@ import { FraudDetectionService } from './fraud-detection.service';
 import { BuyerProtectionService } from './buyer-protection.service';
 import { ScheduledOrdersService } from './scheduled-orders.service';
 
+import { OrderGateway } from './order.gateway';
+
 @Module({
   imports: [
     MongooseModule.forFeature([
       { name: 'Transaction', schema: transactionSchema }
     ]),
   ],
-  providers: [OrderService, FraudDetectionService, ScheduledOrdersService, BuyerProtectionService],
+  providers: [OrderService, FraudDetectionService, ScheduledOrdersService, BuyerProtectionService, OrderGateway],
   controllers: [OrderController],
-  exports: [OrderService],
+  exports: [OrderService, OrderGateway],
 })
 export class OrderModule {}
