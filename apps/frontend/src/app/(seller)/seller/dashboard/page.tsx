@@ -46,6 +46,21 @@ export default function SellerDashboardPage() {
 
   if (pLoad || aLoad || oLoad) return <Layout><div className="flex justify-center p-20"><div className="animate-spin w-10 h-10 border-4 border-primary border-t-transparent rounded-full"></div></div></Layout>;
   
+  if (!profile) {
+    return (
+      <Layout>
+        <div className="max-w-2xl mx-auto py-20 text-center">
+          <span className="text-6xl mb-4 block">👋</span>
+          <h1 className="text-3xl font-bold mb-4">Welcome to Rwanda Market</h1>
+          <p className="text-text-secondary mb-8">You need to complete your seller profile and upload documents before you can access the dashboard.</p>
+          <Link href="/seller/onboarding">
+            <Button size="lg">Complete Onboarding</Button>
+          </Link>
+        </div>
+      </Layout>
+    );
+  }
+
   if (profile && !profile.isApproved) {
     return (
       <Layout>

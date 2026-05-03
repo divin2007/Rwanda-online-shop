@@ -1,5 +1,6 @@
 'use client';
 import React, { useEffect, useState } from 'react';
+import Link from 'next/link';
 import { Layout } from '@/components/layout/Layout';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
@@ -64,10 +65,10 @@ export default function SellerProductsPage() {
         {/* Simplified Sidebar for example */}
         <aside className="w-full md:w-64 bg-background-card border-r border-border p-6 hidden md:block">
           <nav className="space-y-2">
-            <a href="/seller/dashboard" className="block px-4 py-2 text-text-secondary hover:bg-background-surface hover:text-text-primary font-medium rounded-lg">Dashboard</a>
-            <a href="/seller/products" className="block px-4 py-2 bg-primary/10 text-primary font-bold rounded-lg">Products</a>
-            <a href="/seller/promotions" className="block px-4 py-2 text-text-secondary hover:bg-background-surface hover:text-text-primary font-medium rounded-lg">Promotions</a>
-            <a href="/seller/earnings" className="block px-4 py-2 text-text-secondary hover:bg-background-surface hover:text-text-primary font-medium rounded-lg">Earnings</a>
+            <Link href="/seller/dashboard" className="block px-4 py-2 text-text-secondary hover:bg-background-surface hover:text-text-primary font-medium rounded-lg">Dashboard</Link>
+            <Link href="/seller/products" className="block px-4 py-2 bg-primary/10 text-primary font-bold rounded-lg">Products</Link>
+            <Link href="/seller/promotions" className="block px-4 py-2 text-text-secondary hover:bg-background-surface hover:text-text-primary font-medium rounded-lg">Promotions</Link>
+            <Link href="/seller/earnings" className="block px-4 py-2 text-text-secondary hover:bg-background-surface hover:text-text-primary font-medium rounded-lg">Earnings</Link>
           </nav>
         </aside>
 

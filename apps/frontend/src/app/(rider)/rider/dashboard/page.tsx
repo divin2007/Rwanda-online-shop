@@ -116,6 +116,21 @@ export default function RiderDashboardPage() {
     }
   };
 
+  if (!profile) {
+    return (
+      <Layout>
+        <div className="p-20 text-center">
+          <span className="text-6xl mb-4 block">🛵</span>
+          <h1 className="text-2xl font-bold mb-4">Welcome to Rwanda Market Delivery</h1>
+          <p className="text-text-secondary mb-6">Register your vehicle and documents to start earning.</p>
+          <Link href="/rider/register">
+            <Button size="lg">Start Registration</Button>
+          </Link>
+        </div>
+      </Layout>
+    );
+  }
+
   if (profile && !profile.isApproved) {
     return <Layout><div className="p-20 text-center"><h1 className="text-2xl font-bold">Profile Pending Approval</h1></div></Layout>;
   }
