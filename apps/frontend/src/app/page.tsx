@@ -1,14 +1,21 @@
+'use client';
+import { useEffect } from "react";
 import Link from "next/link";
 import { Layout } from "@/components/layout/Layout";
 import { Button } from "@/components/ui/Button";
-
-const FEATURED_MARKETS = [
-  { id: "kimironko", name: "Kimironko Market", description: "Fresh produce, clothing, and crafts in Kigali's busiest market.", image: "🥬", color: "bg-green-100 text-green-800" },
-  { id: "nyabugogo", name: "Nyabugogo Market", description: "Wholesale goods, electronics, and daily essentials.", image: "📱", color: "bg-blue-100 text-blue-800" },
-  { id: "batsinda", name: "Batsinda Market", description: "Local artisans, spices, and household items.", image: "🌶️", color: "bg-orange-100 text-orange-800" },
-];
+import { ProductCard } from "@/components/ui/ProductCard";
+import { useApi } from "@/hooks/useApi";
+import { marketApi, productApi } from "@/lib/api";
 
 export default function Home() {
+  const { data: markets, loading: marketsLoading, execute: fetchMarkets } = useApi(marketApi, 'get', '/markets?isActive=true&limit=6');
+  const { data: products, loading: productsLoading, execute: fetchProducts } = useApi(productApi, 'get', '/products?isActive=true&limit=8&sortBy=totalOrders');
+
+  useEffect(() => {
+    fetchMarkets();
+    fetchProducts();
+  }, [fetchMarkets, fetchProducts]);
+
   return (
     <Layout>
       {/* Hero Section */}
@@ -42,27 +49,60 @@ export default function Home() {
           </Link>
         </div>
         
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {FEATURED_MARKETS.map((market) => (
-            <Link href={`/market/${market.id}`} key={market.id} className="group">
-              <div className="bg-background-card border border-border rounded-2xl p-6 h-full transition-all duration-300 hover:shadow-lg hover:border-primary/30 flex flex-col">
-                <div className={`w-16 h-16 rounded-2xl flex items-center justify-center text-3xl mb-6 ${market.color}`}>
-                  {market.image}
+        {marketsLoading ? (
+          <div className="flex justify-center items-center py-12"><div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin"></div></div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {(markets || []).map((market: any) => (
+              <Link href={`/market/${market.slug}`} key={market._id} className="group">
+                <div className="bg-background-card border border-border rounded-2xl p-6 h-full transition-all duration-300 hover:shadow-lg hover:border-primary/30 flex flex-col">
+                  <div className={`w-16 h-16 rounded-2xl overflow-hidden mb-6 bg-primary/10 flex items-center justify-center`}>
+                    {market.imageUrl ? (
+                       <img src={market.imageUrl} alt={market.name} className="w-full h-full object-cover" />
+                    ) : (
+                       <span className="text-2xl">🏪</span>
+                    )}
+                  </div>
+                  <h3 className="text-xl font-bold text-text-primary mb-2 group-hover:text-primary transition-colors">{market.name}</h3>
+                  <p className="text-text-secondary flex-grow">{market.location?.address || market.description}</p>
+                  <p className="text-xs text-text-muted mt-2">{market.sellerCount || 0} active sellers</p>
+                  <div className="mt-6 flex items-center text-sm font-bold text-primary">
+                    Shop Now <span className="ml-2 group-hover:translate-x-1 transition-transform">→</span>
+                  </div>
                 </div>
-                <h3 className="text-xl font-bold text-text-primary mb-2 group-hover:text-primary transition-colors">{market.name}</h3>
-                <p className="text-text-secondary flex-grow">{market.description}</p>
-                <div className="mt-6 flex items-center text-sm font-bold text-primary">
-                  Shop Now <span className="ml-2 group-hover:translate-x-1 transition-transform">→</span>
-                </div>
-              </div>
-            </Link>
-          ))}
-        </div>
+              </Link>
+            ))}
+          </div>
+        )}
         <div className="mt-6 text-center sm:hidden">
           <Link href="/markets" className="text-primary font-bold hover:underline">
             View All Markets →
           </Link>
         </div>
+      </section>
+
+      {/* Trending Products Grid */}
+      <section className="mb-20">
+        <div className="flex justify-between items-end mb-8">
+          <div>
+            <h2 className="text-3xl font-heading font-bold text-text-primary mb-2">Trending Products</h2>
+            <p className="text-text-secondary">Most ordered items right now</p>
+          </div>
+        </div>
+
+        {productsLoading ? (
+          <div className="flex justify-center items-center py-12"><div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin"></div></div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+            {(products || []).map((product: any) => (
+              <ProductCard 
+                key={product._id} 
+                product={product} 
+                onAddToCart={() => {}} // Will be handled by the component internally or passed context
+              />
+            ))}
+          </div>
+        )}
       </section>
 
       {/* How it Works */}

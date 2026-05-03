@@ -1,16 +1,16 @@
-'use client';
 import React from 'react';
+import Link from 'next/link';
 import Image from 'next/image';
-import { Card } from './Card';
 import { Button } from './Button';
+import { useCart } from '@/components/cart/CartContext';
 
 interface ProductCardProps {
   product: {
-    id: string;
+    _id: string;
     name: string;
     price: number;
     unit: string;
-    image: string;
+    images: string[];
     inStock: boolean;
     promotion?: {
       type: 'percentage' | 'fixed_amount';
@@ -18,71 +18,74 @@ interface ProductCardProps {
       promotedPrice: number;
     };
   };
-  onAddToCart: (id: string) => void;
 }
 
-export const ProductCard = ({ product, onAddToCart }: ProductCardProps) => {
+export const ProductCard = ({ product }: ProductCardProps) => {
+  const { addToCart } = useCart();
+
+  if (!product.images || product.images.length === 0) {
+    return null; // CRITICAL RULE: Do not render if no images
+  }
+
+  const finalPrice = product.promotion ? product.promotion.promotedPrice : product.price;
+
   return (
-    <Card noPadding className="overflow-hidden flex flex-col h-full group hover:shadow-md transition-shadow">
-      <div className="relative h-48 w-full bg-background-surface">
-        {/* Stubbing Image for demo */}
-        <div className="absolute inset-0 flex items-center justify-center text-text-muted bg-gray-200">
-          [Product Image]
-        </div>
-        
+    <div className="bg-background-card border border-border rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-shadow relative flex flex-col h-full">
+      {/* Badges */}
+      <div className="absolute top-2 left-2 z-10 flex flex-col gap-1">
         {product.promotion && (
-          <div className="absolute top-2 left-2 bg-status-error text-text-inverse px-2 py-1 text-xs font-bold rounded shadow-sm">
-            {product.promotion.type === 'percentage' 
-              ? `-${product.promotion.discount}% OFF` 
-              : `-${product.promotion.discount} RWF`}
-          </div>
-        )}
-        
-        {!product.inStock && (
-          <div className="absolute inset-0 bg-background-main/70 flex items-center justify-center">
-            <span className="bg-secondary text-text-inverse px-3 py-1 rounded font-medium text-sm">
-              Out of Stock
-            </span>
-          </div>
+          <span className="bg-status-warning text-white text-xs font-bold px-2 py-1 rounded">
+            {product.promotion.type === 'percentage' ? `-${product.promotion.discount}% OFF` : `-${product.promotion.discount} RWF`}
+          </span>
         )}
       </div>
+
+      <Link href={`/market/default/product/${product._id}`} className="block relative aspect-square bg-background-surface overflow-hidden">
+        <Image 
+          src={product.images[0]} 
+          alt={product.name} 
+          fill
+          sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+          className={`object-cover transition-transform duration-500 hover:scale-105 ${!product.inStock ? 'opacity-50 grayscale' : ''}`}
+        />
+        {!product.inStock && (
+          <div className="absolute inset-0 flex items-center justify-center">
+            <span className="bg-status-error text-white font-bold px-4 py-2 rounded shadow-lg transform -rotate-12">OUT OF STOCK</span>
+          </div>
+        )}
+      </Link>
       
       <div className="p-4 flex flex-col flex-grow">
-        <h3 className="font-heading font-medium text-text-primary text-lg mb-1 truncate" title={product.name}>
-          {product.name}
+        <h3 className="font-bold text-text-primary mb-1 line-clamp-2 min-h-[40px]">
+          <Link href={`/market/default/product/${product._id}`} className="hover:text-primary transition-colors">
+            {product.name}
+          </Link>
         </h3>
         
-        <div className="mt-auto pt-2">
-          {product.promotion ? (
-            <div className="flex items-baseline gap-2">
-              <span className="text-xl font-bold text-primary dark:text-status-warning drop-shadow-sm">
-                {product.promotion.promotedPrice} RWF
-              </span>
-              <span className="text-sm text-text-muted line-through">
-                {product.price}
-              </span>
-              <span className="text-xs text-text-secondary">/{product.unit}</span>
-            </div>
-          ) : (
-            <div className="flex items-baseline gap-1">
-              <span className="text-xl font-bold text-text-primary">
-                {product.price} RWF
-              </span>
-              <span className="text-sm text-text-secondary">/{product.unit}</span>
-            </div>
-          )}
+        <div className="mt-auto pt-4">
+          <div className="flex items-baseline gap-2 mb-3">
+            {product.promotion ? (
+              <>
+                <span className="text-lg font-bold text-status-warning">{product.promotion.promotedPrice.toLocaleString()} RWF</span>
+                <span className="text-xs text-text-muted line-through">{product.price.toLocaleString()} RWF</span>
+              </>
+            ) : (
+              <span className="text-lg font-bold text-primary">{product.price.toLocaleString()} RWF</span>
+            )}
+            <span className="text-xs text-text-secondary">/{product.unit}</span>
+          </div>
+          
+          <Button 
+            variant="primary" 
+            fullWidth 
+            className="py-2"
+            disabled={!product.inStock}
+            onClick={() => addToCart({ id: product._id, name: product.name, price: finalPrice, image: product.images[0] })}
+          >
+            Add to Cart
+          </Button>
         </div>
-        
-        <Button 
-          variant="primary" 
-          fullWidth 
-          className="mt-4 py-2"
-          disabled={!product.inStock}
-          onClick={() => onAddToCart(product.id)}
-        >
-          Add to Cart
-        </Button>
       </div>
-    </Card>
+    </div>
   );
 };

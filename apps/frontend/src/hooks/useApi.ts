@@ -1,0 +1,64 @@
+'use client';
+import { useState, useCallback } from 'react';
+import { AxiosInstance, AxiosRequestConfig, AxiosResponse, AxiosError } from 'axios';
+
+interface UseApiResponse<T> {
+  data: T | null;
+  loading: boolean;
+  error: string | null;
+  execute: (...args: any[]) => Promise<T | null>;
+}
+
+export function useApi<T = any>(
+  apiInstance: AxiosInstance,
+  method: 'get' | 'post' | 'put' | 'patch' | 'delete',
+  url: string,
+  options?: AxiosRequestConfig
+): UseApiResponse<T> {
+  const [data, setData] = useState<T | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const execute = useCallback(
+    async (dynamicData?: any, dynamicConfig?: AxiosRequestConfig) => {
+      setLoading(true);
+      setError(null);
+      try {
+        const config = { ...options, ...dynamicConfig };
+        let response: AxiosResponse;
+
+        if (method === 'get' || method === 'delete') {
+          response = await apiInstance[method](url, config);
+        } else {
+          response = await apiInstance[method](url, dynamicData, config);
+        }
+
+        // Assuming backend returns { success: boolean, data: any, error?: string }
+        if (response.data && response.data.success) {
+          setData(response.data.data);
+          return response.data.data;
+        } else if (response.data) {
+          setError(response.data.error || 'An unknown error occurred');
+          return null;
+        } else {
+          setData(response.data as any);
+          return response.data as any;
+        }
+      } catch (err) {
+        let errorMessage = 'An error occurred while fetching data';
+        if (err instanceof AxiosError && err.response) {
+            errorMessage = err.response.data?.error || err.response.data?.message || err.message;
+        } else if (err instanceof Error) {
+            errorMessage = err.message;
+        }
+        setError(errorMessage);
+        return null;
+      } finally {
+        setLoading(false);
+      }
+    },
+    [apiInstance, method, url, options]
+  );
+
+  return { data, loading, error, execute };
+}
