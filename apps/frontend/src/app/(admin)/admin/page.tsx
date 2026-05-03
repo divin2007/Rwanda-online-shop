@@ -71,15 +71,15 @@ export default function AdminDashboardPage() {
                 <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-6 overflow-y-auto max-h-[70vh]">
                    <div>
                       <p className="text-sm font-bold mb-2">RDB / Business Permit</p>
-                      <img src={selectedSeller.businessPermitUrl || 'https://via.placeholder.com/400x300?text=No+Permit'} className="w-full rounded-lg border border-border" />
+                      <img src={selectedSeller.businessPermitUrl || 'https://placehold.co/400x300/000000/FFFFFF/png?text=No+Permit'} className="w-full rounded-lg border border-border" />
                    </div>
                    <div>
                       <p className="text-sm font-bold mb-2">National ID</p>
-                      <img src={selectedSeller.idCardUrl || 'https://via.placeholder.com/400x300?text=No+ID'} className="w-full rounded-lg border border-border" />
+                      <img src={selectedSeller.idCardUrl || 'https://placehold.co/400x300/000000/FFFFFF/png?text=No+ID'} className="w-full rounded-lg border border-border" />
                    </div>
                    <div className="md:col-span-2">
                       <p className="text-sm font-bold mb-2">Stall / Shop Photo</p>
-                      <img src={selectedSeller.stallPhotoUrl || 'https://via.placeholder.com/800x400?text=No+Photo'} className="w-full rounded-lg border border-border object-cover h-64" />
+                      <img src={selectedSeller.stallPhotoUrl || 'https://placehold.co/800x400/000000/FFFFFF/png?text=No+Photo'} className="w-full rounded-lg border border-border object-cover h-64" />
                    </div>
                 </div>
                 <div className="p-6 border-t border-border flex justify-end gap-3 bg-background-surface">
