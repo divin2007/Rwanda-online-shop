@@ -1,9 +1,19 @@
-import { Controller, Get, Post, Put, Body, Param, Request } from '@nestjs/common';
+import { Controller, Get, Post, Put, Body, Param, Request, Query } from '@nestjs/common';
 import { SellerService } from './seller.service';
 
 @Controller('sellers')
 export class SellerController {
   constructor(private readonly sellerService: SellerService) {}
+
+  @Get()
+  async findAll(@Query('isApproved') isApproved?: string) {
+    const filter: any = {};
+    if (isApproved !== undefined) {
+      filter.isApproved = isApproved === 'true';
+    }
+    const sellers = await this.sellerService.findAll(filter);
+    return { success: true, data: sellers };
+  }
 
   @Post('onboard')
   async create(@Request() req: any, @Body() sellerData: any) {

@@ -15,6 +15,10 @@ export class SellerService {
     this.locationService = new LocationService();
   }
 
+  async findAll(filter: any = {}): Promise<any[]> {
+    return this.sellerModel.find({ ...filter, deletedAt: null }).exec();
+  }
+
   async create(sellerData: any): Promise<any> {
     const existing = await this.sellerModel.findOne({ userId: sellerData.userId });
     if (existing) {
