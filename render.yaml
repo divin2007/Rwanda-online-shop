@@ -8,7 +8,7 @@ services:
       - key: NODE_VERSION
         value: "20"
       - key: MONGODB_URI
-        sync: false
+        value: "mongodb+srv://mahorodiv2007_db_user:RwShop%402024Secure@cluster0.pkpnndf.mongodb.net/market_rwanda?retryWrites=true&w=majority"
       - key: JWT_SECRET
         generateValue: true
 
@@ -21,7 +21,7 @@ services:
       - key: NODE_VERSION
         value: "20"
       - key: MONGODB_URI
-        sync: false
+        value: "mongodb+srv://mahorodiv2007_db_user:RwShop%402024Secure@cluster0.pkpnndf.mongodb.net/market_rwanda?retryWrites=true&w=majority"
 
   - type: web
     name: rmf-product-service
@@ -32,9 +32,9 @@ services:
       - key: NODE_VERSION
         value: "20"
       - key: MONGODB_URI
-        sync: false
+        value: "mongodb+srv://mahorodiv2007_db_user:RwShop%402024Secure@cluster0.pkpnndf.mongodb.net/market_rwanda?retryWrites=true&w=majority"
       - key: REDIS_URL
-        sync: false
+        value: "redis://default:EQAQP3WiARb30axhHCppflO41SgK3fLL@redis-18260.crce285.us-east-1-4.ec2.cloud.redislabs.com:18260"
 
   - type: web
     name: rmf-seller-service
@@ -45,7 +45,7 @@ services:
       - key: NODE_VERSION
         value: "20"
       - key: MONGODB_URI
-        sync: false
+        value: "mongodb+srv://mahorodiv2007_db_user:RwShop%402024Secure@cluster0.pkpnndf.mongodb.net/market_rwanda?retryWrites=true&w=majority"
 
   - type: web
     name: rmf-rider-service
@@ -56,7 +56,7 @@ services:
       - key: NODE_VERSION
         value: "20"
       - key: MONGODB_URI
-        sync: false
+        value: "mongodb+srv://mahorodiv2007_db_user:RwShop%402024Secure@cluster0.pkpnndf.mongodb.net/market_rwanda?retryWrites=true&w=majority"
 
   - type: web
     name: rmf-order-service
@@ -67,7 +67,7 @@ services:
       - key: NODE_VERSION
         value: "20"
       - key: MONGODB_URI
-        sync: false
+        value: "mongodb+srv://mahorodiv2007_db_user:RwShop%402024Secure@cluster0.pkpnndf.mongodb.net/market_rwanda?retryWrites=true&w=majority"
 
   - type: web
     name: rmf-wallet-service
@@ -78,7 +78,7 @@ services:
       - key: NODE_VERSION
         value: "20"
       - key: MONGODB_URI
-        sync: false
+        value: "mongodb+srv://mahorodiv2007_db_user:RwShop%402024Secure@cluster0.pkpnndf.mongodb.net/market_rwanda?retryWrites=true&w=majority"
 
   - type: web
     name: rmf-delivery-service
@@ -89,7 +89,7 @@ services:
       - key: NODE_VERSION
         value: "20"
       - key: MONGODB_URI
-        sync: false
+        value: "mongodb+srv://mahorodiv2007_db_user:RwShop%402024Secure@cluster0.pkpnndf.mongodb.net/market_rwanda?retryWrites=true&w=majority"
 
   - type: web
     name: rmf-notification-service
@@ -100,7 +100,7 @@ services:
       - key: NODE_VERSION
         value: "20"
       - key: MONGODB_URI
-        sync: false
+        value: "mongodb+srv://mahorodiv2007_db_user:RwShop%402024Secure@cluster0.pkpnndf.mongodb.net/market_rwanda?retryWrites=true&w=majority"
       - key: SENDGRID_API_KEY
         sync: false
 
@@ -113,7 +113,7 @@ services:
       - key: NODE_VERSION
         value: "20"
       - key: MONGODB_URI
-        sync: false
+        value: "mongodb+srv://mahorodiv2007_db_user:RwShop%402024Secure@cluster0.pkpnndf.mongodb.net/market_rwanda?retryWrites=true&w=majority"
 
   - type: web
     name: rmf-admin-service
@@ -124,7 +124,7 @@ services:
       - key: NODE_VERSION
         value: "20"
       - key: MONGODB_URI
-        sync: false
+        value: "mongodb+srv://mahorodiv2007_db_user:RwShop%402024Secure@cluster0.pkpnndf.mongodb.net/market_rwanda?retryWrites=true&w=majority"
 
   - type: web
     name: rmf-frontend
