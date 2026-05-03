@@ -98,7 +98,6 @@ export default function Home() {
               <ProductCard 
                 key={product._id} 
                 product={product} 
-                onAddToCart={() => {}} // Will be handled by the component internally or passed context
               />
             ))}
           </div>

@@ -4,19 +4,16 @@ import { Layout } from '@/components/layout/Layout';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { OrderStatusTimeline } from '@/components/ui/OrderStatusTimeline';
-import { MapContainer, TileLayer, Marker } from 'react-leaflet';
-import 'leaflet/dist/leaflet.css';
-import L from 'leaflet';
+import dynamic from 'next/dynamic';
 import { useSocket } from '@/hooks/useSocket';
 import { useApi } from '@/hooks/useApi';
 import { orderApi } from '@/lib/api';
 
-const riderIcon = new L.Icon({
-  iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
-  iconSize: [25, 41],
-  iconAnchor: [12, 41],
-  className: 'hue-rotate-[200deg]', // Blue-ish
-});
+// Dynamically import Leaflet components to avoid SSR issues
+const MapWrapper = dynamic(
+  () => import('@/components/ui/TrackingMap').then((mod) => mod.TrackingMap),
+  { ssr: false, loading: () => <div className="w-full h-full flex items-center justify-center bg-background-surface"><p className="animate-pulse">Loading map...</p></div> }
+);
 
 export default function OrderTrackingPage({ params }: { params: { orderId: string } }) {
   const [isClient, setIsClient] = useState(false);
@@ -54,10 +51,7 @@ export default function OrderTrackingPage({ params }: { params: { orderId: strin
               <Card noPadding className="overflow-hidden">
                 <div className="h-80 relative">
                   {riderGps ? (
-                    <MapContainer center={[riderGps.lat, riderGps.lng]} zoom={15} style={{ height: '100%', width: '100%' }}>
-                      <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
-                      <Marker position={[riderGps.lat, riderGps.lng]} icon={riderIcon} />
-                    </MapContainer>
+                    <MapWrapper lat={riderGps.lat} lng={riderGps.lng} />
                   ) : (
                     <div className="w-full h-full flex items-center justify-center bg-background-surface">
                       <p className="text-text-secondary animate-pulse">Waiting for rider GPS signal...</p>

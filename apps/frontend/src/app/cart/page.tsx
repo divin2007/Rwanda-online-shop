@@ -9,7 +9,7 @@ import { useAuth } from '@/context/AuthContext';
 import toast from 'react-hot-toast';
 
 export default function CartPage() {
-  const { items, removeItem, updateQuantity, cartTotal } = useCart();
+  const { items, removeFromCart, updateQuantity, cartTotal } = useCart();
   const { isAuthenticated } = useAuth();
   const router = useRouter();
 
@@ -50,7 +50,7 @@ export default function CartPage() {
                         <h3 className="font-bold text-text-primary">{item.name}</h3>
                         <p className="text-sm text-text-secondary">{item.price.toLocaleString()} RWF</p>
                       </div>
-                      <button onClick={() => removeItem(item.id)} className="text-text-muted hover:text-status-error">
+                      <button onClick={() => removeFromCart(item.id)} className="text-text-muted hover:text-status-error">
                         ✕
                       </button>
                     </div>
