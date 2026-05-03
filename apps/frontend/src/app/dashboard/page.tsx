@@ -28,9 +28,9 @@ export default function BuyerDashboard() {
             <Card className="sticky top-24" noPadding>
               <div className="p-6 border-b border-border bg-primary/5 rounded-t-xl">
                 <div className="w-16 h-16 bg-primary text-secondary rounded-full flex items-center justify-center text-2xl font-bold mb-4">
-                  {user?.name?.substring(0, 2).toUpperCase() || '👤'}
+                  {user?.fullName?.substring(0, 2).toUpperCase() || '👤'}
                 </div>
-                <h2 className="font-heading font-bold text-xl text-text-primary">{user?.name || 'My Account'}</h2>
+                <h2 className="font-heading font-bold text-xl text-text-primary">{user?.fullName || 'My Account'}</h2>
                 <p className="text-text-secondary text-sm">{user?.email}</p>
                 <p className="text-text-secondary text-sm mt-1">{user?.role?.toUpperCase()}</p>
               </div>
