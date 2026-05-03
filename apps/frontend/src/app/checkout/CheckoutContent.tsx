@@ -3,16 +3,33 @@ import React, { useState } from 'react';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { MapPinPicker } from '@/components/ui/MapPinPicker';
+import { useCart } from '@/components/cart/CartContext';
+import { useRouter } from 'next/navigation';
 
 export const CheckoutContent = () => {
+  const { cartTotal, items, clearCart } = useCart();
+  const router = useRouter();
   const [coords, setCoords] = useState<{lat: number, lng: number} | null>(null);
   const [paymentMethod, setPaymentMethod] = useState<'mtn' | 'airtel'>('mtn');
   const [phone, setPhone] = useState('');
   
-  const subtotal = 9200; // Mock subtotal
+  const subtotal = cartTotal;
   const deliveryFee = coords ? 1500 : 0;
   const gatewayFee = Math.ceil((subtotal + deliveryFee) * 0.02); // 2% standard
   const total = subtotal + deliveryFee + gatewayFee;
+
+  const handleCheckout = () => {
+    if (items.length === 0) {
+      alert('Your cart is empty!');
+      return;
+    }
+    // Simulate payment processing
+    setTimeout(() => {
+      clearCart();
+      alert(`Payment of ${total} RWF successful via ${paymentMethod.toUpperCase()}! Your order is now being processed.`);
+      router.push('/');
+    }, 1500);
+  };
 
   return (
     <div className="max-w-3xl mx-auto">
@@ -68,7 +85,7 @@ export const CheckoutContent = () => {
             <h2 className="text-xl font-heading font-bold mb-4">Order Summary</h2>
             <div className="space-y-2 text-sm pb-4 border-b border-border">
               <div className="flex justify-between">
-                <span>Subtotal</span>
+                <span>Subtotal ({items.reduce((sum, i) => sum + i.quantity, 0)} items)</span>
                 <span>{subtotal.toLocaleString()} RWF</span>
               </div>
               <div className="flex justify-between">
@@ -86,8 +103,8 @@ export const CheckoutContent = () => {
             </div>
             <Button 
               fullWidth 
-              disabled={!coords || !phone}
-              onClick={() => alert('Processing payment...')}
+              disabled={!coords || !phone || items.length === 0}
+              onClick={handleCheckout}
             >
               Pay Now
             </Button>

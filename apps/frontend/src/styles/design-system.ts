@@ -41,8 +41,8 @@ export const designSystem = {
   },
   typography: {
     fontFamilies: {
-      sans: ['Inter', 'system-ui', 'sans-serif'],
-      heading: ['Poppins', 'system-ui', 'sans-serif'],
+      sans: ['var(--font-inter)', 'system-ui', 'sans-serif'],
+      heading: ['var(--font-poppins)', 'system-ui', 'sans-serif'],
     },
   },
   spacing: {
