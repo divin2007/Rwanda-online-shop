@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Param } from '@nestjs/common';
+import { Controller, Get, Post, Body, Param, Request } from '@nestjs/common';
 import { WalletService } from './wallet.service';
 
 @Controller('wallets')
@@ -8,6 +8,26 @@ export class WalletController {
   @Post('user/:userId')
   async create(@Param('userId') userId: string) {
     const wallet = await this.walletService.createWallet(userId);
+    return { success: true, data: wallet };
+  }
+
+  @Get('me/balance')
+  async getMyBalance(@Request() req: any) {
+    if (!req.user) {
+        const wallet = await this.walletService.getBalance("dummy");
+        return { success: true, data: wallet };
+    }
+    const wallet = await this.walletService.getBalance(req.user.id);
+    return { success: true, data: wallet };
+  }
+
+  @Get('me')
+  async getMyWallet(@Request() req: any) {
+    if (!req.user) {
+        const wallet = await this.walletService.getBalance("dummy");
+        return { success: true, data: wallet };
+    }
+    const wallet = await this.walletService.getBalance(req.user.id);
     return { success: true, data: wallet };
   }
 

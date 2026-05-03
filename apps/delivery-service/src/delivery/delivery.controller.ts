@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Put, Body, Param } from '@nestjs/common';
+import { Controller, Get, Post, Put, Patch, Body, Param, Request } from '@nestjs/common';
 import { DeliveryService } from './delivery.service';
 import type { Coordinates } from '@rmf/location';
 import { DeliveryStatus } from '@rmf/shared-types';
@@ -13,10 +13,47 @@ export class DeliveryController {
     return { success: true, data: feeInfo };
   }
 
+  @Get('active')
+  async getActive(@Request() req: any) {
+    const userId = req.user?.id || "dummy";
+    const delivery = await this.deliveryService.getActiveDelivery(userId);
+    return { success: true, data: delivery };
+  }
+
   @Post()
   async create(@Body() data: any) {
     const delivery = await this.deliveryService.createDelivery(data);
     return { success: true, data: delivery };
+  }
+
+  @Patch(':id/accept')
+  async accept(@Param('id') id: string) {
+    const delivery = await this.deliveryService.acceptDelivery(id);
+    return { success: true, data: delivery };
+  }
+
+  @Patch(':id/reject')
+  async reject(@Param('id') id: string) {
+    const delivery = await this.deliveryService.rejectDelivery(id);
+    return { success: true, data: delivery };
+  }
+
+  @Patch(':id/complete')
+  async complete(@Param('id') id: string) {
+    const delivery = await this.deliveryService.updateStatus(id, DeliveryStatus.DELIVERED);
+    return { success: true, data: delivery };
+  }
+
+  @Post(':id/scan-qr')
+  async scanQr(@Param('id') id: string, @Body() data: { stallId: string }) {
+    const delivery = await this.deliveryService.photoVerifiedPickup(id, "dummy_photo_url", `marketrwanda:stall:${data.stallId}`);
+    return { success: true, data: delivery };
+  }
+
+  @Post(':id/pickup-photo')
+  async uploadPhoto(@Param('id') id: string, @Body() data: { url: string }) {
+    // This would typically update the photo URL before QR scan
+    return { success: true, data: { url: data.url } };
   }
 
   @Put(':id/status')
@@ -36,4 +73,5 @@ export class DeliveryController {
     const delivery = await this.deliveryService.streamLocation(id, coords);
     return { success: true, data: delivery };
   }
+}
 }

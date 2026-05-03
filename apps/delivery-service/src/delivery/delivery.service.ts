@@ -150,4 +150,19 @@ export class DeliveryService {
       { new: true }
     );
   }
+
+  async getActiveDelivery(riderId: string): Promise<any> {
+    return this.deliveryModel.findOne({ 
+      riderId, 
+      status: { $in: [DeliveryStatus.ASSIGNED, DeliveryStatus.EN_ROUTE_TO_PICKUP, DeliveryStatus.PICKED_UP, DeliveryStatus.EN_ROUTE_TO_DROPOFF] } 
+    }).exec();
+  }
+
+  async acceptDelivery(id: string): Promise<any> {
+    return await this.updateStatus(id, DeliveryStatus.EN_ROUTE_TO_PICKUP);
+  }
+
+  async rejectDelivery(id: string): Promise<any> {
+    return await this.updateStatus(id, DeliveryStatus.FAILED);
+  }
 }

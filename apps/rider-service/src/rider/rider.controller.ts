@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Put, Body, Param } from '@nestjs/common';
+import { Controller, Get, Post, Put, Patch, Body, Param, Request } from '@nestjs/common';
 import { RiderService } from './rider.service';
 import type { Coordinates } from '@rmf/location';
 
@@ -9,6 +9,30 @@ export class RiderController {
   @Post('register')
   async create(@Body() riderData: any) {
     const rider = await this.riderService.create(riderData);
+    return { success: true, data: rider };
+  }
+
+  @Get('me')
+  async findMe(@Request() req: any) {
+    if (!req.user) {
+        const rider = await this.riderService.findByUserId("dummy");
+        return { success: true, data: rider };
+    }
+    const rider = await this.riderService.findByUserId(req.user.id);
+    return { success: true, data: rider };
+  }
+
+  @Patch('me/status')
+  async updateMyStatus(@Request() req: any, @Body() data: { isActive: boolean, location?: Coordinates }) {
+    const userId = req.user?.id || "dummy";
+    const rider = await this.riderService.updateStatus(userId, data.isActive, data.location);
+    return { success: true, data: rider };
+  }
+
+  @Patch('me/location')
+  async updateMyLocation(@Request() req: any, @Body() location: Coordinates) {
+    const userId = req.user?.id || "dummy";
+    const rider = await this.riderService.updateLocation(userId, location);
     return { success: true, data: rider };
   }
 
