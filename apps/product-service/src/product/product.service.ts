@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException, BadRequestException, Inject } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
+import { Model, Types } from 'mongoose';
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import type { Cache } from 'cache-manager';
 
@@ -14,27 +14,38 @@ export class ProductService {
 
   async create(productData: any): Promise<any> {
     if (!productData.images || !Array.isArray(productData.images) || productData.images.length === 0) {
-      throw new BadRequestException('Product must have at least one image to be listed');
+      throw new BadRequestException('At least one product image is required.');
+    }
+
+    if (!productData.name || !productData.price || !productData.category) {
+      throw new BadRequestException('Product Name, Price, and Category are required.');
     }
 
     // Map authenticated User ID to SellerProfile ID and Market ID
     if (productData.sellerId) {
-      const seller = await this.sellerModel.findOne({ userId: productData.sellerId }).exec();
-      if (!seller) {
-        throw new BadRequestException('Seller profile not found. Please complete onboarding.');
+      try {
+        const userObjectId = new Types.ObjectId(productData.sellerId);
+        const seller = await this.sellerModel.findOne({ userId: userObjectId }).exec();
+        
+        if (!seller) {
+          throw new BadRequestException('Seller profile not found. Have you completed onboarding?');
+        }
+        
+        productData.sellerId = seller._id; 
+        productData.marketId = seller.marketId;
+      } catch (err: any) {
+        if (err instanceof BadRequestException) throw err;
+        throw new BadRequestException('Invalid Seller ID format or profile lookup failed.');
       }
-      
-      // Crucial: sellerId in Product schema refers to SellerProfile ID, not User ID
-      productData.sellerProfileId = seller._id; 
-      // Actually, check if we should rename the field in schema or just set it.
-      // Looking at schema: sellerId: { ref: 'SellerProfile' }
-      productData.sellerId = seller._id; 
-      productData.marketId = seller.marketId;
     }
 
-    if (!productData.sellerId || !productData.marketId) {
-      throw new BadRequestException('Seller Profile and Market ID are required');
-    }
+    // Sanitize numeric fields
+    productData.price = Number(productData.price);
+    productData.stockQuantity = Number(productData.stockQuantity || 0);
+    if (productData.weight) productData.weight = Number(productData.weight);
+    else delete productData.weight;
+
+    if (isNaN(productData.price)) throw new BadRequestException('Price must be a valid number.');
 
     const newProduct = new this.productModel(productData);
     const saved = await newProduct.save();
