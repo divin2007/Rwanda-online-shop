@@ -1,23 +1,23 @@
 import { Controller, Get, Query, Param } from '@nestjs/common';
 import { AdminService } from './admin.service';
 
-@Controller('admin')
+@Controller()
 export class AdminController {
   constructor(private readonly adminService: AdminService) {}
 
-  @Get('approvals')
+  @Get('admin/approvals')
   async getPendingApprovals() {
     const approvals = await this.adminService.getPendingApprovals();
     return { success: true, data: approvals };
   }
 
-  @Get('disputes')
+  @Get('admin/disputes')
   async getDisputes(@Query('status') status?: 'active' | 'resolved') {
     const disputes = await this.adminService.getDisputes(status);
     return { success: true, data: disputes };
   }
 
-  @Get('analytics')
+  @Get('admin/analytics')
   async getSystemAnalytics() {
     const analytics = await this.adminService.getSystemAnalytics();
     return { success: true, data: analytics };
@@ -29,7 +29,7 @@ export class AdminController {
     return { success: true, data: analytics };
   }
 
-  @Get('fraud-alerts')
+  @Get('admin/fraud-alerts')
   async getFraudAlerts() {
     const alerts = await this.adminService.getFraudAlerts();
     return { success: true, data: alerts };

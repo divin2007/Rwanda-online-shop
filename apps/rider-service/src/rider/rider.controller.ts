@@ -14,12 +14,13 @@ export class RiderController {
 
   @Get('me')
   async findMe(@Request() req: any) {
-    if (!req.user) {
-        const rider = await this.riderService.findByUserId("dummy");
+    try {
+        const userId = req.user?.id || "dummy";
+        const rider = await this.riderService.findByUserId(userId);
         return { success: true, data: rider };
+    } catch (e) {
+        return { success: true, data: null };
     }
-    const rider = await this.riderService.findByUserId(req.user.id);
-    return { success: true, data: rider };
   }
 
   @Patch('me/status')

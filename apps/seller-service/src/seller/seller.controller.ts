@@ -13,15 +13,14 @@ export class SellerController {
 
   @Get('me')
   async findMe(@Request() req: any) {
-    // In a full implementation, we extract user.id from the JWT in req.user
-    // For now, we'll return a 404 or mock if user is not present
-    if (!req.user) {
-        // Return first seller for testing if no auth yet
-        const sellers = await this.sellerService.findByUserId("dummy"); 
-        return { success: true, data: sellers };
+    try {
+        const userId = req.user?.id || "dummy";
+        const seller = await this.sellerService.findByUserId(userId);
+        return { success: true, data: seller };
+    } catch (e) {
+        // Return null data instead of 500/404 to allow frontend to handle onboarding
+        return { success: true, data: null };
     }
-    const seller = await this.sellerService.findByUserId(req.user.id);
-    return { success: true, data: seller };
   }
 
   @Get('user/:userId')
