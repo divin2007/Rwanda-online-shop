@@ -18,13 +18,7 @@ export default function ProductDetailPage({ params }: { params: { slug: string, 
 
   const handleAddToCart = () => {
     if (product) {
-      addToCart({
-        id: product._id,
-        name: product.name,
-        price: product.price,
-        image: product.imageUrl || 'https://placehold.co/400x400/000000/FFFFFF/png?text=No+Image',
-        quantity: 1
-      });
+      addToCart(product);
       toast.success(`${product.name} added to cart`);
     }
   };
@@ -50,7 +44,7 @@ export default function ProductDetailPage({ params }: { params: { slug: string, 
           {/* Product Images */}
           <div>
             <div className="aspect-square bg-background-surface rounded-2xl overflow-hidden border border-border mb-4 relative">
-              <img src={product.imageUrl || 'https://placehold.co/800x800/000000/FFFFFF/png?text=No+Image'} alt={product.name} className="w-full h-full object-cover" />
+              <img src={product.images?.[0] || 'https://placehold.co/800x800/000000/FFFFFF/png?text=No+Image'} alt={product.name} className="w-full h-full object-cover" />
             </div>
           </div>
 

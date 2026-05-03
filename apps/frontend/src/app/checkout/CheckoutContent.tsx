@@ -6,11 +6,13 @@ import { Button } from '@/components/ui/Button';
 import dynamic from 'next/dynamic';
 const MapPinPicker = dynamic(() => import('@/components/ui/MapPinPicker').then(mod => mod.MapPinPicker), { ssr: false });
 import { useCart } from '@/components/cart/CartContext';
+import { useAuth } from '@/context/AuthContext';
 import { orderApi } from '@/lib/api';
 import toast from 'react-hot-toast';
 
 export const CheckoutContent = () => {
   const { cartTotal, items, clearCart } = useCart();
+  const { user } = useAuth();
   const router = useRouter();
   const [coords, setCoords] = useState<{lat: number, lng: number} | null>(null);
   const [paymentMethod, setPaymentMethod] = useState<'MTN_MOMO' | 'AIRTEL_MONEY'>('MTN_MOMO');
@@ -45,28 +47,63 @@ export const CheckoutContent = () => {
 
     setIsPlacingOrder(true);
     try {
-      // In a real scenario, you'd send the full order structure required by the backend
-      // Here we map the cart items to the required structure
-      const orderPromises = items.map(item => 
-        orderApi.post('/orders', {
-          productId: item.id,
-          quantity: item.quantity,
-          deliveryAddress: {
-            coordinates: coords,
-            address: "Pin location" // Strict requirement from prompt
+      const orderPromises = items.map(item => {
+        const itemSubtotal = item.price * item.quantity;
+        // 1.5% commission, min 100 RWF (per OrderService logic)
+        const platformCommission = Math.max(itemSubtotal * 0.015, 100);
+        const itemDeliveryFee = 1000; // Fixed for now, or use state value
+        const gatewayFee = Math.ceil((itemSubtotal + itemDeliveryFee) * 0.02);
+        const totalAmount = itemSubtotal + itemDeliveryFee + gatewayFee;
+        
+        // Document 7 logic: Seller payout is subtotal - commission
+        const sellerPayout = itemSubtotal - platformCommission;
+        // Rider payout is the delivery fee
+        const riderPayout = itemDeliveryFee;
+
+        return orderApi.post('/orders', {
+          buyer: {
+            userId: user?.id,
+            fullName: user?.fullName || 'Anonymous Buyer',
+            phone: phone,
+            deliveryAddress: {
+              address: "Pin location",
+              coordinates: coords
+            }
           },
-          paymentMethod,
-          paymentPhone: phone
-        })
-      );
+          seller: {
+            sellerId: item.sellerId,
+            userId: item.sellerUserId,
+            fullName: item.sellerName,
+            stallId: item.stallId,
+            marketId: item.marketId
+          },
+          product: {
+            productId: item.id,
+            name: item.name,
+            unitPrice: item.price,
+            quantity: item.quantity
+          },
+          financials: {
+            subtotal: itemSubtotal,
+            deliveryFee: itemDeliveryFee,
+            platformCommission,
+            gatewayFee,
+            totalAmount,
+            sellerPayout,
+            riderPayout
+          },
+          payment: {
+            method: paymentMethod,
+            status: 'PENDING'
+          }
+        });
+      });
 
       const results = await Promise.all(orderPromises);
       
-      // If successful, clear cart and redirect to the first order's tracking page
       clearCart();
       toast.success('Order placed successfully!');
       
-      // Navigate to the tracking page of the first created order
       const firstOrderId = results[0].data?.data?._id || 'temp-id'; 
       router.push(`/orders/${firstOrderId}/tracking`);
       

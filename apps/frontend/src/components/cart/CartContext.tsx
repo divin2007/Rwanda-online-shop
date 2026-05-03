@@ -7,6 +7,12 @@ interface CartItem {
   price: number;
   quantity: number;
   image?: string;
+  sellerId?: string;
+  sellerUserId?: string;
+  sellerName?: string;
+  stallId?: string;
+  marketId?: string;
+  unit?: string;
 }
 
 interface CartContextType {
@@ -43,18 +49,35 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
 
   const addToCart = (product: any) => {
     setItems((prevItems) => {
-      const existingItem = prevItems.find((item) => item.id === product.id);
+      const existingItem = prevItems.find((item) => item.id === (product.id || product._id));
       if (existingItem) {
         return prevItems.map((item) =>
-          item.id === product.id ? { ...item, quantity: item.quantity + 1 } : item
+          item.id === (product.id || product._id) ? { ...item, quantity: item.quantity + 1 } : item
         );
       }
+
+      // Use promoted price if available
+      const price = product.promotion?.promotedPrice || product.price;
+
+      // Extract seller info from populated object if possible
+      const seller = typeof product.sellerId === 'object' ? product.sellerId : null;
+      const sellerId = seller ? seller._id : product.sellerId;
+      const sellerUserId = seller ? seller.userId : null;
+      const sellerName = seller?.shopDetails?.name || 'Verified Seller';
+      const stallId = seller?.stallId || 'N/A';
+
       return [...prevItems, { 
-        id: product.id, 
+        id: product.id || product._id, 
         name: product.name, 
-        price: product.price, 
+        price: price, 
         quantity: 1,
-        image: product.image 
+        image: product.image || (product.images && product.images[0]),
+        sellerId,
+        sellerUserId,
+        sellerName,
+        stallId,
+        marketId: product.marketId,
+        unit: product.unit
       }];
     });
   };

@@ -94,7 +94,7 @@ export class ProductService {
       query.sellerId = seller ? seller._id : sellerId;
     }
     
-    const results = await this.productModel.find(query).exec();
+    const results = await this.productModel.find(query).populate('sellerId').exec();
     
     // Set cache with 5 minute TTL (300 seconds)
     await this.cacheManager.set(cacheKey, results, 300000);
@@ -108,7 +108,7 @@ export class ProductService {
     
     if (cached) return cached;
 
-    const product = await this.productModel.findOne({ _id: id, deletedAt: null }).exec();
+    const product = await this.productModel.findOne({ _id: id, deletedAt: null }).populate('sellerId').exec();
     if (!product) {
       throw new NotFoundException('Product not found');
     }

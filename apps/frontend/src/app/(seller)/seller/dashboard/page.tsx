@@ -36,7 +36,7 @@ export default function SellerDashboardPage() {
 
   const confirmPreparation = async (orderId: string) => {
     try {
-      await orderApi.patch(`/orders/${orderId}/status`, { status: 'confirmed' });
+      await orderApi.put(`/orders/${orderId}/status`, { status: 'confirmed', userId: user?.id });
       toast.success('Order confirmed. Rider will be notified.');
       fetchOrders();
     } catch (e) {

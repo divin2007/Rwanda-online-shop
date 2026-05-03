@@ -80,7 +80,7 @@ export const ProductCard = ({ product }: ProductCardProps) => {
             fullWidth 
             className="py-2"
             disabled={!product.inStock}
-            onClick={() => addToCart({ id: product._id, name: product.name, price: finalPrice, image: product.images[0] })}
+            onClick={() => addToCart(product)}
           >
             Add to Cart
           </Button>
