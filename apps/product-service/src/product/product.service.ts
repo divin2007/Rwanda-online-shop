@@ -17,7 +17,8 @@ export class ProductService {
       throw new BadRequestException('At least one product image is required.');
     }
 
-    if (!productData.name || !productData.price || !productData.category || !productData.unit) {
+    const { name, price, category, unit } = productData;
+    if (!name || price === undefined || price === null || !category || !unit) {
       throw new BadRequestException('Product Name, Price, Category, and Unit are required.');
     }
 

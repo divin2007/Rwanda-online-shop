@@ -41,6 +41,7 @@ export default function SellerProductsPage() {
       setFormData({ name: '', description: '', category: '', price: '', unit: '', stockQuantity: '', weight: '', images: [] });
       fetchProducts();
     } catch (error: any) {
+      console.error('Full Error Response:', error.response?.data);
       toast.error(error.response?.data?.message || 'Failed to create product');
     } finally {
       setIsSubmitting(false);
