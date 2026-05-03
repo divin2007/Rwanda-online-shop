@@ -59,6 +59,12 @@ export class SellerController {
     return { success: true, data: seller };
   }
 
+  @Post(':id/decline')
+  async decline(@Param('id') id: string) {
+    const seller = await this.sellerService.reject(id);
+    return { success: true, data: seller };
+  }
+
   @Get('stall/:stallId/qr')
   async getQrCode(@Param('stallId') stallId: string) {
     const qrUrl = await this.sellerService.generateQrCode(stallId);

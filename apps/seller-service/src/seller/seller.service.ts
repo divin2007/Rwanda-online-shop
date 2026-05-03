@@ -118,6 +118,20 @@ export class SellerService {
     return updated;
   }
 
+  async reject(sellerId: string): Promise<any> {
+    const updated = await this.sellerModel.findByIdAndUpdate(
+      sellerId,
+      { $set: { deletedAt: new Date() } },
+      { new: true }
+    ).exec();
+
+    if (!updated) {
+      throw new NotFoundException('Seller profile not found');
+    }
+    
+    return updated;
+  }
+
   async generateQrCode(stallId: string): Promise<string> {
     // Stub for QR code generation
     // Returns a URL to the generated QR code sticker or a base64 string

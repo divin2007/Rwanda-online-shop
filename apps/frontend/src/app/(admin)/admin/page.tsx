@@ -9,6 +9,7 @@ import toast from 'react-hot-toast';
 
 export default function AdminDashboardPage() {
   const [activeTab, setActiveTab] = useState('analytics');
+  const [selectedSeller, setSelectedSeller] = useState<any>(null);
 
   const { data: analytics, execute: fetchAnalytics } = useApi(adminApi, 'get', '/admin/analytics');
   const { data: fraudAlerts, execute: fetchFraud } = useApi(adminApi, 'get', '/admin/fraud-alerts');
@@ -24,11 +25,22 @@ export default function AdminDashboardPage() {
 
   const approveSeller = async (id: string) => {
     try {
-      await sellerApi.patch(`/sellers/${id}/approve`);
+      await sellerApi.post(`/sellers/${id}/approve`);
       toast.success('Seller approved');
       fetchSellers();
     } catch (e) {
       toast.error('Failed to approve seller');
+    }
+  };
+
+  const declineSeller = async (id: string) => {
+    if (!confirm('Are you sure you want to decline this application? This will permanently reject the request.')) return;
+    try {
+      await sellerApi.post(`/sellers/${id}/decline`);
+      toast.success('Application declined');
+      fetchSellers();
+    } catch (e) {
+      toast.error('Failed to decline application');
     }
   };
 
@@ -48,6 +60,36 @@ export default function AdminDashboardPage() {
   return (
     <Layout>
       <div className="flex flex-col md:flex-row min-h-screen bg-background-main">
+        {/* Modal for View Docs */}
+        {selectedSeller && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+             <div className="bg-background-card w-full max-w-4xl rounded-2xl shadow-2xl overflow-hidden animate-scale-in">
+                <div className="p-6 border-b border-border flex justify-between items-center bg-background-surface">
+                   <h2 className="text-xl font-bold">Verification Documents: {selectedSeller.shopDetails?.name || selectedSeller.stallName}</h2>
+                   <button onClick={() => setSelectedSeller(null)} className="text-2xl hover:text-primary">&times;</button>
+                </div>
+                <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-6 overflow-y-auto max-h-[70vh]">
+                   <div>
+                      <p className="text-sm font-bold mb-2">RDB / Business Permit</p>
+                      <img src={selectedSeller.businessPermitUrl || 'https://via.placeholder.com/400x300?text=No+Permit'} className="w-full rounded-lg border border-border" />
+                   </div>
+                   <div>
+                      <p className="text-sm font-bold mb-2">National ID</p>
+                      <img src={selectedSeller.idCardUrl || 'https://via.placeholder.com/400x300?text=No+ID'} className="w-full rounded-lg border border-border" />
+                   </div>
+                   <div className="md:col-span-2">
+                      <p className="text-sm font-bold mb-2">Stall / Shop Photo</p>
+                      <img src={selectedSeller.stallPhotoUrl || 'https://via.placeholder.com/800x400?text=No+Photo'} className="w-full rounded-lg border border-border object-cover h-64" />
+                   </div>
+                </div>
+                <div className="p-6 border-t border-border flex justify-end gap-3 bg-background-surface">
+                   <Button variant="outline" onClick={() => setSelectedSeller(null)}>Close</Button>
+                   <Button onClick={() => { approveSeller(selectedSeller._id); setSelectedSeller(null); }}>Approve Now</Button>
+                </div>
+             </div>
+          </div>
+        )}
+
         <aside className="w-full md:w-64 bg-background-card border-r border-border p-6 hidden md:block">
           <div className="mb-8">
             <h2 className="font-heading font-bold text-xl text-primary">Platform Admin</h2>
@@ -114,13 +156,14 @@ export default function AdminDashboardPage() {
                     pendingSellers.map((s: any) => (
                       <tr key={s._id}>
                         <td className="p-4">
-                          <p className="font-bold">{s.shopDetails?.name || s.marketId}</p>
-                          <p className="text-sm text-text-secondary">{s.sellerName}</p>
+                          <p className="font-bold">{s.shopDetails?.name || s.stallName || s.marketId}</p>
+                          <p className="text-sm text-text-secondary">{s.sellerName || 'Pending Verification'}</p>
                         </td>
-                        <td className="p-4">{s.marketId ? 'Public Market' : 'Independent'}</td>
+                        <td className="p-4">{s.marketId && s.marketId.length > 5 ? 'Public Market' : 'Independent'}</td>
                         <td className="p-4 text-sm">{new Date(s.createdAt).toLocaleDateString()}</td>
-                        <td className="p-4 text-right">
-                          <Button size="sm" variant="outline" className="mr-2">View Docs</Button>
+                        <td className="p-4 text-right flex justify-end gap-2">
+                          <Button size="sm" variant="outline" onClick={() => setSelectedSeller(s)}>View Docs</Button>
+                          <Button size="sm" variant="outline" className="text-status-error border-status-error hover:bg-status-error/10" onClick={() => declineSeller(s._id)}>Decline</Button>
                           <Button size="sm" onClick={() => approveSeller(s._id)}>Approve</Button>
                         </td>
                       </tr>
