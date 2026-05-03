@@ -74,4 +74,3 @@ export class DeliveryController {
     return { success: true, data: delivery };
   }
 }
-}
