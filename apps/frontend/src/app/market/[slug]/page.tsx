@@ -2,6 +2,7 @@
 import { Layout } from '@/components/layout/Layout';
 import { ProductCard } from '@/components/ui/ProductCard';
 import { Button } from '@/components/ui/Button';
+import { useCart } from '@/components/cart/CartContext';
 
 // Static placeholder data based on the business requirements for Kimironko
 const MOCK_PRODUCTS = [
@@ -48,6 +49,8 @@ export default function MarketPage({ params }: { params: { slug: string } }) {
   // Normally we would fetch the market data using the slug
   const marketName = params.slug === 'kimironko' ? 'Kimironko Market' : `${params.slug} Shop`;
 
+  const { addToCart } = useCart();
+
   return (
     <Layout marketName={marketName}>
       {/* Live Rider Availability Banner */}
@@ -88,7 +91,7 @@ export default function MarketPage({ params }: { params: { slug: string } }) {
           <ProductCard 
             key={product.id} 
             product={product} 
-            onAddToCart={(id) => console.log(`Added ${id} to cart`)} 
+            onAddToCart={() => addToCart(product)} 
           />
         ))}
       </div>
