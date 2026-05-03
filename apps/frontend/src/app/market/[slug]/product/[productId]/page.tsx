@@ -1,29 +1,36 @@
-import React from 'react';
+'use client';
+import React, { useEffect } from 'react';
 import Link from 'next/link';
 import { Layout } from '@/components/layout/Layout';
 import { Button } from '@/components/ui/Button';
-
-// Mock data to be replaced with real API call later
-const MOCK_PRODUCT = {
-  id: 'p1',
-  name: 'Fresh Tomatoes (Inyanya)',
-  price: 1200,
-  unit: 'kg',
-  images: ['https://images.unsplash.com/photo-1592924357228-91a4daadcfea?w=800&q=80'],
-  inStock: true,
-  description: 'Fresh, locally grown tomatoes sourced directly from Rwandan farmers. Perfect for salads, sauces, and daily cooking.',
-  seller: {
-    id: 's1',
-    name: 'Mama Kevin Veggies',
-    rating: 4.8,
-    reviews: 124,
-    stallId: 'ST-045'
-  },
-  category: 'Vegetables'
-};
+import { useApi } from '@/hooks/useApi';
+import { productApi } from '@/lib/api';
+import { useCart } from '@/components/cart/CartContext';
+import toast from 'react-hot-toast';
 
 export default function ProductDetailPage({ params }: { params: { slug: string, productId: string } }) {
-  // We will integrate productApi.get(`/products/${params.productId}`) here later
+  const { data: product, loading, execute: fetchProduct } = useApi(productApi, 'get', `/products/${params.productId}`);
+  const { addToCart } = useCart();
+
+  useEffect(() => {
+    fetchProduct();
+  }, [params.productId, fetchProduct]);
+
+  const handleAddToCart = () => {
+    if (product) {
+      addToCart({
+        id: product._id,
+        name: product.name,
+        price: product.price,
+        image: product.imageUrl || 'https://placehold.co/400x400/000000/FFFFFF/png?text=No+Image',
+        quantity: 1
+      });
+      toast.success(`${product.name} added to cart`);
+    }
+  };
+
+  if (loading) return <Layout><div className="flex justify-center p-20"><div className="animate-spin w-10 h-10 border-4 border-primary border-t-transparent rounded-full"></div></div></Layout>;
+  if (!product) return <Layout><div className="p-20 text-center">Product not found</div></Layout>;
 
   return (
     <Layout>
@@ -34,40 +41,26 @@ export default function ProductDetailPage({ params }: { params: { slug: string, 
           <span className="mx-2">/</span>
           <Link href="/markets" className="hover:text-primary">Markets</Link>
           <span className="mx-2">/</span>
-          <Link href={`/market/${params.slug}`} className="hover:text-primary capitalize">{params.slug}</Link>
+          <Link href={`/market/${params.slug}`} className="hover:text-primary capitalize">{params.slug.replace(/-/g, ' ')}</Link>
           <span className="mx-2">/</span>
-          <span className="text-text-primary">{MOCK_PRODUCT.name}</span>
+          <span className="text-text-primary">{product.name}</span>
         </nav>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
           {/* Product Images */}
           <div>
             <div className="aspect-square bg-background-surface rounded-2xl overflow-hidden border border-border mb-4 relative">
-              {MOCK_PRODUCT.images.length > 0 ? (
-                <img src={MOCK_PRODUCT.images[0]} alt={MOCK_PRODUCT.name} className="w-full h-full object-cover" />
-              ) : (
-                <div className="w-full h-full flex items-center justify-center text-text-muted">No Image</div>
-              )}
+              <img src={product.imageUrl || 'https://placehold.co/800x800/000000/FFFFFF/png?text=No+Image'} alt={product.name} className="w-full h-full object-cover" />
             </div>
-            {/* Thumbnail Gallery (if multiple images) */}
-            {MOCK_PRODUCT.images.length > 1 && (
-              <div className="grid grid-cols-4 gap-4">
-                {MOCK_PRODUCT.images.map((img, idx) => (
-                  <div key={idx} className="aspect-square rounded-lg border border-border overflow-hidden cursor-pointer hover:border-primary">
-                    <img src={img} alt="" className="w-full h-full object-cover" />
-                  </div>
-                ))}
-              </div>
-            )}
           </div>
 
           {/* Product Info */}
           <div className="flex flex-col">
-            <h1 className="text-4xl font-heading font-bold text-text-primary mb-2">{MOCK_PRODUCT.name}</h1>
+            <h1 className="text-4xl font-heading font-bold text-text-primary mb-2">{product.name}</h1>
             <div className="flex items-center gap-4 mb-6">
-              <span className="text-2xl font-bold text-primary">{MOCK_PRODUCT.price} RWF</span>
-              <span className="text-text-secondary">/ {MOCK_PRODUCT.unit}</span>
-              {MOCK_PRODUCT.inStock ? (
+              <span className="text-2xl font-bold text-primary">{product.price.toLocaleString()} RWF</span>
+              <span className="text-text-secondary">/ {product.unit || 'unit'}</span>
+              {product.inStock ? (
                 <span className="bg-status-success/10 text-status-success text-xs font-bold px-2 py-1 rounded">In Stock</span>
               ) : (
                 <span className="bg-status-error/10 text-status-error text-xs font-bold px-2 py-1 rounded">Out of Stock</span>
@@ -75,32 +68,34 @@ export default function ProductDetailPage({ params }: { params: { slug: string, 
             </div>
 
             <p className="text-text-secondary mb-8 leading-relaxed">
-              {MOCK_PRODUCT.description}
+              {product.description || 'No description available for this product.'}
             </p>
 
             {/* Seller Info Card */}
             <div className="bg-background-surface border border-border rounded-xl p-4 mb-8 flex items-center justify-between">
               <div>
                 <p className="text-xs text-text-secondary font-bold uppercase tracking-wider mb-1">Sold By</p>
-                <p className="font-bold text-text-primary">{MOCK_PRODUCT.seller.name}</p>
-                <p className="text-sm text-text-secondary">Stall: {MOCK_PRODUCT.seller.stallId}</p>
+                <p className="font-bold text-text-primary">{product.seller?.name || 'Verified Seller'}</p>
+                <p className="text-sm text-text-secondary">Stall: {product.stallId || 'N/A'}</p>
               </div>
               <div className="text-right">
                 <div className="flex items-center gap-1 text-status-warning font-bold mb-1">
-                  ⭐ {MOCK_PRODUCT.seller.rating}
+                  ⭐ {product.seller?.rating || 'New'}
                 </div>
-                <p className="text-xs text-text-secondary">({MOCK_PRODUCT.seller.reviews} reviews)</p>
+                <p className="text-xs text-text-secondary">Market: {params.slug.replace(/-/g, ' ')}</p>
               </div>
             </div>
 
             <div className="mt-auto">
               <div className="flex gap-4">
-                <Button size="lg" className="flex-1" disabled={!MOCK_PRODUCT.inStock}>
+                <Button size="lg" className="flex-1" disabled={!product.inStock} onClick={handleAddToCart}>
                   Add to Cart
                 </Button>
-                <Button size="lg" variant="outline" className="flex-1">
-                  Buy Now
-                </Button>
+                <Link href="/cart" className="flex-1">
+                  <Button size="lg" variant="outline" className="w-full" onClick={handleAddToCart}>
+                    Buy Now
+                  </Button>
+                </Link>
               </div>
               <p className="text-center text-xs text-text-muted mt-4">
                 Delivery calculated at checkout based on your location.
@@ -113,7 +108,7 @@ export default function ProductDetailPage({ params }: { params: { slug: string, 
         <div className="mt-20 pt-10 border-t border-border">
           <h2 className="text-2xl font-heading font-bold text-text-primary mb-6">Customer Reviews</h2>
           <div className="bg-background-surface rounded-2xl p-8 text-center text-text-secondary">
-            <p>No reviews yet. Be the first to review this product!</p>
+            <p>No reviews yet for this product. Be the first to review!</p>
           </div>
         </div>
       </div>

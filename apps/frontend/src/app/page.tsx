@@ -28,7 +28,7 @@ export default function Home() {
           Shop directly from thousands of verified sellers across Kigali's public markets. Fresh produce, electronics, and daily essentials delivered in under an hour.
         </p>
         <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-          <Link href="/market/kimironko" className="w-full sm:w-auto">
+          <Link href="/markets" className="w-full sm:w-auto">
             <Button size="lg" fullWidth>Start Shopping</Button>
           </Link>
           <Link href="/seller/onboarding" className="w-full sm:w-auto">
