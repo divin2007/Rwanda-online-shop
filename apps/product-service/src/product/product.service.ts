@@ -25,11 +25,17 @@ export class ProductService {
     // Map authenticated User ID to SellerProfile ID and Market ID
     if (productData.sellerId) {
       try {
-        const userObjectId = new Types.ObjectId(productData.sellerId);
-        const seller = await this.sellerModel.findOne({ userId: userObjectId }).exec();
+        const userId = productData.sellerId;
+        // Strategy 1: Find by ObjectId
+        let seller = await this.sellerModel.findOne({ userId: new Types.ObjectId(userId) }).exec();
         
+        // Strategy 2: Find by String (fallback for some DB drivers/configs)
         if (!seller) {
-          throw new BadRequestException('Seller profile not found. Have you completed onboarding?');
+          seller = await this.sellerModel.findOne({ userId: userId }).exec();
+        }
+
+        if (!seller) {
+          throw new BadRequestException(`Seller profile not found for User ID: ${userId}. Please ensure you are logged in as a registered seller.`);
         }
         
         productData.sellerId = seller._id; 
