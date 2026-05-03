@@ -1,3 +1,4 @@
+'use client';
 import { Layout } from '@/components/layout/Layout';
 import { ProductCard } from '@/components/ui/ProductCard';
 import { Button } from '@/components/ui/Button';
