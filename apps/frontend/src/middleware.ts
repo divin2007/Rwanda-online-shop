@@ -12,7 +12,12 @@ export function middleware(req: NextRequest) {
   
   // Standard domain logic
   // If it's marketrwanda.com or www.marketrwanda.com
-  const isApex = cleanHostname === 'marketrwanda.com' || cleanHostname === 'www.marketrwanda.com' || cleanHostname === 'localhost';
+  const isApex = cleanHostname === 'marketrwanda.com' || 
+                 cleanHostname === 'www.marketrwanda.com' || 
+                 cleanHostname === 'rwshop.org' ||
+                 cleanHostname === 'www.rwshop.org' ||
+                 cleanHostname.endsWith('.onrender.com') ||
+                 cleanHostname === 'localhost';
 
   // Subdomain matching (e.g. kimironko.marketrwanda.com)
   if (!isApex && cleanHostname.includes('.')) {
