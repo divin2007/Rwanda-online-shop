@@ -14,10 +14,10 @@ export class NotificationController {
   @Get('me')
   async getMyNotifications(@Request() req: any) {
     if (!req.user) {
-        const logs = await this.notificationService.getLogs("dummy");
+        const logs = await this.notificationService.getLogs("65f12345678901234567890a");
         return { success: true, data: logs };
     }
-    const logs = await this.notificationService.getLogs(req.user.id);
+    const logs = await this.notificationService.getLogs(req.user.userId);
     return { success: true, data: logs };
   }
 

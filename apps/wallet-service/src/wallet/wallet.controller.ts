@@ -14,20 +14,20 @@ export class WalletController {
   @Get('me/balance')
   async getMyBalance(@Request() req: any) {
     if (!req.user) {
-        const wallet = await this.walletService.getBalance("dummy");
+        const wallet = await this.walletService.getBalance("65f12345678901234567890a");
         return { success: true, data: wallet };
     }
-    const wallet = await this.walletService.getBalance(req.user.id);
+    const wallet = await this.walletService.getBalance(req.user.userId);
     return { success: true, data: wallet };
   }
 
   @Get('me')
   async getMyWallet(@Request() req: any) {
     if (!req.user) {
-        const wallet = await this.walletService.getBalance("dummy");
+        const wallet = await this.walletService.getBalance("65f12345678901234567890a");
         return { success: true, data: wallet };
     }
-    const wallet = await this.walletService.getBalance(req.user.id);
+    const wallet = await this.walletService.getBalance(req.user.userId);
     return { success: true, data: wallet };
   }
 

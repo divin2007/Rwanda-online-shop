@@ -21,10 +21,10 @@ export class ReviewController {
   @Get('me')
   async getMyReviews(@Request() req: any) {
     if (!req.user) {
-        const reviews = await this.reviewService.getReviewsForTarget('seller', "dummy");
+        const reviews = await this.reviewService.getReviewsForTarget('seller', "65f12345678901234567890a");
         return { success: true, data: reviews };
     }
-    const reviews = await this.reviewService.getReviewsForTarget('seller', req.user.id);
+    const reviews = await this.reviewService.getReviewsForTarget('seller', req.user.userId);
     return { success: true, data: reviews };
   }
 

@@ -15,7 +15,7 @@ export class RiderController {
   @Get('me')
   async findMe(@Request() req: any) {
     try {
-        const userId = req.user?.id || "dummy";
+        const userId = req.user?.userId || "65f12345678901234567890a";
         const rider = await this.riderService.findByUserId(userId);
         return { success: true, data: rider };
     } catch (e) {
@@ -25,14 +25,14 @@ export class RiderController {
 
   @Patch('me/status')
   async updateMyStatus(@Request() req: any, @Body() data: { isActive: boolean, location?: Coordinates }) {
-    const userId = req.user?.id || "dummy";
+    const userId = req.user?.userId || "65f12345678901234567890a";
     const rider = await this.riderService.updateStatus(userId, data.isActive, data.location);
     return { success: true, data: rider };
   }
 
   @Patch('me/location')
   async updateMyLocation(@Request() req: any, @Body() location: Coordinates) {
-    const userId = req.user?.id || "dummy";
+    const userId = req.user?.userId || "65f12345678901234567890a";
     const rider = await this.riderService.updateLocation(userId, location);
     return { success: true, data: rider };
   }

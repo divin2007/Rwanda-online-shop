@@ -7,7 +7,7 @@ export class SellerController {
 
   @Post('onboard')
   async create(@Request() req: any, @Body() sellerData: any) {
-    const userId = req.user?.id || "dummy";
+    const userId = req.user?.userId || "65f12345678901234567890a";
     const seller = await this.sellerService.create({ ...sellerData, userId });
     return { success: true, data: seller };
   }
@@ -22,7 +22,7 @@ export class SellerController {
   @Get('me')
   async findMe(@Request() req: any) {
     try {
-        const userId = req.user?.id || "dummy";
+        const userId = req.user?.userId || "65f12345678901234567890a";
         const seller = await this.sellerService.findByUserId(userId);
         return { success: true, data: seller };
     } catch (e) {

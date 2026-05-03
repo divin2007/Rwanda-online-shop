@@ -15,7 +15,7 @@ export class DeliveryController {
 
   @Get('active')
   async getActive(@Request() req: any) {
-    const userId = req.user?.id || "dummy";
+    const userId = req.user?.userId || "65f12345678901234567890a";
     const delivery = await this.deliveryService.getActiveDelivery(userId);
     return { success: true, data: delivery };
   }
