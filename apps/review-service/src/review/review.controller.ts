@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Param, Request } from '@nestjs/common';
+import { Controller, Get, Post, Body, Param, Request, Query } from '@nestjs/common';
 import { ReviewService } from './review.service';
 
 @Controller('reviews')
@@ -19,12 +19,10 @@ export class ReviewController {
   }
 
   @Get('me')
-  async getMyReviews(@Request() req: any) {
-    if (!req.user) {
-        const reviews = await this.reviewService.getReviewsForTarget('seller', "65f12345678901234567890a");
-        return { success: true, data: reviews };
-    }
-    const reviews = await this.reviewService.getReviewsForTarget('seller', req.user.userId);
+  async getMyReviews(@Request() req: any, @Query('userId') queryUserId?: string) {
+    const userId = req.user?.userId || queryUserId;
+    if (!userId) return { success: true, data: [] };
+    const reviews = await this.reviewService.getReviewsForTarget('seller', userId);
     return { success: true, data: reviews };
   }
 

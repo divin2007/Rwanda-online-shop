@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Put, Patch, Body, Param, Request } from '@nestjs/common';
+import { Controller, Get, Post, Put, Patch, Body, Param, Request, Query } from '@nestjs/common';
 import { RiderService } from './rider.service';
 import type { Coordinates } from '@rmf/location';
 
@@ -13,9 +13,10 @@ export class RiderController {
   }
 
   @Get('me')
-  async findMe(@Request() req: any) {
+  async findMe(@Request() req: any, @Query('userId') queryUserId?: string) {
     try {
-        const userId = req.user?.userId || "65f12345678901234567890a";
+        const userId = req.user?.userId || queryUserId;
+        if (!userId) return { success: true, data: null };
         const rider = await this.riderService.findByUserId(userId);
         return { success: true, data: rider };
     } catch (e) {
@@ -24,16 +25,16 @@ export class RiderController {
   }
 
   @Patch('me/status')
-  async updateMyStatus(@Request() req: any, @Body() data: { isActive: boolean, location?: Coordinates }) {
-    const userId = req.user?.userId || "65f12345678901234567890a";
+  async updateMyStatus(@Request() req: any, @Body() data: { isActive: boolean, location?: Coordinates, userId?: string }) {
+    const userId = req.user?.userId || data.userId;
     const rider = await this.riderService.updateStatus(userId, data.isActive, data.location);
     return { success: true, data: rider };
   }
 
   @Patch('me/location')
-  async updateMyLocation(@Request() req: any, @Body() location: Coordinates) {
-    const userId = req.user?.userId || "65f12345678901234567890a";
-    const rider = await this.riderService.updateLocation(userId, location);
+  async updateMyLocation(@Request() req: any, @Body() data: { lat: number, lng: number, userId?: string }) {
+    const userId = req.user?.userId || data.userId;
+    const rider = await this.riderService.updateLocation(userId, data);
     return { success: true, data: rider };
   }
 

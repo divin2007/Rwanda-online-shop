@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Put, Patch, Body, Param, Request } from '@nestjs/common';
+import { Controller, Get, Post, Put, Patch, Body, Param, Request, Query } from '@nestjs/common';
 import { DeliveryService } from './delivery.service';
 import type { Coordinates } from '@rmf/location';
 import { DeliveryStatus } from '@rmf/shared-types';
@@ -14,8 +14,9 @@ export class DeliveryController {
   }
 
   @Get('active')
-  async getActive(@Request() req: any) {
-    const userId = req.user?.userId || "65f12345678901234567890a";
+  async getActive(@Request() req: any, @Query('userId') queryUserId?: string) {
+    const userId = req.user?.userId || queryUserId;
+    if (!userId) return { success: true, data: null };
     const delivery = await this.deliveryService.getActiveDelivery(userId);
     return { success: true, data: delivery };
   }

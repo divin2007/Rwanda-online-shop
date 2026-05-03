@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Param, Request } from '@nestjs/common';
+import { Controller, Get, Post, Body, Param, Request, Query } from '@nestjs/common';
 import { WalletService } from './wallet.service';
 
 @Controller('wallets')
@@ -12,22 +12,18 @@ export class WalletController {
   }
 
   @Get('me/balance')
-  async getMyBalance(@Request() req: any) {
-    if (!req.user) {
-        const wallet = await this.walletService.getBalance("65f12345678901234567890a");
-        return { success: true, data: wallet };
-    }
-    const wallet = await this.walletService.getBalance(req.user.userId);
+  async getMyBalance(@Request() req: any, @Query('userId') queryUserId?: string) {
+    const userId = req.user?.userId || queryUserId;
+    if (!userId) return { success: true, data: null };
+    const wallet = await this.walletService.getBalance(userId);
     return { success: true, data: wallet };
   }
 
   @Get('me')
-  async getMyWallet(@Request() req: any) {
-    if (!req.user) {
-        const wallet = await this.walletService.getBalance("65f12345678901234567890a");
-        return { success: true, data: wallet };
-    }
-    const wallet = await this.walletService.getBalance(req.user.userId);
+  async getMyWallet(@Request() req: any, @Query('userId') queryUserId?: string) {
+    const userId = req.user?.userId || queryUserId;
+    if (!userId) return { success: true, data: null };
+    const wallet = await this.walletService.getBalance(userId);
     return { success: true, data: wallet };
   }
 
