@@ -12,8 +12,8 @@ export class ProductController {
   }
 
   @Get()
-  async findAll(@Query('marketId') marketId?: string, @Query('sellerId') sellerId?: string) {
-    const products = await this.productService.findAll(marketId, sellerId);
+  async findAll(@Query() query: any) {
+    const products = await this.productService.findAll(query);
     return { success: true, data: products };
   }
 

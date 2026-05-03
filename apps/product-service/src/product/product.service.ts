@@ -77,24 +77,46 @@ export class ProductService {
     }
   }
 
-  async findAll(marketId?: string, sellerId?: string): Promise<any[]> {
-    const cacheKey = `products:all:${marketId || 'any'}:${sellerId || 'any'}`;
+  async findAll(query: any): Promise<any[]> {
+    const cacheKey = `products:all:${JSON.stringify(query)}`;
     const cached = await this.cacheManager.get<any[]>(cacheKey);
     
-    if (cached) {
-      return cached;
-    }
+    if (cached) return cached;
 
-    const query: any = { isActive: true, deletedAt: null };
-    if (marketId) query.marketId = marketId;
+    const { marketId, sellerId, approvedOnly, isActive, limit, sortBy } = query;
+    const filter: any = { deletedAt: null };
+    
+    if (approvedOnly === 'true' || approvedOnly === true) {
+      filter.isActive = true;
+      filter.isApproved = true;
+    } else if (isActive !== undefined) {
+      filter.isActive = isActive === 'true' || isActive === true;
+    } else if (!sellerId) {
+      // Default for public views
+      filter.isActive = true;
+    }
+    
+    if (marketId) filter.marketId = marketId;
     
     if (sellerId) {
       // Check if sellerId is a User ID (from frontend) and map to SellerProfile ID
       const seller = await this.sellerModel.findOne({ userId: sellerId }).exec();
-      query.sellerId = seller ? seller._id : sellerId;
+      filter.sellerId = seller ? seller._id : sellerId;
     }
     
-    const results = await this.productModel.find(query).populate('sellerId').exec();
+    const dbQuery = this.productModel.find(filter).populate('sellerId');
+
+    if (sortBy) {
+        dbQuery.sort(sortBy);
+    } else {
+        dbQuery.sort({ createdAt: -1 });
+    }
+
+    if (limit) {
+        dbQuery.limit(Number(limit));
+    }
+    
+    const results = await dbQuery.exec();
     
     // Set cache with 5 minute TTL (300 seconds)
     await this.cacheManager.set(cacheKey, results, 300000);
