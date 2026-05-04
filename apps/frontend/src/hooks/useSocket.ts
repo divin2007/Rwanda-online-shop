@@ -11,6 +11,8 @@ export function useSocket<T = any>(url: string, channel: string, token?: string)
     // Prevent creating multiple sockets if not needed, or just handle cleanup
     const socketOptions: any = {
       reconnectionAttempts: 5,
+      transports: ['websocket', 'polling'], // Fallback for stability on Render
+      timeout: 20000,
     };
 
     if (token) {

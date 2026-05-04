@@ -3,6 +3,7 @@ import { Schema, model } from 'mongoose';
 export const riderProfileSchema = new Schema({
   userId: { type: Schema.Types.ObjectId, ref: 'User', required: true, unique: true },
   plateNumber: { type: String, required: true, unique: true },
+  isApproved: { type: Boolean, default: false },
   isActive: { type: Boolean, default: false },
   currentLocation: {
     lat: Number,

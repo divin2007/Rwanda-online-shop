@@ -37,7 +37,12 @@ export class RiderService {
   async findAll(isApproved?: boolean): Promise<any[]> {
     const query: any = { deletedAt: null };
     if (isApproved !== undefined) {
-      query.isApproved = isApproved;
+      if (isApproved === false) {
+        // Handle missing field as false
+        query.$or = [{ isApproved: false }, { isApproved: { $exists: false } }];
+      } else {
+        query.isApproved = true;
+      }
     }
     return this.riderModel.find(query).sort({ createdAt: -1 }).exec();
   }
