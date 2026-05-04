@@ -4,7 +4,7 @@ import { Layout } from '@/components/layout/Layout';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { useApi } from '@/hooks/useApi';
-import { adminApi, sellerApi, orderApi } from '@/lib/api';
+import { adminApi, sellerApi, orderApi, riderApi } from '@/lib/api';
 import toast from 'react-hot-toast';
 
 export default function AdminDashboardPage() {
