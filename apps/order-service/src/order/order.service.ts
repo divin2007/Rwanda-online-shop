@@ -5,6 +5,7 @@ import { OrderStatus, PaymentStatus, DisputeResolution } from '@rmf/shared-types
 import { StateConflictError } from '@rmf/shared-utils';
 import { FraudDetectionService } from './fraud-detection.service';
 import { BuyerProtectionService } from './buyer-protection.service';
+import { PaymentService } from './payment.service';
 
 const ORDER_TRANSITIONS: Record<string, string[]> = {
   [OrderStatus.SCHEDULED]: [OrderStatus.PLACED, OrderStatus.CANCELLED],
@@ -30,7 +31,8 @@ export class OrderService {
   constructor(
     @InjectModel('Transaction') private orderModel: Model<any>,
     private fraudDetection: FraudDetectionService,
-    private buyerProtection: BuyerProtectionService
+    private buyerProtection: BuyerProtectionService,
+    private paymentService: PaymentService
   ) {}
 
   async createOrder(orderData: any): Promise<any> {
@@ -65,7 +67,19 @@ export class OrderService {
       }
     });
 
-    return await newOrder.save();
+    const saved = await newOrder.save();
+
+    // Trigger Payment Prompt
+    this.paymentService.requestPaymentPrompt(saved).then(res => {
+      if (res.success) {
+        // For production testing: Simulate a successful payment callback after 10 seconds
+        setTimeout(() => {
+          this.processPaymentCallback(saved.orderNumber, PaymentStatus.PAID, res.transactionId || 'MOCK-REF');
+        }, 10000);
+      }
+    });
+
+    return saved;
   }
 
   private validateTransition(currentStatus: string, newStatus: string, transitionMap: Record<string, string[]>): void {

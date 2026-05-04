@@ -1,9 +1,10 @@
-import { Injectable, NotFoundException, BadRequestException, ConflictException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, ConflictException, forwardRef, Inject } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { LocationService, RouteService, Coordinates } from '@rmf/location';
 import { DeliveryStatus } from '@rmf/shared-types';
 import { StateConflictError } from '@rmf/shared-utils';
+import { DeliveryGateway } from './delivery.gateway';
 
 const DELIVERY_TRANSITIONS: Record<string, string[]> = {
   [DeliveryStatus.ASSIGNED]: [DeliveryStatus.EN_ROUTE_TO_PICKUP, DeliveryStatus.FAILED],
@@ -20,7 +21,10 @@ export class DeliveryService {
   private routeService: RouteService;
 
   constructor(
-    @InjectModel('Delivery') private deliveryModel: Model<any>
+    @InjectModel('Delivery') private deliveryModel: Model<any>,
+    @InjectModel('RiderProfile') private riderModel: Model<any>,
+    @Inject(forwardRef(() => DeliveryGateway))
+    private readonly deliveryGateway: DeliveryGateway
   ) {
     this.locationService = new LocationService();
     this.routeService = new RouteService();
@@ -58,7 +62,16 @@ export class DeliveryService {
       status: DeliveryStatus.ASSIGNED
     });
 
-    return await delivery.save();
+    const saved = await delivery.save();
+    
+    // Notify rider via Socket.io
+    try {
+      this.deliveryGateway.emitAssignment(saved);
+    } catch (e) {
+      console.error('Failed to emit delivery assignment notification', e);
+    }
+
+    return saved;
   }
 
   async updateStatus(id: string, newStatus: DeliveryStatus): Promise<any> {
@@ -151,7 +164,14 @@ export class DeliveryService {
     );
   }
 
-  async getActiveDelivery(riderId: string): Promise<any> {
+  async getActiveDelivery(userId: string): Promise<any> {
+    // Resolve userId to rider profile ID if necessary
+    let riderId = userId;
+    const riderProfile = await this.riderModel.findOne({ userId }).exec();
+    if (riderProfile) {
+      riderId = riderProfile._id.toString();
+    }
+
     return this.deliveryModel.findOne({ 
       riderId, 
       status: { $in: [DeliveryStatus.ASSIGNED, DeliveryStatus.EN_ROUTE_TO_PICKUP, DeliveryStatus.PICKED_UP, DeliveryStatus.EN_ROUTE_TO_DROPOFF] } 

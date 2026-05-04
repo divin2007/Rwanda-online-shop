@@ -8,6 +8,7 @@ import { BuyerProtectionService } from './buyer-protection.service';
 import { ScheduledOrdersService } from './scheduled-orders.service';
 
 import { OrderGateway } from './order.gateway';
+import { PaymentService } from './payment.service';
 
 @Module({
   imports: [
@@ -15,8 +16,8 @@ import { OrderGateway } from './order.gateway';
       { name: 'Transaction', schema: transactionSchema }
     ]),
   ],
-  providers: [OrderService, FraudDetectionService, ScheduledOrdersService, BuyerProtectionService, OrderGateway],
+  providers: [OrderService, FraudDetectionService, ScheduledOrdersService, BuyerProtectionService, OrderGateway, PaymentService],
   controllers: [OrderController],
-  exports: [OrderService, OrderGateway],
+  exports: [OrderService, OrderGateway, PaymentService],
 })
 export class OrderModule {}

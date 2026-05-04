@@ -1,6 +1,6 @@
 import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
-import { deliverySchema } from '@rmf/database';
+import { deliverySchema, riderProfileSchema } from '@rmf/database';
 import { DeliveryService } from './delivery.service';
 import { DeliveryController } from './delivery.controller';
 import { DeliveryGateway } from './delivery.gateway';
@@ -8,7 +8,8 @@ import { DeliveryGateway } from './delivery.gateway';
 @Module({
   imports: [
     MongooseModule.forFeature([
-      { name: 'Delivery', schema: deliverySchema }
+      { name: 'Delivery', schema: deliverySchema },
+      { name: 'RiderProfile', schema: riderProfileSchema }
     ]),
   ],
   providers: [DeliveryService, DeliveryGateway],

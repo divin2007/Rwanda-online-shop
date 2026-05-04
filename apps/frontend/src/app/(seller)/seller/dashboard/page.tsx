@@ -129,7 +129,8 @@ export default function SellerDashboardPage() {
                   <tr>
                     <th className="p-4 font-medium">Order ID</th>
                     <th className="p-4 font-medium">Buyer</th>
-                    <th className="p-4 font-medium">Items</th>
+                    <th className="p-4 font-medium">Product</th>
+                    <th className="p-4 font-medium">Qty</th>
                     <th className="p-4 font-medium">Total</th>
                     <th className="p-4 font-medium">Status</th>
                     <th className="p-4 font-medium">Actions</th>
@@ -142,9 +143,10 @@ export default function SellerDashboardPage() {
                     activeOrders.map((order: any) => (
                       <tr key={order._id} className="hover:bg-background-surface/50">
                         <td className="p-4 font-medium">#{order._id.substring(0,6).toUpperCase()}</td>
-                        <td className="p-4">{order.buyer?.name || 'Customer'}</td>
-                        <td className="p-4">{order.items?.length || 0}</td>
-                        <td className="p-4 font-bold">{order.total?.toLocaleString()} RWF</td>
+                        <td className="p-4">{order.buyer?.fullName || 'Customer'}</td>
+                        <td className="p-4">{order.product?.name || 'Unknown Product'}</td>
+                        <td className="p-4">{order.product?.quantity || 1}</td>
+                        <td className="p-4 font-bold">{order.financials?.totalAmount?.toLocaleString()} RWF</td>
                         <td className="p-4">
                           <span className={`px-2 py-1 rounded text-xs font-bold ${order.status === 'placed' ? 'bg-status-warning/10 text-status-warning' : 'bg-status-info/10 text-status-info'}`}>
                             {order.status === 'placed' ? 'New' : 'Rider Assigned'}

@@ -88,4 +88,9 @@ export class DeliveryGateway implements OnGatewayConnection, OnGatewayDisconnect
   ) {
     client.join(`delivery:${deliveryId}`);
   }
+  
+  // Method to be called from service/controller
+  emitAssignment(delivery: any) {
+    this.server.emit('delivery:assigned', delivery);
+  }
 }
