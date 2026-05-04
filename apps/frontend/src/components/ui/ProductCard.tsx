@@ -3,6 +3,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { Button } from './Button';
 import { useCart } from '@/components/cart/CartContext';
+import { getProductUrl } from '@/lib/urls';
 
 interface ProductCardProps {
   product: {
@@ -12,6 +13,9 @@ interface ProductCardProps {
     unit: string;
     images: string[];
     inStock: boolean;
+    marketId?: {
+      slug: string;
+    };
     promotion?: {
       type: 'percentage' | 'fixed_amount';
       discount: number;
@@ -40,7 +44,7 @@ export const ProductCard = ({ product }: ProductCardProps) => {
         )}
       </div>
 
-      <Link href={`/market/default/product/${product._id}`} className="block relative aspect-square bg-background-surface overflow-hidden">
+      <Link href={getProductUrl(product._id, product.marketId?.slug)} className="block relative aspect-square bg-background-surface overflow-hidden">
         <Image 
           src={product.images[0]} 
           alt={product.name} 
@@ -57,7 +61,7 @@ export const ProductCard = ({ product }: ProductCardProps) => {
       
       <div className="p-4 flex flex-col flex-grow">
         <h3 className="font-bold text-text-primary mb-1 line-clamp-2 min-h-[40px]">
-          <Link href={`/market/default/product/${product._id}`} className="hover:text-primary transition-colors">
+          <Link href={getProductUrl(product._id, product.marketId?.slug)} className="hover:text-primary transition-colors">
             {product.name}
           </Link>
         </h3>

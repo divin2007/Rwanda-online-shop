@@ -9,6 +9,7 @@ export class ProductService implements OnModuleInit {
   constructor(
     @InjectModel('Product') private productModel: Model<any>,
     @InjectModel('SellerProfile') private sellerModel: Model<any>,
+    @InjectModel('Market') private marketModel: Model<any>,
     @Inject(CACHE_MANAGER) private cacheManager: Cache
   ) {}
 
@@ -116,7 +117,7 @@ export class ProductService implements OnModuleInit {
       filter.sellerId = seller ? seller._id : sellerId;
     }
     
-    const dbQuery = this.productModel.find(filter).populate('sellerId');
+    const dbQuery = this.productModel.find(filter).populate(['sellerId', 'marketId']);
 
     if (sortBy) {
         dbQuery.sort(sortBy);
@@ -142,7 +143,7 @@ export class ProductService implements OnModuleInit {
     
     if (cached) return cached;
 
-    const product = await this.productModel.findOne({ _id: id, deletedAt: null }).populate('sellerId').exec();
+    const product = await this.productModel.findOne({ _id: id, deletedAt: null }).populate(['sellerId', 'marketId']).exec();
     if (!product) {
       throw new NotFoundException('Product not found');
     }

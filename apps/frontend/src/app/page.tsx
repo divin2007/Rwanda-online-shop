@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/Button";
 import { ProductCard } from "@/components/ui/ProductCard";
 import { useApi } from "@/hooks/useApi";
 import { marketApi, productApi } from "@/lib/api";
+import { getMarketUrl } from "@/lib/urls";
 
 export default function Home() {
   const { data: markets, loading: marketsLoading, execute: fetchMarkets } = useApi(marketApi, 'get', '/markets?isActive=true&limit=6');
@@ -54,7 +55,7 @@ export default function Home() {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {(markets || []).map((market: any) => (
-              <Link href={`/market/${market.slug}`} key={market._id} className="group">
+              <Link href={getMarketUrl(market.slug)} key={market._id} className="group">
                 <div className="bg-background-card border border-border rounded-2xl p-6 h-full transition-all duration-300 hover:shadow-lg hover:border-primary/30 flex flex-col">
                   <div className={`w-16 h-16 rounded-2xl overflow-hidden mb-6 bg-primary/10 flex items-center justify-center`}>
                     {market.imageUrl ? (
