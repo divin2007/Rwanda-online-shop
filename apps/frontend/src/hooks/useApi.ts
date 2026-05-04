@@ -13,7 +13,7 @@ export function useApi<T = any>(
   apiInstance: AxiosInstance,
   method: 'get' | 'post' | 'put' | 'patch' | 'delete',
   url: string,
-  options?: AxiosRequestConfig
+  options?: AxiosRequestConfig & { refreshInterval?: number }
 ): UseApiResponse<T> {
   const [data, setData] = useState<T | null>(null);
   const [loading, setLoading] = useState(false);
@@ -21,7 +21,8 @@ export function useApi<T = any>(
 
   const execute = useCallback(
     async (dynamicData?: any, dynamicConfig?: AxiosRequestConfig) => {
-      setLoading(true);
+      // Only set loading to true on first load to prevent flickering during polling
+      if (!data) setLoading(true);
       setError(null);
       try {
         const config = { ...options, ...dynamicConfig };
@@ -33,7 +34,6 @@ export function useApi<T = any>(
           response = await apiInstance[method](url, dynamicData, config);
         }
 
-        // Assuming backend returns { success: boolean, data: any, error?: string }
         if (response.data && response.data.success) {
           setData(response.data.data);
           return response.data.data;
@@ -57,8 +57,17 @@ export function useApi<T = any>(
         setLoading(false);
       }
     },
-    [apiInstance, method, url, options]
+    [apiInstance, method, url, options, data]
   );
+
+  useEffect(() => {
+    if (options?.refreshInterval && method === 'get') {
+      const interval = setInterval(() => {
+        execute();
+      }, options.refreshInterval);
+      return () => clearInterval(interval);
+    }
+  }, [execute, options?.refreshInterval, method]);
 
   return { data, loading, error, execute };
 }

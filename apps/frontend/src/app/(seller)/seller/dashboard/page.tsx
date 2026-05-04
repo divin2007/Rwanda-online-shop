@@ -15,7 +15,7 @@ export default function SellerDashboardPage() {
   
   const { data: profile, loading: pLoad, execute: fetchProfile } = useApi(sellerApi, 'get', `/sellers/me?userId=${user?.id}`);
   const { data: analytics, loading: aLoad, execute: fetchAnalytics } = useApi(adminApi, 'get', `/analytics/seller/${user?.id}`);
-  const { data: activeOrders, loading: oLoad, execute: fetchOrders } = useApi(orderApi, 'get', `/orders?sellerId=${user?.id}&status=placed,confirmed`);
+  const { data: activeOrders, loading: oLoad, execute: fetchOrders } = useApi(orderApi, 'get', `/orders?sellerId=${user?.id}&status=placed,confirmed`, { refreshInterval: 5000 });
   
   // Real-time updates for orders
   const { data: socketOrder } = useSocket(process.env.NEXT_PUBLIC_ORDER_SERVICE_URL || 'http://localhost:3006', 'order:seller:updates', localStorage.getItem('accessToken') || undefined);
@@ -148,8 +148,14 @@ export default function SellerDashboardPage() {
                         <td className="p-4">{order.product?.quantity || 1}</td>
                         <td className="p-4 font-bold">{order.financials?.totalAmount?.toLocaleString()} RWF</td>
                         <td className="p-4">
-                          <span className={`px-2 py-1 rounded text-xs font-bold ${order.status === 'placed' ? 'bg-status-warning/10 text-status-warning' : 'bg-status-info/10 text-status-info'}`}>
-                            {order.status === 'placed' ? 'New' : 'Rider Assigned'}
+                          <span className={`px-2 py-1 rounded text-xs font-bold ${
+                            order.status === 'placed' ? 'bg-status-warning/10 text-status-warning' : 
+                            order.status === 'confirmed' ? 'bg-status-info/10 text-status-info' : 
+                            'bg-status-success/10 text-status-success'
+                          }`}>
+                            {order.status === 'placed' ? 'New' : 
+                             order.status === 'confirmed' ? 'Preparing' : 
+                             'Rider Assigned'}
                           </span>
                         </td>
                         <td className="p-4">

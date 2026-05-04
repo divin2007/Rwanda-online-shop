@@ -1,52 +1,88 @@
 import { Injectable, Logger } from '@nestjs/common';
 import axios from 'axios';
+import { v4 as uuidv4 } from 'uuid';
 
 @Injectable()
 export class PaymentService {
   private readonly logger = new Logger(PaymentService.name);
 
-  // For production, these would be in the config service
   private readonly momoConfig = {
     apiKey: process.env.MTN_MOMO_API_KEY,
     userId: process.env.MTN_MOMO_USER_ID,
     apiSecret: process.env.MTN_MOMO_API_SECRET,
-    baseUrl: 'https://proxy.momoapi.mtn.com' // Production URL
+    baseUrl: 'https://proxy.momoapi.mtn.com',
+    targetEnv: 'mtnrwanda' // Standard for Rwanda MoMo
   };
+
+  private async getAccessToken(): Promise<string> {
+    const auth = Buffer.from(`${this.momoConfig.userId}:${this.momoConfig.apiSecret}`).toString('base64');
+    
+    try {
+      const response = await axios.post(
+        `${this.momoConfig.baseUrl}/collection/token/`,
+        {},
+        {
+          headers: {
+            'Authorization': `Basic ${auth}`,
+            'Ocp-Apim-Subscription-Key': this.momoConfig.apiKey
+          }
+        }
+      );
+      return response.data.access_token;
+    } catch (error) {
+      this.logger.error('Failed to get MoMo access token', error.response?.data || error.message);
+      throw new Error('Payment gateway authentication failed');
+    }
+  }
 
   async requestPaymentPrompt(order: any): Promise<{ success: boolean; transactionId?: string; error?: string }> {
     const { totalAmount } = order.financials;
     const { phone } = order.buyer;
+    const referenceId = uuidv4();
 
-    this.logger.log(`Initiating MTN MoMo prompt for ${phone} - Amount: ${totalAmount} RWF`);
-
-    // In a real implementation, we would:
-    // 1. Get an Access Token from MoMo
-    // 2. POST to /collection/v1_0/requesttopay
-    // 3. Receive a X-Reference-Id
+    this.logger.log(`Initiating REAL MTN MoMo prompt for ${phone} - Amount: ${totalAmount} RWF`);
 
     try {
-      // Since we are in a dev/demo environment with specific instructions for WOW factor,
-      // we will simulate the prompt success and trigger a callback simulation.
+      const token = await this.getAccessToken();
       
-      // MOCK PROMPT TRIGGER
-      // If we had a real sandbox, we'd call axios here.
-      
-      // Simulate network delay
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      const payload = {
+        amount: totalAmount.toString(),
+        currency: 'RWF',
+        externalId: order.orderNumber,
+        payer: {
+          partyIdType: 'MSISDN',
+          partyId: phone.startsWith('0') ? '250' + phone.substring(1) : phone
+        },
+        payerMessage: `Payment for Order ${order.orderNumber}`,
+        payeeNote: 'Rwanda Marketplace'
+      };
 
-      this.logger.log(`[MoMo Simulator] Prompt sent to ${phone}. Waiting for user PIN.`);
-      
-      return { success: true, transactionId: `MOMO-${Date.now()}` };
+      await axios.post(
+        `${this.momoConfig.baseUrl}/collection/v1_0/requesttopay`,
+        payload,
+        {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'X-Reference-Id': referenceId,
+            'X-Target-Environment': this.momoConfig.targetEnv,
+            'Content-Type': 'application/json',
+            'Ocp-Apim-Subscription-Key': this.momoConfig.apiKey
+          }
+        }
+      );
+
+      this.logger.log(`MoMo Request to Pay sent successfully. Ref: ${referenceId}`);
+      return { success: true, transactionId: referenceId };
     } catch (error) {
-      this.logger.error('MoMo Payment Initiation Failed', error);
-      return { success: false, error: 'Payment gateway connection failed' };
+      this.logger.error('MoMo Request to Pay Failed', error.response?.data || error.message);
+      
+      // Fallback for testing: if API fails but we are in dev/test, maybe return success? 
+      // User said "FULLY INTEGRATED", so we should fail if it fails.
+      return { success: false, error: error.response?.data?.message || 'Payment initiation failed' };
     }
   }
 
-  /**
-   * This would be called by a real MTN Webhook
-   */
   async handleCallback(referenceId: string) {
-    // Logic to verify payment and call OrderService.processPaymentCallback
+    // This would be called by the webhook or a status check loop
   }
 }

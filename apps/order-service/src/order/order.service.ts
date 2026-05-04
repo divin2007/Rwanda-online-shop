@@ -6,6 +6,7 @@ import { StateConflictError } from '@rmf/shared-utils';
 import { FraudDetectionService } from './fraud-detection.service';
 import { BuyerProtectionService } from './buyer-protection.service';
 import { PaymentService } from './payment.service';
+import { OrderGateway } from './order.gateway';
 
 const ORDER_TRANSITIONS: Record<string, string[]> = {
   [OrderStatus.SCHEDULED]: [OrderStatus.PLACED, OrderStatus.CANCELLED],
@@ -32,7 +33,8 @@ export class OrderService {
     @InjectModel('Transaction') private orderModel: Model<any>,
     private fraudDetection: FraudDetectionService,
     private buyerProtection: BuyerProtectionService,
-    private paymentService: PaymentService
+    private paymentService: PaymentService,
+    private orderGateway: OrderGateway
   ) {}
 
   async createOrder(orderData: any): Promise<any> {
@@ -69,13 +71,14 @@ export class OrderService {
 
     const saved = await newOrder.save();
 
+    // Trigger Real-time update
+    this.orderGateway.sendOrderUpdate({ type: 'NEW_ORDER', order: saved });
+
     // Trigger Payment Prompt
     this.paymentService.requestPaymentPrompt(saved).then(res => {
       if (res.success) {
-        // For production testing: Simulate a successful payment callback after 10 seconds
-        setTimeout(() => {
-          this.processPaymentCallback(saved.orderNumber, PaymentStatus.PAID, res.transactionId || 'MOCK-REF');
-        }, 10000);
+        this.logger.log(`Payment prompt sent for order ${saved.orderNumber}. Transaction ID: ${res.transactionId}`);
+        // No more automatic confirmation - waiting for real callback
       }
     });
 
@@ -110,6 +113,10 @@ export class OrderService {
       { new: true }
     );
     
+    if (updated) {
+      this.orderGateway.sendOrderUpdate({ type: 'STATUS_UPDATE', orderId: id, status: newStatus });
+    }
+
     return updated;
   }
 
@@ -131,7 +138,7 @@ export class OrderService {
       updates.status = OrderStatus.CONFIRMED;
     }
 
-    return await this.orderModel.findOneAndUpdate(
+    const updated = await this.orderModel.findOneAndUpdate(
       { orderNumber },
       { 
         $set: updates,
@@ -146,6 +153,12 @@ export class OrderService {
       },
       { new: true }
     );
+
+    if (updated) {
+      this.orderGateway.sendOrderUpdate({ type: 'PAYMENT_UPDATE', orderNumber, status: updated.payment.status });
+    }
+
+    return updated;
   }
 
   async raiseDispute(id: string, reason: string): Promise<any> {

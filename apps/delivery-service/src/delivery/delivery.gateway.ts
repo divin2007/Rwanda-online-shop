@@ -91,6 +91,29 @@ export class DeliveryGateway implements OnGatewayConnection, OnGatewayDisconnect
     @MessageBody() deliveryId: string
   ) {
     client.join(`delivery:${deliveryId}`);
+    return { success: true, room: `delivery:${deliveryId}` };
+  }
+
+  @SubscribeMessage('chat:message')
+  handleChatMessage(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() payload: { deliveryId: string, senderId: string, senderName: string, message: string }
+  ) {
+    const chatMsg = {
+      ...payload,
+      timestamp: new Date()
+    };
+
+    // Emit to everyone in the delivery room
+    this.server.to(`delivery:${payload.deliveryId}`).emit(`delivery:${payload.deliveryId}:chat`, chatMsg);
+    
+    // Also emit a general notification for the rider if they are not in the room
+    this.server.emit(`user:${payload.deliveryId}:notification`, {
+      type: 'NEW_CHAT_MESSAGE',
+      ...chatMsg
+    });
+
+    return { success: true };
   }
   
   // Method to be called from service/controller
@@ -114,21 +137,19 @@ export class DeliveryGateway implements OnGatewayConnection, OnGatewayDisconnect
     return R * c;
   }
 
-  // Broadcast to riders within 500m radius
+  // Broadcast to all active riders (radius check removed per user request)
   broadcastToNearbyRiders(deliveryReq: any, marketLat: number, marketLng: number) {
     let notifiedCount = 0;
     for (const [riderId, data] of this.activeRiders.entries()) {
-      const distance = this.getDistanceMeters(marketLat, marketLng, data.lat, data.lng);
-      
-      if (distance <= 500) { // 500m radius
-        this.server.to(data.socketId).emit('delivery:request', {
-          ...deliveryReq,
-          distanceFromMarket: `${Math.round(distance)}m`
-        });
-        notifiedCount++;
-      }
+      // Radius check removed: notifying all active riders
+      this.server.to(data.socketId).emit('delivery:request', {
+        ...deliveryReq,
+        // Optional: still include distance info if you want to show it to the rider
+        distanceFromMarket: `${Math.round(this.getDistanceMeters(marketLat, marketLng, data.lat, data.lng))}m`
+      });
+      notifiedCount++;
     }
-    console.log(`Broadcasted delivery request to ${notifiedCount} riders within 500m.`);
+    console.log(`Broadcasted delivery request to ${notifiedCount} active riders.`);
     return notifiedCount;
   }
 }

@@ -20,10 +20,66 @@ const RiderMap = dynamic(
   { ssr: false, loading: () => <div className="w-full h-full bg-background-surface animate-pulse"></div> }
 );
 
+const ChatCard = ({ orderId, deliveryId, userName }: { orderId: string, deliveryId?: string, userName: string }) => {
+  const [message, setMessage] = useState('');
+  const [chatHistory, setChatHistory] = useState<any[]>([]);
+  const { data: socketMsg, emit } = useSocket(process.env.NEXT_PUBLIC_DELIVERY_SERVICE_URL || 'http://localhost:3008', `delivery:${deliveryId}:chat`);
+
+  useEffect(() => {
+    if (socketMsg) {
+      setChatHistory((prev) => [...prev, socketMsg]);
+    }
+  }, [socketMsg]);
+
+  const sendMessage = () => {
+    if (!message.trim() || !deliveryId) return;
+    emit('chat:message', {
+      deliveryId,
+      senderId: 'buyer', // In real app, use user.id
+      senderName: userName,
+      message
+    });
+    setMessage('');
+  };
+
+  return (
+    <Card className="flex flex-col h-[400px]">
+      <h3 className="font-bold mb-4 border-b border-border pb-2">Messages</h3>
+      <div className="flex-1 overflow-y-auto space-y-3 mb-4 pr-2 scrollbar-thin">
+        {chatHistory.length === 0 ? (
+          <div className="text-center py-10 text-text-secondary text-sm italic">
+            No messages yet. Contact the rider if needed.
+          </div>
+        ) : (
+          chatHistory.map((msg, i) => (
+            <div key={i} className={`flex flex-col ${msg.senderId === 'buyer' ? 'items-end' : 'items-start'}`}>
+              <div className={`max-w-[80%] p-3 rounded-lg text-sm ${msg.senderId === 'buyer' ? 'bg-primary text-white rounded-br-none' : 'bg-background-surface text-text-primary rounded-bl-none'}`}>
+                {msg.message}
+              </div>
+              <span className="text-[10px] text-text-secondary mt-1">{msg.senderName}</span>
+            </div>
+          ))
+        )}
+      </div>
+      <div className="flex gap-2">
+        <input 
+          type="text" 
+          value={message}
+          onChange={(e) => setMessage(e.target.value)}
+          onKeyPress={(e) => e.key === 'Enter' && sendMessage()}
+          placeholder="Type a message..." 
+          className="flex-1 bg-background-surface border border-border rounded-lg px-3 py-2 text-sm focus:ring-1 focus:ring-primary outline-none"
+        />
+        <Button size="sm" onClick={sendMessage} disabled={!deliveryId}>Send</Button>
+      </div>
+    </Card>
+  );
+};
+
 export default function OrderTrackingPage({ params }: { params: { orderId: string } }) {
   const [isClient, setIsClient] = useState(false);
   
-  const { data: order, loading, execute: fetchOrder } = useApi(orderApi, 'get', `/orders/${params.orderId}`);
+  const { data: order, loading, execute: fetchOrder } = useApi(orderApi, 'get', `/orders/${params.orderId}`, { refreshInterval: 5000 });
   
   // WebSockets for status and tracking
   const { data: statusUpdate } = useSocket(process.env.NEXT_PUBLIC_DELIVERY_SERVICE_URL || 'http://localhost:3008', `order:${params.orderId}:status`);
@@ -84,7 +140,7 @@ export default function OrderTrackingPage({ params }: { params: { orderId: strin
                     </span>
                     Broadcasting to nearby riders
                   </h3>
-                  <p className="text-sm text-text-secondary mt-1">Sending delivery request to riders within 500m of the shop...</p>
+                  <p className="text-sm text-text-secondary mt-1">Sending delivery request to all available riders in the area...</p>
                 </div>
                 <div className="h-64 relative border-b border-border">
                   <RiderMap marketId={order.seller?.marketId || 'default'} />
@@ -128,6 +184,10 @@ export default function OrderTrackingPage({ params }: { params: { orderId: strin
                 </div>
               </div>
             </Card>
+            
+            {currentStatus !== 'delivered' && (
+              <ChatCard orderId={params.orderId} deliveryId={order.deliveryId} userName={order.buyer?.fullName || 'Buyer'} />
+            )}
             
             {currentStatus === 'delivered' && (
                <div className="bg-background-surface p-4 rounded-xl text-center">
