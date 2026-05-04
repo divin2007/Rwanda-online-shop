@@ -12,6 +12,62 @@ import { riderApi, deliveryApi, walletApi } from '@/lib/api';
 import toast from 'react-hot-toast';
 import { QrReader } from 'react-qr-reader';
 
+const ChatCard = ({ deliveryId, userName }: { deliveryId: string, userName: string }) => {
+  const [message, setMessage] = useState('');
+  const [chatHistory, setChatHistory] = useState<any[]>([]);
+  const { data: socketMsg, emit } = useSocket(process.env.NEXT_PUBLIC_DELIVERY_SERVICE_URL || 'http://localhost:3008', `delivery:${deliveryId}:chat`);
+
+  useEffect(() => {
+    if (socketMsg) {
+      setChatHistory((prev) => [...prev, socketMsg]);
+    }
+  }, [socketMsg]);
+
+  const sendMessage = () => {
+    if (!message.trim() || !deliveryId) return;
+    emit('chat:message', {
+      deliveryId,
+      senderId: 'rider',
+      senderName: userName,
+      message
+    });
+    setMessage('');
+  };
+
+  return (
+    <Card className="flex flex-col h-[300px] mt-6 border-t-4 border-primary">
+      <h3 className="font-bold mb-2 flex items-center gap-2">
+        <span className="w-2 h-2 bg-status-success rounded-full animate-pulse"></span>
+        Customer Messages
+      </h3>
+      <div className="flex-1 overflow-y-auto space-y-2 mb-3 pr-2 scrollbar-thin text-sm">
+        {chatHistory.length === 0 ? (
+          <div className="text-center py-6 text-text-secondary italic">No messages yet.</div>
+        ) : (
+          chatHistory.map((msg, i) => (
+            <div key={i} className={`flex flex-col ${msg.senderId === 'rider' ? 'items-end' : 'items-start'}`}>
+              <div className={`max-w-[85%] p-2 rounded-lg ${msg.senderId === 'rider' ? 'bg-primary text-white rounded-br-none' : 'bg-background-surface text-text-primary rounded-bl-none border border-border'}`}>
+                {msg.message}
+              </div>
+            </div>
+          ))
+        )}
+      </div>
+      <div className="flex gap-2">
+        <input 
+          type="text" 
+          value={message}
+          onChange={(e) => setMessage(e.target.value)}
+          onKeyPress={(e) => e.key === 'Enter' && sendMessage()}
+          placeholder="Reply to customer..." 
+          className="flex-1 bg-background-surface border border-border rounded px-3 py-1.5 text-sm outline-none focus:ring-1 focus:ring-primary"
+        />
+        <Button size="sm" onClick={sendMessage} disabled={!deliveryId}>Send</Button>
+      </div>
+    </Card>
+  );
+};
+
 export default function RiderDashboardPage() {
   const { user } = useAuth();
   const { data: profile, execute: fetchProfile } = useApi(riderApi, 'get', `/riders/me?userId=${user?.id}`);
@@ -23,8 +79,8 @@ export default function RiderDashboardPage() {
   const [timer, setTimer] = useState(60);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
 
-  // WebSocket for incoming assignments
-  const { data: assignmentData } = useSocket(process.env.NEXT_PUBLIC_DELIVERY_SERVICE_URL || 'http://localhost:3008', 'delivery:assigned', localStorage.getItem('accessToken') || undefined);
+  // WebSockets for assignment and location broadcasting
+  const { data: assignmentData, emit: emitSocket } = useSocket(process.env.NEXT_PUBLIC_DELIVERY_SERVICE_URL || 'http://localhost:3008', 'delivery:assigned', localStorage.getItem('accessToken') || undefined);
 
   useEffect(() => {
     if (user?.id) {
@@ -59,14 +115,22 @@ export default function RiderDashboardPage() {
     if (isActive) {
       const watchId = navigator.geolocation.watchPosition(
         pos => {
-          riderApi.patch('/riders/me/location', { lat: pos.coords.latitude, lng: pos.coords.longitude, userId: user?.id });
+          const locationData = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+          // 1. Update DB
+          riderApi.patch('/riders/me/location', { ...locationData, userId: user?.id });
+          // 2. Broadcast live to socket for the map
+          emitSocket('rider:location:update', {
+            riderId: user?.id,
+            ...locationData,
+            marketId: profile?.marketId || 'default'
+          });
         },
         err => console.error(err),
         { enableHighAccuracy: true, maximumAge: 10000 }
       );
       return () => navigator.geolocation.clearWatch(watchId);
     }
-  }, [isActive]);
+  }, [isActive, user?.id, emitSocket, profile?.marketId]);
 
   const toggleActive = () => {
     if (!isActive) {
@@ -241,6 +305,8 @@ export default function RiderDashboardPage() {
                 <Button size="lg" fullWidth onClick={completeDelivery}>Confirm Delivery Completed</Button>
               </div>
             )}
+
+            <ChatCard deliveryId={activeDelivery._id} userName={profile?.fullName || 'Rider'} />
           </Card>
         ) : (
           <Card className="text-center py-20">

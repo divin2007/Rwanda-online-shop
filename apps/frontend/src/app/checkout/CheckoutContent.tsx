@@ -8,6 +8,7 @@ const MapPinPicker = dynamic(() => import('@/components/ui/MapPinPicker').then(m
 import { useCart } from '@/components/cart/CartContext';
 import { useAuth } from '@/context/AuthContext';
 import { orderApi } from '@/lib/api';
+import { useSocket } from '@/hooks/useSocket';
 import toast from 'react-hot-toast';
 
 export const CheckoutContent = () => {
@@ -22,6 +23,13 @@ export const CheckoutContent = () => {
   const [isCalculatingFee, setIsCalculatingFee] = useState(false);
   const [isPlacingOrder, setIsPlacingOrder] = useState(false);
   const [isWaitingPayment, setIsWaitingPayment] = useState(false);
+  const [orderId, setOrderId] = useState<string | null>(null);
+
+  // WebSocket for payment confirmation
+  const { data: statusUpdate } = useSocket(
+    process.env.NEXT_PUBLIC_ORDER_SERVICE_URL || 'http://localhost:3006', 
+    orderId ? `order:${orderId}:status` : 'order:idle'
+  );
 
   // Calculate delivery fee whenever coordinates change
   useEffect(() => {
@@ -40,6 +48,14 @@ export const CheckoutContent = () => {
   const subtotal = cartTotal;
   const gatewayFee = Math.ceil((subtotal + deliveryFee) * 0.02); // 2% standard
   const total = subtotal + deliveryFee + gatewayFee;
+
+  // Listen for payment confirmation via socket
+  useEffect(() => {
+    if (statusUpdate && (statusUpdate.status === 'confirmed' || statusUpdate.status === 'paid')) {
+      toast.success('Payment received! Order confirmed.');
+      router.push(`/orders/${orderId}/tracking`);
+    }
+  }, [statusUpdate, orderId, router]);
 
   const handleCheckout = async () => {
     if (items.length === 0) return toast.error('Your cart is empty!');
@@ -99,15 +115,10 @@ export const CheckoutContent = () => {
       const results = await Promise.all(orderPromises);
       clearCart();
       
-      toast.success('Please check your phone to approve the payment prompt.');
+      const newOrderId = results[0].data?.data?._id;
+      setOrderId(newOrderId);
       setIsWaitingPayment(true);
-      
-      // Simulate waiting for mobile money push confirmation
-      setTimeout(() => {
-        toast.success('Payment received! Order confirmed.');
-        const firstOrderId = results[0].data?.data?._id || 'temp-id'; 
-        router.push(`/orders/${firstOrderId}/tracking`);
-      }, 5000);
+      toast.success('Please check your phone to approve the payment prompt.');
       
     } catch (error: any) {
       toast.error(error.response?.data?.error || 'Failed to place order. Please try again.');
