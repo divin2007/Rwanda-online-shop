@@ -78,10 +78,12 @@ export class OrderService {
 
     // Trigger Payment Prompt
     this.paymentService.requestPaymentPrompt(saved).then(res => {
-      if (res.success) {
+      if (res.success && res.transactionId) {
         this.logger.log(`Payment prompt sent for order ${saved.orderNumber}. Transaction ID: ${res.transactionId}`);
         // Start polling for status since we might not get a callback in sandbox
         this.startPaymentPolling(saved.orderNumber, res.transactionId);
+      } else if (!res.success) {
+        this.logger.error(`Failed to initiate payment for ${saved.orderNumber}: ${res.error}`);
       }
     });
 
