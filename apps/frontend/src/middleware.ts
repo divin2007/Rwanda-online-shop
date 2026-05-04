@@ -1,6 +1,24 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
+// Platform-wide routes that should NEVER be rewritten on subdomains.
+// These work identically on rwshop.org and mikeshop.rwshop.org.
+const PLATFORM_ROUTES = [
+  '/login',
+  '/register',
+  '/checkout',
+  '/cart',
+  '/orders',
+  '/dashboard',
+  '/seller',
+  '/rider',
+  '/admin',
+  '/markets',
+  '/market',
+  '/privacy',
+  '/terms',
+];
+
 export function middleware(req: NextRequest) {
   const url = req.nextUrl.clone();
   
@@ -9,7 +27,7 @@ export function middleware(req: NextRequest) {
   const cleanHostname = hostname.replace(/:\d+$/, '');
   const hostParts = cleanHostname.split('.');
   
-  // System reserved paths
+  // System reserved paths — skip middleware entirely
   if (url.pathname.startsWith('/_next') || 
       url.pathname.startsWith('/api') || 
       url.pathname.startsWith('/static') || 
@@ -37,7 +55,18 @@ export function middleware(req: NextRequest) {
   }
 
   if (subdomain) {
-    // We rewrite the URL to internal path /market/[subdomain]
+    // Check if this is a platform-wide route — if so, let it pass through unchanged
+    const isPlatformRoute = PLATFORM_ROUTES.some(route => 
+      url.pathname === route || url.pathname.startsWith(route + '/')
+    );
+
+    if (isPlatformRoute) {
+      // Platform routes work the same on all domains — no rewriting
+      return NextResponse.next();
+    }
+
+    // Only the root path "/" (and unknown paths) get rewritten to /market/[slug]
+    // This shows the market storefront when visiting mikeshop.rwshop.org/
     url.pathname = `/market/${subdomain}${url.pathname}`;
     return NextResponse.rewrite(url);
   }
