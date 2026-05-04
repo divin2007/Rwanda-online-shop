@@ -9,6 +9,7 @@ import {
 } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
 import { DeliveryService } from './delivery.service';
+import { forwardRef, Inject } from '@nestjs/common';
 import * as crypto from 'crypto';
 
 @WebSocketGateway({
@@ -21,7 +22,10 @@ export class DeliveryGateway implements OnGatewayConnection, OnGatewayDisconnect
   // In-memory active riders: memory-only, instant removal
   private activeRiders = new Map<string, any>();
 
-  constructor(private deliveryService: DeliveryService) {}
+  constructor(
+    @Inject(forwardRef(() => DeliveryService))
+    private deliveryService: DeliveryService
+  ) {}
 
   handleConnection(client: Socket) {
     console.log(`Client connected: ${client.id}`);
