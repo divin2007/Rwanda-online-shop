@@ -1,6 +1,6 @@
 'use client';
 import React, { useEffect, useState } from 'react';
-import { MapContainer, TileLayer, Marker } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Popup, Tooltip } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
 import { useSocket } from '@/hooks/useSocket';
@@ -58,7 +58,18 @@ export const RiderMap = ({ marketId, centerLat = -1.9441, centerLng = 30.0619, m
 
         {/* Live Riders */}
         {Object.values(riders).map((rider) => (
-          <Marker key={rider.riderId} position={[rider.lat, rider.lng]} icon={riderIcon} />
+          <Marker key={rider.riderId} position={[rider.lat, rider.lng]} icon={riderIcon}>
+            <Tooltip permanent direction="top" offset={[0, -40]}>
+              <div className="text-xs font-bold bg-white px-2 py-1 rounded shadow-sm border border-border">Rider {rider.riderId.substring(0, 4)}</div>
+            </Tooltip>
+            <Popup>
+              <div className="p-1">
+                <p className="font-bold">Active Rider</p>
+                <p className="text-xs text-text-secondary italic">Live Location Update</p>
+                <p className="text-xs text-primary mt-1">Ready for assignment</p>
+              </div>
+            </Popup>
+          </Marker>
         ))}
       </MapContainer>
     </div>

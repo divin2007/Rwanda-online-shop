@@ -1,6 +1,7 @@
 'use client';
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
+import dynamic from 'next/dynamic';
 import { Layout } from '@/components/layout/Layout';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
@@ -10,8 +11,14 @@ import { useSocket } from '@/hooks/useSocket';
 import { sellerApi, orderApi, adminApi } from '@/lib/api';
 import toast from 'react-hot-toast';
 
+const RiderMap = dynamic(
+  () => import('@/components/ui/RiderMap').then((mod) => mod.RiderMap),
+  { ssr: false, loading: () => <div className="w-full h-48 bg-background-surface animate-pulse"></div> }
+);
+
 export default function SellerDashboardPage() {
   const { user } = useAuth();
+  const [showNearbyRiders, setShowNearbyRiders] = useState(false);
   
   const { data: profile, loading: pLoad, execute: fetchProfile } = useApi(sellerApi, 'get', `/sellers/me?userId=${user?.id}`);
   const { data: analytics, loading: aLoad, execute: fetchAnalytics } = useApi(adminApi, 'get', `/analytics/seller/${user?.id}`);
@@ -119,10 +126,20 @@ export default function SellerDashboardPage() {
           </div>
 
           {/* Active Orders */}
-          <Card noPadding>
-            <div className="p-6 border-b border-border">
+          <Card noPadding className="mb-8">
+            <div className="p-6 border-b border-border flex justify-between items-center">
               <h2 className="text-lg font-bold">Active Orders</h2>
+              <Button variant="outline" size="sm" onClick={() => setShowNearbyRiders(!showNearbyRiders)}>
+                {showNearbyRiders ? 'Hide Nearby Riders' : 'View Nearby Riders'}
+              </Button>
             </div>
+            
+            {showNearbyRiders && (
+              <div className="h-64 w-full border-b border-border">
+                <RiderMap marketId={profile?.marketId || 'default'} marketName={profile?.shopDetails?.name} />
+              </div>
+            )}
+
             <div className="overflow-x-auto">
               <table className="w-full text-left">
                 <thead className="bg-background-surface text-text-secondary text-sm">
