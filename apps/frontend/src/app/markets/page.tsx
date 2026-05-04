@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { Layout } from '@/components/layout/Layout';
 import { useApi } from '@/hooks/useApi';
 import { marketApi } from '@/lib/api';
+import { getMarketUrl } from '@/lib/urls';
 
 const CATEGORY_ICONS: Record<string, string> = {
   'public': '🥬',
@@ -56,7 +57,7 @@ export default function MarketsPage() {
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
             {markets.map((market: any) => (
-              <Link href={`/market/${market.slug}`} key={market._id} className="group">
+              <Link href={getMarketUrl(market.slug)} key={market._id} className="group">
                 <div className="bg-background-card border border-border rounded-2xl p-6 h-full transition-all duration-300 hover:shadow-xl hover:border-primary/50 flex flex-col hover:-translate-y-1">
                   <div className="flex justify-between items-start mb-4">
                     <div className={`w-16 h-16 rounded-2xl flex items-center justify-center text-3xl ${CATEGORY_COLORS[market.type] || 'bg-gray-100'}`}>
