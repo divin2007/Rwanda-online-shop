@@ -21,6 +21,7 @@ export const CheckoutContent = () => {
   const [deliveryFee, setDeliveryFee] = useState(0);
   const [isCalculatingFee, setIsCalculatingFee] = useState(false);
   const [isPlacingOrder, setIsPlacingOrder] = useState(false);
+  const [isWaitingPayment, setIsWaitingPayment] = useState(false);
 
   // Calculate delivery fee whenever coordinates change
   useEffect(() => {
@@ -49,15 +50,11 @@ export const CheckoutContent = () => {
     try {
       const orderPromises = items.map(item => {
         const itemSubtotal = item.price * item.quantity;
-        // 1.5% commission, min 100 RWF (per OrderService logic)
         const platformCommission = Math.max(itemSubtotal * 0.015, 100);
-        const itemDeliveryFee = 1000; // Fixed for now, or use state value
+        const itemDeliveryFee = 1000;
         const gatewayFee = Math.ceil((itemSubtotal + itemDeliveryFee) * 0.02);
         const totalAmount = itemSubtotal + itemDeliveryFee + gatewayFee;
-        
-        // Document 7 logic: Seller payout is subtotal - commission
         const sellerPayout = itemSubtotal - platformCommission;
-        // Rider payout is the delivery fee
         const riderPayout = itemDeliveryFee;
 
         return orderApi.post('/orders', {
@@ -100,17 +97,22 @@ export const CheckoutContent = () => {
       });
 
       const results = await Promise.all(orderPromises);
-      
       clearCart();
-      toast.success('Order placed successfully!');
       
-      const firstOrderId = results[0].data?.data?._id || 'temp-id'; 
-      router.push(`/orders/${firstOrderId}/tracking`);
+      toast.success('Please check your phone to approve the payment prompt.');
+      setIsWaitingPayment(true);
+      
+      // Simulate waiting for mobile money push confirmation
+      setTimeout(() => {
+        toast.success('Payment received! Order confirmed.');
+        const firstOrderId = results[0].data?.data?._id || 'temp-id'; 
+        router.push(`/orders/${firstOrderId}/tracking`);
+      }, 5000);
       
     } catch (error: any) {
       toast.error(error.response?.data?.error || 'Failed to place order. Please try again.');
-    } finally {
       setIsPlacingOrder(false);
+      setIsWaitingPayment(false);
     }
   };
 
@@ -190,10 +192,10 @@ export const CheckoutContent = () => {
             <Button 
               fullWidth 
               size="lg"
-              disabled={!coords || !phone || items.length === 0 || isPlacingOrder || isCalculatingFee}
+              disabled={!coords || !phone || items.length === 0 || isPlacingOrder || isCalculatingFee || isWaitingPayment}
               onClick={handleCheckout}
             >
-              {isPlacingOrder ? 'Processing...' : 'Pay & Place Order'}
+              {isWaitingPayment ? 'Awaiting Payment Approval...' : isPlacingOrder ? 'Processing...' : 'Pay & Place Order'}
             </Button>
             
             <div className="mt-6 bg-status-info/10 border border-status-info/20 rounded p-3">

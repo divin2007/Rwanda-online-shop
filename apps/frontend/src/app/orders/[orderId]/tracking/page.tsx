@@ -15,6 +15,11 @@ const MapWrapper = dynamic(
   { ssr: false, loading: () => <div className="w-full h-full flex items-center justify-center bg-background-surface"><p className="animate-pulse">Loading map...</p></div> }
 );
 
+const RiderMap = dynamic(
+  () => import('@/components/ui/RiderMap').then((mod) => mod.RiderMap),
+  { ssr: false, loading: () => <div className="w-full h-full bg-background-surface animate-pulse"></div> }
+);
+
 export default function OrderTrackingPage({ params }: { params: { orderId: string } }) {
   const [isClient, setIsClient] = useState(false);
   
@@ -30,7 +35,8 @@ export default function OrderTrackingPage({ params }: { params: { orderId: strin
   }, [params.orderId, fetchOrder]);
 
   const currentStatus = statusUpdate?.status || order?.status || 'placed';
-  const showMap = currentStatus === 'in_transit' || currentStatus === 'picked_up';
+  const showTrackingMap = currentStatus === 'in_transit' || currentStatus === 'picked_up';
+  const showBroadcastMap = currentStatus === 'placed' || currentStatus === 'confirmed';
 
   if (loading || !isClient) return <Layout><div className="flex justify-center p-20"><div className="animate-spin w-10 h-10 border-4 border-primary border-t-transparent rounded-full"></div></div></Layout>;
   if (!order) return <Layout><div className="p-20 text-center">Order not found</div></Layout>;
@@ -47,7 +53,7 @@ export default function OrderTrackingPage({ params }: { params: { orderId: strin
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
           <div className="space-y-6">
-            {showMap ? (
+            {showTrackingMap ? (
               <Card noPadding className="overflow-hidden">
                 <div className="h-80 relative">
                   {riderGps ? (
@@ -68,6 +74,25 @@ export default function OrderTrackingPage({ params }: { params: { orderId: strin
                   </div>
                 )}
               </Card>
+            ) : showBroadcastMap ? (
+              <Card noPadding className="overflow-hidden">
+                <div className="p-4 border-b border-border bg-background-surface">
+                  <h3 className="font-bold text-primary flex items-center gap-2">
+                    <span className="relative flex h-3 w-3">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
+                      <span className="relative inline-flex rounded-full h-3 w-3 bg-primary"></span>
+                    </span>
+                    Broadcasting to nearby riders
+                  </h3>
+                  <p className="text-sm text-text-secondary mt-1">Sending delivery request to riders within 500m of the shop...</p>
+                </div>
+                <div className="h-64 relative border-b border-border">
+                  <RiderMap marketId={order.seller?.marketId || 'default'} />
+                </div>
+                <div className="p-4 text-center">
+                  <p className="text-sm text-text-secondary">Waiting for a rider to accept the delivery.</p>
+                </div>
+              </Card>
             ) : (
               <Card>
                 <div className="text-center py-10">
@@ -80,7 +105,7 @@ export default function OrderTrackingPage({ params }: { params: { orderId: strin
                   <p className="text-text-secondary">
                     {currentStatus === 'delivered' 
                       ? 'Enjoy your fresh products from the market.' 
-                      : 'The seller is currently packing your items. A rider will be assigned soon.'}
+                      : 'The seller is currently packing your items.'}
                   </p>
                 </div>
               </Card>

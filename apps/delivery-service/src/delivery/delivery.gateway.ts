@@ -97,4 +97,38 @@ export class DeliveryGateway implements OnGatewayConnection, OnGatewayDisconnect
   emitAssignment(delivery: any) {
     this.server.emit('delivery:assigned', delivery);
   }
+
+  // Calculate distance between two coordinates in meters
+  private getDistanceMeters(lat1: number, lon1: number, lat2: number, lon2: number): number {
+    const R = 6371e3; // Earth radius in meters
+    const φ1 = lat1 * Math.PI / 180;
+    const φ2 = lat2 * Math.PI / 180;
+    const Δφ = (lat2 - lat1) * Math.PI / 180;
+    const Δλ = (lon2 - lon1) * Math.PI / 180;
+
+    const a = Math.sin(Δφ/2) * Math.sin(Δφ/2) +
+              Math.cos(φ1) * Math.cos(φ2) *
+              Math.sin(Δλ/2) * Math.sin(Δλ/2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+
+    return R * c;
+  }
+
+  // Broadcast to riders within 500m radius
+  broadcastToNearbyRiders(deliveryReq: any, marketLat: number, marketLng: number) {
+    let notifiedCount = 0;
+    for (const [riderId, data] of this.activeRiders.entries()) {
+      const distance = this.getDistanceMeters(marketLat, marketLng, data.lat, data.lng);
+      
+      if (distance <= 500) { // 500m radius
+        this.server.to(data.socketId).emit('delivery:request', {
+          ...deliveryReq,
+          distanceFromMarket: `${Math.round(distance)}m`
+        });
+        notifiedCount++;
+      }
+    }
+    console.log(`Broadcasted delivery request to ${notifiedCount} riders within 500m.`);
+    return notifiedCount;
+  }
 }
