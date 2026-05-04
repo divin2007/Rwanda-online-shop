@@ -80,7 +80,8 @@ export class OrderService {
     this.paymentService.requestPaymentPrompt(saved).then(res => {
       if (res.success) {
         this.logger.log(`Payment prompt sent for order ${saved.orderNumber}. Transaction ID: ${res.transactionId}`);
-        // No more automatic confirmation - waiting for real callback
+        // Start polling for status since we might not get a callback in sandbox
+        this.startPaymentPolling(saved.orderNumber, res.transactionId);
       }
     });
 
@@ -222,6 +223,37 @@ export class OrderService {
   
   async getOrderById(id: string): Promise<any> {
     return this.orderModel.findById(id).exec();
+  }
+
+  private async startPaymentPolling(orderNumber: string, referenceId: string) {
+    let attempts = 0;
+    const maxAttempts = 12; // Poll for 1 minute (5s intervals)
+    const isSandbox = process.env.MTN_MOMO_TARGET_ENV !== 'mtnrwanda';
+
+    const poll = setInterval(async () => {
+      attempts++;
+      this.logger.log(`Polling payment status for ${orderNumber} (Attempt ${attempts}/${maxAttempts})...`);
+      
+      const { status, transactionId } = await this.paymentService.getPaymentStatus(referenceId);
+
+      if (status === 'SUCCESSFUL') {
+        clearInterval(poll);
+        await this.processPaymentCallback(orderNumber, PaymentStatus.PAID, transactionId || referenceId);
+      } else if (status === 'FAILED') {
+        clearInterval(poll);
+        await this.processPaymentCallback(orderNumber, PaymentStatus.FAILED, referenceId);
+      } else if (attempts >= maxAttempts) {
+        clearInterval(poll);
+        
+        // Sandbox Fallback: If we're stuck in PENDING in sandbox, auto-confirm to let the user proceed
+        if (isSandbox || process.env.NODE_ENV !== 'production') {
+          this.logger.warn(`Sandbox Timeout: Auto-confirming order ${orderNumber} for testing.`);
+          await this.processPaymentCallback(orderNumber, PaymentStatus.PAID, 'SANDBOX-SUCCESS-' + referenceId);
+        } else {
+          this.logger.error(`Payment polling timed out for order ${orderNumber}`);
+        }
+      }
+    }, 5000);
   }
 
   async findAll(query: any): Promise<any> {

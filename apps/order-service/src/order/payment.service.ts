@@ -82,7 +82,27 @@ export class PaymentService {
     }
   }
 
-  async handleCallback(referenceId: string) {
-    // This would be called by the webhook or a status check loop
+  async getPaymentStatus(referenceId: string): Promise<{ status: string; transactionId?: string }> {
+    try {
+      const token = await this.getAccessToken();
+      const response = await axios.get(
+        `${this.momoConfig.baseUrl}/collection/v1_0/requesttopay/${referenceId}`,
+        {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'X-Target-Environment': this.momoConfig.targetEnv,
+            'Ocp-Apim-Subscription-Key': this.momoConfig.apiKey
+          }
+        }
+      );
+
+      return {
+        status: response.data.status, // PENDING, SUCCESSFUL, FAILED
+        transactionId: response.data.financialTransactionId
+      };
+    } catch (error) {
+      this.logger.error(`Failed to check MoMo status for ${referenceId}`, error.response?.data || error.message);
+      return { status: 'ERROR' };
+    }
   }
 }
