@@ -34,6 +34,28 @@ export class RiderService {
     return rider;
   }
 
+  async findAll(isApproved?: boolean): Promise<any[]> {
+    const query: any = { deletedAt: null };
+    if (isApproved !== undefined) {
+      query.isApproved = isApproved;
+    }
+    return this.riderModel.find(query).sort({ createdAt: -1 }).exec();
+  }
+
+  async approve(id: string): Promise<any> {
+    const updated = await this.riderModel.findByIdAndUpdate(
+      id,
+      { $set: { isApproved: true } },
+      { new: true }
+    ).exec();
+
+    if (!updated) {
+      throw new NotFoundException('Rider profile not found');
+    }
+
+    return updated;
+  }
+
   async updateStatus(userId: string, isActive: boolean, location?: Coordinates): Promise<any> {
     // If turning active, location must be provided and valid
     if (isActive) {

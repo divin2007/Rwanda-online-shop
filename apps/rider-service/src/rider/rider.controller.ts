@@ -62,6 +62,18 @@ export class RiderController {
     return { success: true, data: rider };
   }
 
+  @Get()
+  async findAll(@Query('isApproved') isApproved?: string) {
+    const riders = await this.riderService.findAll(isApproved === 'true' || isApproved === 'false' ? isApproved === 'true' : undefined);
+    return { success: true, data: riders };
+  }
+
+  @Post(':id/approve')
+  async approve(@Param('id') id: string) {
+    const rider = await this.riderService.approve(id);
+    return { success: true, data: rider };
+  }
+
   @Post('upload-document')
   async uploadDocument(@Body() data: any) {
     // Mock upload logic (Document 6 requirement: simulated for now)

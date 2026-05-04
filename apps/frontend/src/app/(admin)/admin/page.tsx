@@ -14,14 +14,16 @@ export default function AdminDashboardPage() {
   const { data: analytics, execute: fetchAnalytics } = useApi(adminApi, 'get', '/admin/analytics');
   const { data: fraudAlerts, execute: fetchFraud } = useApi(adminApi, 'get', '/admin/fraud-alerts');
   const { data: pendingSellers, execute: fetchSellers } = useApi(sellerApi, 'get', '/sellers?isApproved=false');
+  const { data: pendingRiders, execute: fetchRiders } = useApi(riderApi, 'get', '/riders?isApproved=false');
   const { data: disputes, execute: fetchDisputes } = useApi(orderApi, 'get', '/orders?isDisputed=true&dispute.resolvedAt=null');
 
   useEffect(() => {
     if (activeTab === 'analytics') fetchAnalytics();
     if (activeTab === 'fraud') fetchFraud();
     if (activeTab === 'sellers') fetchSellers();
+    if (activeTab === 'riders') fetchRiders();
     if (activeTab === 'disputes') fetchDisputes();
-  }, [activeTab, fetchAnalytics, fetchFraud, fetchSellers, fetchDisputes]);
+  }, [activeTab, fetchAnalytics, fetchFraud, fetchSellers, fetchRiders, fetchDisputes]);
 
   const approveSeller = async (id: string) => {
     try {
@@ -30,6 +32,16 @@ export default function AdminDashboardPage() {
       fetchSellers();
     } catch (e) {
       toast.error('Failed to approve seller');
+    }
+  };
+
+  const approveRider = async (id: string) => {
+    try {
+      await riderApi.post(`/riders/${id}/approve`);
+      toast.success('Rider approved');
+      fetchRiders();
+    } catch (e) {
+      toast.error('Failed to approve rider');
     }
   };
 
@@ -65,26 +77,33 @@ export default function AdminDashboardPage() {
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
              <div className="bg-background-card w-full max-w-4xl rounded-2xl shadow-2xl overflow-hidden animate-scale-in">
                 <div className="p-6 border-b border-border flex justify-between items-center bg-background-surface">
-                   <h2 className="text-xl font-bold">Verification Documents: {selectedSeller.shopDetails?.name || selectedSeller.stallName}</h2>
+                   <h2 className="text-xl font-bold">Verification Documents: {selectedSeller.shopDetails?.name || selectedSeller.stallName || selectedSeller.plateNumber}</h2>
                    <button onClick={() => setSelectedSeller(null)} className="text-2xl hover:text-primary">&times;</button>
                 </div>
                 <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-6 overflow-y-auto max-h-[70vh]">
                    <div>
-                      <p className="text-sm font-bold mb-2">RDB / Business Permit</p>
-                      <img src={selectedSeller.businessPermitUrl || 'https://placehold.co/400x300/000000/FFFFFF/png?text=No+Permit'} className="w-full rounded-lg border border-border" />
+                      <p className="text-sm font-bold mb-2">{selectedSeller.plateNumber ? 'Driving License' : 'RDB / Business Permit'}</p>
+                      <img src={selectedSeller.licenseUrl || selectedSeller.businessPermitUrl || 'https://placehold.co/400x300/000000/FFFFFF/png?text=No+Document'} className="w-full rounded-lg border border-border" />
                    </div>
                    <div>
                       <p className="text-sm font-bold mb-2">National ID</p>
                       <img src={selectedSeller.idCardUrl || 'https://placehold.co/400x300/000000/FFFFFF/png?text=No+ID'} className="w-full rounded-lg border border-border" />
                    </div>
                    <div className="md:col-span-2">
-                      <p className="text-sm font-bold mb-2">Stall / Shop Photo</p>
-                      <img src={selectedSeller.stallPhotoUrl || 'https://placehold.co/800x400/000000/FFFFFF/png?text=No+Photo'} className="w-full rounded-lg border border-border object-cover h-64" />
+                      <p className="text-sm font-bold mb-2">{selectedSeller.plateNumber ? 'Vehicle Photo' : 'Stall / Shop Photo'}</p>
+                      <img src={selectedSeller.vehiclePhotoUrl || selectedSeller.stallPhotoUrl || 'https://placehold.co/800x400/000000/FFFFFF/png?text=No+Photo'} className="w-full rounded-lg border border-border object-cover h-64" />
                    </div>
                 </div>
                 <div className="p-6 border-t border-border flex justify-end gap-3 bg-background-surface">
                    <Button variant="outline" onClick={() => setSelectedSeller(null)}>Close</Button>
-                   <Button onClick={() => { approveSeller(selectedSeller._id); setSelectedSeller(null); }}>Approve Now</Button>
+                   <Button onClick={() => { 
+                      if (selectedSeller.plateNumber) {
+                        approveRider(selectedSeller._id);
+                      } else {
+                        approveSeller(selectedSeller._id);
+                      }
+                      setSelectedSeller(null); 
+                   }}>Approve Now</Button>
                 </div>
              </div>
           </div>
@@ -98,6 +117,7 @@ export default function AdminDashboardPage() {
             {[
               { id: 'analytics', label: 'Analytics & Revenue' },
               { id: 'sellers', label: 'Seller Approvals' },
+              { id: 'riders', label: 'Rider Approvals' },
               { id: 'disputes', label: 'Disputes & Refunds' },
               { id: 'fraud', label: 'Fraud Alerts' }
             ].map(tab => (
@@ -151,7 +171,7 @@ export default function AdminDashboardPage() {
                 </thead>
                 <tbody className="divide-y divide-border">
                   {!pendingSellers || pendingSellers.length === 0 ? (
-                    <tr><td colSpan={4} className="p-8 text-center text-text-secondary">No pending approvals.</td></tr>
+                    <tr><td colSpan={4} className="p-8 text-center text-text-secondary">No pending seller approvals.</td></tr>
                   ) : (
                     pendingSellers.map((s: any) => (
                       <tr key={s._id}>
@@ -165,6 +185,41 @@ export default function AdminDashboardPage() {
                           <Button size="sm" variant="outline" onClick={() => setSelectedSeller(s)}>View Docs</Button>
                           <Button size="sm" variant="outline" className="text-status-error border-status-error hover:bg-status-error/10" onClick={() => declineSeller(s._id)}>Decline</Button>
                           <Button size="sm" onClick={() => approveSeller(s._id)}>Approve</Button>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </Card>
+          )}
+
+          {activeTab === 'riders' && (
+            <Card noPadding className="animate-fade-in">
+              <table className="w-full text-left">
+                <thead className="bg-background-surface text-text-secondary text-sm">
+                  <tr>
+                    <th className="p-4 font-medium">Rider Details</th>
+                    <th className="p-4 font-medium">Plate Number</th>
+                    <th className="p-4 font-medium">Date</th>
+                    <th className="p-4 font-medium text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border">
+                  {!pendingRiders || pendingRiders.length === 0 ? (
+                    <tr><td colSpan={4} className="p-8 text-center text-text-secondary">No pending rider approvals.</td></tr>
+                  ) : (
+                    pendingRiders.map((r: any) => (
+                      <tr key={r._id}>
+                        <td className="p-4">
+                          <p className="font-bold">User: {r.userId.substring(0,8)}</p>
+                          <p className="text-sm text-text-secondary">Pending Verification</p>
+                        </td>
+                        <td className="p-4 font-mono">{r.plateNumber}</td>
+                        <td className="p-4 text-sm">{new Date(r.createdAt).toLocaleDateString()}</td>
+                        <td className="p-4 text-right flex justify-end gap-2">
+                          <Button size="sm" variant="outline" onClick={() => setSelectedSeller(r)}>View Docs</Button>
+                          <Button size="sm" onClick={() => approveRider(r._id)}>Approve</Button>
                         </td>
                       </tr>
                     ))
