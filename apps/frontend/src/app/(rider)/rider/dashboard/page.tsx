@@ -14,9 +14,9 @@ import { QrReader } from 'react-qr-reader';
 
 export default function RiderDashboardPage() {
   const { user } = useAuth();
-  const { data: profile, execute: fetchProfile } = useApi(riderApi, 'get', '/riders/me');
-  const { data: activeDelivery, execute: fetchActiveDelivery } = useApi(deliveryApi, 'get', '/deliveries/active');
-  const { data: wallet } = useApi(walletApi, 'get', '/wallets/me');
+  const { data: profile, execute: fetchProfile } = useApi(riderApi, 'get', `/riders/me?userId=${user?.id}`);
+  const { data: activeDelivery, execute: fetchActiveDelivery } = useApi(deliveryApi, 'get', `/deliveries/active?userId=${user?.id}`);
+  const { data: wallet } = useApi(walletApi, 'get', `/wallets/me?userId=${user?.id}`);
 
   const [isActive, setIsActive] = useState(false);
   const [incomingDelivery, setIncomingDelivery] = useState<any>(null);
@@ -27,9 +27,11 @@ export default function RiderDashboardPage() {
   const { data: assignmentData } = useSocket(process.env.NEXT_PUBLIC_DELIVERY_SERVICE_URL || 'http://localhost:3008', 'delivery:assigned', localStorage.getItem('accessToken') || undefined);
 
   useEffect(() => {
-    fetchProfile();
-    fetchActiveDelivery();
-  }, [fetchProfile, fetchActiveDelivery]);
+    if (user?.id) {
+      fetchProfile();
+      fetchActiveDelivery();
+    }
+  }, [user?.id, fetchProfile, fetchActiveDelivery]);
 
   // Handle Incoming WebSockets
   useEffect(() => {
@@ -57,7 +59,7 @@ export default function RiderDashboardPage() {
     if (isActive) {
       const watchId = navigator.geolocation.watchPosition(
         pos => {
-          riderApi.patch('/riders/me/location', { lat: pos.coords.latitude, lng: pos.coords.longitude });
+          riderApi.patch('/riders/me/location', { lat: pos.coords.latitude, lng: pos.coords.longitude, userId: user?.id });
         },
         err => console.error(err),
         { enableHighAccuracy: true, maximumAge: 10000 }
@@ -70,14 +72,14 @@ export default function RiderDashboardPage() {
     if (!isActive) {
       navigator.geolocation.getCurrentPosition(
         async pos => {
-          await riderApi.patch('/riders/me/status', { isActive: true, location: { lat: pos.coords.latitude, lng: pos.coords.longitude } });
+          await riderApi.patch('/riders/me/status', { isActive: true, location: { lat: pos.coords.latitude, lng: pos.coords.longitude }, userId: user?.id });
           setIsActive(true);
           toast.success("You are now active and visible to the market.");
         },
         () => toast.error("Location access is required to go active.")
       );
     } else {
-      riderApi.patch('/riders/me/status', { isActive: false }).then(() => setIsActive(false));
+      riderApi.patch('/riders/me/status', { isActive: false, userId: user?.id }).then(() => setIsActive(false));
     }
   };
 
