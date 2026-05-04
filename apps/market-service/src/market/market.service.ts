@@ -43,6 +43,10 @@ export class MarketService implements OnModuleInit {
       throw new BadRequestException('Individual markets must have an ownerId');
     }
 
+    if (marketData.slug) {
+      marketData.slug = marketData.slug.toLowerCase();
+    }
+
     try {
       const newMarket = new this.marketModel(marketData);
       const saved = await newMarket.save();
@@ -87,7 +91,10 @@ export class MarketService implements OnModuleInit {
     const cached = await this.cacheManager.get(cacheKey);
     if (cached) return cached;
 
-    const market = await this.marketModel.findOne({ slug, deletedAt: null }).exec();
+    const market = await this.marketModel.findOne({ 
+      slug: { $regex: new RegExp(`^${slug}$`, 'i') }, 
+      deletedAt: null 
+    }).exec();
     if (!market) throw new NotFoundException('Market not found');
     
     await this.cacheManager.set(cacheKey, market, 1800000);
@@ -99,6 +106,10 @@ export class MarketService implements OnModuleInit {
       if (!this.locationService.validateCoordinates(updateData.location.coordinates)) {
         throw new BadRequestException('Invalid coordinates provided');
       }
+    }
+
+    if (updateData.slug) {
+      updateData.slug = updateData.slug.toLowerCase();
     }
 
     const updatedMarket = await this.marketModel.findOneAndUpdate(
