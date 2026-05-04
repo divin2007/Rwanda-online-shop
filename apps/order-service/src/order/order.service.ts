@@ -29,6 +29,8 @@ const PAYMENT_TRANSITIONS: Record<string, string[]> = {
 
 @Injectable()
 export class OrderService {
+  private readonly logger = new Logger(OrderService.name);
+
   constructor(
     @InjectModel('Transaction') private orderModel: Model<any>,
     private fraudDetection: FraudDetectionService,
