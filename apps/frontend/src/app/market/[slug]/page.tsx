@@ -54,7 +54,10 @@ export default function MarketPage({ params }: { params: { slug: string } }) {
   // Extract unique categories
   const categories = ['all', ...Array.from(new Set(products.map(p => p.category)))];
   
-  const filteredProducts = selectedCategory === 'all' ? products : products.filter(p => p.category === selectedCategory);
+  // Filter out products that are already shown in promotions
+  const uniqueProducts = products.filter(p => !promotions.some(promo => promo._id === p._id));
+  
+  const filteredProducts = selectedCategory === 'all' ? uniqueProducts : uniqueProducts.filter(p => p.category === selectedCategory);
 
   return (
     <Layout marketName={market.name}>

@@ -6,29 +6,40 @@ export function middleware(req: NextRequest) {
   
   // Extract the hostname
   const hostname = req.headers.get('host') || '';
-  
-  // Handle localhost port strip
   const cleanHostname = hostname.replace(/:\d+$/, '');
+  const hostParts = cleanHostname.split('.');
   
-  // Standard domain logic
-  // If it's marketrwanda.com or www.marketrwanda.com
-  const isApex = cleanHostname === 'marketrwanda.com' || 
-                 cleanHostname === 'www.marketrwanda.com' || 
-                 cleanHostname === 'rwshop.org' ||
-                 cleanHostname === 'www.rwshop.org' ||
-                 cleanHostname.endsWith('.onrender.com') ||
-                 cleanHostname === 'localhost';
+  // System reserved paths
+  if (url.pathname.startsWith('/_next') || 
+      url.pathname.startsWith('/api') || 
+      url.pathname.startsWith('/static') || 
+      url.pathname.startsWith('/favicon.ico')) {
+    return NextResponse.next();
+  }
 
-  // Subdomain matching (e.g. kimironko.marketrwanda.com)
-  if (!isApex && cleanHostname.includes('.')) {
-    const subdomain = cleanHostname.split('.')[0];
-    
-    // We rewrite the URL to internal path /market/[subdomain]
-    // Only if it's not already pointing to a system path (_next, api, static)
-    if (!url.pathname.startsWith('/_next') && !url.pathname.startsWith('/api') && !url.pathname.startsWith('/static')) {
-      url.pathname = `/market/${subdomain}${url.pathname}`;
-      return NextResponse.rewrite(url);
+  // Determine if this is a subdomain
+  // Apex domains: rwshop.org, localhost, rmf-frontend.onrender.com
+  // Subdomains: kimironko.rwshop.org, nyarugenge.localhost
+  
+  let subdomain = '';
+  
+  if (hostParts.length >= 3 && !cleanHostname.endsWith('.onrender.com')) {
+    // e.g. kimironko.rwshop.org
+    if (hostParts[0] !== 'www') {
+      subdomain = hostParts[0];
     }
+  } else if (hostParts.length >= 2 && cleanHostname.endsWith('.localhost')) {
+    // e.g. kimironko.localhost
+    subdomain = hostParts[0];
+  } else if (hostParts.length >= 4 && cleanHostname.endsWith('.onrender.com')) {
+    // e.g. kimironko.rmf-frontend.onrender.com
+    subdomain = hostParts[0];
+  }
+
+  if (subdomain) {
+    // We rewrite the URL to internal path /market/[subdomain]
+    url.pathname = `/market/${subdomain}${url.pathname}`;
+    return NextResponse.rewrite(url);
   }
 
   return NextResponse.next();

@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, BadRequestException, ConflictException, Inject } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, ConflictException, Inject, OnModuleInit } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { LocationService } from '@rmf/location';
@@ -7,7 +7,7 @@ import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import type { Cache } from 'cache-manager';
 
 @Injectable()
-export class MarketService {
+export class MarketService implements OnModuleInit {
   private locationService: LocationService;
 
   constructor(
@@ -15,6 +15,19 @@ export class MarketService {
     @Inject(CACHE_MANAGER) private cacheManager: Cache
   ) {
     this.locationService = new LocationService();
+  }
+
+  async onModuleInit() {
+    // Migration: ensure all markets are active and not deleted
+    try {
+        const result = await this.marketModel.updateMany(
+            { deletedAt: null },
+            { $set: { isActive: true } }
+        );
+        console.log(`[Migration] Activated ${result.modifiedCount} markets`);
+    } catch (e) {
+        console.error('[Migration] Failed to activate markets', e);
+    }
   }
 
   async create(marketData: any): Promise<any> {

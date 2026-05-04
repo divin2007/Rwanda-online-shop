@@ -1,16 +1,28 @@
-import { Injectable, NotFoundException, BadRequestException, Inject } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, Inject, OnModuleInit } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import type { Cache } from 'cache-manager';
 
 @Injectable()
-export class ProductService {
+export class ProductService implements OnModuleInit {
   constructor(
     @InjectModel('Product') private productModel: Model<any>,
     @InjectModel('SellerProfile') private sellerModel: Model<any>,
     @Inject(CACHE_MANAGER) private cacheManager: Cache
   ) {}
+
+  async onModuleInit() {
+    try {
+      const result = await this.productModel.updateMany(
+        { deletedAt: null },
+        { $set: { isApproved: true, isActive: true } }
+      );
+      console.log(`[Migration] Approved ${result.modifiedCount} products`);
+    } catch (e) {
+      console.error('[Migration] Failed to approve products', e);
+    }
+  }
 
   async create(productData: any): Promise<any> {
     if (!productData.images || !Array.isArray(productData.images) || productData.images.length === 0) {

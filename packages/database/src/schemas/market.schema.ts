@@ -21,7 +21,7 @@ export const marketSchema = new Schema({
     close: { type: String, required: true },
     daysOpen: [{ type: String }] // ['Mon', 'Tue']
   },
-  isActive: { type: Boolean, default: false },
+  isActive: { type: Boolean, default: true },
   totalSellers: { type: Number, default: 0 },
   deletedAt: { type: Date, default: null }
 }, { timestamps: true });
