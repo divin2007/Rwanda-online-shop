@@ -152,7 +152,9 @@ export const CheckoutContent = () => {
       }
 
       if (succeeded.length > 0) {
-        const newOrderId = succeeded[0].data?.data?._id;
+        // Use type assertion as we know succeeded[0] is from the .then() block
+        const firstSuccess = succeeded[0] as { success: true; item: any; data: any };
+        const newOrderId = firstSuccess.data?.data?._id;
         setOrderId(newOrderId);
         setIsWaitingPayment(true);
         toast.success('Please check your phone to approve the payment prompt.');

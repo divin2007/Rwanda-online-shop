@@ -26,6 +26,7 @@
     "@nestjs/platform-express": "^11.0.1",
     "@nestjs/throttler": "^6.5.0",
     "@rmf/database": "^0.1.0",
+    "@rmf/health-check": "^0.1.0",
     "@rmf/location": "^0.1.0",
     "@rmf/shared-types": "^0.1.0",
     "@rmf/shared-utils": "^0.1.0",

@@ -157,7 +157,9 @@ export class OrderService implements OnModuleInit, OnModuleDestroy {
     this.orderGateway.sendOrderUpdate({ type: 'NEW_ORDER', order: updated });
 
     // Start polling for status since we might not get a callback in sandbox
-    this.startPaymentPolling(updated.orderNumber, paymentResult.transactionId);
+    if (paymentResult.transactionId) {
+      this.startPaymentPolling(updated.orderNumber, paymentResult.transactionId);
+    }
 
     return updated;
   }
@@ -377,7 +379,9 @@ export class OrderService implements OnModuleInit, OnModuleDestroy {
     );
 
     this.logger.log(`Payment retry initiated for order ${order.orderNumber}. New Ref: ${paymentResult.transactionId}`);
-    this.startPaymentPolling(order.orderNumber, paymentResult.transactionId!);
+    if (paymentResult.transactionId) {
+      this.startPaymentPolling(order.orderNumber, paymentResult.transactionId);
+    }
 
     return updated;
   }
