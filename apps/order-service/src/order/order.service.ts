@@ -160,7 +160,12 @@ export class OrderService {
     );
 
     if (updated) {
-      this.orderGateway.sendOrderUpdate({ type: 'PAYMENT_UPDATE', orderNumber, status: updated.payment.status });
+      this.orderGateway.sendOrderUpdate({ 
+        type: 'PAYMENT_UPDATE', 
+        orderNumber, 
+        status: updated.payment.status,
+        orderId: updated._id 
+      });
     }
 
     return updated;

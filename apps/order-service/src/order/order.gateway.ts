@@ -32,6 +32,18 @@ export class OrderGateway implements OnGatewayConnection, OnGatewayDisconnect {
   }
 
   sendOrderUpdate(payload: any) {
+    // 1. Emit to generic seller updates (for dashboard refresh)
     this.server.emit('order:seller:updates', payload);
+
+    // 2. Emit to specific order status event (for checkout/tracking redirection)
+    const orderId = payload.orderId || (payload.order ? payload.order._id : null);
+    if (orderId) {
+      this.server.emit(`order:${orderId}:status`, payload);
+    }
+    
+    // Also emit by orderNumber if that's all we have (e.g. from payment callback)
+    if (payload.orderNumber) {
+      this.server.emit(`order:${payload.orderNumber}:status`, payload);
+    }
   }
 }
