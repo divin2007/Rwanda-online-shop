@@ -11,6 +11,12 @@ services:
         fromEnv: MONGODB_URI
       - key: JWT_SECRET
         fromEnv: JWT_SECRET
+      - key: GOOGLE_CLIENT_ID
+        fromEnv: GOOGLE_CLIENT_ID
+      - key: GOOGLE_CLIENT_SECRET
+        fromEnv: GOOGLE_CLIENT_SECRET
+      - key: GOOGLE_CALLBACK_URL
+        fromEnv: GOOGLE_CALLBACK_URL
 
   - type: web
     name: rmf-market-service
