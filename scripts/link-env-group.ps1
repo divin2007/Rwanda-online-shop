@@ -1,6 +1,20 @@
-$API_KEY = "rnd_VuRdRm29SU4P01Jus2Ls3RLMP0Zj"
+param(
+    [string]$ApiKey = $env:RENDER_API_KEY,
+    [string]$MongoUri = $env:MONGODB_URI
+)
+
+if (-not $ApiKey) {
+    Write-Host "ERROR: Render API key is required. Set RENDER_API_KEY environment variable or pass -ApiKey parameter." -ForegroundColor Red
+    exit 1
+}
+
+if (-not $MongoUri) {
+    Write-Host "ERROR: MongoDB URI is required. Set MONGODB_URI environment variable or pass -MongoUri parameter." -ForegroundColor Red
+    exit 1
+}
+
 $headers = @{
-    "Authorization" = "Bearer $API_KEY"
+    "Authorization" = "Bearer $ApiKey"
     "Content-Type"  = "application/json"
     "Accept"        = "application/json"
 }
@@ -18,27 +32,23 @@ $groups = Invoke-RestMethod -Uri "https://api.render.com/v1/env-groups?limit=50"
 $rwshop = $groups | Where-Object { $_.name -eq "rwshop-secrets" }
 Write-Host "rwshop-secrets group ID: $($rwshop.id)" -ForegroundColor Green
 
-# Step 3: For each service, update MONGODB_URI directly
-$NEW_MONGO_URI = "mongodb+srv://mahorodiv2007_db_user:RwShop%402024Secure@cluster0.pkpnndf.mongodb.net/market_rwanda?retryWrites=true&w=majority"
-
+# Step 3: For each service, update MONGODB_URI
 foreach ($svc in $services) {
     $svcId = $svc.service.id
     $svcName = $svc.service.name
     Write-Host "`nProcessing: $svcName ($svcId)" -ForegroundColor Yellow
 
-    # Get current env vars for this service
     try {
         $envVars = Invoke-RestMethod -Uri "https://api.render.com/v1/services/$svcId/env-vars" -Headers $headers -Method GET
-        
-        # Update MONGODB_URI
+
         $updatedVars = $envVars | ForEach-Object {
             if ($_.key -eq "MONGODB_URI") {
-                @{ key = "MONGODB_URI"; value = $NEW_MONGO_URI }
+                @{ key = "MONGODB_URI"; value = $MongoUri }
             } else {
                 @{ key = $_.key; value = $_.value }
             }
         }
-        
+
         $body = @{ envVars = $updatedVars } | ConvertTo-Json -Depth 5
         $result = Invoke-RestMethod -Uri "https://api.render.com/v1/services/$svcId/env-vars" -Headers $headers -Method PUT -Body $body
         Write-Host "  Updated env vars OK" -ForegroundColor Green

@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, BadRequestException, Logger } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, Logger, OnModuleInit, OnModuleDestroy } from '@nestjs/common';
 import axios from 'axios';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
@@ -29,8 +29,9 @@ const PAYMENT_TRANSITIONS: Record<string, string[]> = {
 };
 
 @Injectable()
-export class OrderService {
+export class OrderService implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(OrderService.name);
+  private readonly paymentPollingIntervals = new Map<string, NodeJS.Timeout>();
 
   constructor(
     @InjectModel('Transaction') private orderModel: Model<any>,
@@ -40,8 +41,49 @@ export class OrderService {
     private orderGateway: OrderGateway
   ) {}
 
+  async onModuleInit() {
+    // Recover payment polling for orders in PENDING status after a restart
+    this.logger.log('Recovering pending payment polls after restart...');
+    try {
+      const pendingOrders = await this.orderModel.find({
+        'payment.status': PaymentStatus.PENDING,
+        'payment.transactionRef': { $exists: true, $ne: null }
+      }).exec();
+
+      for (const order of pendingOrders) {
+        if (order.payment?.transactionRef) {
+          this.logger.log(`Resuming payment polling for order ${order.orderNumber}`);
+          this.startPaymentPolling(order.orderNumber, order.payment.transactionRef);
+        }
+      }
+      this.logger.log(`Resumed polling for ${pendingOrders.length} pending orders`);
+    } catch (error) {
+      this.logger.error('Failed to recover payment polls', error);
+    }
+  }
+
   async createOrder(orderData: any): Promise<any> {
-    const fraudCheck = await this.fraudDetection.evaluateOrderCreation(orderData);
+    // Fetch market coordinates for fraud detection rule F002 (distance check)
+    let marketCoordinates: { lat: number; lng: number } | undefined;
+    if (orderData.seller?.marketId) {
+      try {
+        const market = await this.orderModel.db.model('Market').findById(orderData.seller.marketId).exec();
+        if (market?.location?.coordinates) {
+          marketCoordinates = { lat: market.location.coordinates[1], lng: market.location.coordinates[0] };
+        }
+      } catch {
+        // If market lookup fails, F002 will be skipped gracefully
+      }
+    }
+
+    const fraudCheck = await this.fraudDetection.evaluateOrderCreation(orderData, marketCoordinates);
+
+    // Reject orders that violate hard fraud rules (F001, F002, F003, F005, F006)
+    if (fraudCheck.isFlagged && fraudCheck.shouldBlock) {
+      throw new BadRequestException(`Order blocked by fraud detection: ${fraudCheck.reason}`);
+    }
+
+    // Soft flags (F999 system errors) are recorded but do not block
     
     // Commission Floor: Document 7 Pricing & Commission Structure
     // 1.5% commission, min 100 RWF
@@ -55,6 +97,8 @@ export class OrderService {
 
     const status = orderData.schedule ? OrderStatus.SCHEDULED : OrderStatus.PLACED;
 
+    // Save the order FIRST so it exists in the database
+    // This prevents charging the user if the save fails
     const newOrder = new this.orderModel({
       ...orderData,
       orderNumber,
@@ -74,21 +118,48 @@ export class OrderService {
 
     const saved = await newOrder.save();
 
+    // THEN initiate payment — if this fails the order still exists for retry
+    const paymentResult = await this.paymentService.requestPaymentPrompt(saved);
+
+    if (!paymentResult.success) {
+      // Payment failed, but order exists. Update it with failed payment info.
+      await this.orderModel.findByIdAndUpdate(saved._id, {
+        $set: {
+          'payment.status': PaymentStatus.FAILED,
+          'payment.method': saved.payment?.method,
+          'payment.errorMessage': paymentResult.error || 'Could not reach payment provider'
+        }
+      });
+      this.orderGateway.sendOrderUpdate({ type: 'PAYMENT_FAILED', order: saved });
+      return this.orderModel.findById(saved._id);
+    }
+
+    // Payment initiated successfully — update order with reference
+    const updated = await this.orderModel.findByIdAndUpdate(
+      saved._id,
+      {
+        $set: {
+          'payment.transactionRef': paymentResult.transactionId,
+          'payment.status': PaymentStatus.PENDING,
+          'payment.method': saved.payment?.method,
+        }
+      },
+      { new: true }
+    );
+
+    if (!updated) {
+      // Should not happen since we just saved, but handle gracefully
+      this.logger.error(`Order ${orderNumber} saved but could not be updated with payment ref`);
+      return saved;
+    }
+
     // Trigger Real-time update
-    this.orderGateway.sendOrderUpdate({ type: 'NEW_ORDER', order: saved });
+    this.orderGateway.sendOrderUpdate({ type: 'NEW_ORDER', order: updated });
 
-    // Trigger Payment Prompt
-    this.paymentService.requestPaymentPrompt(saved).then(res => {
-      if (res.success && res.transactionId) {
-        this.logger.log(`Payment prompt sent for order ${saved.orderNumber}. Transaction ID: ${res.transactionId}`);
-        // Start polling for status since we might not get a callback in sandbox
-        this.startPaymentPolling(saved.orderNumber, res.transactionId);
-      } else if (!res.success) {
-        this.logger.error(`Failed to initiate payment for ${saved.orderNumber}: ${res.error}`);
-      }
-    });
+    // Start polling for status since we might not get a callback in sandbox
+    this.startPaymentPolling(updated.orderNumber, paymentResult.transactionId);
 
-    return saved;
+    return updated;
   }
 
   private validateTransition(currentStatus: string, newStatus: string, transitionMap: Record<string, string[]>): void {
@@ -132,6 +203,15 @@ export class OrderService {
 
     this.validateTransition(order.payment.status, status, PAYMENT_TRANSITIONS);
 
+    // F004: Payment replay check — ensure this transactionRef hasn't been used for another paid order
+    if (status === PaymentStatus.PAID && transactionRef) {
+      const isReplay = await this.fraudDetection.checkPaymentReplay(transactionRef, orderNumber);
+      if (isReplay) {
+        this.logger.warn(`F004: Payment replay detected for transactionRef ${transactionRef} on order ${orderNumber}`);
+        throw new BadRequestException('Duplicate transaction reference detected');
+      }
+    }
+
     const updates: any = {
       'payment.status': status,
       'payment.transactionRef': transactionRef
@@ -165,22 +245,28 @@ export class OrderService {
       // Trigger delivery-service (Internal call)
       try {
         const deliveryUrl = process.env.DELIVERY_SERVICE_URL || 'http://localhost:3008/api/v1';
+        // Transaction schema stores seller/pickup info under 'seller' and buyer/dropoff under 'buyer.deliveryAddress'
+        const seller = updated.seller || {};
+        const buyer = updated.buyer || {};
+        const pickupCoords = seller.coordinates || { lat: -1.9441, lng: 30.0619 };
+        const dropoffAddress = buyer.deliveryAddress || {};
+
         await axios.post(`${deliveryUrl}/deliveries`, {
           orderId: updated._id,
           orderNumber: updated.orderNumber,
           pickup: {
-            marketId: updated.market.marketId,
-            stallId: updated.market.stallId,
-            coordinates: updated.market.coordinates,
-            address: updated.market.address
+            marketId: seller.marketId,
+            stallId: seller.stallId,
+            coordinates: pickupCoords,
+            address: seller.address || 'Market pickup'
           },
           dropoff: {
-            coordinates: updated.buyer.coordinates,
-            address: updated.buyer.address
+            coordinates: dropoffAddress.coordinates || pickupCoords,
+            address: dropoffAddress.address || 'Customer location'
           },
           financials: {
-            deliveryFee: updated.financials.deliveryFee,
-            totalAmount: updated.financials.totalAmount
+            deliveryFee: updated.financials?.deliveryFee,
+            totalAmount: updated.financials?.totalAmount
           }
         });
         this.logger.log(`Delivery created successfully for order ${orderNumber}`);
@@ -262,28 +348,73 @@ export class OrderService {
     return this.orderModel.findById(id).exec();
   }
 
+  async retryPayment(id: string): Promise<any> {
+    const order = await this.orderModel.findById(id);
+    if (!order) throw new NotFoundException('Order not found');
+
+    // Only allow retry if payment is in FAILED or PENDING state
+    if (order.payment?.status !== PaymentStatus.FAILED && order.payment?.status !== PaymentStatus.PENDING) {
+      throw new BadRequestException(`Cannot retry payment for order in ${order.payment?.status} state`);
+    }
+
+    const paymentResult = await this.paymentService.requestPaymentPrompt(order);
+    if (!paymentResult.success) {
+      throw new BadRequestException(
+        `Payment retry failed: ${paymentResult.error || 'Could not reach payment provider'}`
+      );
+    }
+
+    // Update order with new payment reference
+    const updated = await this.orderModel.findByIdAndUpdate(
+      id,
+      {
+        $set: {
+          'payment.transactionRef': paymentResult.transactionId,
+          'payment.status': PaymentStatus.PENDING,
+        }
+      },
+      { new: true }
+    );
+
+    this.logger.log(`Payment retry initiated for order ${order.orderNumber}. New Ref: ${paymentResult.transactionId}`);
+    this.startPaymentPolling(order.orderNumber, paymentResult.transactionId!);
+
+    return updated;
+  }
+
   private async startPaymentPolling(orderNumber: string, referenceId: string) {
     let attempts = 0;
     const maxAttempts = 24; // Poll for 2 minutes (5s intervals)
-    const isSandbox = process.env.MTN_MOMO_TARGET_ENV !== 'mtnrwanda';
+    // Only auto-confirm when BOTH conditions are true:
+    // 1. MTN_MOMO_TARGET_ENV is explicitly set to 'sandbox' (not just non-production)
+    // 2. NODE_ENV is NOT 'production'
+    // This prevents accidental auto-confirmation in production if the env var is misconfigured
+    const isExplicitSandbox = process.env.MTN_MOMO_TARGET_ENV === 'sandbox';
+    const isNotProduction = process.env.NODE_ENV !== 'production';
+    const shouldAutoConfirm = isExplicitSandbox && isNotProduction;
+
+    const order = await this.orderModel.findOne({ orderNumber }).exec();
+    const paymentMethod = order?.payment?.method || 'MTN_MOMO';
 
     const poll = setInterval(async () => {
       attempts++;
       this.logger.log(`Polling payment status for ${orderNumber} (Attempt ${attempts}/${maxAttempts})...`);
-      
-      const { status, transactionId } = await this.paymentService.getPaymentStatus(referenceId);
+
+      const { status, transactionId } = await this.paymentService.getPaymentStatus(referenceId, paymentMethod);
 
       if (status === 'SUCCESSFUL') {
         clearInterval(poll);
+        this.paymentPollingIntervals.delete(orderNumber);
         await this.processPaymentCallback(orderNumber, PaymentStatus.PAID, transactionId || referenceId);
       } else if (status === 'FAILED') {
         clearInterval(poll);
+        this.paymentPollingIntervals.delete(orderNumber);
         await this.processPaymentCallback(orderNumber, PaymentStatus.FAILED, referenceId);
       } else if (attempts >= maxAttempts) {
         clearInterval(poll);
-        
-        // Sandbox Fallback: If we're stuck in PENDING in sandbox, auto-confirm to let the user proceed
-        if (isSandbox || process.env.NODE_ENV !== 'production') {
+        this.paymentPollingIntervals.delete(orderNumber);
+
+        if (shouldAutoConfirm) {
           this.logger.warn(`Sandbox Timeout: Auto-confirming order ${orderNumber} for testing.`);
           await this.processPaymentCallback(orderNumber, PaymentStatus.PAID, 'SANDBOX-SUCCESS-' + referenceId);
         } else {
@@ -291,6 +422,9 @@ export class OrderService {
         }
       }
     }, 5000);
+
+    // Track interval for cleanup on module destroy
+    this.paymentPollingIntervals.set(orderNumber, poll);
   }
 
   async findAll(query: any): Promise<any> {
@@ -299,5 +433,14 @@ export class OrderService {
     if (sellerId) filter['seller.userId'] = sellerId;
     if (status) filter.status = { $in: status.split(',') };
     return this.orderModel.find(filter).sort({ createdAt: -1 }).exec();
+  }
+
+  onModuleDestroy() {
+    // Clean up all payment polling intervals to prevent stale callbacks
+    for (const [orderNumber, interval] of this.paymentPollingIntervals.entries()) {
+      clearInterval(interval);
+      this.logger.log(`Cleaned up payment polling for order ${orderNumber}`);
+    }
+    this.paymentPollingIntervals.clear();
   }
 }

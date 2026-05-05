@@ -22,17 +22,20 @@
   "dependencies": {
     "@nestjs/common": "^11.0.1",
     "@nestjs/core": "^11.0.1",
+    "@nestjs/passport": "^11.0.5",
     "@nestjs/platform-express": "^11.0.1",
+    "@nestjs/throttler": "^6.5.0",
     "@rmf/database": "^0.1.0",
+    "@rmf/location": "^0.1.0",
     "@rmf/shared-types": "^0.1.0",
     "@rmf/shared-utils": "^0.1.0",
-    "reflect-metadata": "^0.2.2",
-    "rxjs": "^7.8.1",
+    "@types/passport-google-oauth20": "^2.0.17",
     "bcrypt": "^6.0.0",
-    "@nestjs/passport": "^11.0.5",
     "passport": "^0.7.0",
+    "passport-google-oauth20": "^2.0.0",
     "passport-jwt": "^4.0.1",
-    "@rmf/location": "^0.1.0"
+    "reflect-metadata": "^0.2.2",
+    "rxjs": "^7.8.1"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3.2.0",

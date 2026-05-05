@@ -1,14 +1,23 @@
-import { Controller, Post, Body, Get, UseGuards, Request, HttpCode, HttpStatus, UnauthorizedException } from '@nestjs/common';
+import { Controller, Post, Body, Get, UseGuards, Request, HttpCode, HttpStatus, UnauthorizedException, Res, Req } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { JwtAuthGuard } from './jwt-auth.guard';
+import { GoogleAuthGuard } from './google-auth.guard';
+import { UsersService } from '../users/users.service';
+import { Throttle, SkipThrottle, ThrottlerGuard } from '@nestjs/throttler';
+import { LoginDto } from './dto/login.dto';
 
+@UseGuards(ThrottlerGuard)
 @Controller('auth')
 export class AuthController {
-  constructor(private authService: AuthService) {}
+  constructor(
+    private authService: AuthService,
+    private usersService: UsersService
+  ) {}
 
   @HttpCode(HttpStatus.OK)
+  @Throttle({ default: { limit: 10, ttl: 60000 } })
   @Post('login')
-  async login(@Body() loginDto: Record<string, any>) {
+  async login(@Body() loginDto: LoginDto) {
     const user = await this.authService.validateUser(loginDto.email, loginDto.password);
     if (!user) {
       throw new UnauthorizedException('Invalid credentials');
@@ -17,10 +26,56 @@ export class AuthController {
     return { success: true, data: tokens };
   }
 
+  @HttpCode(HttpStatus.OK)
+  @Throttle({ default: { limit: 20, ttl: 60000 } })
+  @Post('refresh')
+  async refresh(@Body() body: { refreshToken: string }) {
+    if (!body.refreshToken) {
+      throw new UnauthorizedException('Refresh token is required');
+    }
+    const tokens = await this.authService.refreshTokens(body.refreshToken);
+    return { success: true, data: tokens };
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Post('logout')
+  async logout(@Request() req: any) {
+    await this.authService.revokeRefreshToken(req.user.userId);
+    return { success: true, data: { message: 'Logged out successfully' } };
+  }
+
   @UseGuards(JwtAuthGuard)
   @Get('me')
   async getMe(@Request() req: any) {
-    // In a real app, you might want to fetch full user info from DB here
     return { success: true, data: { id: req.user.userId, email: req.user.email, role: req.user.role } };
+  }
+
+  @SkipThrottle()
+  @Get('google')
+  @UseGuards(GoogleAuthGuard)
+  async googleAuth() {
+    // Guard redirects to Google
+  }
+
+  @SkipThrottle()
+  @Get('google/callback')
+  @UseGuards(GoogleAuthGuard)
+  async googleAuthRedirect(@Request() req: any, @Res() res: any) {
+    // Find or create user from Google profile
+    let user = await this.usersService.findByEmail(req.user.email).catch(() => null);
+    if (!user) {
+      user = await this.usersService.create({
+        email: req.user.email,
+        fullName: req.user.fullName,
+        avatarUrl: req.user.avatarUrl,
+        googleId: req.user.googleId,
+        password: Math.random().toString(36).slice(-12), // random password
+      });
+    }
+
+    const tokens = await this.authService.login(user.toObject ? user.toObject() : user);
+    // Redirect to frontend with token
+    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+    res.redirect(`${frontendUrl}/login?token=${tokens.accessToken}&refreshToken=${tokens.refreshToken}`);
   }
 }

@@ -1,11 +1,12 @@
 import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
-import { 
-  sellerProfileSchema, 
-  marketSchema, 
-  transactionSchema, 
-  auditLogSchema 
+import {
+  sellerProfileSchema,
+  marketSchema,
+  transactionSchema,
+  auditLogSchema
 } from '@rmf/database';
+import { AuthGuardModule } from '@rmf/auth';
 import { AdminService } from './admin.service';
 import { AdminController } from './admin.controller';
 
@@ -17,6 +18,7 @@ import { AdminController } from './admin.controller';
       { name: 'Transaction', schema: transactionSchema },
       { name: 'AuditLog', schema: auditLogSchema }
     ]),
+    AuthGuardModule.forRoot(),
   ],
   providers: [AdminService],
   controllers: [AdminController],

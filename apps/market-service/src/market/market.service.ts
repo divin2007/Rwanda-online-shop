@@ -18,16 +18,8 @@ export class MarketService implements OnModuleInit {
   }
 
   async onModuleInit() {
-    // Migration: ensure all markets are active and not deleted
-    try {
-        const result = await this.marketModel.updateMany(
-            { deletedAt: null },
-            { $set: { isActive: true } }
-        );
-        console.log(`[Migration] Activated ${result.modifiedCount} markets`);
-    } catch (e) {
-        console.error('[Migration] Failed to activate markets', e);
-    }
+    // Removed auto-activate migration — it overrode admin suspensions on every restart.
+    // Markets default to isActive: true via the schema when created.
   }
 
   async create(marketData: any): Promise<any> {

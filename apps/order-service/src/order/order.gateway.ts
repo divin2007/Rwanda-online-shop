@@ -9,7 +9,8 @@ import { Server, Socket } from 'socket.io';
 
 @WebSocketGateway({
   cors: {
-    origin: '*',
+    origin: process.env.CORS_ORIGIN?.split(',') || ['http://localhost:3000'],
+    credentials: true,
   },
 })
 export class OrderGateway implements OnGatewayConnection, OnGatewayDisconnect {

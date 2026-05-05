@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
 import { sellerProfileSchema, marketSchema } from '@rmf/database';
+import { AuthGuardModule } from '@rmf/auth';
 import { SellerService } from './seller.service';
 import { SellerController } from './seller.controller';
 
@@ -10,6 +11,7 @@ import { SellerController } from './seller.controller';
       { name: 'SellerProfile', schema: sellerProfileSchema },
       { name: 'Market', schema: marketSchema }
     ]),
+    AuthGuardModule.forRoot(),
   ],
   providers: [SellerService],
   controllers: [SellerController],

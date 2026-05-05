@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
 import { walletSchema, ledgerEntrySchema, payoutRequestSchema } from '@rmf/database';
+import { AuthGuardModule } from '@rmf/auth';
 import { WalletService } from './wallet.service';
 import { WalletController } from './wallet.controller';
 
@@ -11,6 +12,7 @@ import { WalletController } from './wallet.controller';
       { name: 'LedgerEntry', schema: ledgerEntrySchema },
       { name: 'PayoutRequest', schema: payoutRequestSchema }
     ]),
+    AuthGuardModule.forRoot(),
   ],
   providers: [WalletService],
   controllers: [WalletController],

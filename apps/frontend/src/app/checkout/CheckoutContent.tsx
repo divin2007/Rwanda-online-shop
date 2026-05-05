@@ -7,7 +7,7 @@ import dynamic from 'next/dynamic';
 const MapPinPicker = dynamic(() => import('@/components/ui/MapPinPicker').then(mod => mod.MapPinPicker), { ssr: false });
 import { useCart } from '@/components/cart/CartContext';
 import { useAuth } from '@/context/AuthContext';
-import { orderApi } from '@/lib/api';
+import { orderApi, marketApi, deliveryApi } from '@/lib/api';
 import { useSocket } from '@/hooks/useSocket';
 import toast from 'react-hot-toast';
 
@@ -24,26 +24,47 @@ export const CheckoutContent = () => {
   const [isPlacingOrder, setIsPlacingOrder] = useState(false);
   const [isWaitingPayment, setIsWaitingPayment] = useState(false);
   const [orderId, setOrderId] = useState<string | null>(null);
-
-  // WebSocket for payment confirmation
+  const [marketCoords, setMarketCoords] = useState<{lat: number, lng: number} | null>(null);
   const { data: statusUpdate } = useSocket(
     process.env.NEXT_PUBLIC_ORDER_SERVICE_URL || 'http://localhost:3006', 
-    orderId ? `order:${orderId}:status` : 'order:idle'
+    orderId ? `order:${orderId}:status` : ''
   );
 
-  // Calculate delivery fee whenever coordinates change
+  // Resolve first item's market coordinates for delivery fee calculation
   useEffect(() => {
-    if (coords) {
-      setIsCalculatingFee(true);
-      // Example call to order-service or delivery-service to calculate fee based on coords
-      // Since it's dynamic based on distance from market, we assume the backend handles it.
-      // E.g., orderApi.get(`/delivery-fee?lat=${coords.lat}&lng=${coords.lng}`)
-      setTimeout(() => {
-        setDeliveryFee(Math.floor(Math.random() * 1000) + 1000); // Simulated real calculation for now
-        setIsCalculatingFee(false);
-      }, 500);
+    if (items.length > 0 && items[0].marketId && !marketCoords) {
+      marketApi.get(`/markets/${items[0].marketId}`).then(res => {
+        const market = res.data?.data;
+        if (market?.location?.coordinates) {
+          // GeoJSON stores [lng, lat]
+          setMarketCoords({ lat: market.location.coordinates[1], lng: market.location.coordinates[0] });
+        }
+      }).catch(() => {});
     }
-  }, [coords]);
+  }, [items, marketCoords]);
+
+  // Calculate delivery fee via the real delivery service endpoint
+  useEffect(() => {
+    if (coords && marketCoords) {
+      setIsCalculatingFee(true);
+      deliveryApi.post('/deliveries/fee', {
+        from: marketCoords,
+        to: coords
+      }).then(res => {
+        if (res.data?.success) {
+          setDeliveryFee(res.data.data.fee);
+        }
+      }).catch(() => {
+        // Fallback: estimate based on distance
+        const R = 6371;
+        const dLat = (coords.lat - marketCoords.lat) * Math.PI / 180;
+        const dLng = (coords.lng - marketCoords.lng) * Math.PI / 180;
+        const a = Math.sin(dLat/2)**2 + Math.cos(marketCoords.lat * Math.PI / 180) * Math.cos(coords.lat * Math.PI / 180) * Math.sin(dLng/2)**2;
+        const dist = R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+        setDeliveryFee(Math.ceil(dist * 80 / 100) * 100); // 80 RWF/km, round to 100
+      }).finally(() => setIsCalculatingFee(false));
+    }
+  }, [coords, marketCoords]);
   
   const subtotal = cartTotal;
   const gatewayFee = Math.ceil((subtotal + deliveryFee) * 0.02); // 2% standard
@@ -64,14 +85,16 @@ export const CheckoutContent = () => {
 
     setIsPlacingOrder(true);
     try {
+      // Split delivery fee equally across items (each item is its own order)
+      const splitDeliveryFee = Math.max(Math.ceil(deliveryFee / items.length), 500);
+
       const orderPromises = items.map(item => {
         const itemSubtotal = item.price * item.quantity;
         const platformCommission = Math.max(itemSubtotal * 0.015, 100);
-        const itemDeliveryFee = 1000;
-        const gatewayFee = Math.ceil((itemSubtotal + itemDeliveryFee) * 0.02);
-        const totalAmount = itemSubtotal + itemDeliveryFee + gatewayFee;
+        const gatewayFee = Math.ceil((itemSubtotal + splitDeliveryFee) * 0.02);
+        const totalAmount = itemSubtotal + splitDeliveryFee + gatewayFee;
         const sellerPayout = itemSubtotal - platformCommission;
-        const riderPayout = itemDeliveryFee;
+        const riderPayout = splitDeliveryFee;
 
         return orderApi.post('/orders', {
           buyer: {
@@ -98,7 +121,7 @@ export const CheckoutContent = () => {
           },
           financials: {
             subtotal: itemSubtotal,
-            deliveryFee: itemDeliveryFee,
+            deliveryFee: splitDeliveryFee,
             platformCommission,
             gatewayFee,
             totalAmount,
@@ -109,19 +132,42 @@ export const CheckoutContent = () => {
             method: paymentMethod,
             status: 'pending'
           }
-        });
+        }).then(res => ({ success: true, item, data: res.data }))
+          .catch(err => ({ success: false, item, error: err.response?.data?.error || err.message }));
       });
 
       const results = await Promise.all(orderPromises);
-      clearCart();
-      
-      const newOrderId = results[0].data?.data?._id;
-      setOrderId(newOrderId);
-      setIsWaitingPayment(true);
-      toast.success('Please check your phone to approve the payment prompt.');
-      
+      const succeeded = results.filter(r => r.success);
+      const failed = results.filter(r => !r.success);
+
+      // Remove only successfully ordered items from cart
+      const succeededIds = new Set(succeeded.map(r => r.item.id));
+      const remainingItems = items.filter(i => !succeededIds.has(i.id));
+
+      if (remainingItems.length === 0) {
+        clearCart();
+      } else {
+        // Update cart to only keep failed items
+        localStorage.setItem('rwshop_cart', JSON.stringify(remainingItems));
+      }
+
+      if (succeeded.length > 0) {
+        const newOrderId = succeeded[0].data?.data?._id;
+        setOrderId(newOrderId);
+        setIsWaitingPayment(true);
+        toast.success('Please check your phone to approve the payment prompt.');
+      }
+
+      if (failed.length > 0) {
+        toast.error(`${failed.length} item(s) failed to order: ${failed.map(f => f.item.name).join(', ')}`);
+        // Only reset placement if all failed
+        if (succeeded.length === 0) {
+          setIsPlacingOrder(false);
+          setIsWaitingPayment(false);
+        }
+      }
     } catch (error: any) {
-      toast.error(error.response?.data?.error || 'Failed to place order. Please try again.');
+      toast.error('Failed to place order. Please try again.');
       setIsPlacingOrder(false);
       setIsWaitingPayment(false);
     }

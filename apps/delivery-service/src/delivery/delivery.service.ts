@@ -166,15 +166,22 @@ export class DeliveryService {
     // Route deviation detection logic
     const pickupCoords = { lat: delivery.pickup.coordinates.lat, lng: delivery.pickup.coordinates.lng };
     const dropoffCoords = { lat: delivery.dropoff.coordinates.lat, lng: delivery.dropoff.coordinates.lng };
-    
-    // Check if the current point is wildly off the bounding box + margin
-    const distFromStart = this.locationService.calculateDistance(pickupCoords, coords);
     const expectedTotalDist = delivery.route.distanceKm;
 
-    if (distFromStart > expectedTotalDist * 1.5) {
-      // Flag route deviation
-      console.warn(`Route deviation detected for delivery ${id}. >1.5x expected distance.`);
-      // If > 2.0x could trigger auto-suspension via rider service
+    // Calculate distance traveled from pickup + remaining distance to dropoff
+    // If the sum significantly exceeds the expected route distance, the rider is off-route
+    const distFromStart = this.locationService.calculateDistance(pickupCoords, coords);
+    const distToDropoff = this.locationService.calculateDistance(coords, dropoffCoords);
+    const actualRoute = distFromStart + distToDropoff;
+
+    if (actualRoute > expectedTotalDist * 1.5) {
+      console.warn(
+        `Route deviation detected for delivery ${id}. ` +
+        `Expected: ${expectedTotalDist.toFixed(1)}km, ` +
+        `Actual (start->current->dropoff): ${actualRoute.toFixed(1)}km ` +
+        `(${distFromStart.toFixed(1)}km + ${distToDropoff.toFixed(1)}km). ` +
+        `>1.5x threshold.`
+      );
     }
 
     return await this.deliveryModel.findByIdAndUpdate(
@@ -194,42 +201,106 @@ export class DeliveryService {
 
   async getActiveDelivery(userId: string): Promise<any> {
     // Resolve userId to rider profile ID if necessary
-    let riderId = userId;
+    let riderProfileId = userId;
     const riderProfile = await this.riderModel.findOne({ userId }).exec();
     if (riderProfile) {
-      riderId = riderProfile._id.toString();
+      riderProfileId = riderProfile._id.toString();
     }
 
-    return this.deliveryModel.findOne({ 
-      riderId, 
-      status: { $in: [DeliveryStatus.ASSIGNED, DeliveryStatus.EN_ROUTE_TO_PICKUP, DeliveryStatus.PICKED_UP, DeliveryStatus.EN_ROUTE_TO_DROPOFF] } 
+    // Schema stores rider reference under rider.riderId (nested), not top-level
+    return this.deliveryModel.findOne({
+      'rider.riderId': riderProfileId,
+      status: { $in: [DeliveryStatus.ASSIGNED, DeliveryStatus.EN_ROUTE_TO_PICKUP, DeliveryStatus.PICKED_UP, DeliveryStatus.EN_ROUTE_TO_DROPOFF] }
     }).exec();
   }
 
   async acceptDelivery(id: string, riderId: string): Promise<any> {
-    const delivery = await this.deliveryModel.findById(id);
-    if (!delivery) throw new NotFoundException('Delivery not found');
-    
-    if (delivery.riderId) {
+    // Atomic check-and-set: only update if delivery still has no rider assigned.
+    // This prevents two riders from accepting the same delivery concurrently.
+    const delivery = await this.deliveryModel.findOneAndUpdate(
+      {
+        _id: id,
+        status: DeliveryStatus.ASSIGNED,
+        // Only accept if no rider has been assigned yet (null or missing)
+        $or: [
+          { 'rider.riderId': { $exists: false } },
+          { 'rider.riderId': null }
+        ]
+      },
+      {
+        $set: {
+          status: DeliveryStatus.EN_ROUTE_TO_PICKUP,
+        }
+      },
+      { new: true }
+    );
+    if (!delivery) {
+      // Check if the delivery exists at all vs already assigned
+      const exists = await this.deliveryModel.findById(id).exec();
+      if (!exists) throw new NotFoundException('Delivery not found');
       throw new ConflictException('Delivery already accepted by another rider');
     }
 
-    // Associate rider and transition
-    this.validateTransition(delivery.status, DeliveryStatus.EN_ROUTE_TO_PICKUP);
+    // Look up rider profile and user to populate nested rider fields
+    const riderProfile = await this.riderModel.findById(riderId).exec();
+    if (!riderProfile) {
+      throw new NotFoundException('Rider profile not found');
+    }
+    const user = await this.riderModel.db.model('User').findById(riderProfile.userId).exec();
 
+    // Now set the rider details in a second atomic update
     return await this.deliveryModel.findByIdAndUpdate(
       id,
-      { 
-        $set: { 
-          status: DeliveryStatus.EN_ROUTE_TO_PICKUP,
-          riderId: riderId
-        } 
+      {
+        $set: {
+          'rider.riderId': riderProfile._id,
+          'rider.userId': riderProfile.userId,
+          'rider.fullName': user?.fullName || 'Rider',
+          'rider.phone': user?.phone || '',
+          'rider.plateNumber': riderProfile.plateNumber
+        }
       },
       { new: true }
     );
   }
 
   async rejectDelivery(id: string): Promise<any> {
-    return await this.updateStatus(id, DeliveryStatus.FAILED);
+    // Rejecting a delivery should NOT fail it permanently.
+    // Instead, unassign the rider so the delivery goes back to the pool
+    // for other riders. Only fail the delivery if explicitly requested.
+    const delivery = await this.deliveryModel.findOneAndUpdate(
+      {
+        _id: id,
+        status: { $in: [DeliveryStatus.ASSIGNED, DeliveryStatus.EN_ROUTE_TO_PICKUP] }
+      },
+      {
+        $set: {
+          status: DeliveryStatus.ASSIGNED,
+          'rider.riderId': null,
+          'rider.userId': null,
+          'rider.fullName': null,
+          'rider.phone': null,
+          'rider.plateNumber': null,
+        }
+      },
+      { new: true }
+    );
+
+    if (!delivery) {
+      throw new NotFoundException('Delivery not found or cannot be rejected at current status');
+    }
+
+    // Notify other available riders that the delivery is available again
+    try {
+      this.deliveryGateway.broadcastToNearbyRiders(
+        delivery.toObject(),
+        delivery.pickup.coordinates.lat,
+        delivery.pickup.coordinates.lng
+      );
+    } catch (e) {
+      console.error('Failed to rebroadcast delivery request after rejection', e);
+    }
+
+    return delivery;
   }
 }

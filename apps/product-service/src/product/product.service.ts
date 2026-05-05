@@ -14,15 +14,8 @@ export class ProductService implements OnModuleInit {
   ) {}
 
   async onModuleInit() {
-    try {
-      const result = await this.productModel.updateMany(
-        { deletedAt: null },
-        { $set: { isApproved: true, isActive: true } }
-      );
-      console.log(`[Migration] Approved ${result.modifiedCount} products`);
-    } catch (e) {
-      console.error('[Migration] Failed to approve products', e);
-    }
+    // Removed auto-approve migration — it overrode admin decisions on every restart.
+    // Products default to isApproved: false via the schema and must be approved by an admin.
   }
 
   async create(productData: any): Promise<any> {
@@ -91,12 +84,14 @@ export class ProductService implements OnModuleInit {
   }
 
   async findAll(query: any): Promise<any[]> {
-    const cacheKey = `products:all:${JSON.stringify(query)}`;
+    const { marketId, sellerId, approvedOnly, isActive, limit, sortBy } = query;
+    // Normalize cache key: only include fields that affect the query, in sorted order
+    const canonicalQuery = JSON.stringify({ marketId, sellerId, approvedOnly, isActive, limit, sortBy });
+    const cacheKey = `products:all:${canonicalQuery}`;
     const cached = await this.cacheManager.get<any[]>(cacheKey);
-    
+
     if (cached) return cached;
 
-    const { marketId, sellerId, approvedOnly, isActive, limit, sortBy } = query;
     const filter: any = { deletedAt: null };
     
     if (approvedOnly === 'true' || approvedOnly === true) {

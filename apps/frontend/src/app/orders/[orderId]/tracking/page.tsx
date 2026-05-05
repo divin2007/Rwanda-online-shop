@@ -7,7 +7,7 @@ import { OrderStatusTimeline } from '@/components/ui/OrderStatusTimeline';
 import dynamic from 'next/dynamic';
 import { useSocket } from '@/hooks/useSocket';
 import { useApi } from '@/hooks/useApi';
-import { orderApi } from '@/lib/api';
+import { orderApi, deliveryApi } from '@/lib/api';
 
 // Dynamically import Leaflet components to avoid SSR issues
 const MapWrapper = dynamic(
@@ -78,9 +78,19 @@ const ChatCard = ({ orderId, deliveryId, userName }: { orderId: string, delivery
 
 export default function OrderTrackingPage({ params }: { params: { orderId: string } }) {
   const [isClient, setIsClient] = useState(false);
-  
+  const [deliveryData, setDeliveryData] = useState<any>(null);
+
   const { data: order, loading, execute: fetchOrder } = useApi(orderApi, 'get', `/orders/${params.orderId}`, { refreshInterval: 5000 });
-  
+
+  // Fetch delivery data separately since rider info lives in the Delivery schema
+  useEffect(() => {
+    if (order?.deliveryId) {
+      deliveryApi.get(`/deliveries/${order.deliveryId}`)
+        .then(res => setDeliveryData(res.data?.data))
+        .catch(() => {/* delivery may not exist yet */});
+    }
+  }, [order?.deliveryId]);
+
   // WebSockets for status and tracking
   const { data: statusUpdate } = useSocket(process.env.NEXT_PUBLIC_DELIVERY_SERVICE_URL || 'http://localhost:3008', `order:${params.orderId}:status`);
   const { data: riderGps } = useSocket(process.env.NEXT_PUBLIC_DELIVERY_SERVICE_URL || 'http://localhost:3008', `delivery:${order?.deliveryId}:tracking`);
@@ -120,12 +130,12 @@ export default function OrderTrackingPage({ params }: { params: { orderId: strin
                     </div>
                   )}
                 </div>
-                {order.rider && (
+                {deliveryData?.rider && (
                   <div className="p-4 border-t border-border flex items-center gap-4">
                     <div className="w-12 h-12 bg-primary/20 rounded-full flex items-center justify-center text-xl">🛵</div>
                     <div>
-                      <p className="font-bold text-text-primary">{order.rider.name}</p>
-                      <p className="text-sm text-text-secondary">{order.rider.plateNumber}</p>
+                      <p className="font-bold text-text-primary">{deliveryData.rider.fullName}</p>
+                      <p className="text-sm text-text-secondary">{deliveryData.rider.plateNumber}</p>
                     </div>
                   </div>
                 )}
@@ -172,15 +182,15 @@ export default function OrderTrackingPage({ params }: { params: { orderId: strin
             <Card>
               <h3 className="font-bold mb-4">Order Summary</h3>
               <div className="space-y-4">
-                {order.items?.map((item: any) => (
-                  <div key={item.productId} className="flex justify-between text-sm">
-                    <span>{item.quantity}x {item.productName || 'Product'}</span>
-                    <span className="font-medium">{(item.price * item.quantity).toLocaleString()} RWF</span>
+                {order.product && (
+                  <div key={order.product.productId} className="flex justify-between text-sm">
+                    <span>{order.product.quantity}x {order.product.name || 'Product'}</span>
+                    <span className="font-medium">{(order.product.unitPrice * order.product.quantity).toLocaleString()} RWF</span>
                   </div>
-                ))}
+                )}
                 <div className="pt-4 border-t border-border flex justify-between font-bold text-lg">
                   <span>Total Paid</span>
-                  <span className="text-primary">{order.total?.toLocaleString()} RWF</span>
+                  <span className="text-primary">{order.financials?.totalAmount?.toLocaleString() || 'N/A'} RWF</span>
                 </div>
               </div>
             </Card>

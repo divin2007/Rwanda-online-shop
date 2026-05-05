@@ -1,21 +1,32 @@
 import { Module } from '@nestjs/common';
 import { JwtModule } from '@nestjs/jwt';
 import { PassportModule } from '@nestjs/passport';
+import { MongooseModule } from '@nestjs/mongoose';
+import { userSchema } from '@rmf/database';
 import { AuthService } from './auth.service';
 import { AuthController } from './auth.controller';
 import { JwtStrategy } from './jwt.strategy';
+import { GoogleStrategy } from './google.strategy';
 import { UsersModule } from '../users/users.module';
+
+const jwtSecret = process.env.JWT_SECRET || (() => {
+  if (process.env.NODE_ENV === 'production') {
+    throw new Error('JWT_SECRET must be set in production');
+  }
+  return 'dev-secret-change-in-prod';
+})();
 
 @Module({
   imports: [
     UsersModule,
     PassportModule,
+    MongooseModule.forFeature([{ name: 'User', schema: userSchema }]),
     JwtModule.register({
-      secret: process.env.JWT_SECRET || 'super-secret-key-for-dev',
-      signOptions: { expiresIn: '15m' }, // Token valid for 15 minutes per specs
+      secret: jwtSecret,
+      signOptions: { expiresIn: '15m' },
     }),
   ],
-  providers: [AuthService, JwtStrategy],
+  providers: [AuthService, JwtStrategy, GoogleStrategy],
   controllers: [AuthController],
   exports: [AuthService],
 })

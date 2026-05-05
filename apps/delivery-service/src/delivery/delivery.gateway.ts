@@ -13,7 +13,10 @@ import { forwardRef, Inject } from '@nestjs/common';
 import * as crypto from 'crypto';
 
 @WebSocketGateway({
-  cors: { origin: '*' }
+  cors: {
+    origin: process.env.CORS_ORIGIN?.split(',') || ['http://localhost:3000'],
+    credentials: true,
+  },
 })
 export class DeliveryGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @WebSocketServer()
