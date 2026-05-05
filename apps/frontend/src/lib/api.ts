@@ -35,7 +35,7 @@ const createClient = (baseURL: string) => {
       if (error.response?.status === 401 && !error.config._retry) {
         error.config._retry = true;
         try {
-          const res = await axios.post(`${process.env.NEXT_PUBLIC_USER_SERVICE_URL}/auth/refresh`, {}, { withCredentials: true });
+          const res = await axios.post(`${process.env.NEXT_PUBLIC_USER_SERVICE_URL}/api/v1/auth/refresh`, {}, { withCredentials: true });
           if (res.data?.data?.accessToken) {
             localStorage.setItem('accessToken', res.data.data.accessToken);
             error.config.headers.Authorization = `Bearer ${res.data.data.accessToken}`;

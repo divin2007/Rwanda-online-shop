@@ -42,7 +42,7 @@ export class AuthService {
   }
 
   async login(user: any) {
-    const payload = { email: user.email, sub: user._id, role: user.role };
+    const payload = { email: user.email, sub: user._id.toString(), role: user.role };
 
     // Generate access token (15 min expiry)
     const accessToken = this.jwtService.sign(payload);
