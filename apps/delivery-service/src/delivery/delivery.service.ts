@@ -67,7 +67,7 @@ export class DeliveryService {
         );
         route = {
           distanceKm: routeData.distanceKm,
-          estimatedMinutes: routeData.durationMin
+          estimatedMinutes: routeData.estimatedMinutes
         };
       } catch (e) {
         console.warn('Failed to calculate route during delivery creation', e);
