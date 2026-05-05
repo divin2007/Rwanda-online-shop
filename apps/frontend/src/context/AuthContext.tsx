@@ -36,9 +36,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         if (response.data?.success) {
           setUser(response.data.data);
         }
-      } catch (error) {
+      } catch (error: any) {
         console.error('Failed to authenticate user', error);
-        localStorage.removeItem('accessToken');
+        if (error.response?.status === 401) {
+          localStorage.removeItem('accessToken');
+          setUser(null);
+        }
       } finally {
         setIsLoading(false);
       }

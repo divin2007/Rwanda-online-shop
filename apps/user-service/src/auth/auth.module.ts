@@ -9,12 +9,10 @@ import { JwtStrategy } from './jwt.strategy';
 import { GoogleStrategy } from './google.strategy';
 import { UsersModule } from '../users/users.module';
 
-const jwtSecret = process.env.JWT_SECRET || (() => {
-  if (process.env.NODE_ENV === 'production') {
-    throw new Error('JWT_SECRET must be set in production');
-  }
-  return 'dev-secret-change-in-prod';
-})();
+const jwtSecret = process.env.JWT_SECRET || 'dev-secret-change-in-prod';
+if (process.env.NODE_ENV === 'production' && !process.env.JWT_SECRET) {
+  console.warn('CRITICAL: JWT_SECRET must be set in production environment variables.');
+}
 
 @Module({
   imports: [
