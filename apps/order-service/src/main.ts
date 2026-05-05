@@ -8,7 +8,7 @@ async function bootstrap() {
     const corsOrigin = process.env.CORS_ORIGIN || 'http://localhost:3000,https://rwshop.org,https://www.rwshop.org';
   const allowedOrigins = corsOrigin.split(',').map(s => s.trim());
   app.enableCors({
-    origin(origin, callback) {
+    origin(origin: any, callback: any) {
       if (!origin) return callback(null, true);
       const originHost = origin.replace(/^https?:\/\//, '').replace(/:\d+$/, '');
       if (originHost === 'rwshop.org' || originHost.endsWith('.rwshop.org')) {
