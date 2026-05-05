@@ -51,9 +51,15 @@ export const CheckoutContent = () => {
 
   // Listen for payment confirmation via socket
   useEffect(() => {
-    if (statusUpdate && (statusUpdate.status === 'confirmed' || statusUpdate.status === 'paid')) {
-      toast.success('Payment received! Order confirmed.');
-      router.push(`/orders/${orderId}/tracking`);
+    if (statusUpdate) {
+      if (statusUpdate.status === 'confirmed' || statusUpdate.status === 'paid') {
+        toast.success('Payment received! Order confirmed.');
+        router.push(`/orders/${orderId}/tracking`);
+      } else if (statusUpdate.status === 'failed') {
+        toast.error(statusUpdate.error || 'Payment failed or timed out. Please try again.');
+        setIsWaitingPayment(false);
+        setIsPlacingOrder(false);
+      }
     }
   }, [statusUpdate, orderId, router]);
 

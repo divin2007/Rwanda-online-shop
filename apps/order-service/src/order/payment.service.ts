@@ -10,10 +10,10 @@ export class PaymentService {
     apiKey: process.env.MTN_MOMO_API_KEY,
     userId: process.env.MTN_MOMO_USER_ID,
     apiSecret: process.env.MTN_MOMO_API_SECRET,
-    baseUrl: process.env.MTN_MOMO_TARGET_ENV === 'sandbox' 
-      ? 'https://sandbox.momodeveloper.mtn.com' 
-      : 'https://proxy.momoapi.mtn.com',
-    targetEnv: process.env.MTN_MOMO_TARGET_ENV || 'mtnrwanda'
+    baseUrl: process.env.MTN_MOMO_TARGET_ENV === 'mtnrwanda' 
+      ? 'https://proxy.momoapi.mtn.com'
+      : 'https://sandbox.momodeveloper.mtn.com',
+    targetEnv: process.env.MTN_MOMO_TARGET_ENV || 'sandbox'
   };
 
   private async getAccessToken(): Promise<string> {

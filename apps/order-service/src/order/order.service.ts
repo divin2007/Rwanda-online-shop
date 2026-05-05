@@ -82,8 +82,18 @@ export class OrderService {
         this.logger.log(`Payment prompt sent for order ${saved.orderNumber}. Transaction ID: ${res.transactionId}`);
         // Start polling for status since we might not get a callback in sandbox
         this.startPaymentPolling(saved.orderNumber, res.transactionId);
-      } else if (!res.success) {
-        this.logger.error(`Failed to initiate payment for ${saved.orderNumber}: ${res.error}`);
+      } else {
+        const errorMsg = res.error || 'Payment initiation failed';
+        this.logger.error(`Failed to initiate payment for ${saved.orderNumber}: ${errorMsg}`);
+        
+        // Notify frontend about initiation failure so it stops spinning
+        this.orderGateway.sendOrderUpdate({
+          type: 'PAYMENT_FAILED',
+          orderId: saved._id.toString(),
+          orderNumber: saved.orderNumber,
+          status: PaymentStatus.FAILED,
+          error: errorMsg
+        });
       }
     });
 
@@ -164,7 +174,7 @@ export class OrderService {
         type: 'PAYMENT_UPDATE', 
         orderNumber, 
         status: updated.payment.status,
-        orderId: updated._id 
+        orderId: updated._id.toString() 
       });
     }
 
@@ -253,11 +263,17 @@ export class OrderService {
         clearInterval(poll);
         
         // Sandbox Fallback: If we're stuck in PENDING in sandbox, auto-confirm to let the user proceed
-        if (isSandbox || process.env.NODE_ENV !== 'production') {
+        // We check if it's NOT explicitly set to mtnrwanda (production) OR if we are in dev/test
+        const shouldFallback = isSandbox || 
+                              process.env.NODE_ENV !== 'production' || 
+                              process.env.MTN_MOMO_TARGET_ENV === 'sandbox';
+
+        if (shouldFallback) {
           this.logger.warn(`Sandbox Timeout: Auto-confirming order ${orderNumber} for testing.`);
           await this.processPaymentCallback(orderNumber, PaymentStatus.PAID, 'SANDBOX-SUCCESS-' + referenceId);
         } else {
           this.logger.error(`Payment polling timed out for order ${orderNumber}`);
+          await this.processPaymentCallback(orderNumber, PaymentStatus.FAILED, referenceId);
         }
       }
     }, 5000);
