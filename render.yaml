@@ -22,6 +22,8 @@ services:
         value: "20"
       - key: MONGODB_URI
         fromEnv: MONGODB_URI
+      - key: JWT_SECRET
+        fromEnv: JWT_SECRET
 
   - type: web
     name: rmf-product-service
@@ -31,10 +33,10 @@ services:
     envVars:
       - key: NODE_VERSION
         value: "20"
-      - key: MONGODB_URI
-        fromEnv: MONGODB_URI
       - key: REDIS_URL
         fromEnv: REDIS_URL
+      - key: JWT_SECRET
+        fromEnv: JWT_SECRET
 
   - type: web
     name: rmf-seller-service
@@ -46,6 +48,8 @@ services:
         value: "20"
       - key: MONGODB_URI
         fromEnv: MONGODB_URI
+      - key: JWT_SECRET
+        fromEnv: JWT_SECRET
 
   - type: web
     name: rmf-rider-service
@@ -57,6 +61,8 @@ services:
         value: "20"
       - key: MONGODB_URI
         fromEnv: MONGODB_URI
+      - key: JWT_SECRET
+        fromEnv: JWT_SECRET
 
   - type: web
     name: rmf-order-service
@@ -68,6 +74,8 @@ services:
         value: "20"
       - key: MONGODB_URI
         fromEnv: MONGODB_URI
+      - key: JWT_SECRET
+        fromEnv: JWT_SECRET
 
   - type: web
     name: rmf-wallet-service
@@ -79,6 +87,8 @@ services:
         value: "20"
       - key: MONGODB_URI
         fromEnv: MONGODB_URI
+      - key: JWT_SECRET
+        fromEnv: JWT_SECRET
 
   - type: web
     name: rmf-delivery-service
@@ -90,6 +100,8 @@ services:
         value: "20"
       - key: MONGODB_URI
         fromEnv: MONGODB_URI
+      - key: JWT_SECRET
+        fromEnv: JWT_SECRET
 
   - type: web
     name: rmf-notification-service
@@ -99,10 +111,10 @@ services:
     envVars:
       - key: NODE_VERSION
         value: "20"
-      - key: MONGODB_URI
-        fromEnv: MONGODB_URI
       - key: SENDGRID_API_KEY
         fromEnv: SENDGRID_API_KEY
+      - key: JWT_SECRET
+        fromEnv: JWT_SECRET
 
   - type: web
     name: rmf-review-service
@@ -114,6 +126,8 @@ services:
         value: "20"
       - key: MONGODB_URI
         fromEnv: MONGODB_URI
+      - key: JWT_SECRET
+        fromEnv: JWT_SECRET
 
   - type: web
     name: rmf-admin-service
@@ -125,6 +139,8 @@ services:
         value: "20"
       - key: MONGODB_URI
         fromEnv: MONGODB_URI
+      - key: JWT_SECRET
+        fromEnv: JWT_SECRET
 
   - type: web
     name: rmf-frontend
