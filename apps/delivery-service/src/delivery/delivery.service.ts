@@ -57,18 +57,46 @@ export class DeliveryService {
       throw new ConflictException('Delivery already exists for this order');
     }
 
+    // Calculate route if missing
+    let route = data.route;
+    if (!route && data.pickup?.coordinates && data.dropoff?.coordinates) {
+      try {
+        const routeData = await this.routeService.getOptimizedRoute(
+          data.pickup.coordinates,
+          data.dropoff.coordinates
+        );
+        route = {
+          distanceKm: routeData.distanceKm,
+          estimatedMinutes: routeData.durationMin
+        };
+      } catch (e) {
+        console.warn('Failed to calculate route during delivery creation', e);
+        // Fallback to straight line estimate if OSRM fails
+        const dist = this.locationService.calculateDistance(data.pickup.coordinates, data.dropoff.coordinates);
+        route = {
+          distanceKm: dist,
+          estimatedMinutes: Math.ceil(dist * 2) // Rough estimate
+        };
+      }
+    }
+
     const delivery = new this.deliveryModel({
       ...data,
+      route,
       status: DeliveryStatus.ASSIGNED
     });
 
     const saved = await delivery.save();
     
-    // Notify rider via Socket.io
+    // Notify all active riders via Socket.io
     try {
-      this.deliveryGateway.emitAssignment(saved);
+      this.deliveryGateway.broadcastToNearbyRiders(
+        saved.toObject(), 
+        saved.pickup.coordinates.lat, 
+        saved.pickup.coordinates.lng
+      );
     } catch (e) {
-      console.error('Failed to emit delivery assignment notification', e);
+      console.error('Failed to broadcast delivery request', e);
     }
 
     return saved;
@@ -178,8 +206,27 @@ export class DeliveryService {
     }).exec();
   }
 
-  async acceptDelivery(id: string): Promise<any> {
-    return await this.updateStatus(id, DeliveryStatus.EN_ROUTE_TO_PICKUP);
+  async acceptDelivery(id: string, riderId: string): Promise<any> {
+    const delivery = await this.deliveryModel.findById(id);
+    if (!delivery) throw new NotFoundException('Delivery not found');
+    
+    if (delivery.riderId) {
+      throw new ConflictException('Delivery already accepted by another rider');
+    }
+
+    // Associate rider and transition
+    this.validateTransition(delivery.status, DeliveryStatus.EN_ROUTE_TO_PICKUP);
+
+    return await this.deliveryModel.findByIdAndUpdate(
+      id,
+      { 
+        $set: { 
+          status: DeliveryStatus.EN_ROUTE_TO_PICKUP,
+          riderId: riderId
+        } 
+      },
+      { new: true }
+    );
   }
 
   async rejectDelivery(id: string): Promise<any> {

@@ -28,8 +28,8 @@ export class DeliveryController {
   }
 
   @Patch(':id/accept')
-  async accept(@Param('id') id: string) {
-    const delivery = await this.deliveryService.acceptDelivery(id);
+  async accept(@Param('id') id: string, @Body() body: { riderId: string }) {
+    const delivery = await this.deliveryService.acceptDelivery(id, body.riderId);
     return { success: true, data: delivery };
   }
 

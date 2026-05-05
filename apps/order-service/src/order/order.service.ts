@@ -82,18 +82,8 @@ export class OrderService {
         this.logger.log(`Payment prompt sent for order ${saved.orderNumber}. Transaction ID: ${res.transactionId}`);
         // Start polling for status since we might not get a callback in sandbox
         this.startPaymentPolling(saved.orderNumber, res.transactionId);
-      } else {
-        const errorMsg = res.error || 'Payment initiation failed';
-        this.logger.error(`Failed to initiate payment for ${saved.orderNumber}: ${errorMsg}`);
-        
-        // Notify frontend about initiation failure so it stops spinning
-        this.orderGateway.sendOrderUpdate({
-          type: 'PAYMENT_FAILED',
-          orderId: saved._id.toString(),
-          orderNumber: saved.orderNumber,
-          status: PaymentStatus.FAILED,
-          error: errorMsg
-        });
+      } else if (!res.success) {
+        this.logger.error(`Failed to initiate payment for ${saved.orderNumber}: ${res.error}`);
       }
     });
 
@@ -169,12 +159,41 @@ export class OrderService {
       { new: true }
     );
 
+    if (updated && status === PaymentStatus.PAID) {
+      this.logger.log(`Order ${orderNumber} PAID. Triggering delivery-service...`);
+      // Trigger delivery-service (Internal call)
+      try {
+        const deliveryUrl = process.env.DELIVERY_SERVICE_URL || 'http://localhost:3008/api/v1';
+        await axios.post(`${deliveryUrl}/deliveries`, {
+          orderId: updated._id,
+          orderNumber: updated.orderNumber,
+          pickup: {
+            marketId: updated.market.marketId,
+            stallId: updated.market.stallId,
+            coordinates: updated.market.coordinates,
+            address: updated.market.address
+          },
+          dropoff: {
+            coordinates: updated.buyer.coordinates,
+            address: updated.buyer.address
+          },
+          financials: {
+            deliveryFee: updated.financials.deliveryFee,
+            totalAmount: updated.financials.totalAmount
+          }
+        });
+        this.logger.log(`Delivery created successfully for order ${orderNumber}`);
+      } catch (error) {
+        this.logger.error(`Failed to create delivery for order ${orderNumber}`, error.response?.data || error.message);
+      }
+    }
+
     if (updated) {
       this.orderGateway.sendOrderUpdate({ 
         type: 'PAYMENT_UPDATE', 
         orderNumber, 
         status: updated.payment.status,
-        orderId: updated._id.toString() 
+        orderId: updated._id 
       });
     }
 
@@ -244,7 +263,7 @@ export class OrderService {
 
   private async startPaymentPolling(orderNumber: string, referenceId: string) {
     let attempts = 0;
-    const maxAttempts = 12; // Poll for 1 minute (5s intervals)
+    const maxAttempts = 24; // Poll for 2 minutes (5s intervals)
     const isSandbox = process.env.MTN_MOMO_TARGET_ENV !== 'mtnrwanda';
 
     const poll = setInterval(async () => {
@@ -263,17 +282,11 @@ export class OrderService {
         clearInterval(poll);
         
         // Sandbox Fallback: If we're stuck in PENDING in sandbox, auto-confirm to let the user proceed
-        // We check if it's NOT explicitly set to mtnrwanda (production) OR if we are in dev/test
-        const shouldFallback = isSandbox || 
-                              process.env.NODE_ENV !== 'production' || 
-                              process.env.MTN_MOMO_TARGET_ENV === 'sandbox';
-
-        if (shouldFallback) {
+        if (isSandbox || process.env.NODE_ENV !== 'production') {
           this.logger.warn(`Sandbox Timeout: Auto-confirming order ${orderNumber} for testing.`);
           await this.processPaymentCallback(orderNumber, PaymentStatus.PAID, 'SANDBOX-SUCCESS-' + referenceId);
         } else {
           this.logger.error(`Payment polling timed out for order ${orderNumber}`);
-          await this.processPaymentCallback(orderNumber, PaymentStatus.FAILED, referenceId);
         }
       }
     }, 5000);

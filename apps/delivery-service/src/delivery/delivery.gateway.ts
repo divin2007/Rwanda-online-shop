@@ -142,7 +142,7 @@ export class DeliveryGateway implements OnGatewayConnection, OnGatewayDisconnect
     let notifiedCount = 0;
     for (const [riderId, data] of this.activeRiders.entries()) {
       // Radius check removed: notifying all active riders
-      this.server.to(data.socketId).emit('delivery:request', {
+      this.server.to(data.socketId).emit('delivery:assigned', {
         ...deliveryReq,
         // Optional: still include distance info if you want to show it to the rider
         distanceFromMarket: `${Math.round(this.getDistanceMeters(marketLat, marketLng, data.lat, data.lng))}m`

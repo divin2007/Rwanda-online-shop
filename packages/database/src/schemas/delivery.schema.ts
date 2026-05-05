@@ -4,11 +4,11 @@ import { DeliveryStatus } from '@rmf/shared-types';
 export const deliverySchema = new Schema({
   orderId: { type: Schema.Types.ObjectId, ref: 'Transaction', required: true, unique: true },
   rider: {
-    riderId: { type: Schema.Types.ObjectId, ref: 'RiderProfile', required: true },
-    userId: { type: Schema.Types.ObjectId, ref: 'User', required: true },
-    fullName: { type: String, required: true },
-    phone: { type: String, required: true },
-    plateNumber: { type: String, required: true }
+    riderId: { type: Schema.Types.ObjectId, ref: 'RiderProfile' },
+    userId: { type: Schema.Types.ObjectId, ref: 'User' },
+    fullName: { type: String },
+    phone: { type: String },
+    plateNumber: { type: String }
   },
   pickup: {
     marketId: { type: Schema.Types.ObjectId, ref: 'Market', required: true },
@@ -29,8 +29,8 @@ export const deliverySchema = new Schema({
     deliveredAt: Date
   },
   route: {
-    distanceKm: { type: Number, required: true },
-    estimatedMinutes: { type: Number, required: true },
+    distanceKm: { type: Number },
+    estimatedMinutes: { type: Number },
     actualMinutes: Number
   },
   tracking: [{

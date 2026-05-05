@@ -149,7 +149,7 @@ export default function RiderDashboardPage() {
 
   const acceptDelivery = async () => {
     try {
-      await deliveryApi.patch(`/deliveries/${incomingDelivery._id}/accept`);
+      await deliveryApi.patch(`/deliveries/${incomingDelivery._id}/accept`, { riderId: user?.id });
       setIncomingDelivery(null);
       fetchActiveDelivery();
       toast.success('Delivery accepted!');
