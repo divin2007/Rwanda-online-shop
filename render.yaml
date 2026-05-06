@@ -19,6 +19,8 @@ services:
         fromEnv: GOOGLE_CLIENT_SECRET
       - key: GOOGLE_CALLBACK_URL
         fromEnv: GOOGLE_CALLBACK_URL
+      - key: FRONTEND_URL
+        value: "https://www.rwshop.org"
 
   - type: web
     name: rmf-market-service
@@ -43,6 +45,8 @@ services:
     envVars:
       - key: NODE_VERSION
         value: "20"
+      - key: MONGODB_URI
+        fromEnv: MONGODB_URI
       - key: REDIS_URL
         fromEnv: REDIS_URL
       - key: JWT_SECRET
@@ -94,6 +98,22 @@ services:
         fromEnv: JWT_SECRET
       - key: CORS_ORIGIN
         fromEnv: CORS_ORIGIN
+      - key: DELIVERY_SERVICE_URL
+        value: "https://rmf-delivery-service.onrender.com"
+      - key: MTN_MOMO_API_KEY
+        fromEnv: MTN_MOMO_API_KEY
+      - key: MTN_MOMO_USER_ID
+        fromEnv: MTN_MOMO_USER_ID
+      - key: MTN_MOMO_API_SECRET
+        fromEnv: MTN_MOMO_API_SECRET
+      - key: MTN_MOMO_TARGET_ENV
+        fromEnv: MTN_MOMO_TARGET_ENV
+      - key: AIRTEL_MONEY_API_KEY
+        fromEnv: AIRTEL_MONEY_API_KEY
+      - key: AIRTEL_MONEY_SECRET
+        fromEnv: AIRTEL_MONEY_SECRET
+      - key: AIRTEL_MONEY_TARGET_ENV
+        fromEnv: AIRTEL_MONEY_TARGET_ENV
 
   - type: web
     name: rmf-wallet-service
@@ -133,6 +153,8 @@ services:
     envVars:
       - key: NODE_VERSION
         value: "20"
+      - key: MONGODB_URI
+        fromEnv: MONGODB_URI
       - key: SENDGRID_API_KEY
         fromEnv: SENDGRID_API_KEY
       - key: JWT_SECRET
