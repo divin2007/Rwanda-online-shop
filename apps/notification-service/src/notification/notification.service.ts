@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
+import * as nodemailer from 'nodemailer';
 
 @Injectable()
 export class NotificationService {
@@ -8,7 +9,25 @@ export class NotificationService {
 
   constructor(
     @InjectModel('NotificationLog') private logModel: Model<any>
-  ) {}
+  ) {
+    this.initTransporter();
+  }
+
+  private transporter: nodemailer.Transporter | null = null;
+
+  private initTransporter() {
+    // Only use local SMTP if explicitly configured or in dev
+    const isDev = process.env.NODE_ENV !== 'production';
+    if (isDev || process.env.SMTP_HOST) {
+      this.transporter = nodemailer.createTransport({
+        host: process.env.SMTP_HOST || 'localhost',
+        port: Number(process.env.SMTP_PORT) || 1025,
+        secure: false,
+        ignoreTLS: true
+      });
+      this.logger.log('Nodemailer initialized for local MailDev');
+    }
+  }
 
   private getTemplate(type: string, lang: 'rw' | 'en', params: any): string {
     const templates = {
@@ -79,8 +98,24 @@ export class NotificationService {
     const savedLog = await logEntry.save();
 
     try {
-      // Stub: SendGrid API integration would go here
-      this.logger.log(`[Email to ${email}]: ${content}`);
+      if (this.transporter) {
+        await this.transporter.sendMail({
+          from: '"Rwanda Marketplace" <noreply@rwshop.org>',
+          to: email,
+          subject: `Market Notification: ${type}`,
+          text: content,
+          html: `<div style="font-family: sans-serif; padding: 20px; border: 1px solid #eee; border-radius: 10px;">
+                  <h2 style="color: #2563eb;">Rwanda Online Shop</h2>
+                  <p style="font-size: 16px; color: #333;">${content}</p>
+                  <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;">
+                  <p style="font-size: 12px; color: #999;">This is an automated notification from your marketplace dashboard.</p>
+                </div>`
+        });
+        this.logger.log(`[Email sent via MailDev to ${email}]: ${content}`);
+      } else {
+        // Stub for production (e.g. SendGrid)
+        this.logger.log(`[Email Stub to ${email}]: ${content}`);
+      }
       
       return await this.logModel.findByIdAndUpdate(
         savedLog._id, 

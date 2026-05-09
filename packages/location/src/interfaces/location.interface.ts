@@ -12,4 +12,5 @@ export interface RouteDto {
   distanceKm: number;
   estimatedMinutes: number;
   actualMinutes?: number;
+  geometry?: [number, number][]; // Array of [lat, lng] coordinates
 }

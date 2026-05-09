@@ -1,6 +1,6 @@
 import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
-import { reviewSchema, sellerProfileSchema, riderProfileSchema } from '@rmf/database';
+import { reviewSchema, sellerProfileSchema, riderProfileSchema, marketSchema, productSchema } from '@rmf/database';
 import { ReviewService } from './review.service';
 import { ReviewController } from './review.controller';
 
@@ -9,7 +9,9 @@ import { ReviewController } from './review.controller';
     MongooseModule.forFeature([
       { name: 'Review', schema: reviewSchema },
       { name: 'SellerProfile', schema: sellerProfileSchema },
-      { name: 'RiderProfile', schema: riderProfileSchema }
+      { name: 'RiderProfile', schema: riderProfileSchema },
+      { name: 'Market', schema: marketSchema },
+      { name: 'Product', schema: productSchema }
     ]),
   ],
   providers: [ReviewService],

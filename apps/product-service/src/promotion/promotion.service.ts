@@ -16,6 +16,27 @@ export class PromotionService {
       throw new NotFoundException('Product not found');
     }
 
+    // Map User ID to SellerProfile ID if needed
+    if (promotionData.sellerId) {
+      try {
+        const seller = await this.productModel.db.model('SellerProfile').findOne({ userId: promotionData.sellerId }).exec();
+        if (seller) {
+          promotionData.sellerId = seller._id;
+        }
+      } catch {
+        // If lookup fails, try using the product's sellerId
+      }
+    }
+    // Fallback: use the product's sellerId
+    if (!promotionData.sellerId) {
+      promotionData.sellerId = product.sellerId;
+    }
+
+    // Auto-set startDate if not provided
+    if (!promotionData.startDate) {
+      promotionData.startDate = new Date();
+    }
+
     // Check if product already has an active promotion
     const existingPromo = await this.promotionModel.findOne({
       productId: promotionData.productId,
@@ -39,13 +60,14 @@ export class PromotionService {
       throw new BadRequestException('Promotion causes price to drop below the 100 RWF minimum limit');
     }
 
+    // Store computed promoted price in the promotion
+    promotionData.promotedPrice = Math.round(promotionalPrice);
+
     const newPromotion = new this.promotionModel(promotionData);
     return await newPromotion.save();
   }
 
   async getActivePromotions(marketId?: string): Promise<any[]> {
-    // In a real scenario we might need an aggregation to join with products, 
-    // or keep a denormalized cache. We fetch all active valid promos:
     const now = new Date();
     const query: any = {
       isActive: true,
@@ -53,8 +75,14 @@ export class PromotionService {
       endDate: { $gt: now }
     };
     
-    // Stub implementation: finding promos and populating product
-    return this.promotionModel.find(query).populate('productId').exec();
+    const promos = await this.promotionModel.find(query).populate('productId').exec();
+    
+    // Enrich with product data as a `product` field for easier frontend consumption
+    return promos.map((promo: any) => {
+      const p = promo.toObject();
+      p.product = p.productId; // populated product doc
+      return p;
+    });
   }
 
   async findAll(sellerId?: string, marketId?: string): Promise<any[]> {
@@ -66,6 +94,25 @@ export class PromotionService {
       query.sellerId = seller ? seller._id : sellerId;
     }
     
-    return this.promotionModel.find(query).populate('productId').exec();
+    const promos = await this.promotionModel.find(query).populate('productId').exec();
+    
+    // Enrich with product data
+    return promos.map((promo: any) => {
+      const p = promo.toObject();
+      p.product = p.productId;
+      return p;
+    });
+  }
+
+  async deletePromotion(id: string): Promise<any> {
+    const promo = await this.promotionModel.findById(id);
+    if (!promo) {
+      throw new NotFoundException('Promotion not found');
+    }
+    
+    // Soft delete
+    promo.isActive = false;
+    promo.deletedAt = new Date();
+    return await promo.save();
   }
 }

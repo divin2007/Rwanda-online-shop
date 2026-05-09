@@ -1,9 +1,9 @@
 'use client';
-import React, { useState } from 'react';
-import { MapContainer, TileLayer, Marker, useMapEvents } from 'react-leaflet';
+import React, { useState, useEffect } from 'react';
+import { MapContainer, TileLayer, Marker, useMapEvents, useMap } from 'react-leaflet';
 import L from 'leaflet';
+import 'leaflet/dist/leaflet.css';
 
-// Fix Leaflet marker icon issue in Next.js
 // Fix Leaflet marker icon issue in Next.js using a Data URI to bypass Tracking Prevention
 const markerSvg = `PHN2ZyB3aWR0aD0iMjUiIGhlaWdodD0iNDEiIHZpZXdCb3g9IjAgMCAyNSA0MSIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cGF0aCBkPSJNMTIuNSAwQzUuNTk2NDUgMCAwIDUuNTk2NDUgMCAxMi41QzAgMjEuODc1IDEyLjUgNDEgMTIuNSA0MUMxMi41IDQxIDI1IDIxLjg3NSAyNSAxMi41QzI1IDUuNTk2NDUgMTkuNDAzNiAwIDEyLjUgMFpNMTIuNSAxNy4xODc1QzkuOTExMTcgMTcuMTg3NSA3LjgxMjUgMTUuMDg4OCA3LjgxMjUgMTIuNUM3LjgxMjUgOS45MTExNyA5LjkxMTE3IDcuODEyNSAxMi41IDcuODEyNUMxNS4wODg4IDcuODEyNSAxNy4xODc1IDkuOTExMTcgMTcuMTg3NSAxMi41QzE3LjE4NzUgMTUuMDg4OCAxNS4wODg4IDE3LjE4NzUgMTIuNSAxNy4xODc1WiIgZmlsbD0iIzNCODJFNiIvPjwvc3ZnPg==`;
 
@@ -34,6 +34,17 @@ const LocationMarker = ({ position, setPosition }: any) => {
   );
 };
 
+// Internal component to handle map movement
+const MapController = ({ flyToLocation }: { flyToLocation: { lat: number, lon: number } | null }) => {
+  const map = useMap();
+  useEffect(() => {
+    if (flyToLocation) {
+      map.flyTo([flyToLocation.lat, flyToLocation.lon], 16);
+    }
+  }, [flyToLocation, map]);
+  return null;
+};
+
 export const LeafletMap = ({ 
   onLocationChange, 
   initialLocation 
@@ -42,21 +53,103 @@ export const LeafletMap = ({
   initialLocation?: Coordinates
 }) => {
   const [position, setPosition] = useState<Coordinates | null>(initialLocation || null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState<any[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
+  const [flyToLocation, setFlyToLocation] = useState<{ lat: number, lon: number } | null>(null);
 
   const handlePositionChange = (coords: Coordinates) => {
     setPosition(coords);
     onLocationChange(coords);
   };
 
+  const doSearch = async (val: string) => {
+    if (!val || val.length < 2) {
+      setSearchResults([]);
+      return;
+    }
+    setIsSearching(true);
+    try {
+      const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(val)}&countrycodes=rw&addressdetails=1&limit=15`;
+      const res = await fetch(url);
+      const data = await res.json();
+      
+      if (!data || data.length === 0) {
+        const fallbackUrl = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(val + ', Kigali')}&countrycodes=rw&addressdetails=1&limit=5`;
+        const fbRes = await fetch(fallbackUrl);
+        const fbData = await fbRes.json();
+        setSearchResults(fbData || []);
+      } else {
+        setSearchResults(data);
+      }
+    } catch (e) {
+      console.error('Search failed', e);
+    } finally {
+      setIsSearching(false);
+    }
+  };
+
+  // Debounce search
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (searchQuery) doSearch(searchQuery);
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
+
+  const handleSelectResult = (result: any) => {
+    setFlyToLocation({ lat: parseFloat(result.lat), lon: parseFloat(result.lon) });
+    setSearchResults([]);
+    setSearchQuery(result.display_name);
+  };
+
   const center = initialLocation ? [initialLocation.lat, initialLocation.lng] as [number, number] : DEFAULT_CENTER;
 
   return (
-    <MapContainer center={center} zoom={13} style={{ height: '100%', width: '100%' }}>
-      <TileLayer
-        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-      />
-      <LocationMarker position={position} setPosition={handlePositionChange} />
-    </MapContainer>
+    <div className="w-full h-full relative z-0">
+      {/* Search Input Container */}
+      <div className="absolute top-4 left-4 right-4 z-[500] max-w-md">
+        <div className="relative">
+          <input 
+            type="text" 
+            placeholder="Search for your shop location..." 
+            className="w-full bg-background-card border border-border rounded-lg px-4 py-3 shadow-lg outline-none focus:ring-2 focus:ring-primary pr-12"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+          />
+          <div className="absolute right-4 top-1/2 -translate-y-1/2 text-text-secondary">
+            {isSearching ? <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin"></div> : '🔍'}
+          </div>
+
+          {/* Dropdown Results */}
+          {searchResults.length > 0 && (
+            <div className="absolute top-full left-0 right-0 mt-2 bg-background-card border border-border rounded-lg shadow-2xl overflow-hidden max-h-60 overflow-y-auto">
+              {searchResults.map((result, idx) => (
+                <button
+                  key={idx}
+                  onClick={() => handleSelectResult(result)}
+                  className="w-full text-left px-4 py-2 hover:bg-background-surface border-b border-border/50 last:border-0 transition-colors flex items-start gap-2"
+                >
+                  <span className="mt-1 text-xs">📍</span>
+                  <div>
+                    <div className="font-medium text-xs line-clamp-1">{result.display_name.split(',')[0]}</div>
+                    <div className="text-[10px] text-text-secondary line-clamp-1">{result.display_name}</div>
+                  </div>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+
+      <MapContainer center={center} zoom={13} style={{ height: '100%', width: '100%' }}>
+        <TileLayer
+          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+        />
+        <MapController flyToLocation={flyToLocation} />
+        <LocationMarker position={position} setPosition={handlePositionChange} />
+      </MapContainer>
+    </div>
   );
 };

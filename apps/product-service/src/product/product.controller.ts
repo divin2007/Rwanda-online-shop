@@ -1,4 +1,5 @@
-import { Controller, Get, Post, Put, Body, Param, Query } from '@nestjs/common';
+import { Controller, Get, Post, Put, Body, Param, Query, UseInterceptors, UploadedFile } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
 import { ProductService } from './product.service';
 
 @Controller('products')
@@ -36,11 +37,19 @@ export class ProductController {
   }
 
   @Post('upload-image')
-  async uploadImage(@Body() data: any) {
-    // Mock upload logic
+  @UseInterceptors(FileInterceptor('file'))
+  async uploadImage(@UploadedFile() file: any) {
+    if (!file) {
+      return { success: false, message: 'No file uploaded' };
+    }
+    
+    // In dev, we convert to base64 so the user sees THEIR image immediately
+    const base64 = file.buffer.toString('base64');
+    const dataUri = `data:${file.mimetype};base64,${base64}`;
+    
     return { 
       success: true, 
-      data: { url: "https://placehold.co/600x400/000000/FFFFFF/png?text=Product+Photo" } 
+      data: { url: dataUri } 
     };
   }
 }

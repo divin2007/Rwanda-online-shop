@@ -1,20 +1,12 @@
-import { 
-  WebSocketGateway, 
-  WebSocketServer, 
-  SubscribeMessage, 
-  OnGatewayConnection, 
-  OnGatewayDisconnect,
-  ConnectedSocket,
-  MessageBody
-} from '@nestjs/websockets';
+import { WebSocketGateway, WebSocketServer, SubscribeMessage, OnGatewayConnection, OnGatewayDisconnect, ConnectedSocket, MessageBody } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
 import { DeliveryService } from './delivery.service';
-import { forwardRef, Inject } from '@nestjs/common';
+import { forwardRef, Inject, Logger } from '@nestjs/common';
 import * as crypto from 'crypto';
 
 @WebSocketGateway({
   cors: {
-    origin: process.env.CORS_ORIGIN?.split(',') || ['http://localhost:3000'],
+    origin: (origin: any, cb: any) => cb(null, true),
     credentials: true,
   },
 })
@@ -22,6 +14,7 @@ export class DeliveryGateway implements OnGatewayConnection, OnGatewayDisconnect
   @WebSocketServer()
   server: Server;
 
+  private readonly logger = new Logger(DeliveryGateway.name);
   // In-memory active riders: memory-only, instant removal
   private activeRiders = new Map<string, any>();
 
@@ -100,15 +93,16 @@ export class DeliveryGateway implements OnGatewayConnection, OnGatewayDisconnect
   @SubscribeMessage('chat:message')
   handleChatMessage(
     @ConnectedSocket() client: Socket,
-    @MessageBody() payload: { deliveryId: string, senderId: string, senderName: string, message: string }
+    @MessageBody() payload: { deliveryId: string, senderId: string, senderName: string, text: string }
   ) {
     const chatMsg = {
       ...payload,
       timestamp: new Date()
     };
 
-    // Emit to everyone in the delivery room
-    this.server.to(`delivery:${payload.deliveryId}`).emit(`delivery:${payload.deliveryId}:chat`, chatMsg);
+    // Emit to everyone listening to this delivery's chat channel
+    // Bypasses the need for clients to explicitly send a 'join:delivery' room request
+    this.server.emit(`delivery:${payload.deliveryId}:chat`, chatMsg);
     
     // Also emit a general notification for the rider if they are not in the room
     this.server.emit(`user:${payload.deliveryId}:notification`, {
@@ -143,16 +137,20 @@ export class DeliveryGateway implements OnGatewayConnection, OnGatewayDisconnect
   // Broadcast to all active riders (radius check removed per user request)
   broadcastToNearbyRiders(deliveryReq: any, marketLat: number, marketLng: number) {
     let notifiedCount = 0;
+    this.logger.log(`Starting broadcast for delivery ${deliveryReq.orderNumber}. Active riders: ${this.activeRiders.size}`);
+    
     for (const [riderId, data] of this.activeRiders.entries()) {
-      // Radius check removed: notifying all active riders
-      this.server.to(data.socketId).emit('delivery:assigned', {
-        ...deliveryReq,
-        // Optional: still include distance info if you want to show it to the rider
-        distanceFromMarket: `${Math.round(this.getDistanceMeters(marketLat, marketLng, data.lat, data.lng))}m`
-      });
-      notifiedCount++;
+      try {
+        this.server.to(data.socketId).emit('delivery:assigned', {
+          ...deliveryReq,
+          distanceFromMarket: `${Math.round(this.getDistanceMeters(marketLat, marketLng, data.lat, data.lng))}m`
+        });
+        notifiedCount++;
+      } catch (err) {
+        this.logger.error(`Failed to emit to rider ${riderId} on socket ${data.socketId}`, err);
+      }
     }
-    console.log(`Broadcasted delivery request to ${notifiedCount} active riders.`);
+    this.logger.log(`Broadcasted delivery request to ${notifiedCount} active riders.`);
     return notifiedCount;
   }
 }

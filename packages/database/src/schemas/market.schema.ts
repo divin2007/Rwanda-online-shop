@@ -1,4 +1,4 @@
-import { Schema, model } from 'mongoose';
+import mongoose, { Schema, model } from 'mongoose';
 import { MarketType } from '@rmf/shared-types';
 import { LocationSubdocument } from './location.schema';
 
@@ -28,4 +28,4 @@ export const marketSchema = new Schema({
 
 marketSchema.index({ 'location.coordinates': '2dsphere' });
 
-export const Market = model('Market', marketSchema);
+export const Market = mongoose.models.Market || model('Market', marketSchema);

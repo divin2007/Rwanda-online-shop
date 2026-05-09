@@ -1,4 +1,4 @@
-import { Schema, model } from 'mongoose';
+import mongoose, { Schema, model } from 'mongoose';
 import { OrderStatus, PaymentStatus, DisputeResolution } from '@rmf/shared-types';
 
 export const transactionSchema = new Schema({
@@ -6,12 +6,12 @@ export const transactionSchema = new Schema({
   buyer: {
     userId: { type: Schema.Types.ObjectId, ref: 'User', required: true },
     fullName: { type: String, required: true },
-    phone: { type: String, required: true },
+    phone: { type: String },
     deliveryAddress: {
-      address: { type: String, required: true },
+      address: { type: String },
       coordinates: {
-        lat: { type: Number, required: true },
-        lng: { type: Number, required: true }
+        lat: { type: Number },
+        lng: { type: Number }
       }
     }
   },
@@ -22,13 +22,15 @@ export const transactionSchema = new Schema({
     stallId: { type: String, required: true },
     marketId: { type: Schema.Types.ObjectId, ref: 'Market', required: true }
   },
-  product: {
+  products: [{
     productId: { type: Schema.Types.ObjectId, ref: 'Product', required: true },
     name: { type: String, required: true },
     unitPrice: { type: Number, required: true },
     quantity: { type: Number, required: true },
-    weight: { type: Number }
-  },
+    weight: { type: Number },
+    customization: { type: String },
+    prototypeImage: { type: String }
+  }],
   financials: {
     subtotal: { type: Number, required: true },
     deliveryFee: { type: Number, required: true },
@@ -39,11 +41,12 @@ export const transactionSchema = new Schema({
     riderPayout: { type: Number, required: true }
   },
   payment: {
-    method: { type: String, required: true }, // MoMo, etc.
+    method: { type: String }, // MoMo, etc.
     status: { type: String, enum: Object.values(PaymentStatus), default: PaymentStatus.PENDING },
     transactionRef: { type: String },
     paidAt: { type: Date }
   },
+  notes: { type: String },
   status: { type: String, enum: Object.values(OrderStatus), default: OrderStatus.PLACED },
   schedule: {
     frequency: String,
@@ -58,6 +61,16 @@ export const transactionSchema = new Schema({
     resolvedAt: Date,
     resolution: { type: String, enum: Object.values(DisputeResolution) }
   },
+  attributes: { type: Map, of: String },
+  messages: [{
+    senderId: { type: Schema.Types.ObjectId, ref: 'User', required: true },
+    senderRole: { type: String, enum: ['BUYER', 'SELLER'], required: true },
+    content: { type: String, required: true },
+    imageUrl: { type: String },
+    type: { type: String, enum: ['TEXT', 'QUOTE', 'COUNTER_QUOTE'], default: 'TEXT' },
+    quoteAmount: { type: Number },
+    timestamp: { type: Date, default: Date.now }
+  }],
   statusHistory: [{
     status: String,
     changedBy: Schema.Types.ObjectId,
@@ -82,4 +95,4 @@ export const transactionSchema = new Schema({
   deletedAt: { type: Date, default: null }
 }, { timestamps: true });
 
-export const Transaction = model('Transaction', transactionSchema);
+export const Transaction = mongoose.models.Transaction || model('Transaction', transactionSchema);

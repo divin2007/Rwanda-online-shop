@@ -8,8 +8,9 @@ import { DeliveryGateway } from './delivery.gateway';
 
 const DELIVERY_TRANSITIONS: Record<string, string[]> = {
   [DeliveryStatus.ASSIGNED]: [DeliveryStatus.EN_ROUTE_TO_PICKUP, DeliveryStatus.FAILED],
-  [DeliveryStatus.EN_ROUTE_TO_PICKUP]: [DeliveryStatus.PICKED_UP, DeliveryStatus.FAILED],
-  [DeliveryStatus.PICKED_UP]: [DeliveryStatus.EN_ROUTE_TO_DROPOFF, DeliveryStatus.FAILED],
+  [DeliveryStatus.EN_ROUTE_TO_PICKUP]: [DeliveryStatus.PENDING_HANDOVER, DeliveryStatus.PICKED_UP, DeliveryStatus.FAILED],
+  [DeliveryStatus.PENDING_HANDOVER]: [DeliveryStatus.PICKED_UP, DeliveryStatus.FAILED],
+  [DeliveryStatus.PICKED_UP]: [DeliveryStatus.EN_ROUTE_TO_DROPOFF, DeliveryStatus.DELIVERED, DeliveryStatus.FAILED],
   [DeliveryStatus.EN_ROUTE_TO_DROPOFF]: [DeliveryStatus.DELIVERED, DeliveryStatus.FAILED],
   [DeliveryStatus.DELIVERED]: [],
   [DeliveryStatus.FAILED]: []
@@ -31,22 +32,25 @@ export class DeliveryService {
   }
 
   private validateTransition(currentStatus: string, newStatus: string): void {
+    if (currentStatus === newStatus) return;
     const allowed = DELIVERY_TRANSITIONS[currentStatus];
     if (!allowed || !allowed.includes(newStatus)) {
       throw new StateConflictError(`Forbidden delivery transition: ${currentStatus} -> ${newStatus}`);
     }
   }
 
-  async calculateDeliveryFee(from: Coordinates, to: Coordinates, weightFactor: number = 1): Promise<{ fee: number, route: any }> {
-    const BASE_RATE_PER_KM = 80; // Could be cached from Redis and adjustable
-    
-    // In actual implementation, we might apply surge pricing (e.g. 1.2x at rush hour)
-    const surgeMultiplier = 1.0; 
+  async getDeliveryById(id: string): Promise<any> {
+    const delivery = await this.deliveryModel.findById(id).exec();
+    if (!delivery) throw new NotFoundException('Delivery not found');
+    return delivery;
+  }
 
+  async calculateDeliveryFee(from: Coordinates, to: Coordinates, weightFactor: number = 1): Promise<{ fee: number, route: any }> {
     const route = await this.routeService.getOptimizedRoute(from, to);
     
-    const rawFee = route.distanceKm * BASE_RATE_PER_KM * weightFactor * surgeMultiplier;
-    const fee = Math.ceil(rawFee / 100) * 100; // Round up to nearest 100 RWF
+    // Tiered pricing: 500 RWF per 5km block
+    // 0-5km = 500, 5-10km = 1000, 10-15km = 1500...
+    const fee = Math.ceil(route.distanceKm / 5) * 500;
 
     return { fee, route };
   }
@@ -67,7 +71,8 @@ export class DeliveryService {
         );
         route = {
           distanceKm: routeData.distanceKm,
-          estimatedMinutes: routeData.estimatedMinutes
+          estimatedMinutes: routeData.estimatedMinutes,
+          geometry: routeData.geometry
         };
       } catch (e) {
         console.warn('Failed to calculate route during delivery creation', e);
@@ -90,11 +95,7 @@ export class DeliveryService {
     
     // Notify all active riders via Socket.io
     try {
-      this.deliveryGateway.broadcastToNearbyRiders(
-        saved.toObject(), 
-        saved.pickup.coordinates.lat, 
-        saved.pickup.coordinates.lng
-      );
+      this.deliveryGateway.emitAssignment(saved.toObject());
     } catch (e) {
       console.error('Failed to broadcast delivery request', e);
     }
@@ -114,11 +115,35 @@ export class DeliveryService {
       updates['dropoff.deliveredAt'] = new Date();
     }
 
-    return await this.deliveryModel.findByIdAndUpdate(
+    const updatedDelivery = await this.deliveryModel.findByIdAndUpdate(
       id,
       { $set: updates },
       { new: true }
     );
+
+    // Notify the order-service
+    if (updatedDelivery?.orderId) {
+      let orderStatus = '';
+      if (newStatus === DeliveryStatus.PICKED_UP) orderStatus = 'picked_up';
+      if (newStatus === DeliveryStatus.DELIVERED) orderStatus = 'awaiting_confirmation';
+      
+      if (orderStatus) {
+        this.deliveryGateway.server.emit(`order:${updatedDelivery.orderId}:status`, { status: orderStatus });
+        try {
+          const axios = require('axios');
+          const orderUrl = process.env.ORDER_SERVICE_URL || 'http://localhost:3006/api/v1';
+          axios.put(`${orderUrl}/orders/${updatedDelivery.orderId}/status`, { 
+            status: orderStatus, 
+            userId: delivery.rider?.userId || 'system' 
+          }).then(() => console.log(`Successfully updated order ${updatedDelivery.orderId} to ${orderStatus}`))
+            .catch((e: any) => { console.error(`Failed to update order ${updatedDelivery.orderId} to ${orderStatus}:`, e.message); });
+        } catch(err: any) {
+          console.error('Axios require or sync error:', err);
+        }
+      }
+    }
+
+    return updatedDelivery;
   }
 
   async photoVerifiedPickup(id: string, photoUrl: string, qrData: string): Promise<any> {
@@ -139,20 +164,22 @@ export class DeliveryService {
       throw new BadRequestException('Invalid QR code for this stall');
     }
 
-    // Process pickup
-    this.validateTransition(delivery.status, DeliveryStatus.PICKED_UP);
+    // Process pickup transition to PENDING_HANDOVER for mutual confirmation
+    this.validateTransition(delivery.status, DeliveryStatus.PENDING_HANDOVER);
     
-    return await this.deliveryModel.findByIdAndUpdate(
+    const updatedDelivery = await this.deliveryModel.findByIdAndUpdate(
       id,
       { 
         $set: { 
-          status: DeliveryStatus.PICKED_UP,
+          status: DeliveryStatus.PENDING_HANDOVER,
           'pickup.qrScannedAt': new Date(),
           'pickup.pickupPhotoUrl': photoUrl
         } 
       },
       { new: true }
     );
+    
+    return updatedDelivery;
   }
 
   async streamLocation(id: string, coords: Coordinates): Promise<any> {
@@ -199,6 +226,16 @@ export class DeliveryService {
     );
   }
 
+  async getAvailableDeliveries(): Promise<any[]> {
+    return this.deliveryModel.find({
+      status: DeliveryStatus.ASSIGNED,
+      $or: [
+        { 'rider.riderId': { $exists: false } },
+        { 'rider.riderId': null }
+      ]
+    }).sort({ createdAt: -1 }).exec();
+  }
+
   async getActiveDelivery(userId: string): Promise<any> {
     // Resolve userId to rider profile ID if necessary
     let riderProfileId = userId;
@@ -210,11 +247,20 @@ export class DeliveryService {
     // Schema stores rider reference under rider.riderId (nested), not top-level
     return this.deliveryModel.findOne({
       'rider.riderId': riderProfileId,
-      status: { $in: [DeliveryStatus.ASSIGNED, DeliveryStatus.EN_ROUTE_TO_PICKUP, DeliveryStatus.PICKED_UP, DeliveryStatus.EN_ROUTE_TO_DROPOFF] }
+      status: { $in: [DeliveryStatus.ASSIGNED, DeliveryStatus.EN_ROUTE_TO_PICKUP, DeliveryStatus.PENDING_HANDOVER, DeliveryStatus.PICKED_UP, DeliveryStatus.EN_ROUTE_TO_DROPOFF] }
     }).exec();
   }
 
   async acceptDelivery(id: string, riderId: string): Promise<any> {
+    // Frontend sends user?.id, so we need to find the RiderProfile by userId OR _id
+    let riderProfile = await this.riderModel.findById(riderId).exec().catch(() => null);
+    if (!riderProfile) {
+      riderProfile = await this.riderModel.findOne({ userId: riderId }).exec();
+    }
+    if (!riderProfile) {
+      throw new NotFoundException('Rider profile not found');
+    }
+
     // Atomic check-and-set: only update if delivery still has no rider assigned.
     // This prevents two riders from accepting the same delivery concurrently.
     const delivery = await this.deliveryModel.findOneAndUpdate(
@@ -241,30 +287,65 @@ export class DeliveryService {
       throw new ConflictException('Delivery already accepted by another rider');
     }
 
-    // Look up rider profile and user to populate nested rider fields
-    const riderProfile = await this.riderModel.findById(riderId).exec();
-    if (!riderProfile) {
-      throw new NotFoundException('Rider profile not found');
-    }
-    const user = await this.riderModel.db.model('User').findById(riderProfile.userId).exec();
+    // The delivery-service does not have the User schema registered, so we use default fallbacks
+    // The frontend mainly relies on riderId and plateNumber anyway.
 
     // Now set the rider details in a second atomic update
-    return await this.deliveryModel.findByIdAndUpdate(
+    const updatedDelivery = await this.deliveryModel.findByIdAndUpdate(
       id,
       {
         $set: {
           'rider.riderId': riderProfile._id,
           'rider.userId': riderProfile.userId,
-          'rider.fullName': user?.fullName || 'Rider',
-          'rider.phone': user?.phone || '',
+          'rider.fullName': 'Rider',
+          'rider.phone': '',
           'rider.plateNumber': riderProfile.plateNumber
         }
       },
       { new: true }
     );
+
+    // Notify the frontend tracking page that a rider is coming
+    if (updatedDelivery?.orderId) {
+      // Move delivery status to EN_ROUTE_TO_PICKUP via internal update (triggers gateway)
+      await this.updateStatus(id, DeliveryStatus.EN_ROUTE_TO_PICKUP);
+    }
+
+    return updatedDelivery;
+  }
+
+  async confirmHandover(id: string, role: 'seller' | 'rider'): Promise<any> {
+    const delivery = await this.deliveryModel.findById(id);
+    if (!delivery) throw new NotFoundException('Delivery not found');
+
+    const updateField = role === 'seller' ? 'pickup.sellerConfirmed' : 'pickup.riderConfirmed';
+    
+    const updatedDelivery = await this.deliveryModel.findByIdAndUpdate(
+      id,
+      { $set: { [updateField]: true } },
+      { new: true }
+    );
+
+    // Notify parties about the confirmation
+    this.deliveryGateway.server.emit(`delivery:${id}:handover_update`, { 
+      sellerConfirmed: updatedDelivery.pickup.sellerConfirmed,
+      riderConfirmed: updatedDelivery.pickup.riderConfirmed
+    });
+
+    // If both confirmed, move to PICKED_UP
+    if (updatedDelivery.pickup.sellerConfirmed && updatedDelivery.pickup.riderConfirmed) {
+      return await this.updateStatus(id, DeliveryStatus.PICKED_UP);
+    }
+
+    return updatedDelivery;
   }
 
   async rejectDelivery(id: string): Promise<any> {
+    // Validate ID format
+    if (!id.match(/^[0-9a-fA-F]{24}$/)) {
+      throw new BadRequestException('Invalid delivery ID format');
+    }
+
     // Rejecting a delivery should NOT fail it permanently.
     // Instead, unassign the rider so the delivery goes back to the pool
     // for other riders. Only fail the delivery if explicitly requested.
@@ -287,20 +368,32 @@ export class DeliveryService {
     );
 
     if (!delivery) {
-      throw new NotFoundException('Delivery not found or cannot be rejected at current status');
+      // Check if it exists at all
+      const exists = await this.deliveryModel.findById(id).exec();
+      if (!exists) {
+        throw new NotFoundException(`Delivery ${id} not found`);
+      }
+      throw new ConflictException(`Delivery ${id} cannot be rejected at its current status (${exists.status})`);
     }
 
     // Notify other available riders that the delivery is available again
     try {
-      this.deliveryGateway.broadcastToNearbyRiders(
-        delivery.toObject(),
-        delivery.pickup.coordinates.lat,
-        delivery.pickup.coordinates.lng
-      );
+      this.deliveryGateway.emitAssignment(delivery.toObject());
     } catch (e) {
       console.error('Failed to rebroadcast delivery request after rejection', e);
     }
 
     return delivery;
+  }
+
+  async getHistory(userId: string): Promise<any[]> {
+    let riderProfileId = userId;
+    const riderProfile = await this.riderModel.findOne({ userId }).exec();
+    if (riderProfile) riderProfileId = riderProfile._id.toString();
+
+    return this.deliveryModel.find({
+      'rider.riderId': riderProfileId,
+      status: DeliveryStatus.DELIVERED
+    }).sort({ createdAt: -1 }).limit(50).exec();
   }
 }

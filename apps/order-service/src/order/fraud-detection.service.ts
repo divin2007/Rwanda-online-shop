@@ -52,10 +52,17 @@ export class FraudDetectionService {
       }
 
       // F003: Price manipulation - Cart subtotal doesn't match sum of product unit prices
-      if (orderData.product && orderData.financials) {
-        const expectedSubtotal = orderData.product.unitPrice * orderData.product.quantity;
-        if (Math.abs(expectedSubtotal - orderData.financials.subtotal) > 1) {
-          return { isFlagged: true, shouldBlock: true, reason: 'F003: Price manipulation detected (Subtotal mismatch)' };
+      if (orderData.financials) {
+        let expectedSubtotal = 0;
+        if (orderData.products && Array.isArray(orderData.products)) {
+          expectedSubtotal = orderData.products.reduce((sum: number, p: any) => sum + (p.unitPrice * p.quantity), 0);
+        } else if (orderData.product) {
+          expectedSubtotal = orderData.product.unitPrice * orderData.product.quantity;
+        }
+
+        if (expectedSubtotal > 0 && Math.abs(expectedSubtotal - orderData.financials.subtotal) > 1) {
+          this.logger.warn(`F003: Subtotal mismatch for order. Expected: ${expectedSubtotal}, Actual: ${orderData.financials.subtotal}`);
+          return { isFlagged: true, shouldBlock: true, reason: `F003: Price manipulation detected (Subtotal mismatch: expected ${expectedSubtotal}, got ${orderData.financials.subtotal})` };
         }
       }
 

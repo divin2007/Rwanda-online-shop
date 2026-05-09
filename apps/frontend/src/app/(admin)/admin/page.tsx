@@ -3,19 +3,30 @@ import React, { useEffect, useState } from 'react';
 import { Layout } from '@/components/layout/Layout';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
+import { ReceiptView, type ReceiptOrder } from '@/components/ui/ReceiptView';
 import { useApi } from '@/hooks/useApi';
-import { adminApi, sellerApi, orderApi, riderApi } from '@/lib/api';
+import { adminApi, sellerApi, orderApi, riderApi, deliveryApi, walletApi } from '@/lib/api';
 import toast from 'react-hot-toast';
 
 export default function AdminDashboardPage() {
   const [activeTab, setActiveTab] = useState('analytics');
   const [selectedSeller, setSelectedSeller] = useState<any>(null);
+  const [selectedReceipt, setSelectedReceipt] = useState<ReceiptOrder | null>(null);
+  const [allOrders, setAllOrders] = useState<any[]>([]);
+  const [deliveryCache, setDeliveryCache] = useState<Record<string, any>>({});
+  const [dateRange, setDateRange] = useState<'today' | 'week' | 'month' | 'all' | 'custom'>('month');
+  const [customStartDate, setCustomStartDate] = useState('');
+  const [customEndDate, setCustomEndDate] = useState('');
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(20);
+  const [fetchError, setFetchError] = useState<string | null>(null);
 
   const { data: analytics, execute: fetchAnalytics } = useApi(adminApi, 'get', '/admin/analytics');
   const { data: fraudAlerts, execute: fetchFraud } = useApi(adminApi, 'get', '/admin/fraud-alerts');
   const { data: pendingSellers, execute: fetchSellers } = useApi(sellerApi, 'get', '/sellers?isApproved=false');
   const { data: pendingRiders, execute: fetchRiders } = useApi(riderApi, 'get', '/riders?isApproved=false');
   const { data: disputes, execute: fetchDisputes } = useApi(orderApi, 'get', '/orders?isDisputed=true&dispute.resolvedAt=null');
+  const { data: ordersData, execute: fetchOrders } = useApi(orderApi, 'get', `/orders?sellerId=all`);
 
   useEffect(() => {
     if (activeTab === 'analytics') fetchAnalytics();
@@ -23,7 +34,98 @@ export default function AdminDashboardPage() {
     if (activeTab === 'sellers') fetchSellers();
     if (activeTab === 'riders') fetchRiders();
     if (activeTab === 'disputes') fetchDisputes();
-  }, [activeTab, fetchAnalytics, fetchFraud, fetchSellers, fetchRiders, fetchDisputes]);
+    if (activeTab === 'accounting') {
+      setFetchError(null);
+      fetchOrders().catch(() => setFetchError('Failed to load orders. Please try again.'));
+      fetchAnalytics();
+    }
+  }, [activeTab, fetchAnalytics, fetchFraud, fetchSellers, fetchRiders, fetchDisputes, fetchOrders]);
+
+  // Reset page when filters change
+  useEffect(() => { setPage(1); }, [dateRange, customStartDate, customEndDate]);
+
+  useEffect(() => {
+    if (ordersData && Array.isArray(ordersData)) {
+      setAllOrders(ordersData);
+      // Fetch delivery data for orders with deliveryId
+      ordersData.forEach((order: any) => {
+        if (order.deliveryId && !deliveryCache[order.deliveryId]) {
+          deliveryApi.get(`/deliveries/${order.deliveryId}`)
+            .then(res => setDeliveryCache(prev => ({ ...prev, [order.deliveryId]: res.data?.data })))
+            .catch(() => {});
+        }
+      });
+    }
+  }, [ordersData, deliveryCache]);
+
+  // Filter orders by date range
+  const filteredOrders = allOrders.filter((o: any) => {
+    if (dateRange === 'all') return true;
+    const now = Date.now();
+    const created = new Date(o.createdAt).getTime();
+    if (dateRange === 'today') return now - created < 86400000;
+    if (dateRange === 'week') return now - created < 604800000;
+    if (dateRange === 'month') return now - created < 2592000000;
+    return true;
+  });
+
+  const openReceipt = (order: any) => {
+    const delivery = order.deliveryId ? deliveryCache[order.deliveryId] : null;
+    setSelectedReceipt({
+      ...order,
+      delivery: delivery ? { rider: delivery.rider, status: delivery.status, route: delivery.route } : undefined,
+    });
+  };
+
+  // Accounting calculations
+  const totalGMV = filteredOrders.reduce((s: number, o: any) => s + (o.financials?.totalAmount || 0), 0);
+  const totalCommission = filteredOrders.reduce((s: number, o: any) => s + (o.financials?.platformCommission || 0), 0);
+  const totalGateway = filteredOrders.reduce((s: number, o: any) => s + (o.financials?.gatewayFee || 0), 0);
+  const totalSellerPayout = filteredOrders.reduce((s: number, o: any) => s + (o.financials?.sellerPayout || 0), 0);
+  const totalRiderPayout = filteredOrders.reduce((s: number, o: any) => s + (o.financials?.riderPayout || 0), 0);
+  const platformRevenue = totalCommission + totalGateway;
+  const deliveredOrders = filteredOrders.filter((o: any) => o.status === 'delivered' || o.status === 'resolved');
+
+  // Pagination
+  const totalPages = Math.max(1, Math.ceil(filteredOrders.length / pageSize));
+  const paginatedOrders = filteredOrders.slice((page - 1) * pageSize, page * pageSize);
+
+  // CSV Export
+  const exportCSV = () => {
+    const headers = ['Order #', 'Date', 'Buyer', 'Seller', 'GMV (RWF)', 'Commission (RWF)', 'Seller Payout (RWF)', 'Rider Payout (RWF)', 'Status'];
+    const rows = filteredOrders.map((o: any) => [
+      o._id.substring(0, 6).toUpperCase(),
+      new Date(o.createdAt).toLocaleDateString(),
+      o.buyer?.fullName || 'N/A',
+      o.seller?.fullName || 'N/A',
+      o.financials?.totalAmount || 0,
+      o.financials?.platformCommission || 0,
+      o.financials?.sellerPayout || 0,
+      o.financials?.riderPayout || 0,
+      o.status === 'delivered' ? 'SETTLED' : o.status === 'resolved' ? 'RESOLVED' : o.status === 'cancelled' ? 'CANCELLED' : o.status === 'disputed' ? 'DISPUTED' : 'PENDING'
+    ]);
+    const csvContent = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `settlement-report-${new Date().toISOString().split('T')[0]}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  // Per-seller breakdown (client-side grouping)
+  const sellerBreakdown = Object.entries(
+    filteredOrders.reduce((acc: Record<string, any>, o: any) => {
+      const name = o.seller?.fullName || 'Unknown';
+      if (!acc[name]) acc[name] = { sellerName: name, orderCount: 0, totalGMV: 0, totalCommission: 0, totalSellerPayout: 0 };
+      acc[name].orderCount++;
+      acc[name].totalGMV += o.financials?.totalAmount || 0;
+      acc[name].totalCommission += o.financials?.platformCommission || 0;
+      acc[name].totalSellerPayout += o.financials?.sellerPayout || 0;
+      return acc;
+    }, {})
+  ).map(([_, v]) => v as any).sort((a, b) => b.totalGMV - a.totalGMV);
 
   const approveSeller = async (id: string) => {
     try {
@@ -71,6 +173,10 @@ export default function AdminDashboardPage() {
 
   return (
     <Layout>
+      {selectedReceipt && (
+        <ReceiptView order={selectedReceipt} role="admin" onClose={() => setSelectedReceipt(null)} />
+      )}
+
       <div className="flex flex-col md:flex-row min-h-screen bg-background-main">
         {/* Modal for View Docs */}
         {selectedSeller && (
@@ -96,13 +202,13 @@ export default function AdminDashboardPage() {
                 </div>
                 <div className="p-6 border-t border-border flex justify-end gap-3 bg-background-surface">
                    <Button variant="outline" onClick={() => setSelectedSeller(null)}>Close</Button>
-                   <Button onClick={() => { 
+                   <Button onClick={() => {
                       if (selectedSeller.plateNumber) {
                         approveRider(selectedSeller._id);
                       } else {
                         approveSeller(selectedSeller._id);
                       }
-                      setSelectedSeller(null); 
+                      setSelectedSeller(null);
                    }}>Approve Now</Button>
                 </div>
              </div>
@@ -116,12 +222,13 @@ export default function AdminDashboardPage() {
           <nav className="space-y-2">
             {[
               { id: 'analytics', label: 'Analytics & Revenue' },
+              { id: 'accounting', label: '📊 Accounting' },
               { id: 'sellers', label: 'Seller Approvals' },
               { id: 'riders', label: 'Rider Approvals' },
               { id: 'disputes', label: 'Disputes & Refunds' },
               { id: 'fraud', label: 'Fraud Alerts' }
             ].map(tab => (
-              <button 
+              <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
                 className={`w-full text-left px-4 py-2 font-medium rounded-lg ${activeTab === tab.id ? 'bg-primary/10 text-primary font-bold' : 'text-text-secondary hover:bg-background-surface hover:text-text-primary'}`}
@@ -140,11 +247,11 @@ export default function AdminDashboardPage() {
               <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
                 <Card>
                   <p className="text-sm text-text-secondary">Monthly GMV</p>
-                  <p className="text-2xl font-bold">{analytics?.gmv?.toLocaleString() || 0} RWF</p>
+                  <p className="text-2xl font-bold">{analytics?.monthlyGMV?.toLocaleString() || 0} RWF</p>
                 </Card>
                 <Card>
                   <p className="text-sm text-text-secondary">Company Revenue</p>
-                  <p className="text-2xl font-bold text-primary">{analytics?.revenue?.toLocaleString() || 0} RWF</p>
+                  <p className="text-2xl font-bold text-primary">{analytics?.monthlyCommission?.toLocaleString() || 0} RWF</p>
                 </Card>
                 <Card>
                   <p className="text-sm text-text-secondary">Active Sellers</p>
@@ -153,6 +260,148 @@ export default function AdminDashboardPage() {
                 <Card>
                   <p className="text-sm text-text-secondary">Active Riders</p>
                   <p className="text-2xl font-bold">{analytics?.activeRiders || 0}</p>
+                </Card>
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'accounting' && (
+            <div className="space-y-6 animate-fade-in">
+              {/* Date Range Filter */}
+              <div className="flex gap-2">
+                {(['today', 'week', 'month', 'all'] as const).map(range => (
+                  <button
+                    key={range}
+                    onClick={() => setDateRange(range)}
+                    className={`px-4 py-2 rounded-lg text-sm font-bold transition-colors ${
+                      dateRange === range ? 'bg-primary text-white' : 'bg-background-surface text-text-secondary hover:bg-gray-200'
+                    }`}
+                  >
+                    {range === 'today' ? 'Today' : range === 'week' ? 'This Week' : range === 'month' ? 'This Month' : 'All Time'}
+                  </button>
+                ))}
+              </div>
+
+              {/* Revenue Summary Cards */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <Card className="bg-gradient-to-br from-primary to-primary/80 text-white">
+                  <p className="text-white/70 text-sm font-medium">Total GMV</p>
+                  <p className="text-3xl font-bold mt-1">{totalGMV.toLocaleString()} RWF</p>
+                  <p className="text-white/60 text-xs mt-1">{filteredOrders.length} orders</p>
+                </Card>
+                <Card>
+                  <p className="text-text-secondary text-sm font-medium">Platform Revenue</p>
+                  <p className="text-2xl font-bold text-primary mt-1">{platformRevenue.toLocaleString()} RWF</p>
+                  <p className="text-xs text-text-secondary mt-1">Commission: {totalCommission.toLocaleString()} + Gateway: {totalGateway.toLocaleString()}</p>
+                </Card>
+                <Card>
+                  <p className="text-text-secondary text-sm font-medium">Seller Payouts</p>
+                  <p className="text-2xl font-bold text-status-success mt-1">{totalSellerPayout.toLocaleString()} RWF</p>
+                  <p className="text-xs text-text-secondary mt-1">{(totalGMV > 0 ? (totalSellerPayout / totalGMV * 100) : 0).toFixed(1)}% of GMV</p>
+                </Card>
+                <Card>
+                  <p className="text-text-secondary text-sm font-medium">Rider Payouts</p>
+                  <p className="text-2xl font-bold text-status-info mt-1">{totalRiderPayout.toLocaleString()} RWF</p>
+                  <p className="text-xs text-text-secondary mt-1">{deliveredOrders.length} deliveries completed</p>
+                </Card>
+              </div>
+
+              {/* Settlement Summary */}
+              <Card noPadding>
+                <div className="p-6 border-b border-border flex justify-between items-center">
+                  <h2 className="text-lg font-bold">Settlement Report</h2>
+                  <span className="text-xs text-text-secondary">{filteredOrders.length} orders in period</span>
+                </div>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left">
+                    <thead className="bg-background-surface text-text-secondary text-xs uppercase">
+                      <tr>
+                        <th className="p-3 font-medium">Order #</th>
+                        <th className="p-3 font-medium">Date</th>
+                        <th className="p-3 font-medium">Buyer</th>
+                        <th className="p-3 font-medium">Seller</th>
+                        <th className="p-3 font-medium text-right">GMV</th>
+                        <th className="p-3 font-medium text-right">Commission</th>
+                        <th className="p-3 font-medium text-right">Seller Payout</th>
+                        <th className="p-3 font-medium text-right">Rider Payout</th>
+                        <th className="p-3 font-medium text-center">Status</th>
+                        <th className="p-3 font-medium text-center">Receipt</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-border text-sm">
+                      {filteredOrders.length === 0 ? (
+                        <tr><td colSpan={10} className="p-8 text-center text-text-secondary">No orders in this period.</td></tr>
+                      ) : (
+                        filteredOrders.map((order: any) => (
+                          <tr key={order._id} className="hover:bg-background-surface/50">
+                            <td className="p-3 font-mono font-medium">#{order._id.substring(0, 6).toUpperCase()}</td>
+                            <td className="p-3 text-text-secondary">{new Date(order.createdAt).toLocaleDateString()}</td>
+                            <td className="p-3">{order.buyer?.fullName || 'N/A'}</td>
+                            <td className="p-3">{order.seller?.fullName || 'N/A'}</td>
+                            <td className="p-3 text-right font-medium">{(order.financials?.totalAmount || 0).toLocaleString()}</td>
+                            <td className="p-3 text-right text-primary font-medium">{(order.financials?.platformCommission || 0).toLocaleString()}</td>
+                            <td className="p-3 text-right text-status-success">+{(order.financials?.sellerPayout || 0).toLocaleString()}</td>
+                            <td className="p-3 text-right text-status-info">+{(order.financials?.riderPayout || 0).toLocaleString()}</td>
+                            <td className="p-3 text-center">
+                              <span className={`px-2 py-0.5 rounded text-xs font-bold ${
+                                order.status === 'delivered' || order.status === 'resolved'
+                                  ? 'bg-status-success/10 text-status-success'
+                                  : order.status === 'cancelled'
+                                    ? 'bg-status-error/10 text-status-error'
+                                    : 'bg-status-warning/10 text-status-warning'
+                              }`}>
+                                {order.status === 'delivered' ? 'SETTLED' :
+                                 order.status === 'resolved' ? 'RESOLVED' :
+                                 order.status === 'cancelled' ? 'CANCELLED' :
+                                 order.status === 'disputed' ? 'DISPUTED' : 'PENDING'}
+                              </span>
+                            </td>
+                            <td className="p-3 text-center">
+                              <Button size="sm" variant="outline" onClick={() => openReceipt(order)}>🧾</Button>
+                            </td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                    <tfoot className="bg-gray-50 font-bold text-sm">
+                      <tr>
+                        <td colSpan={4} className="p-3 text-right">Totals ({filteredOrders.length} orders)</td>
+                        <td className="p-3 text-right">{totalGMV.toLocaleString()} RWF</td>
+                        <td className="p-3 text-right text-primary">{totalCommission.toLocaleString()} RWF</td>
+                        <td className="p-3 text-right text-status-success">{totalSellerPayout.toLocaleString()} RWF</td>
+                        <td className="p-3 text-right text-status-info">{totalRiderPayout.toLocaleString()} RWF</td>
+                        <td colSpan={2}></td>
+                      </tr>
+                    </tfoot>
+                  </table>
+                </div>
+              </Card>
+
+              {/* Platform P&L Summary */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <Card className="bg-green-50 border border-green-200">
+                  <p className="text-sm font-bold text-green-700 mb-2">📈 Platform Revenue</p>
+                  <p className="text-3xl font-bold text-green-700">{platformRevenue.toLocaleString()} RWF</p>
+                  <div className="text-xs text-green-600 mt-2 space-y-1">
+                    <p>Commission Income: +{totalCommission.toLocaleString()} RWF</p>
+                    <p>Gateway Fees: +{totalGateway.toLocaleString()} RWF</p>
+                  </div>
+                </Card>
+                <Card className="bg-blue-50 border border-blue-200">
+                  <p className="text-sm font-bold text-blue-700 mb-2">💸 Total Payouts</p>
+                  <p className="text-3xl font-bold text-blue-700">{(totalSellerPayout + totalRiderPayout).toLocaleString()} RWF</p>
+                  <div className="text-xs text-blue-600 mt-2 space-y-1">
+                    <p>To Sellers: {totalSellerPayout.toLocaleString()} RWF</p>
+                    <p>To Riders: {totalRiderPayout.toLocaleString()} RWF</p>
+                  </div>
+                </Card>
+                <Card className="bg-amber-50 border border-amber-200">
+                  <p className="text-sm font-bold text-amber-700 mb-2">📊 Net Position</p>
+                  <p className="text-3xl font-bold text-amber-700">{(platformRevenue - (totalSellerPayout + totalRiderPayout)).toLocaleString()} RWF</p>
+                  <div className="text-xs text-amber-600 mt-2 space-y-1">
+                    <p>Revenue: {platformRevenue.toLocaleString()} RWF</p>
+                    <p>Payouts: {(totalSellerPayout + totalRiderPayout).toLocaleString()} RWF</p>
+                  </div>
                 </Card>
               </div>
             </div>
@@ -256,11 +505,11 @@ export default function AdminDashboardPage() {
                       disputes.map((d: any) => (
                         <tr key={d._id}>
                           <td className="p-4 font-medium">#{d._id.substring(0,8).toUpperCase()}</td>
-                          <td className="p-4 font-bold">{d.total} RWF</td>
+                          <td className="p-4 font-bold">{d.financials?.totalAmount || d.total} RWF</td>
                           <td className="p-4 text-sm text-text-secondary">{d.dispute?.reason || 'Undelivered'}</td>
                           <td className="p-4 text-right">
-                            <Button size="sm" onClick={() => resolveDispute(d._id, d.total)}>
-                              {d.total <= 10000 ? 'Instant Refund' : 'Resolve Manually'}
+                            <Button size="sm" onClick={() => resolveDispute(d._id, d.financials?.totalAmount || d.total)}>
+                              {(d.financials?.totalAmount || d.total) <= 10000 ? 'Instant Refund' : 'Resolve Manually'}
                             </Button>
                           </td>
                         </tr>
@@ -288,9 +537,9 @@ export default function AdminDashboardPage() {
                   ) : (
                     fraudAlerts.map((f: any) => (
                       <tr key={f._id}>
-                        <td className="p-4"><span className="bg-status-error text-white px-2 py-1 rounded text-xs">{f.ruleCode}</span></td>
-                        <td className="p-4 text-sm font-mono">{f.transactionId}</td>
-                        <td className="p-4 text-sm">{f.reason}</td>
+                        <td className="p-4"><span className="bg-status-error text-white px-2 py-1 rounded text-xs">{f.security?.flagReason?.split(':')[0] || 'FLAG'}</span></td>
+                        <td className="p-4 text-sm font-mono">{f._id}</td>
+                        <td className="p-4 text-sm">{f.security?.flagReason || f.reason}</td>
                       </tr>
                     ))
                   )}

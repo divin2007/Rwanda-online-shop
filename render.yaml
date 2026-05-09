@@ -100,6 +100,12 @@ services:
         fromEnv: CORS_ORIGIN
       - key: DELIVERY_SERVICE_URL
         value: "https://rmf-delivery-service.onrender.com"
+      - key: PRODUCT_SERVICE_URL
+        value: "https://rmf-product-service.onrender.com"
+      - key: WALLET_SERVICE_URL
+        value: "https://rmf-wallet-service.onrender.com"
+      - key: MARKET_SERVICE_URL
+        value: "https://rmf-market-service.onrender.com"
       - key: MTN_MOMO_API_KEY
         fromEnv: MTN_MOMO_API_KEY
       - key: MTN_MOMO_USER_ID

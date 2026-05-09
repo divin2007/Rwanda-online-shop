@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Param, Request, Query } from '@nestjs/common';
+import { Controller, Get, Post, Body, Param, Request, Query, SetMetadata } from '@nestjs/common';
 import { WalletService } from './wallet.service';
 import { Roles, Public } from '@rmf/auth';
 import { UserRole } from '@rmf/shared-types';
@@ -30,6 +30,14 @@ export class WalletController {
     return { success: true, data: wallet };
   }
 
+  @Get('me/transactions')
+  async getMyTransactions(@Request() req: any, @Query('userId') queryUserId?: string) {
+    const userId = req.user?.userId || queryUserId;
+    if (!userId) return { success: true, data: [] };
+    const transactions = await this.walletService.getTransactions(userId);
+    return { success: true, data: transactions };
+  }
+
   @Get('user/:userId/balance')
   @Roles(UserRole.ADMIN)
   async getBalance(@Param('userId') userId: string) {
@@ -38,6 +46,7 @@ export class WalletController {
   }
 
   @Post('transaction')
+  @SetMetadata('isPublic', true)
   async processTransaction(@Body() data: any) {
     const result = await this.walletService.processTransaction(data);
     return result;

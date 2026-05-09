@@ -11,6 +11,10 @@ const nextConfig = {
       },
       {
         protocol: 'https',
+        hostname: 'fakeimg.pl',
+      },
+      {
+        protocol: 'https',
         hostname: '**.cloudinary.com',
       },
       {
@@ -28,6 +32,10 @@ const nextConfig = {
       {
         protocol: 'https',
         hostname: '**.imgur.com',
+      },
+      {
+        protocol: 'https',
+        hostname: 'fakeimg.pl',
       },
     ],
   },

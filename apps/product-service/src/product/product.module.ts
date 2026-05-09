@@ -1,6 +1,6 @@
 import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
-import { productSchema, sellerProfileSchema, marketSchema } from '@rmf/database';
+import { productSchema, sellerProfileSchema, marketSchema, promotionSchema } from '@rmf/database';
 import { ProductService } from './product.service';
 import { ProductController } from './product.controller';
 import { CacheModule } from '@nestjs/cache-manager';
@@ -11,7 +11,8 @@ import { CacheModule } from '@nestjs/cache-manager';
     MongooseModule.forFeature([
       { name: 'Product', schema: productSchema },
       { name: 'SellerProfile', schema: sellerProfileSchema },
-      { name: 'Market', schema: marketSchema }
+      { name: 'Market', schema: marketSchema },
+      { name: 'Promotion', schema: promotionSchema }
     ]),
   ],
   providers: [ProductService],

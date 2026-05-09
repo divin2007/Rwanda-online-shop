@@ -13,11 +13,12 @@ interface CartItem {
   stallId?: string;
   marketId?: string;
   unit?: string;
+  customization?: string;
 }
 
 interface CartContextType {
   items: CartItem[];
-  addToCart: (product: any) => void;
+  addToCart: (product: any, customization?: string) => void;
   removeFromCart: (id: string) => void;
   updateQuantity: (id: string, quantity: number) => void;
   clearCart: () => void;
@@ -47,12 +48,14 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
     localStorage.setItem('rwshop_cart', JSON.stringify(items));
   }, [items]);
 
-  const addToCart = (product: any) => {
+  const addToCart = (product: any, customization?: string) => {
     setItems((prevItems) => {
-      const existingItem = prevItems.find((item) => item.id === (product.id || product._id));
+      // If customized, always treat as a unique item so multiple different customizations can exist
+      const existingItem = !customization ? prevItems.find((item) => item.id === (product.id || product._id) && !item.customization) : null;
+      
       if (existingItem) {
         return prevItems.map((item) =>
-          item.id === (product.id || product._id) ? { ...item, quantity: item.quantity + 1 } : item
+          (item.id === (product.id || product._id) && !item.customization) ? { ...item, quantity: item.quantity + 1 } : item
         );
       }
 
@@ -62,9 +65,13 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
       // Extract seller info from populated object if possible
       const seller = typeof product.sellerId === 'object' ? product.sellerId : null;
       const sellerId = seller ? seller._id : product.sellerId;
-      const sellerUserId = seller ? seller.userId : null;
-      const sellerName = seller?.shopDetails?.name || 'Verified Seller';
-      const stallId = seller?.stallId || 'N/A';
+      const sellerUserId = seller ? seller.userId : product.sellerUserId;
+      const sellerName = seller?.shopDetails?.name || product.sellerName || 'Verified Seller';
+      const stallId = seller?.stallId || product.stallId || 'N/A';
+      
+      // Extract market info from populated object
+      const market = typeof product.marketId === 'object' ? product.marketId : null;
+      const marketId = market ? market._id : product.marketId;
 
       return [...prevItems, { 
         id: product.id || product._id, 
@@ -76,8 +83,9 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
         sellerUserId,
         sellerName,
         stallId,
-        marketId: product.marketId,
-        unit: product.unit
+        marketId,
+        unit: product.unit,
+        customization
       }];
     });
   };

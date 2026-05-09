@@ -35,7 +35,7 @@ async function bootstrap() {
   }));
 
   app.setGlobalPrefix('api/v1');
-  await app.listen(process.env.PORT || 3001);
+  await app.listen(process.env.PORT || 3001, '0.0.0.0');
   console.log(`User Service is running on port ${process.env.PORT || 3001}`);
 }
 bootstrap();

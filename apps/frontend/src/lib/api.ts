@@ -32,17 +32,19 @@ const createClient = (baseURL: string) => {
   client.interceptors.response.use(
     (res) => res,
     async (error) => {
-      if (error.response?.status === 401 && !error.config._retry) {
-        error.config._retry = true;
+      const { config, response } = error;
+      
+      // Handle 401 Unauthorized
+      if (response?.status === 401 && !config._retry) {
+        config._retry = true;
         try {
           const res = await axios.post(`${process.env.NEXT_PUBLIC_USER_SERVICE_URL}/api/v1/auth/refresh`, {}, { withCredentials: true });
           if (res.data?.data?.accessToken) {
             localStorage.setItem('accessToken', res.data.data.accessToken);
-            error.config.headers.Authorization = `Bearer ${res.data.data.accessToken}`;
-            return client(error.config);
+            config.headers.Authorization = `Bearer ${res.data.data.accessToken}`;
+            return client(config);
           }
         } catch (refreshError) {
-          // Refresh failed, clear token and logout
           localStorage.removeItem('accessToken');
           if (typeof window !== 'undefined') {
              window.location.href = '/login';
@@ -50,6 +52,25 @@ const createClient = (baseURL: string) => {
           return Promise.reject(refreshError);
         }
       }
+
+      // Handle Connection Refused / Network Errors with Exponential Backoff
+      // We retry even on non-GET requests if it's a pure network error (no response)
+      // because it means the request never reached the server (safe to retry)
+      const isNetworkError = !response;
+      const retryCount = config._retryCount || 0;
+      const maxRetries = 8; // Increased retries for slow cold starts
+
+      if (isNetworkError && retryCount < maxRetries) {
+        config._retryCount = retryCount + 1;
+        // Exponential backoff: 500ms, 1s, 2s, 4s, 8s...
+        const delay = Math.pow(2, retryCount) * 500; 
+        
+        console.warn(`[API] Connection failed to ${baseURL}${config.url}. Retrying in ${delay}ms... (Attempt ${config._retryCount}/${maxRetries})`);
+        
+        await new Promise(resolve => setTimeout(resolve, delay));
+        return client(config);
+      }
+      
       return Promise.reject(error);
     }
   );

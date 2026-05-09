@@ -19,9 +19,15 @@ export class WalletService {
   }
 
   async getBalance(userId: string): Promise<any> {
-    const wallet = await this.walletModel.findOne({ userId });
-    if (!wallet) throw new NotFoundException('Wallet not found');
+    let wallet = await this.walletModel.findOne({ userId });
+    if (!wallet) {
+      wallet = await this.createWallet(userId);
+    }
     return wallet;
+  }
+
+  async getTransactions(userId: string): Promise<any> {
+    return await this.ledgerModel.find({ userId }).sort({ createdAt: -1 }).limit(50).exec();
   }
 
   /**
@@ -29,83 +35,86 @@ export class WalletService {
    */
   async processTransaction(data: {
     transactionId: string;
+    orderNumber?: string;
     description: string;
     sellerId: string;
     riderId: string;
     subtotal: number;
     deliveryFee: number;
-    commissionFloorApplied: boolean;
+    sellerPayout?: number;
+    riderPayout?: number;
+    commissionFloorApplied?: boolean;
   }): Promise<any> {
-    // Requires a MongoDB Replica Set for transactions
-    // In our single instance dev environment we use manual compensation rollback
-
-    // 1.5% commission, min 100 RWF
-    const sellerCommission = Math.max(data.subtotal * 0.015, 100);
-    const sellerNet = data.subtotal - sellerCommission;
-
-    // 10% delivery commission
-    const companyDeliveryCommission = data.deliveryFee * 0.1;
-    const riderNet = data.deliveryFee - companyDeliveryCommission;
-
     const ledgerId = `LGR-${Date.now()}`;
+    const orderRef = data.orderNumber || data.transactionId.substring(0, 8);
+    
+    // Check if this specific payout (seller or rider) has already been processed
+    const existingSellerLedger = await this.ledgerModel.findOne({ 
+      transactionId: data.transactionId, 
+      userId: data.sellerId,
+      account: 'seller_wallet'
+    });
+    
+    const existingRiderLedger = await this.ledgerModel.findOne({ 
+      transactionId: data.transactionId, 
+      userId: data.riderId,
+      account: 'rider_wallet'
+    });
+
     const appliedCredits: Array<{ userId: string; amount: number }> = [];
 
     try {
-      // 1. Credit Seller Wallet
-      const sellerWallet = await this.walletModel.findOneAndUpdate(
-        { userId: data.sellerId },
-        {
-          $inc: { balance: sellerNet, totalEarnings: sellerNet }
-        },
-        { new: true, upsert: true }
-      );
-      appliedCredits.push({ userId: data.sellerId, amount: -sellerNet });
+      // 1. Process Seller Payout if not already done
+      if (!existingSellerLedger && data.sellerPayout !== 0) {
+        const sellerCommission = data.sellerPayout !== undefined 
+          ? (data.subtotal - data.sellerPayout) 
+          : Math.max(data.subtotal * 0.015, 100);
+        const sellerNet = data.sellerPayout !== undefined ? data.sellerPayout : (data.subtotal - sellerCommission);
 
-      // 2. Credit Rider Wallet
-      const riderWallet = await this.walletModel.findOneAndUpdate(
-        { userId: data.riderId },
-        {
-          $inc: { balance: riderNet, totalEarnings: riderNet }
-        },
-        { new: true, upsert: true }
-      );
-      appliedCredits.push({ userId: data.riderId, amount: -riderNet });
+        const sellerWallet = await this.walletModel.findOneAndUpdate(
+          { userId: data.sellerId },
+          { $inc: { balance: sellerNet, totalEarnings: sellerNet } },
+          { new: true, upsert: true }
+        );
+        appliedCredits.push({ userId: data.sellerId, amount: -sellerNet });
 
-      // 3. Record Company Commissions (Virtual Account / Ledger only for tracking)
-      const totalCommission = sellerCommission + companyDeliveryCommission;
-
-      // 4. Save all ledger entries (immutable)
-      const ledgerEntries = [
-        new this.ledgerModel({
+        await new this.ledgerModel({
           ledgerId,
+          userId: data.sellerId,
           transactionId: data.transactionId,
           type: 'credit',
           account: 'seller_wallet',
           amount: sellerNet,
-          description: `Order ${data.transactionId} payout`,
+          description: `${data.description} (Seller)`,
           balanceAfter: sellerWallet.balance
-        }),
-        new this.ledgerModel({
+        }).save();
+      }
+
+      // 2. Process Rider Payout if not already done
+      if (!existingRiderLedger && data.riderPayout !== 0) {
+        const riderCommission = data.riderPayout !== undefined 
+          ? (data.deliveryFee - data.riderPayout) 
+          : (data.deliveryFee * 0.1);
+        const riderNet = data.riderPayout !== undefined ? data.riderPayout : (data.deliveryFee - riderCommission);
+
+        const riderWallet = await this.walletModel.findOneAndUpdate(
+          { userId: data.riderId },
+          { $inc: { balance: riderNet, totalEarnings: riderNet } },
+          { new: true, upsert: true }
+        );
+        appliedCredits.push({ userId: data.riderId, amount: -riderNet });
+
+        await new this.ledgerModel({
           ledgerId,
+          userId: data.riderId,
           transactionId: data.transactionId,
           type: 'credit',
           account: 'rider_wallet',
           amount: riderNet,
-          description: `Delivery fee for ${data.transactionId}`,
+          description: `${data.description} (Rider)`,
           balanceAfter: riderWallet.balance
-        }),
-        new this.ledgerModel({
-          ledgerId,
-          transactionId: data.transactionId,
-          type: 'credit',
-          account: 'company_commission',
-          amount: totalCommission,
-          description: `Commission for ${data.transactionId}`,
-          balanceAfter: 0
-        })
-      ];
-
-      await this.ledgerModel.insertMany(ledgerEntries);
+        }).save();
+      }
 
       return { success: true, ledgerId };
     } catch (error) {

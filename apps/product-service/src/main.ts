@@ -1,8 +1,13 @@
 import { NestFactory } from '@nestjs/core';
+import { json, urlencoded } from 'express';
 import { AppModule } from './app.module';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
+
+  // Increase payload limit for large product images/data
+  app.use(json({ limit: '50mb' }));
+  app.use(urlencoded({ extended: true, limit: '50mb' }));
 
     const corsOrigin = process.env.CORS_ORIGIN || 'http://localhost:3000,https://rwshop.org,https://www.rwshop.org';
   const allowedOrigins = corsOrigin.split(',').map(s => s.trim());
@@ -25,7 +30,7 @@ async function bootstrap() {
   });
 
   app.setGlobalPrefix('api/v1');
-  await app.listen(process.env.PORT || 3003);
+  await app.listen(process.env.PORT || 3003, '0.0.0.0');
   console.log(`Product Service is running on port ${process.env.PORT || 3003}`);
 }
 bootstrap();

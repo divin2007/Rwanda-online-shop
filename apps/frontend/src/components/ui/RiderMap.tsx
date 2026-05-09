@@ -39,19 +39,24 @@ export const RiderMap = ({ marketId, centerLat = -1.9441, centerLng = 30.0619, m
   }, []);
 
   useEffect(() => {
-    if (data && data.marketId === marketId) {
+    if (data) {
       setRiders((prev) => ({
         ...prev,
         [data.riderId]: data,
       }));
     }
-  }, [data, marketId]);
+  }, [data]);
 
   if (!isClient) return <div className="w-full h-full bg-background-surface animate-pulse"></div>;
 
   return (
     <div className="w-full h-full relative z-0">
-      <MapContainer center={[centerLat, centerLng]} zoom={15} style={{ height: '100%', width: '100%' }}>
+      <MapContainer 
+        key={`rider-map-${marketId}-${centerLat}-${centerLng}`}
+        center={[centerLat, centerLng]} 
+        zoom={15} 
+        style={{ height: '100%', width: '100%' }}
+      >
         <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
         
         {/* Shop Location */}

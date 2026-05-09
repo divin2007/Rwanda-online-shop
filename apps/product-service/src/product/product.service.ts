@@ -10,6 +10,7 @@ export class ProductService implements OnModuleInit {
     @InjectModel('Product') private productModel: Model<any>,
     @InjectModel('SellerProfile') private sellerModel: Model<any>,
     @InjectModel('Market') private marketModel: Model<any>,
+    @InjectModel('Promotion') private promotionModel: Model<any>,
     @Inject(CACHE_MANAGER) private cacheManager: Cache
   ) {}
 
@@ -126,10 +127,13 @@ export class ProductService implements OnModuleInit {
     
     const results = await dbQuery.exec();
     
-    // Set cache with 5 minute TTL (300 seconds)
-    await this.cacheManager.set(cacheKey, results, 300000);
+    // Enrich with active promotion data
+    const enriched = await this.enrichWithPromotions(results);
     
-    return results;
+    // Set cache with 5 minute TTL (300 seconds)
+    await this.cacheManager.set(cacheKey, enriched, 300000);
+    
+    return enriched;
   }
 
   async findById(id: string): Promise<any> {
@@ -143,8 +147,11 @@ export class ProductService implements OnModuleInit {
       throw new NotFoundException('Product not found');
     }
     
-    await this.cacheManager.set(cacheKey, product, 300000);
-    return product;
+    // Enrich with promotion data
+    const [enriched] = await this.enrichWithPromotions([product]);
+    
+    await this.cacheManager.set(cacheKey, enriched, 300000);
+    return enriched;
   }
 
   async update(id: string, updateData: any): Promise<any> {
@@ -182,6 +189,45 @@ export class ProductService implements OnModuleInit {
     return this.update(id, { 
       stockQuantity: newStock,
       inStock: newStock > 0 
+    });
+  }
+
+  /**
+   * Enrich a list of products with their active promotion data.
+   * Attaches a `promotion` field to each product if an active promo exists.
+   */
+  private async enrichWithPromotions(products: any[]): Promise<any[]> {
+    if (products.length === 0) return products;
+
+    const now = new Date();
+    const productIds = products.map(p => p._id?.toString() || p.id);
+    
+    const activePromos = await this.promotionModel.find({
+      productId: { $in: productIds },
+      isActive: true,
+      startDate: { $lte: now },
+      endDate: { $gt: now },
+      deletedAt: null
+    }).lean().exec();
+
+    // Build a map of productId -> promotion
+    const promoMap = new Map<string, any>();
+    for (const promo of activePromos) {
+      promoMap.set(promo.productId.toString(), promo);
+    }
+
+    return products.map(product => {
+      const p = typeof product.toObject === 'function' ? product.toObject() : { ...product };
+      const promo = promoMap.get(p._id?.toString());
+      if (promo) {
+        p.promotion = {
+          type: promo.type,
+          discount: promo.discount,
+          promotedPrice: promo.promotedPrice || p.price,
+          endDate: promo.endDate
+        };
+      }
+      return p;
     });
   }
 }

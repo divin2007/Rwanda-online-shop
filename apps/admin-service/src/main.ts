@@ -25,7 +25,7 @@ async function bootstrap() {
   });
 
   app.setGlobalPrefix('api/v1');
-  await app.listen(process.env.PORT || 3011);
+  await app.listen(process.env.PORT || 3011, '0.0.0.0');
   console.log(`Admin Service is running on port ${process.env.PORT || 3011}`);
 }
 bootstrap();

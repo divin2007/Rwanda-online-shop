@@ -1,31 +1,41 @@
 'use client';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import Link from 'next/link';
 import { Layout } from '@/components/layout/Layout';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { useAuth } from '@/context/AuthContext';
 import { useApi } from '@/hooks/useApi';
-import { walletApi } from '@/lib/api';
+import { walletApi, sellerApi, orderApi } from '@/lib/api';
+import { ReceiptView, type ReceiptOrder } from '@/components/ui/ReceiptView';
 import toast from 'react-hot-toast';
 
 export default function SellerEarningsPage() {
   const { user } = useAuth();
   const { data: wallet, execute: fetchWallet } = useApi(walletApi, 'get', '/wallets/me');
-  const { data: ledger } = useApi(walletApi, 'get', '/wallets/me/transactions');
+  const { data: ledger, execute: fetchLedger } = useApi(walletApi, 'get', '/wallets/me/transactions');
+  const { data: profile, execute: fetchProfile } = useApi(sellerApi, 'get', `/sellers/me?userId=${user?.id}`);
   
   const [payoutForm, setPayoutForm] = useState({ amount: '', phone: '' });
+  const [selectedReceipt, setSelectedReceipt] = useState<ReceiptOrder | null>(null);
+  const [isFetchingReceipt, setIsFetchingReceipt] = useState(false);
 
+  const hasFetched = useRef(false);
   useEffect(() => {
-    fetchWallet();
-  }, [fetchWallet]);
+    if (user?.id && !hasFetched.current) {
+      fetchWallet();
+      fetchLedger();
+      fetchProfile();
+      hasFetched.current = true;
+    }
+  }, [user?.id, fetchWallet, fetchLedger, fetchProfile]);
 
   const requestPayout = async (e: React.FormEvent) => {
     e.preventDefault();
     if (Number(payoutForm.amount) < 500) return toast.error('Minimum payout is 500 RWF');
     
     try {
-      await walletApi.post('/payouts/request', { amount: Number(payoutForm.amount), phone: payoutForm.phone });
+      await walletApi.post(`/wallets/user/${user?.id}/payout`, { amount: Number(payoutForm.amount), method: 'momo', recipientPhone: payoutForm.phone });
       toast.success('Payout requested successfully. It will be processed shortly.');
       setPayoutForm({ amount: '', phone: '' });
       fetchWallet();
@@ -33,9 +43,32 @@ export default function SellerEarningsPage() {
       toast.error(err.response?.data?.error || 'Failed to request payout');
     }
   };
+  const fetchAndOpenReceipt = async (transactionId: string) => {
+    setIsFetchingReceipt(true);
+    try {
+      const res = await orderApi.get(`/orders/${transactionId}`);
+      if (res.data?.data) {
+        setSelectedReceipt(res.data.data);
+      } else {
+        toast.error('Receipt data not found');
+      }
+    } catch (err) {
+      toast.error('Failed to fetch receipt');
+    } finally {
+      setIsFetchingReceipt(false);
+    }
+  };
 
   return (
     <Layout>
+      {selectedReceipt && (
+        <ReceiptView order={selectedReceipt} role="seller" onClose={() => setSelectedReceipt(null)} />
+      )}
+      {isFetchingReceipt && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/20 backdrop-blur-sm">
+          <div className="animate-spin w-10 h-10 border-4 border-primary border-t-transparent rounded-full"></div>
+        </div>
+      )}
       <div className="flex flex-col md:flex-row min-h-screen bg-background-main">
         <aside className="w-full md:w-64 bg-background-card border-r border-border p-6 hidden md:block">
           <nav className="space-y-2">
@@ -43,6 +76,7 @@ export default function SellerEarningsPage() {
             <Link href="/seller/products" className="block px-4 py-2 text-text-secondary hover:bg-background-surface hover:text-text-primary font-medium rounded-lg">Products</Link>
             <Link href="/seller/promotions" className="block px-4 py-2 text-text-secondary hover:bg-background-surface hover:text-text-primary font-medium rounded-lg">Promotions</Link>
             <Link href="/seller/earnings" className="block px-4 py-2 bg-primary/10 text-primary font-bold rounded-lg">Earnings</Link>
+            <a href={`https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=marketrwanda:stall:${profile?.stallId}`} target="_blank" rel="noreferrer" className="block w-full text-left px-4 py-2 text-text-secondary hover:bg-background-surface hover:text-text-primary font-medium rounded-lg">Print QR Code</a>
           </nav>
         </aside>
 
@@ -81,10 +115,11 @@ export default function SellerEarningsPage() {
                   <th className="p-4 font-medium">Description</th>
                   <th className="p-4 font-medium">Amount</th>
                   <th className="p-4 font-medium">Balance</th>
+                  <th className="p-4 font-medium text-center">Receipt</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
-                {!ledger || ledger.length === 0 ? (
+                {!ledger || !Array.isArray(ledger) || ledger.length === 0 ? (
                   <tr><td colSpan={4} className="p-8 text-center text-text-secondary">No transactions yet.</td></tr>
                 ) : (
                   ledger.map((tx: any) => (
@@ -92,9 +127,19 @@ export default function SellerEarningsPage() {
                       <td className="p-4 text-sm text-text-secondary">{new Date(tx.createdAt).toLocaleDateString()}</td>
                       <td className="p-4 font-medium">{tx.description}</td>
                       <td className={`p-4 font-bold ${tx.type === 'CREDIT' ? 'text-status-success' : 'text-status-error'}`}>
-                        {tx.type === 'CREDIT' ? '+' : '-'}{tx.amount.toLocaleString()} RWF
+                        {tx.type === 'CREDIT' ? '+' : '-'}{tx.amount?.toLocaleString() || 0} RWF
                       </td>
-                      <td className="p-4 text-text-secondary">{tx.balanceAfter.toLocaleString()} RWF</td>
+                      <td className="p-4 text-text-secondary">{tx.balanceAfter?.toLocaleString() || 0} RWF</td>
+                      <td className="p-4 text-center">
+                        {tx.transactionId && (
+                          <button 
+                            onClick={() => fetchAndOpenReceipt(tx.transactionId)}
+                            className="text-primary hover:text-primary-hover font-bold text-sm"
+                          >
+                            🧾 View
+                          </button>
+                        )}
+                      </td>
                     </tr>
                   ))
                 )}

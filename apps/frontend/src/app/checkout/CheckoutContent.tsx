@@ -18,6 +18,7 @@ export const CheckoutContent = () => {
   const [coords, setCoords] = useState<{lat: number, lng: number} | null>(null);
   const [paymentMethod, setPaymentMethod] = useState<'MTN_MOMO' | 'AIRTEL_MONEY'>('MTN_MOMO');
   const [phone, setPhone] = useState('');
+  const [notes, setNotes] = useState('');
   
   const [deliveryFee, setDeliveryFee] = useState(0);
   const [isCalculatingFee, setIsCalculatingFee] = useState(false);
@@ -33,7 +34,8 @@ export const CheckoutContent = () => {
   // Resolve first item's market coordinates for delivery fee calculation
   useEffect(() => {
     if (items.length > 0 && items[0].marketId && !marketCoords) {
-      marketApi.get(`/markets/${items[0].marketId}`).then(res => {
+      const mId = typeof items[0].marketId === 'object' ? (items[0].marketId as any)._id : items[0].marketId;
+      marketApi.get(`/markets/${mId}`).then(res => {
         const market = res.data?.data;
         if (market?.location?.coordinates) {
           // GeoJSON stores [lng, lat]
@@ -55,13 +57,27 @@ export const CheckoutContent = () => {
           setDeliveryFee(res.data.data.fee);
         }
       }).catch(() => {
+        // Tiered pricing: 500 RWF per 5km block (Matching Rwanda Moto Standards)
+        const R = 6371;
+        const dLat = (coords.lat - marketCoords.lat) * Math.PI / 180;
+        const dLng = (coords.lng - marketCoords.lng) * Math.PI / 180;
+        const a = Math.sin(dLat/2)**2 + Math.cos(marketCoords.lat * Math.PI / 180) * Math.cos(coords.lat * Math.PI / 180) * Math.sin(dLng/2)**2;
+        const dist = R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+        
+        // Match the 500 per 5km math
+        const calculatedFee = Math.ceil(dist / 5) * 500;
+        setDeliveryFee(Math.max(calculatedFee, 500));
+        setIsCalculatingFee(false);
+      }).catch(() => {
         // Fallback: estimate based on distance
         const R = 6371;
         const dLat = (coords.lat - marketCoords.lat) * Math.PI / 180;
         const dLng = (coords.lng - marketCoords.lng) * Math.PI / 180;
         const a = Math.sin(dLat/2)**2 + Math.cos(marketCoords.lat * Math.PI / 180) * Math.cos(coords.lat * Math.PI / 180) * Math.sin(dLng/2)**2;
         const dist = R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-        setDeliveryFee(Math.ceil(dist * 80 / 100) * 100); // 80 RWF/km, round to 100
+        
+        const calculatedFee = Math.ceil(dist / 5) * 500;
+        setDeliveryFee(Math.max(calculatedFee, 500));
       }).finally(() => setIsCalculatingFee(false));
     }
   }, [coords, marketCoords]);
@@ -72,11 +88,16 @@ export const CheckoutContent = () => {
 
   // Listen for payment confirmation via socket
   useEffect(() => {
-    if (statusUpdate && (statusUpdate.status === 'confirmed' || statusUpdate.status === 'paid')) {
-      toast.success('Payment received! Order confirmed.');
-      router.push(`/orders/${orderId}/tracking`);
+    const successStatuses = ['confirmed', 'paid', 'PAID', 'picked_up', 'in_transit', 'delivered'];
+    if (statusUpdate && successStatuses.includes(statusUpdate.status?.toLowerCase() || statusUpdate.status)) {
+      toast.success('Order moving forward!');
+      if (items.length > 1) {
+        router.push('/orders');
+      } else {
+        router.push(`/orders/${orderId}/tracking`);
+      }
     }
-  }, [statusUpdate, orderId, router]);
+  }, [statusUpdate, orderId, router, items.length]);
 
   const handleCheckout = async () => {
     if (items.length === 0) return toast.error('Your cart is empty!');
@@ -85,16 +106,30 @@ export const CheckoutContent = () => {
 
     setIsPlacingOrder(true);
     try {
-      // Split delivery fee equally across items (each item is its own order)
-      const splitDeliveryFee = Math.max(Math.ceil(deliveryFee / items.length), 500);
+      // 1. Group items by Seller ID to avoid multiple prompts for the same store
+      const ordersBySeller: Record<string, typeof items> = {};
+      items.forEach(item => {
+        const sId = item.sellerId || 'unknown';
+        if (!ordersBySeller[sId]) ordersBySeller[sId] = [];
+        ordersBySeller[sId].push(item);
+      });
 
-      const orderPromises = items.map(item => {
-        const itemSubtotal = item.price * item.quantity;
-        const platformCommission = Math.max(itemSubtotal * 0.015, 100);
-        const gatewayFee = Math.ceil((itemSubtotal + splitDeliveryFee) * 0.02);
-        const totalAmount = itemSubtotal + splitDeliveryFee + gatewayFee;
-        const sellerPayout = itemSubtotal - platformCommission;
-        const riderPayout = splitDeliveryFee;
+      const uniqueSellers = Object.keys(ordersBySeller).filter(id => id !== 'unknown');
+      
+      if (uniqueSellers.length === 0) return toast.error('Invalid cart: missing seller information.');
+      
+      // Calculate split delivery fee (if multiple sellers, user pays delivery fee once, but it's shared/multiplied?)
+      // For now, let's charge full delivery fee PER SELLER since they are different locations
+      const sellerDeliveryFee = Math.max(deliveryFee, 500);
+
+      const orderPromises = uniqueSellers.map(sellerId => {
+        const sellerItems = ordersBySeller[sellerId];
+        const subtotal = sellerItems.reduce((sum, i) => sum + (i.price * i.quantity), 0);
+        const platformCommission = Math.max(subtotal * 0.015, 100);
+        const gatewayFee = Math.ceil((subtotal + sellerDeliveryFee) * 0.02);
+        const totalAmount = subtotal + sellerDeliveryFee + gatewayFee;
+        
+        const firstItem = sellerItems[0];
 
         return orderApi.post('/orders', {
           buyer: {
@@ -107,62 +142,63 @@ export const CheckoutContent = () => {
             }
           },
           seller: {
-            sellerId: item.sellerId,
-            userId: item.sellerUserId,
-            fullName: item.sellerName,
-            stallId: item.stallId,
-            marketId: item.marketId
+            sellerId: firstItem.sellerId,
+            userId: firstItem.sellerUserId,
+            fullName: firstItem.sellerName,
+            stallId: firstItem.stallId,
+            marketId: typeof firstItem.marketId === 'object' ? (firstItem.marketId as any)._id : firstItem.marketId
           },
-          product: {
-            productId: item.id,
-            name: item.name,
-            unitPrice: item.price,
-            quantity: item.quantity
-          },
+          products: sellerItems.map(i => ({
+            productId: i.id,
+            name: i.name,
+            unitPrice: i.price,
+            quantity: i.quantity
+          })),
           financials: {
-            subtotal: itemSubtotal,
-            deliveryFee: splitDeliveryFee,
+            subtotal,
+            deliveryFee: sellerDeliveryFee,
             platformCommission,
             gatewayFee,
             totalAmount,
-            sellerPayout,
-            riderPayout
+            sellerPayout: subtotal - platformCommission,
+            riderPayout: sellerDeliveryFee
           },
           payment: {
             method: paymentMethod,
             status: 'pending'
-          }
-        }).then(res => ({ success: true, item, data: res.data }))
-          .catch(err => ({ success: false, item, error: err.response?.data?.error || err.message }));
+          },
+          notes: notes
+        }).then(res => ({ success: true, sellerName: firstItem.sellerName, data: res.data }))
+          .catch(err => ({ success: false, sellerName: firstItem.sellerName, error: err.response?.data?.error || err.message }));
       });
 
       const results = await Promise.all(orderPromises);
       const succeeded = results.filter(r => r.success);
       const failed = results.filter(r => !r.success);
 
-      // Remove only successfully ordered items from cart
-      const succeededIds = new Set(succeeded.map(r => r.item.id));
-      const remainingItems = items.filter(i => !succeededIds.has(i.id));
-
-      if (remainingItems.length === 0) {
-        clearCart();
-      } else {
-        // Update cart to only keep failed items
-        localStorage.setItem('rwshop_cart', JSON.stringify(remainingItems));
-      }
-
       if (succeeded.length > 0) {
-        // Use type assertion as we know succeeded[0] is from the .then() block
-        const firstSuccess = succeeded[0] as { success: true; item: any; data: any };
+        clearCart(); // Clear whole cart if at least one order succeeded (simpler for now)
+        
+        const firstSuccess = succeeded[0] as any;
         const newOrderId = firstSuccess.data?.data?._id;
-        setOrderId(newOrderId);
-        setIsWaitingPayment(true);
-        toast.success('Please check your phone to approve the payment prompt.');
+        const paymentStatus = firstSuccess.data?.data?.payment?.status;
+        
+        if (paymentStatus === 'PAID' || paymentStatus === 'paid') {
+          toast.success('Payment received! Order confirmed.');
+          if (uniqueSellers.length > 1) {
+            router.push('/orders');
+          } else {
+            router.push(`/orders/${newOrderId}/tracking`);
+          }
+        } else {
+          setOrderId(newOrderId);
+          setIsWaitingPayment(true);
+          toast.success('Please check your phone to approve the payment prompt.');
+        }
       }
 
       if (failed.length > 0) {
-        toast.error(`${failed.length} item(s) failed to order: ${failed.map(f => f.item.name).join(', ')}`);
-        // Only reset placement if all failed
+        toast.error(`Order(s) failed for: ${failed.map(f => f.sellerName).join(', ')}`);
         if (succeeded.length === 0) {
           setIsPlacingOrder(false);
           setIsWaitingPayment(false);
@@ -184,7 +220,7 @@ export const CheckoutContent = () => {
           <Card>
             <h2 className="text-xl font-heading font-bold mb-4">1. Delivery Location</h2>
             <div className="h-80 rounded bg-background-surface overflow-hidden border border-border">
-              <MapPinPicker onLocationSelected={setCoords} />
+              <MapPinPicker onLocationSelected={setCoords} marketLocation={marketCoords} />
             </div>
             {coords && (
               <p className="mt-4 text-sm bg-status-success/10 text-status-success font-bold px-3 py-2 rounded">
@@ -217,6 +253,16 @@ export const CheckoutContent = () => {
                 className="w-full border border-border rounded px-3 py-2 focus:ring-primary outline-none"
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
+              />
+            </div>
+            <div className="mt-4">
+              <label className="block text-sm font-medium mb-1 text-text-secondary">Delivery Notes / Special Instructions</label>
+              <textarea 
+                placeholder="e.g. Please bring change for 5000, or call me at the blue gate..." 
+                className="w-full border border-border rounded-lg px-3 py-2 focus:ring-1 focus:ring-primary outline-none transition-all"
+                rows={2}
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
               />
             </div>
           </Card>

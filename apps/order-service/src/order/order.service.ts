@@ -10,11 +10,16 @@ import { PaymentService } from './payment.service';
 import { OrderGateway } from './order.gateway';
 
 const ORDER_TRANSITIONS: Record<string, string[]> = {
+  [OrderStatus.AWAITING_QUOTE]: [OrderStatus.QUOTE_SENT, OrderStatus.CANCELLED],
+  [OrderStatus.QUOTE_SENT]: [OrderStatus.PLACED, OrderStatus.CANCELLED],
   [OrderStatus.SCHEDULED]: [OrderStatus.PLACED, OrderStatus.CANCELLED],
-  [OrderStatus.PLACED]: [OrderStatus.CONFIRMED, OrderStatus.CANCELLED],
-  [OrderStatus.CONFIRMED]: [OrderStatus.PICKED_UP, OrderStatus.CANCELLED], // CANCELLED added for refunds
-  [OrderStatus.PICKED_UP]: [OrderStatus.IN_TRANSIT],
-  [OrderStatus.IN_TRANSIT]: [OrderStatus.DELIVERED],
+  [OrderStatus.PLACED]: [OrderStatus.CONFIRMED, OrderStatus.QUOTE_SENT, OrderStatus.CANCELLED],
+  [OrderStatus.CONFIRMED]: [OrderStatus.PREPARING, OrderStatus.READY_FOR_PICKUP, OrderStatus.CANCELLED],
+  [OrderStatus.PREPARING]: [OrderStatus.READY_FOR_PICKUP, OrderStatus.CANCELLED],
+  [OrderStatus.READY_FOR_PICKUP]: [OrderStatus.PICKED_UP, OrderStatus.CANCELLED],
+  [OrderStatus.PICKED_UP]: [OrderStatus.IN_TRANSIT, OrderStatus.AWAITING_CONFIRMATION, OrderStatus.DELIVERED],
+  [OrderStatus.IN_TRANSIT]: [OrderStatus.AWAITING_CONFIRMATION, OrderStatus.DELIVERED],
+  [OrderStatus.AWAITING_CONFIRMATION]: [OrderStatus.DELIVERED, OrderStatus.DISPUTED],
   [OrderStatus.DELIVERED]: [OrderStatus.DISPUTED],
   [OrderStatus.DISPUTED]: [OrderStatus.RESOLVED],
   [OrderStatus.CANCELLED]: [],
@@ -35,6 +40,8 @@ export class OrderService implements OnModuleInit, OnModuleDestroy {
 
   constructor(
     @InjectModel('Transaction') private orderModel: Model<any>,
+    @InjectModel('Market') private marketModel: Model<any>,
+    @InjectModel('SellerProfile') private sellerModel: Model<any>,
     private fraudDetection: FraudDetectionService,
     private buyerProtection: BuyerProtectionService,
     private paymentService: PaymentService,
@@ -63,105 +70,161 @@ export class OrderService implements OnModuleInit, OnModuleDestroy {
   }
 
   async createOrder(orderData: any): Promise<any> {
-    // Fetch market coordinates for fraud detection rule F002 (distance check)
-    let marketCoordinates: { lat: number; lng: number } | undefined;
-    if (orderData.seller?.marketId) {
-      try {
-        const market = await this.orderModel.db.model('Market').findById(orderData.seller.marketId).exec();
-        if (market?.location?.coordinates) {
-          marketCoordinates = { lat: market.location.coordinates[1], lng: market.location.coordinates[0] };
+    try {
+      // Fetch market coordinates for fraud detection rule F002 (distance check)
+      let marketCoordinates: { lat: number; lng: number } | undefined;
+      if (orderData.seller?.marketId) {
+        try {
+          const market = await this.marketModel.findById(orderData.seller.marketId).exec();
+          if (market?.location?.coordinates) {
+            marketCoordinates = { lat: market.location.coordinates[1], lng: market.location.coordinates[0] };
+          }
+        } catch {
+          // If market lookup fails, F002 will be skipped gracefully
         }
-      } catch {
-        // If market lookup fails, F002 will be skipped gracefully
       }
-    }
 
-    const fraudCheck = await this.fraudDetection.evaluateOrderCreation(orderData, marketCoordinates);
+      const isQuoteRequest = orderData.attributes?.isQuoteRequest === 'true';
 
-    // Reject orders that violate hard fraud rules (F001, F002, F003, F005, F006)
-    if (fraudCheck.isFlagged && fraudCheck.shouldBlock) {
-      throw new BadRequestException(`Order blocked by fraud detection: ${fraudCheck.reason}`);
-    }
+      const fraudCheck = await this.fraudDetection.evaluateOrderCreation(orderData, marketCoordinates);
 
-    // Soft flags (F999 system errors) are recorded but do not block
-    
-    // Commission Floor: Document 7 Pricing & Commission Structure
-    // 1.5% commission, min 100 RWF
-    const calculatedCommission = Math.max(orderData.financials.subtotal * 0.015, 100);
-    
-    if (orderData.financials.platformCommission !== calculatedCommission) {
-      throw new BadRequestException(`Invalid platform commission. Expected ${calculatedCommission}`);
-    }
+      // Reject orders that violate hard fraud rules (F001, F002, F003, F005, F006)
+      // Skip certain fraud rules for Quote Requests (like $0 checks)
+      if (fraudCheck.isFlagged && fraudCheck.shouldBlock && !isQuoteRequest) {
+        throw new BadRequestException(`Order blocked by fraud detection: ${fraudCheck.reason}`);
+      }
 
-    const orderNumber = `ORD-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+      // Commission Floor: Document 7 Pricing & Commission Structure
+      // Skip for Quote Requests as price is not yet defined
+      if (!isQuoteRequest) {
+        const calculatedCommission = Math.max(orderData.financials.subtotal * 0.015, 100);
+        if (orderData.financials.platformCommission !== calculatedCommission) {
+          throw new BadRequestException(`Invalid platform commission. Expected ${calculatedCommission}`);
+        }
+      }
 
-    const status = orderData.schedule ? OrderStatus.SCHEDULED : OrderStatus.PLACED;
+      const orderNumber = `ORD-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+      const status = isQuoteRequest ? OrderStatus.AWAITING_QUOTE : (orderData.schedule ? OrderStatus.SCHEDULED : OrderStatus.PLACED);
 
-    // Save the order FIRST so it exists in the database
-    // This prevents charging the user if the save fails
-    const newOrder = new this.orderModel({
-      ...orderData,
-      orderNumber,
-      status,
-      statusHistory: [{
+      // Save the order FIRST so it exists in the database
+      const newOrder = new this.orderModel({
+        ...orderData,
+        orderNumber,
         status,
-        changedBy: orderData.buyer.userId,
-        changedAt: new Date(),
-        note: 'Order placed by customer'
-      }],
-      security: {
-        ...orderData.security,
-        isFlagged: fraudCheck.isFlagged,
-        flagReason: fraudCheck.reason
-      }
-    });
-
-    const saved = await newOrder.save();
-
-    // THEN initiate payment — if this fails the order still exists for retry
-    const paymentResult = await this.paymentService.requestPaymentPrompt(saved);
-
-    if (!paymentResult.success) {
-      // Payment failed, but order exists. Update it with failed payment info.
-      await this.orderModel.findByIdAndUpdate(saved._id, {
-        $set: {
-          'payment.status': PaymentStatus.FAILED,
-          'payment.method': saved.payment?.method,
-          'payment.errorMessage': paymentResult.error || 'Could not reach payment provider'
+        statusHistory: [{
+          status,
+          changedBy: orderData.buyer.userId,
+          changedAt: new Date(),
+          note: isQuoteRequest ? 'Quote request sent by customer' : 'Order placed by customer'
+        }],
+        security: {
+          ...orderData.security,
+          isFlagged: fraudCheck.isFlagged,
+          flagReason: fraudCheck.reason
         }
       });
-      this.orderGateway.sendOrderUpdate({ type: 'PAYMENT_FAILED', order: saved });
-      return this.orderModel.findById(saved._id);
-    }
 
-    // Payment initiated successfully — update order with reference
-    const updated = await this.orderModel.findByIdAndUpdate(
-      saved._id,
-      {
-        $set: {
-          'payment.transactionRef': paymentResult.transactionId,
-          'payment.status': PaymentStatus.PENDING,
-          'payment.method': saved.payment?.method,
+      const saved = await newOrder.save();
+
+      // If Quote Request, we STOP here and don't initiate payment yet
+      if (isQuoteRequest) {
+        const initialBrief = orderData.products?.[0]?.customization || orderData.notes || 'No brief provided';
+        const initialImage = orderData.products?.[0]?.prototypeImage;
+        
+        await this.orderModel.findByIdAndUpdate(saved._id, {
+          $set: { 
+            'payment.status': 'pending',
+            messages: [{
+              senderId: orderData.buyer.userId,
+              senderRole: 'BUYER',
+              type: 'TEXT',
+              content: `Project Brief: ${initialBrief}`,
+              imageUrl: initialImage,
+              timestamp: new Date()
+            }]
+          }
+        });
+        const updated = await this.orderModel.findById(saved._id);
+        this.orderGateway.sendOrderUpdate({ type: 'NEW_ORDER', order: updated });
+        return updated;
+      }
+
+      // Dev mode: auto-confirm payments when gateway is unavailable
+      const isDevMode = process.env.NODE_ENV !== 'production';
+
+      // THEN initiate payment (For standard orders)
+      const paymentResult = await this.paymentService.requestPaymentPrompt(saved);
+
+      if (!paymentResult.success) {
+        if (isDevMode) {
+          // DEV MODE: Payment gateway is unavailable — auto-confirm
+          this.logger.warn(`[SANDBOX] Payment failed but auto-confirming order ${orderNumber} for local development.`);
+          const autoConfirmed = await this.orderModel.findByIdAndUpdate(
+            saved._id,
+            {
+              $set: {
+                'payment.status': PaymentStatus.PAID,
+                'payment.method': saved.payment?.method,
+                'payment.transactionRef': 'DEV-AUTO-' + Date.now(),
+                'payment.paidAt': new Date(),
+                status: OrderStatus.CONFIRMED,
+              }
+            },
+            { new: true }
+          );
+          this.orderGateway.sendOrderUpdate({ type: 'PAYMENT_UPDATE', orderNumber, status: 'paid', orderId: autoConfirmed._id });
+          return autoConfirmed;
         }
-      },
-      { new: true }
-    );
 
-    if (!updated) {
-      // Should not happen since we just saved, but handle gracefully
-      this.logger.error(`Order ${orderNumber} saved but could not be updated with payment ref`);
-      return saved;
+        // PRODUCTION: Payment failed
+        await this.orderModel.findByIdAndUpdate(saved._id, {
+          $set: {
+            'payment.status': PaymentStatus.FAILED,
+            'payment.method': saved.payment?.method,
+            'payment.errorMessage': paymentResult.error || 'Could not reach payment provider'
+          }
+        });
+        this.orderGateway.sendOrderUpdate({ type: 'PAYMENT_FAILED', order: saved });
+        return this.orderModel.findById(saved._id);
+      }
+
+      // Payment initiated successfully
+      const updated = await this.orderModel.findByIdAndUpdate(
+        saved._id,
+        {
+          $set: {
+            'payment.transactionRef': paymentResult.transactionId,
+            'payment.status': PaymentStatus.PENDING,
+            'payment.method': saved.payment?.method,
+          }
+        },
+        { new: true }
+      );
+
+      if (!updated) {
+        this.logger.error(`Order ${orderNumber} saved but could not be updated with payment ref`);
+        return saved;
+      }
+
+      this.orderGateway.sendOrderUpdate({ type: 'NEW_ORDER', order: updated });
+
+      if (paymentResult.transactionId) {
+        this.startPaymentPolling(updated.orderNumber, paymentResult.transactionId);
+      }
+
+      return updated;
+    } catch (error: any) {
+      this.logger.error(`Failed to create order: ${error.message}`, error.stack);
+      if (error instanceof BadRequestException) throw error;
+      
+      // Handle Mongoose validation errors
+      if (error.name === 'ValidationError') {
+        const messages = Object.values(error.errors).map((err: any) => err.message);
+        throw new BadRequestException(`Validation Failed: ${messages.join(', ')}`);
+      }
+      
+      throw new Error(`Internal server error during order creation: ${error.message}`);
     }
-
-    // Trigger Real-time update
-    this.orderGateway.sendOrderUpdate({ type: 'NEW_ORDER', order: updated });
-
-    // Start polling for status since we might not get a callback in sandbox
-    if (paymentResult.transactionId) {
-      this.startPaymentPolling(updated.orderNumber, paymentResult.transactionId);
-    }
-
-    return updated;
   }
 
   private validateTransition(currentStatus: string, newStatus: string, transitionMap: Record<string, string[]>): void {
@@ -174,6 +237,22 @@ export class OrderService implements OnModuleInit, OnModuleDestroy {
   async updateOrderStatus(id: string, newStatus: OrderStatus, userId: string): Promise<any> {
     const order = await this.orderModel.findById(id);
     if (!order) throw new NotFoundException('Order not found');
+
+    // Authorization: buyer can place (accept quote) or cancel; seller can do fulfillment transitions
+    // Added DELIVERED to buyerActions to allow "Confirm Receipt" flow
+    const isBuyer = order.buyer?.userId?.toString() === userId;
+    const isSeller = order.seller?.userId?.toString() === userId;
+    const buyerActions = [OrderStatus.PLACED, OrderStatus.CANCELLED, OrderStatus.DELIVERED];
+    const sellerActions = [
+      OrderStatus.PREPARING, OrderStatus.READY_FOR_PICKUP,
+      OrderStatus.CANCELLED
+    ];
+    const isBuyerAction = buyerActions.includes(newStatus) && isBuyer;
+    const isSellerAction = sellerActions.includes(newStatus) && isSeller;
+
+    if (!isBuyerAction && !isSellerAction) {
+      throw new BadRequestException('You do not have permission to perform this status transition');
+    }
 
     this.validateTransition(order.status, newStatus, ORDER_TRANSITIONS);
 
@@ -194,9 +273,62 @@ export class OrderService implements OnModuleInit, OnModuleDestroy {
     
     if (updated) {
       this.orderGateway.sendOrderUpdate({ type: 'STATUS_UPDATE', orderId: id, status: newStatus });
+      
+      // Trigger rider dispatch only when seller is ready
+      if (newStatus === OrderStatus.READY_FOR_PICKUP) {
+        this.createDeliveryForOrder(updated).catch(err => {
+          this.logger.error(`Failed to trigger delivery for order ${id}: ${err.message}`);
+        });
+      }
+
+      // Handout Architecture: Payout continuation starts at PICKED_UP
+      if (newStatus === OrderStatus.PICKED_UP || newStatus === OrderStatus.DELIVERED) {
+        this.triggerPayoutFlow(updated).catch(err => {
+          this.logger.error(`Failed to trigger payout flow for order ${id} at ${newStatus}: ${err.message}`);
+        });
+      }
     }
 
     return updated;
+  }
+
+  private async triggerPayoutFlow(order: any) {
+    try {
+      const deliveryUrl = process.env.DELIVERY_SERVICE_URL || 'http://localhost:3008/api/v1';
+      const walletUrl = process.env.WALLET_SERVICE_URL || 'http://localhost:3007/api/v1';
+
+      const isPickedUp = order.status === OrderStatus.PICKED_UP;
+      const isDelivered = order.status === OrderStatus.DELIVERED;
+
+      // 1. Get delivery info to find the rider
+      const deliveryRes = await axios.get(`${deliveryUrl}/deliveries/${order.deliveryId}`);
+      const delivery = deliveryRes.data?.data;
+
+      if (!delivery || !delivery.rider?.userId) {
+        this.logger.warn(`Cannot process payout for order ${order._id}: Rider not found on delivery`);
+        return;
+      }
+
+      // 2. Call wallet-service to process the transaction (idempotent)
+      await axios.post(`${walletUrl}/wallets/transaction`, {
+        transactionId: order._id,
+        orderNumber: order.orderNumber,
+        description: `Order #${order.orderNumber} ${isPickedUp ? 'Handover' : 'Final Delivery'} Payout`,
+        sellerId: order.seller.userId,
+        riderId: delivery.rider.userId,
+        subtotal: order.financials.subtotal,
+        deliveryFee: order.financials.deliveryFee,
+        // Handout Architecture: Seller gets paid at PICKED_UP, Rider at DELIVERED
+        sellerPayout: isPickedUp ? (order.financials.sellerPayout || order.financials.subtotal * 0.985) : 0,
+        riderPayout: isDelivered ? (order.financials.riderPayout || order.financials.deliveryFee * 0.9) : 0,
+        commissionFloorApplied: order.financials.platformCommission === 100
+      });
+
+      this.logger.log(`Payout (${isPickedUp ? 'Seller' : 'Rider'}) processed for order ${order.orderNumber}`);
+    } catch (err) {
+      this.logger.error(`Payout flow error: ${err.message}`);
+      throw err;
+    }
   }
 
   async processPaymentCallback(orderNumber: string, status: PaymentStatus, transactionRef: string): Promise<any> {
@@ -243,50 +375,91 @@ export class OrderService implements OnModuleInit, OnModuleDestroy {
     );
 
     if (updated && status === PaymentStatus.PAID) {
-      this.logger.log(`Order ${orderNumber} PAID. Triggering delivery-service...`);
-      // Trigger delivery-service (Internal call)
-      try {
-        const deliveryUrl = process.env.DELIVERY_SERVICE_URL || 'http://localhost:3008/api/v1';
-        // Transaction schema stores seller/pickup info under 'seller' and buyer/dropoff under 'buyer.deliveryAddress'
-        const seller = updated.seller || {};
-        const buyer = updated.buyer || {};
-        const pickupCoords = seller.coordinates || { lat: -1.9441, lng: 30.0619 };
-        const dropoffAddress = buyer.deliveryAddress || {};
-
-        await axios.post(`${deliveryUrl}/deliveries`, {
-          orderId: updated._id,
-          orderNumber: updated.orderNumber,
-          pickup: {
-            marketId: seller.marketId,
-            stallId: seller.stallId,
-            coordinates: pickupCoords,
-            address: seller.address || 'Market pickup'
-          },
-          dropoff: {
-            coordinates: dropoffAddress.coordinates || pickupCoords,
-            address: dropoffAddress.address || 'Customer location'
-          },
-          financials: {
-            deliveryFee: updated.financials?.deliveryFee,
-            totalAmount: updated.financials?.totalAmount
-          }
-        });
-        this.logger.log(`Delivery created successfully for order ${orderNumber}`);
-      } catch (error) {
-        this.logger.error(`Failed to create delivery for order ${orderNumber}`, error.response?.data || error.message);
-      }
-    }
-
-    if (updated) {
       this.orderGateway.sendOrderUpdate({ 
         type: 'PAYMENT_UPDATE', 
         orderNumber, 
         status: updated.payment.status,
         orderId: updated._id 
       });
+      
+      // Decrement stock for all products in the order
+      this.decrementProductStock(updated).catch(err => {
+        this.logger.error(`Failed to decrement stock for order ${orderNumber}: ${err.message}`);
+      });
     }
-
+    
     return updated;
+  }
+
+  private async decrementProductStock(order: any) {
+    const productUrl = process.env.PRODUCT_SERVICE_URL || 'http://localhost:3004/api/v1';
+    const products = order.products || (order.product ? [order.product] : []);
+    
+    for (const item of products) {
+      try {
+        await axios.post(`${productUrl}/products/${item.productId}/stock`, {
+          change: -item.quantity
+        });
+        this.logger.log(`Decremented stock for product ${item.productId} by ${item.quantity}`);
+      } catch (error) {
+        this.logger.error(`Stock update failed for product ${item.productId}: ${error.response?.data?.message || error.message}`);
+      }
+    }
+  }
+
+  private async createDeliveryForOrder(order: any): Promise<void> {
+    const orderNumber = order.orderNumber;
+    this.logger.log(`Order ${orderNumber} PAID. Triggering delivery-service...`);
+    try {
+      const deliveryUrl = process.env.DELIVERY_SERVICE_URL || 'http://localhost:3008/api/v1';
+      this.logger.log(`Attempting to create delivery at ${deliveryUrl}/deliveries`);
+
+      const seller = order.seller || {};
+      const buyer = order.buyer || {};
+
+      // Resolve market coordinates for accurate pickup location via Market Service
+      let pickupCoords = { lat: -1.9441, lng: 30.0619 }; // fallback to Kigali center
+      try {
+        const marketUrl = process.env.MARKET_SERVICE_URL || 'http://localhost:3002/api/v1';
+        const { data: market } = await axios.get(`${marketUrl}/markets/${seller.marketId}`);
+        if (market?.location?.coordinates) {
+          pickupCoords = { lat: market.location.coordinates[1], lng: market.location.coordinates[0] };
+        }
+      } catch (err) {
+        this.logger.warn(`Could not fetch market coordinates for ${seller.marketId}, using default. Error: ${err.message}`);
+      }
+
+      const dropoffAddress = buyer.deliveryAddress || {};
+
+      const response = await axios.post(`${deliveryUrl}/deliveries`, {
+        orderId: order._id,
+        orderNumber,
+        pickup: {
+          marketId: seller.marketId,
+          stallId: seller.stallId,
+          coordinates: pickupCoords,
+          address: seller.address || 'Market pickup'
+        },
+        dropoff: {
+          coordinates: dropoffAddress.coordinates || pickupCoords,
+          address: dropoffAddress.address || 'Customer location'
+        },
+        financials: {
+          deliveryFee: order.financials?.deliveryFee,
+          totalAmount: order.financials?.totalAmount
+        },
+        notes: order.notes
+      });
+      
+      const deliveryId = response.data?.data?._id;
+      if (deliveryId) {
+        await this.orderModel.findByIdAndUpdate(order._id, { deliveryId });
+      }
+      
+      this.logger.log(`Delivery created successfully for order ${orderNumber}`);
+    } catch (error) {
+      this.logger.error(`Failed to create delivery for order ${orderNumber}`, error.response?.data || error.message);
+    }
   }
 
   async raiseDispute(id: string, reason: string): Promise<any> {
@@ -350,17 +523,49 @@ export class OrderService implements OnModuleInit, OnModuleDestroy {
     return this.orderModel.findById(id).exec();
   }
 
-  async retryPayment(id: string): Promise<any> {
+  async retryPayment(id: string, userId?: string): Promise<any> {
     const order = await this.orderModel.findById(id);
     if (!order) throw new NotFoundException('Order not found');
+
+    // Authorization: only the buyer can retry payment
+    if (userId && order.buyer?.userId?.toString() !== userId) {
+      throw new BadRequestException('Only the buyer can retry payment');
+    }
 
     // Only allow retry if payment is in FAILED or PENDING state
     if (order.payment?.status !== PaymentStatus.FAILED && order.payment?.status !== PaymentStatus.PENDING) {
       throw new BadRequestException(`Cannot retry payment for order in ${order.payment?.status} state`);
     }
 
+    const isDevMode = process.env.NODE_ENV !== 'production';
+
     const paymentResult = await this.paymentService.requestPaymentPrompt(order);
     if (!paymentResult.success) {
+      if (isDevMode) {
+        // DEV MODE: Auto-confirm payment for local development
+        this.logger.warn(`[SANDBOX] Payment retry failed but auto-confirming order ${order.orderNumber} for local development.`);
+        const autoConfirmed = await this.orderModel.findByIdAndUpdate(
+          id,
+          {
+            $set: {
+              'payment.status': PaymentStatus.PAID,
+              'payment.method': order.payment?.method,
+              'payment.transactionRef': 'DEV-AUTO-' + Date.now(),
+              'payment.paidAt': new Date(),
+              status: OrderStatus.CONFIRMED,
+            }
+          },
+          { new: true }
+        );
+        this.orderGateway.sendOrderUpdate({
+          type: 'PAYMENT_UPDATE',
+          orderNumber: order.orderNumber,
+          status: 'paid',
+          orderId: autoConfirmed._id
+        });
+        return autoConfirmed;
+      }
+
       throw new BadRequestException(
         `Payment retry failed: ${paymentResult.error || 'Could not reach payment provider'}`
       );
@@ -388,7 +593,7 @@ export class OrderService implements OnModuleInit, OnModuleDestroy {
 
   private async startPaymentPolling(orderNumber: string, referenceId: string) {
     let attempts = 0;
-    const maxAttempts = 24; // Poll for 2 minutes (5s intervals)
+    const maxAttempts = process.env.NODE_ENV !== 'production' ? 6 : 24; // 30s in dev, 2 min in prod
     // Only auto-confirm when BOTH conditions are true:
     // 1. MTN_MOMO_TARGET_ENV is explicitly set to 'sandbox' (not just non-production)
     // 2. NODE_ENV is NOT 'production'
@@ -432,11 +637,359 @@ export class OrderService implements OnModuleInit, OnModuleDestroy {
   }
 
   async findAll(query: any): Promise<any> {
-    const { sellerId, status } = query;
+    const { sellerId, buyerId, status } = query;
     const filter: any = {};
     if (sellerId) filter['seller.userId'] = sellerId;
+    if (buyerId) filter['buyer.userId'] = buyerId;
     if (status) filter.status = { $in: status.split(',') };
-    return this.orderModel.find(filter).sort({ createdAt: -1 }).exec();
+    
+    const orders = await this.orderModel.find(filter).sort({ createdAt: -1 }).lean().exec();
+    
+    // Enrich with delivery info for handover architecture
+    const deliveryUrl = process.env.DELIVERY_SERVICE_URL || 'http://localhost:3008/api/v1';
+    const enriched = await Promise.all(orders.map(async (order: any) => {
+      if (order.deliveryId) {
+        try {
+          const { data } = await axios.get(`${deliveryUrl}/deliveries/${order.deliveryId}`);
+          const d = data?.data;
+          return {
+            ...order,
+            riderArrived: d?.status === 'pending_handover' || d?.status === 'picked_up',
+            handoverConfirmedBySeller: d?.pickup?.sellerConfirmed,
+            handoverConfirmedByRider: d?.pickup?.riderConfirmed
+          };
+        } catch { return order; }
+      }
+      return order;
+    }));
+    
+    return enriched;
+  }
+
+  async sendQuote(id: string, financials: any, userId: string): Promise<any> {
+    const order = await this.orderModel.findById(id);
+    if (!order) throw new NotFoundException('Order not found');
+
+    // Authorization: only the seller of this order can send a quote
+    if (order.seller?.userId?.toString() !== userId) {
+      throw new BadRequestException('Only the seller of this order can send a quote');
+    }
+
+    // Idempotency: if already QUOTE_SENT, return existing order instead of error
+    if (order.status === OrderStatus.QUOTE_SENT) {
+      this.logger.warn(`Idempotent quote call for order ${id} — already in QUOTE_SENT`);
+      return order;
+    }
+
+    // Allow re-quote if order is PLACED but payment failed or is still pending
+    if (order.status === OrderStatus.PLACED) {
+      const paymentStatus = order.payment?.status;
+      if (paymentStatus === PaymentStatus.PAID || paymentStatus === PaymentStatus.REFUNDED) {
+        throw new BadRequestException('Cannot revise quote — payment has already been completed for this order');
+      }
+      this.logger.warn(`Re-quote for order ${id} — order is PLACED with payment ${paymentStatus}`);
+    } else {
+      this.validateTransition(order.status, OrderStatus.QUOTE_SENT, ORDER_TRANSITIONS);
+    }
+
+    const subtotal = financials.subtotal || 0;
+    const platformCommission = Math.max(subtotal * 0.015, 100);
+    
+    // Use the delivery fee from the order if the buyer already set their location
+    const deliveryFee = order.financials?.deliveryFee > 0 ? order.financials.deliveryFee : (financials.deliveryFee || 500);
+    const gatewayFee = Math.ceil((subtotal + deliveryFee) * 0.02);
+    
+    const updatedFinancials = {
+      subtotal,
+      deliveryFee,
+      platformCommission,
+      gatewayFee,
+      totalAmount: subtotal + deliveryFee + gatewayFee,
+      sellerPayout: subtotal - platformCommission,
+      riderPayout: Math.ceil(deliveryFee * 0.9),
+      note: financials.note,
+    };
+
+    const updated = await this.orderModel.findByIdAndUpdate(
+      id,
+      { 
+        $set: { 
+          status: OrderStatus.QUOTE_SENT,
+          financials: updatedFinancials
+        },
+        $push: { 
+          statusHistory: { 
+            status: OrderStatus.QUOTE_SENT, 
+            changedBy: userId, 
+            changedAt: new Date(),
+            note: `Artisan sent a quote: ${subtotal} RWF`
+          },
+          messages: {
+            senderId: userId,
+            senderRole: 'SELLER',
+            type: 'QUOTE',
+            content: financials.note || `I have sent a quote for ${subtotal.toLocaleString()} RWF`,
+            quoteAmount: subtotal,
+            timestamp: new Date()
+          }
+        }
+      },
+      { returnDocument: 'after' }
+    );
+    
+    if (updated) {
+      const lastMsg = updated.messages[updated.messages.length - 1];
+      this.orderGateway.sendOrderUpdate({ 
+        type: 'NEW_MESSAGE', 
+        orderId: id, 
+        message: lastMsg,
+        status: OrderStatus.QUOTE_SENT 
+      });
+      this.orderGateway.sendOrderUpdate({ type: 'STATUS_UPDATE', orderId: id, status: OrderStatus.QUOTE_SENT });
+    }
+
+    return updated;
+  }
+
+  async counterOffer(id: string, subtotal: number, note: string | undefined, userId: string): Promise<any> {
+    const order = await this.orderModel.findById(id);
+    if (!order) throw new NotFoundException('Order not found');
+
+    // Authorization: only the buyer of this order can send a counter-offer
+    if (order.buyer?.userId?.toString() !== userId) {
+      throw new BadRequestException('Only the buyer can send a counter-offer');
+    }
+
+    // Order must be in QUOTE_SENT status
+    if (order.status !== OrderStatus.QUOTE_SENT) {
+      throw new BadRequestException(`Cannot send counter-offer — order is in ${order.status} status`);
+    }
+
+    // Recalculate financials with counter-offer amount
+    const platformCommission = Math.max(subtotal * 0.015, 100);
+    const deliveryFee = order.financials?.deliveryFee || 1000;
+    const gatewayFee = Math.ceil((subtotal + deliveryFee) * 0.02);
+
+    const updatedFinancials = {
+      subtotal,
+      deliveryFee,
+      platformCommission,
+      gatewayFee,
+      totalAmount: subtotal + deliveryFee + gatewayFee,
+      sellerPayout: subtotal - platformCommission,
+      riderPayout: Math.ceil(deliveryFee * 0.9)
+    };
+
+    const updated = await this.orderModel.findByIdAndUpdate(
+      id,
+      {
+        $set: {
+          status: OrderStatus.AWAITING_QUOTE,
+          financials: updatedFinancials
+        },
+        $push: {
+          statusHistory: {
+            status: OrderStatus.AWAITING_QUOTE,
+            changedBy: userId,
+            changedAt: new Date(),
+            note: `Buyer sent a counter-offer: ${subtotal} RWF`
+          },
+          messages: {
+            senderId: userId,
+            senderRole: 'BUYER',
+            type: 'COUNTER_QUOTE',
+            content: note || `I would like to propose ${subtotal.toLocaleString()} RWF instead.`,
+            quoteAmount: subtotal,
+            timestamp: new Date()
+          }
+        }
+      },
+      { returnDocument: 'after' }
+    );
+
+    if (updated) {
+      const lastMsg = updated.messages[updated.messages.length - 1];
+      this.orderGateway.sendOrderUpdate({
+        type: 'NEW_MESSAGE',
+        orderId: id,
+        message: lastMsg,
+        status: OrderStatus.AWAITING_QUOTE
+      });
+      this.orderGateway.sendOrderUpdate({ type: 'STATUS_UPDATE', orderId: id, status: OrderStatus.AWAITING_QUOTE });
+    }
+
+    return updated;
+  }
+
+  async rejectQuote(id: string, reason: string, userId: string): Promise<any> {
+    const order = await this.orderModel.findById(id);
+    if (!order) throw new NotFoundException('Order not found');
+
+    // Authorization: only the buyer can reject a quote
+    if (order.buyer?.userId?.toString() !== userId) {
+      throw new BadRequestException('Only the buyer can reject a quote');
+    }
+
+    // Validate transition QUOTE_SENT → CANCELLED
+    this.validateTransition(order.status, OrderStatus.CANCELLED, ORDER_TRANSITIONS);
+
+    const updated = await this.orderModel.findByIdAndUpdate(
+      id,
+      {
+        $set: { status: OrderStatus.CANCELLED },
+        $push: {
+          statusHistory: {
+            status: OrderStatus.CANCELLED,
+            changedBy: userId,
+            changedAt: new Date(),
+            note: reason || 'Buyer rejected the quote'
+          },
+          messages: {
+            senderId: userId,
+            senderRole: 'BUYER',
+            type: 'TEXT',
+            content: reason || 'I have decided to decline this quote. Thank you.',
+            timestamp: new Date()
+          }
+        }
+      },
+      { returnDocument: 'after' }
+    );
+
+    if (updated) {
+      this.orderGateway.sendOrderUpdate({ type: 'STATUS_UPDATE', orderId: id, status: OrderStatus.CANCELLED });
+    }
+
+    return updated;
+  }
+
+  async addMessage(id: string, messageData: { senderId: string, senderRole: string, content: string, imageUrl?: string, type?: string, quoteAmount?: number }, authenticatedUserId: string): Promise<any> {
+    this.logger.log(`Adding message to order ${id} from ${messageData.senderRole}`);
+    try {
+      const order = await this.orderModel.findById(id).exec();
+      if (!order) throw new NotFoundException('Order not found');
+
+      // Authorization: only the buyer or seller of this order can add messages
+      const isBuyer = order.buyer?.userId?.toString() === authenticatedUserId;
+      const isSeller = order.seller?.userId?.toString() === authenticatedUserId;
+      if (!isBuyer && !isSeller) {
+        throw new BadRequestException('You are not a participant in this order');
+      }
+
+      // Validate senderRole matches the authenticated user
+      if ((isBuyer && messageData.senderRole !== 'BUYER') || (isSeller && messageData.senderRole !== 'SELLER')) {
+        throw new BadRequestException('Sender role does not match authenticated user');
+      }
+
+      const updated = await this.orderModel.findByIdAndUpdate(
+        id,
+        { 
+          $push: { 
+            messages: {
+              ...messageData,
+              timestamp: new Date()
+            }
+          }
+        },
+        { returnDocument: 'after' }
+      ).exec();
+
+      if (!updated) {
+        this.logger.warn(`Failed to add message: Order ${id} not found`);
+        throw new NotFoundException('Order not found');
+      }
+
+      // Convert to plain object to ensure clean serialization over WebSocket
+      const plainOrder = updated.toObject();
+      const messages = plainOrder.messages || [];
+      const lastMessage = messages.length > 0 ? messages[messages.length - 1] : null;
+
+      if (lastMessage) {
+        this.orderGateway.sendOrderUpdate({ 
+          type: 'NEW_MESSAGE', 
+          orderId: id, 
+          message: lastMessage
+        });
+      }
+
+      return plainOrder;
+    } catch (error) {
+      this.logger.error(`Error adding message to order ${id}: ${error.message}`, error.stack);
+      if (error instanceof NotFoundException) throw error;
+      throw new BadRequestException('Failed to add message. Check order ID and message format.');
+    }
+  }
+
+  async updateDeliveryAddress(id: string, address: string, coordinates: { lat: number; lng: number }, userId: string): Promise<any> {
+    const order = await this.orderModel.findById(id);
+    if (!order) throw new NotFoundException('Order not found');
+
+    // Authorization: only the buyer can update delivery address
+    if (order.buyer?.userId?.toString() !== userId) {
+      throw new BadRequestException('Only the buyer can update the delivery address');
+    }
+
+    // Only allow during negotiation or before payment
+    const allowedStatuses = [OrderStatus.AWAITING_QUOTE, OrderStatus.QUOTE_SENT, OrderStatus.PLACED];
+    if (!allowedStatuses.includes(order.status) || order.payment?.status === 'paid') {
+      throw new BadRequestException('Cannot update delivery address at this stage');
+    }
+
+    // Calculate delivery fee from market coordinates
+    let deliveryFee = 500; // minimum
+    try {
+      const market = await this.marketModel.findById(order.seller?.marketId).exec();
+      if (market?.location?.coordinates) {
+        const marketLat = market.location.coordinates[1];
+        const marketLng = market.location.coordinates[0];
+        const R = 6371;
+        const dLat = (coordinates.lat - marketLat) * Math.PI / 180;
+        const dLng = (coordinates.lng - marketLng) * Math.PI / 180;
+        const a = Math.sin(dLat / 2) ** 2 + Math.cos(marketLat * Math.PI / 180) * Math.cos(coordinates.lat * Math.PI / 180) * Math.sin(dLng / 2) ** 2;
+        const dist = R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+        deliveryFee = Math.max(Math.ceil(dist / 5) * 500, 500);
+      }
+    } catch {
+      this.logger.warn(`Could not calculate delivery fee from market for order ${id}`);
+    }
+
+    const updated = await this.orderModel.findByIdAndUpdate(
+      id,
+      {
+        $set: {
+          'buyer.deliveryAddress': { address, coordinates },
+          'financials.deliveryFee': deliveryFee,
+        },
+        $push: {
+          messages: {
+            senderId: userId,
+            senderRole: 'BUYER',
+            type: 'TEXT',
+            content: `📍 Delivery location set: ${address} (Fee: ${deliveryFee.toLocaleString()} RWF)`,
+            timestamp: new Date()
+          }
+        }
+      },
+      { returnDocument: 'after' }
+    );
+
+    if (updated) {
+      const lastMsg = updated.messages[updated.messages.length - 1];
+      this.orderGateway.sendOrderUpdate({
+        type: 'NEW_MESSAGE',
+        orderId: id,
+        message: lastMsg
+      });
+      this.orderGateway.sendOrderUpdate({
+        type: 'LOCATION_UPDATE',
+        orderId: id,
+        deliveryFee,
+        address,
+        coordinates
+      });
+    }
+
+    return updated;
   }
 
   onModuleDestroy() {

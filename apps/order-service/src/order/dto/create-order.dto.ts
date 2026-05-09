@@ -3,7 +3,7 @@ import { Type } from 'class-transformer';
 
 class FinancialsDto {
   @IsNumber()
-  @Min(1)
+  @Min(0)
   subtotal!: number;
 
   @IsNumber()
@@ -16,7 +16,19 @@ class FinancialsDto {
 
   @IsNumber()
   @Min(0)
+  gatewayFee!: number;
+
+  @IsNumber()
+  @Min(0)
   totalAmount!: number;
+
+  @IsNumber()
+  @Min(0)
+  sellerPayout!: number;
+
+  @IsNumber()
+  @Min(0)
+  riderPayout!: number;
 }
 
 class BuyerDto {
@@ -28,9 +40,9 @@ class BuyerDto {
   @IsNotEmpty()
   fullName!: string;
 
+  @IsOptional()
   @IsString()
-  @IsNotEmpty()
-  phone!: string;
+  phone?: string;
 
   @IsOptional()
   @IsObject()
@@ -47,18 +59,38 @@ class ProductDto {
   name!: string;
 
   @IsNumber()
-  @Min(1)
+  @Min(0)
   unitPrice!: number;
 
   @IsNumber()
   @Min(1)
   quantity!: number;
+
+  @IsOptional()
+  @IsString()
+  customization?: string;
+
+  @IsOptional()
+  @IsString()
+  prototypeImage?: string;
 }
 
 class SellerDto {
   @IsString()
   @IsNotEmpty()
+  sellerId!: string;
+
+  @IsString()
+  @IsNotEmpty()
   userId!: string;
+
+  @IsString()
+  @IsNotEmpty()
+  fullName!: string;
+
+  @IsString()
+  @IsNotEmpty()
+  stallId!: string;
 
   @IsString()
   @IsNotEmpty()
@@ -74,13 +106,32 @@ export class CreateOrderDto {
   @Type(() => BuyerDto)
   buyer!: BuyerDto;
 
+  @IsOptional()
   @ValidateNested()
   @Type(() => ProductDto)
-  product!: ProductDto;
+  product?: ProductDto;
+
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => ProductDto)
+  products?: ProductDto[];
 
   @ValidateNested()
   @Type(() => SellerDto)
   seller!: SellerDto;
+  
+  @IsOptional()
+  @IsString()
+  notes?: string;
+
+  @IsOptional()
+  @IsString()
+  status?: string;
+
+  @IsOptional()
+  @IsObject()
+  attributes?: Record<string, any>;
 
   @IsOptional()
   @IsObject()

@@ -1,7 +1,39 @@
 {
   "permissions": {
     "allow": [
-      "Bash(Get-ChildItem *)"
+      "Bash(Get-ChildItem *)",
+      "Bash(xargs wc -l)",
+      "Bash(Select-Object FullName)",
+      "Bash(Sort-Object)",
+      "Bash(Select-Object Name)",
+      "Bash(Select-Object -ExpandProperty Name)",
+      "Bash(Select-Object Name, PSIsContainer)",
+      "PowerShell(Get-ChildItem *)",
+      "PowerShell(head *)",
+      "PowerShell(Get-ChildItem -Path \"C:\\\\Users\\\\Mahoro T. Divin\\\\Downloads\\\\jules_session_14902756046933173609 \\(1\\)\\\\apps\\\\frontend\\\\src\" | ForEach-Object { $_.Name })",
+      "PowerShell(Get-ChildItem -Path \"C:\\\\Users\\\\Mahoro T. Divin\\\\Downloads\\\\jules_session_14902756046933173609 \\(1\\)\\\\apps\\\\frontend\\\\src\\\\app\" -Recurse | Where-Object { $_.Name -match '\\\\.\\(tsx|ts\\)$' } | ForEach-Object { $_.FullName.Replace\\(\"C:\\\\Users\\\\Mahoro T. Divin\\\\Downloads\\\\jules_session_14902756046933173609 \\(1\\)\\\\apps\\\\frontend\\\\src\\\\app\", \"\"\\) })",
+      "PowerShell(Get-ChildItem -Path \"C:\\\\Users\\\\Mahoro T. Divin\\\\Downloads\\\\jules_session_14902756046933173609 \\(1\\)\\\\apps\\\\frontend\\\\src\\\\context\" -Recurse | Where-Object { $_.Name -match '\\\\.\\(tsx|ts\\)$' } | ForEach-Object { $_.FullName.Replace\\(\"C:\\\\Users\\\\Mahoro T. Divin\\\\Downloads\\\\jules_session_14902756046933173609 \\(1\\)\\\\apps\\\\frontend\\\\src\\\\context\", \"\"\\) } | Sort-Object)",
+      "PowerShell(Get-ChildItem -Path \"C:\\\\Users\\\\Mahoro T. Divin\\\\Downloads\\\\jules_session_14902756046933173609 \\(1\\)\\\\apps\\\\frontend\\\\src\\\\lib\" -Recurse | Where-Object { $_.Name -match '\\\\.\\(tsx|ts\\)$' } | ForEach-Object { $_.FullName.Replace\\(\"C:\\\\Users\\\\Mahoro T. Divin\\\\Downloads\\\\jules_session_14902756046933173609 \\(1\\)\\\\apps\\\\frontend\\\\src\\\\lib\", \"\"\\) } | Sort-Object)",
+      "PowerShell(if \\(Test-Path \"C:\\\\Users\\\\Mahoro T. Divin\\\\Downloads\\\\jules_session_14902756046933173609 \\(1\\)\\\\apps\\\\frontend\\\\src\\\\types\"\\) { Get-ChildItem -Path \"C:\\\\Users\\\\Mahoro T. Divin\\\\Downloads\\\\jules_session_14902756046933173609 \\(1\\)\\\\apps\\\\frontend\\\\src\\\\types\" | ForEach-Object { $_.Name } } else { Write-Output \"No types directory\" })",
+      "Bash(xargs grep -l \"export.*interface\\\\|export.*type\")",
+      "Bash(Select-Object Mode, Name)",
+      "PowerShell(ls C:\\\\Users\\\\Mahoro\\\\ T.\\\\ Divin\\\\Downloads\\\\jules_session_14902756046933173609\\\\ \\\\\\(1\\\\\\)\\\\packages)",
+      "Bash(node dist/main.js)",
+      "Bash(taskkill /f /pid 23148)",
+      "Bash(npx turbo *)",
+      "Bash(npx next *)",
+      "Bash(npx tsc *)",
+      "PowerShell(Get-ChildItem -Force | Select-Object Name, @{Name=\"Type\";Expression={if \\($_.PSIsContainer\\) { \"DIR\" } else { \"FILE\" }}} | Format-Table -AutoSize)",
+      "Bash(xargs grep -l \"StateConflictError\\\\|sendQuote\\\\|QUOTE_SENT\")",
+      "Bash(Select-Object Name, FullName)",
+      "Bash(Format-Table -AutoSize)",
+      "Bash(xargs grep -l \"AWAITING_QUOTE\\\\|QUOTE_SENT\\\\|awaiting_quote\\\\|quote_sent\")",
+      "Bash(npm install *)",
+      "PowerShell(Stop-Process *)",
+      "Bash(curl -s http://localhost:3006/api/v1/orders/health)",
+      "Bash(curl -s http://localhost:3006/api/v1/health)",
+      "Bash(curl *)",
+      "Bash(npx nest *])"
     ]
   }
 }

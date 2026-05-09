@@ -71,6 +71,73 @@ export class AdminService {
     .exec();
   }
 
+  async getAccountingSummary(startDate?: string, endDate?: string): Promise<any> {
+    const match: any = {};
+    if (startDate || endDate) {
+      match.createdAt = {};
+      if (startDate) match.createdAt.$gte = new Date(startDate);
+      if (endDate) match.createdAt.$lte = new Date(endDate);
+    }
+
+    const stats = await this.orderModel.aggregate([
+      { $match: match },
+      {
+        $group: {
+          _id: null,
+          totalGMV: { $sum: '$financials.totalAmount' },
+          totalCommission: { $sum: '$financials.platformCommission' },
+          totalGateway: { $sum: '$financials.gatewayFee' },
+          totalSellerPayout: { $sum: '$financials.sellerPayout' },
+          totalRiderPayout: { $sum: '$financials.riderPayout' },
+          orderCount: { $sum: 1 },
+          deliveredCount: {
+            $sum: { $cond: [{ $in: ['$status', ['delivered', 'resolved']] }, 1, 0] }
+          }
+        }
+      }
+    ]);
+
+    return stats[0] || {
+      totalGMV: 0, totalCommission: 0, totalGateway: 0,
+      totalSellerPayout: 0, totalRiderPayout: 0,
+      orderCount: 0, deliveredCount: 0
+    };
+  }
+
+  async getAccountingBySeller(startDate?: string, endDate?: string): Promise<any> {
+    const match: any = {};
+    if (startDate || endDate) {
+      match.createdAt = {};
+      if (startDate) match.createdAt.$gte = new Date(startDate);
+      if (endDate) match.createdAt.$lte = new Date(endDate);
+    }
+
+    return this.orderModel.aggregate([
+      { $match: match },
+      {
+        $group: {
+          _id: { sellerId: '$seller.sellerId', name: '$seller.fullName' },
+          orderCount: { $sum: 1 },
+          totalGMV: { $sum: '$financials.totalAmount' },
+          totalCommission: { $sum: '$financials.platformCommission' },
+          totalSellerPayout: { $sum: '$financials.sellerPayout' },
+        }
+      },
+      {
+        $project: {
+          _id: 0,
+          sellerId: '$_id.sellerId',
+          sellerName: '$_id.name',
+          orderCount: 1,
+          totalGMV: 1,
+          totalCommission: 1,
+          totalSellerPayout: 1,
+        }
+      },
+      { $sort: { totalGMV: -1 } }
+    ]);
+  }
+
   async getSellerAnalytics(sellerId: string): Promise<any> {
     const orders = await this.orderModel.aggregate([
       { $match: { 'seller.userId': sellerId } },

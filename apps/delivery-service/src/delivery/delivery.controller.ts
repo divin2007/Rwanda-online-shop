@@ -1,7 +1,9 @@
-import { Controller, Get, Post, Put, Patch, Body, Param, Request, Query } from '@nestjs/common';
+import { Controller, Get, Post, Put, Patch, Body, Param, Request, Query, UseInterceptors, UploadedFile, BadRequestException } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
 import { DeliveryService } from './delivery.service';
 import type { Coordinates } from '@rmf/location';
 import { DeliveryStatus } from '@rmf/shared-types';
+import { Public } from '@rmf/auth';
 
 @Controller('deliveries')
 export class DeliveryController {
@@ -13,11 +15,32 @@ export class DeliveryController {
     return { success: true, data: feeInfo };
   }
 
+  @Get('available')
+  async getAvailable() {
+    const deliveries = await this.deliveryService.getAvailableDeliveries();
+    return { success: true, data: deliveries };
+  }
+
   @Get('active')
   async getActive(@Request() req: any, @Query('userId') queryUserId?: string) {
     const userId = req.user?.userId || queryUserId;
     if (!userId) return { success: true, data: null };
     const delivery = await this.deliveryService.getActiveDelivery(userId);
+    return { success: true, data: delivery };
+  }
+
+  @Get('history')
+  async getHistory(@Request() req: any, @Query('userId') queryUserId?: string) {
+    const userId = req.user?.userId || queryUserId;
+    if (!userId) return { success: true, data: [] };
+    const history = await this.deliveryService.getHistory(userId);
+    return { success: true, data: history };
+  }
+
+  @Public()
+  @Get(':id')
+  async getDeliveryById(@Param('id') id: string) {
+    const delivery = await this.deliveryService.getDeliveryById(id);
     return { success: true, data: delivery };
   }
 
@@ -46,15 +69,20 @@ export class DeliveryController {
   }
 
   @Post(':id/scan-qr')
-  async scanQr(@Param('id') id: string, @Body() data: { stallId: string }) {
-    const delivery = await this.deliveryService.photoVerifiedPickup(id, "dummy_photo_url", `marketrwanda:stall:${data.stallId}`);
+  async scanQr(@Param('id') id: string, @Body() data: { stallId: string, photoUrl?: string }) {
+    const delivery = await this.deliveryService.photoVerifiedPickup(id, data.photoUrl || "dummy_photo_url", `marketrwanda:stall:${data.stallId}`);
     return { success: true, data: delivery };
   }
 
   @Post(':id/pickup-photo')
-  async uploadPhoto(@Param('id') id: string, @Body() data: { url: string }) {
-    // This would typically update the photo URL before QR scan
-    return { success: true, data: { url: data.url } };
+  @UseInterceptors(FileInterceptor('file'))
+  async uploadPhoto(@UploadedFile() file: any) {
+    if (!file) {
+      throw new BadRequestException('No photo file uploaded');
+    }
+    const base64 = file.buffer.toString('base64');
+    const dataUri = `data:${file.mimetype};base64,${base64}`;
+    return { success: true, data: { url: dataUri } };
   }
 
   @Put(':id/status')
@@ -72,6 +100,12 @@ export class DeliveryController {
   @Post(':id/location')
   async streamLocation(@Param('id') id: string, @Body() coords: Coordinates) {
     const delivery = await this.deliveryService.streamLocation(id, coords);
+    return { success: true, data: delivery };
+  }
+
+  @Post(':id/handover')
+  async confirmHandover(@Param('id') id: string, @Body() body: { role: 'seller' | 'rider' }) {
+    const delivery = await this.deliveryService.confirmHandover(id, body.role);
     return { success: true, data: delivery };
   }
 }

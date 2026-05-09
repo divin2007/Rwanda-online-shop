@@ -1,4 +1,5 @@
-import { Controller, Get, Post, Put, Body, Param, Request, Query, BadRequestException } from '@nestjs/common';
+import { Controller, Get, Post, Put, Body, Param, Request, Query, BadRequestException, UseInterceptors, UploadedFile } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
 import { SellerService } from './seller.service';
 
 @Controller('sellers')
@@ -27,10 +28,14 @@ export class SellerController {
   }
 
   @Post('upload-document')
-  async uploadDocument(@Body() data: any) {
-    // In a full implementation, we would process the file and return an S3/Cloudinary URL
-    // For now, return a placeholder URL
-    return { success: true, data: { url: "https://placehold.co/300x400/000000/FFFFFF/png?text=Verified+Document" } };
+  @UseInterceptors(FileInterceptor('file'))
+  async uploadDocument(@UploadedFile() file: any) {
+    if (!file) {
+      throw new BadRequestException('No document file uploaded');
+    }
+    const base64 = file.buffer.toString('base64');
+    const dataUri = `data:${file.mimetype};base64,${base64}`;
+    return { success: true, data: { url: dataUri } };
   }
 
   @Get('me')

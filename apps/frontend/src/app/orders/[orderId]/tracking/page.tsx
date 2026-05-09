@@ -4,10 +4,12 @@ import { Layout } from '@/components/layout/Layout';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { OrderStatusTimeline } from '@/components/ui/OrderStatusTimeline';
+import { OrderChat } from '@/components/ui/OrderChat';
 import dynamic from 'next/dynamic';
 import { useSocket } from '@/hooks/useSocket';
 import { useApi } from '@/hooks/useApi';
 import { orderApi, deliveryApi } from '@/lib/api';
+import toast from 'react-hot-toast';
 
 // Dynamically import Leaflet components to avoid SSR issues
 const MapWrapper = dynamic(
@@ -37,7 +39,7 @@ const ChatCard = ({ orderId, deliveryId, userName }: { orderId: string, delivery
       deliveryId,
       senderId: 'buyer', // In real app, use user.id
       senderName: userName,
-      message
+      text: message
     });
     setMessage('');
   };
@@ -101,8 +103,12 @@ export default function OrderTrackingPage({ params }: { params: { orderId: strin
   }, [params.orderId, fetchOrder]);
 
   const currentStatus = statusUpdate?.status || order?.status || 'placed';
-  const showTrackingMap = currentStatus === 'in_transit' || currentStatus === 'picked_up';
-  const showBroadcastMap = currentStatus === 'placed' || currentStatus === 'confirmed';
+  const showTrackingMap = currentStatus === 'in_transit' || currentStatus === 'picked_up' || 
+    (deliveryData && ['assigned', 'en_route_to_pickup', 'pending_handover'].includes(deliveryData.status));
+  const showBroadcastMap = !showTrackingMap && (currentStatus === 'placed' || currentStatus === 'confirmed' || currentStatus === 'preparing' || currentStatus === 'ready_for_pickup');
+  const showEscrowAction = currentStatus === 'awaiting_confirmation';
+  const isNegotiationPhase = currentStatus === 'awaiting_quote' || currentStatus === 'quote_sent' || 
+    (currentStatus === 'placed' && order?.payment?.status !== 'paid');
 
   if (loading || !isClient) return <Layout><div className="flex justify-center p-20"><div className="animate-spin w-10 h-10 border-4 border-primary border-t-transparent rounded-full"></div></div></Layout>;
   if (!order) return <Layout><div className="p-20 text-center">Order not found</div></Layout>;
@@ -117,18 +123,122 @@ export default function OrderTrackingPage({ params }: { params: { orderId: strin
           <OrderStatusTimeline currentStatus={currentStatus} />
         </Card>
 
+        {/* Negotiation Hub for bespoke orders */}
+        {isNegotiationPhase && (
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8">
+            <div className="lg:col-span-2">
+              <h3 className="text-lg font-bold mb-4 flex items-center gap-2">
+                <span className="text-brand-primary">💬</span> Negotiation with Seller
+              </h3>
+              <OrderChat
+                orderId={params.orderId}
+                initialMessages={(order as any).messages || []}
+                recipientName={order.seller?.fullName || 'Seller'}
+                userRole="BUYER"
+                orderStatus={order.status}
+                paymentStatus={order.payment?.status}
+                marketId={order.seller?.marketId}
+                deliveryAddress={order.buyer?.deliveryAddress}
+                deliveryFee={order.financials?.deliveryFee}
+                onOrderUpdated={fetchOrder}
+              />
+            </div>
+            <div>
+              <Card>
+                <h3 className="font-bold mb-4">Order Summary</h3>
+                <div className="space-y-3 text-sm">
+                  {order.products && order.products.map((item: any) => (
+                    <div key={item.productId} className="flex justify-between">
+                      <span>{item.quantity}x {item.name || 'Bespoke Item'}</span>
+                      <span className="font-medium">{(item.unitPrice * item.quantity).toLocaleString()} RWF</span>
+                    </div>
+                  ))}
+                  <div className="pt-3 border-t border-border space-y-2">
+                    <div className="flex justify-between">
+                      <span className="text-text-secondary">Subtotal</span>
+                      <span>{(order.financials?.subtotal || 0).toLocaleString()} RWF</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-text-secondary">Delivery Fee</span>
+                      <span>{(order.financials?.deliveryFee || 0).toLocaleString()} RWF</span>
+                    </div>
+                    <div className="flex justify-between font-bold text-lg pt-2 border-t border-border">
+                      <span>Total</span>
+                      <span className="text-primary">{(order.financials?.totalAmount || 0).toLocaleString()} RWF</span>
+                    </div>
+                  </div>
+                </div>
+              </Card>
+              {order.buyer?.deliveryAddress?.address && order.buyer.deliveryAddress.address !== 'TBD' && (
+                <div className="mt-4 bg-status-success/5 rounded-xl p-4 border border-status-success/20">
+                  <p className="text-xs font-bold text-status-success uppercase mb-1">📍 Delivery Location</p>
+                  <p className="text-sm">{order.buyer.deliveryAddress.address}</p>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
           <div className="space-y-6">
-            {showTrackingMap ? (
-              <Card noPadding className="overflow-hidden">
+            {showEscrowAction ? (
+              <Card className="border-2 border-primary bg-primary/5">
+                <div className="text-center py-10">
+                  <span className="text-6xl block mb-4">📦</span>
+                  <h3 className="text-xl font-bold mb-2">Package Arrived!</h3>
+                  <p className="text-text-secondary mb-8 px-4">
+                    The rider has arrived. Please inspect your goods and click the button below to confirm you have received everything in good condition.
+                  </p>
+                  <Button 
+                    size="lg" 
+                    fullWidth 
+                    disabled={currentStatus === 'delivered'}
+                    className="bg-primary hover:bg-primary-hover animate-bounce"
+                    onClick={async (e) => {
+                      const btn = e.currentTarget;
+                      btn.disabled = true;
+                      btn.innerHTML = 'Processing Payout...';
+                      try {
+                        await orderApi.put(`/orders/${params.orderId}/status`, { status: 'delivered', userId: order.buyer.userId });
+                        toast.success('Thank you! Payment has been released.');
+                        fetchOrder();
+                      } catch (err) {
+                        toast.error('Failed to confirm receipt');
+                        btn.disabled = false;
+                        btn.innerHTML = 'Confirm Receipt (Release Payout)';
+                      }
+                    }}
+                  >
+                    Confirm Receipt (Release Payout)
+                  </Button>
+                </div>
+              </Card>
+            ) : showTrackingMap ? (
+              <Card key="tracking-map-card" noPadding className="overflow-hidden">
+                <div className="p-4 border-b border-border bg-background-surface">
+                  <h3 className="font-bold text-primary flex items-center gap-2">
+                    <span className="relative flex h-3 w-3">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
+                      <span className="relative inline-flex rounded-full h-3 w-3 bg-primary"></span>
+                    </span>
+                    {deliveryData?.status === 'assigned' || deliveryData?.status === 'en_route_to_pickup' ? 'Rider heading to store' : 
+                     deliveryData?.status === 'pending_handover' ? 'Rider at store (Handover)' :
+                     currentStatus === 'picked_up' ? 'Rider has picked up your order!' : 'Order is on the way!'}
+                  </h3>
+                  <p className="text-sm text-text-secondary mt-1">
+                    {deliveryData?.status === 'assigned' || deliveryData?.status === 'en_route_to_pickup' ? 'The rider is on their way to pick up your items.' :
+                     deliveryData?.status === 'pending_handover' ? 'The rider is currently verifying the items at the store.' :
+                     'Track your rider in real-time.'}
+                  </p>
+                </div>
                 <div className="h-80 relative">
-                  {riderGps ? (
-                    <MapWrapper lat={riderGps.lat} lng={riderGps.lng} />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center bg-background-surface">
-                      <p className="text-text-secondary animate-pulse">Waiting for rider GPS signal...</p>
-                    </div>
-                  )}
+                  <MapWrapper 
+                    lat={riderGps?.lat || -1.9441} 
+                    lng={riderGps?.lng || 30.0619} 
+                    pickup={deliveryData?.pickup?.coordinates}
+                    dropoff={deliveryData?.dropoff?.coordinates}
+                    routeGeometry={deliveryData?.route?.geometry}
+                  />
                 </div>
                 {deliveryData?.rider && (
                   <div className="p-4 border-t border-border flex items-center gap-4">
@@ -141,22 +251,26 @@ export default function OrderTrackingPage({ params }: { params: { orderId: strin
                 )}
               </Card>
             ) : showBroadcastMap ? (
-              <Card noPadding className="overflow-hidden">
+              <Card key="broadcast-map-card" noPadding className="overflow-hidden">
                 <div className="p-4 border-b border-border bg-background-surface">
                   <h3 className="font-bold text-primary flex items-center gap-2">
                     <span className="relative flex h-3 w-3">
                       <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
                       <span className="relative inline-flex rounded-full h-3 w-3 bg-primary"></span>
                     </span>
-                    Broadcasting to nearby riders
+                    {currentStatus === 'ready_for_pickup' ? 'Assigning a rider...' : 'Processing Order'}
                   </h3>
-                  <p className="text-sm text-text-secondary mt-1">Sending delivery request to all available riders in the area...</p>
+                  <p className="text-sm text-text-secondary mt-1">
+                    {currentStatus === 'preparing' ? 'The seller is currently packing your items.' : 'Finding the nearest available rider...'}
+                  </p>
                 </div>
                 <div className="h-64 relative border-b border-border">
                   <RiderMap marketId={order.seller?.marketId || 'default'} />
                 </div>
                 <div className="p-4 text-center">
-                  <p className="text-sm text-text-secondary">Waiting for a rider to accept the delivery.</p>
+                  <p className="text-sm text-text-secondary">
+                    {currentStatus === 'preparing' ? 'Wait while your items are being carefully packed.' : 'Waiting for a rider to accept the delivery.'}
+                  </p>
                 </div>
               </Card>
             ) : (
@@ -166,12 +280,12 @@ export default function OrderTrackingPage({ params }: { params: { orderId: strin
                     {currentStatus === 'delivered' ? '🎉' : '🕒'}
                   </span>
                   <h3 className="text-xl font-bold mb-2">
-                    {currentStatus === 'delivered' ? 'Order Delivered!' : 'Preparing your order...'}
+                    {currentStatus === 'delivered' ? 'Order Delivered!' : 'Order Placed'}
                   </h3>
                   <p className="text-text-secondary">
                     {currentStatus === 'delivered' 
                       ? 'Enjoy your fresh products from the market.' 
-                      : 'The seller is currently packing your items.'}
+                      : 'Payment successful. Waiting for seller confirmation.'}
                   </p>
                 </div>
               </Card>
@@ -182,7 +296,13 @@ export default function OrderTrackingPage({ params }: { params: { orderId: strin
             <Card>
               <h3 className="font-bold mb-4">Order Summary</h3>
               <div className="space-y-4">
-                {order.product && (
+                {order.products && order.products.map((item: any) => (
+                  <div key={item.productId} className="flex justify-between text-sm">
+                    <span>{item.quantity}x {item.name || 'Product'}</span>
+                    <span className="font-medium">{(item.unitPrice * item.quantity).toLocaleString()} RWF</span>
+                  </div>
+                ))}
+                {!order.products && order.product && (
                   <div key={order.product.productId} className="flex justify-between text-sm">
                     <span>{order.product.quantity}x {order.product.name || 'Product'}</span>
                     <span className="font-medium">{(order.product.unitPrice * order.product.quantity).toLocaleString()} RWF</span>
@@ -200,9 +320,42 @@ export default function OrderTrackingPage({ params }: { params: { orderId: strin
             )}
             
             {currentStatus === 'delivered' && (
-               <div className="bg-background-surface p-4 rounded-xl text-center">
-                 <p className="text-sm text-text-secondary mb-3">Issue with your order?</p>
-                 <Button variant="outline" size="sm">Raise Dispute</Button>
+               <div className="bg-background-surface p-6 rounded-xl border border-border">
+                 <p className="font-bold mb-2">Issue with your order?</p>
+                 <p className="text-sm text-text-secondary mb-4">If items are missing or damaged, you can raise a dispute within 24 hours.</p>
+                 
+                 {order.status === 'disputed' ? (
+                   <div className="bg-status-warning/10 text-status-warning p-4 rounded-lg text-sm font-medium">
+                     Dispute raised. Our team is investigating.
+                   </div>
+                 ) : (
+                   <div className="space-y-4">
+                     <textarea 
+                       className="w-full bg-background-card border border-border rounded-lg p-3 text-sm focus:ring-1 focus:ring-primary outline-none"
+                       placeholder="Please describe the issue (e.g. Missing 2kg of tomatoes)"
+                       rows={3}
+                       id="dispute-reason"
+                     ></textarea>
+                     <Button 
+                       variant="outline" 
+                       size="sm" 
+                       fullWidth
+                       onClick={async () => {
+                         const reason = (document.getElementById('dispute-reason') as HTMLTextAreaElement).value;
+                         if (!reason) return toast.error('Please provide a reason for the dispute');
+                         try {
+                           await orderApi.post(`/orders/${params.orderId}/dispute`, { reason });
+                           toast.success('Dispute raised successfully');
+                           fetchOrder();
+                         } catch (e) {
+                           toast.error('Failed to raise dispute');
+                         }
+                       }}
+                     >
+                       Submit Dispute
+                     </Button>
+                   </div>
+                 )}
                </div>
             )}
           </div>

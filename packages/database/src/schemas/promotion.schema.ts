@@ -10,6 +10,7 @@ export const promotionSchema = new Schema({
   endDate: { type: Date, required: true },
   maxQuantity: { type: Number },
   currentSales: { type: Number, default: 0 },
+  promotedPrice: { type: Number },
   isActive: { type: Boolean, default: true },
   deletedAt: { type: Date, default: null }
 }, { timestamps: true });

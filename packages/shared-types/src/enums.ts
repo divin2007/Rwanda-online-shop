@@ -17,11 +17,16 @@ export enum PromotionType {
 
 export enum OrderStatus {
   SCHEDULED = 'scheduled',
+  AWAITING_QUOTE = 'awaiting_quote',
+  QUOTE_SENT = 'quote_sent',
   PLACED = 'placed',
   CONFIRMED = 'confirmed',
+  PREPARING = 'preparing',
+  READY_FOR_PICKUP = 'ready_for_pickup',
   CANCELLED = 'cancelled',
   PICKED_UP = 'picked_up',
   IN_TRANSIT = 'in_transit',
+  AWAITING_CONFIRMATION = 'awaiting_confirmation',
   DELIVERED = 'delivered',
   DISPUTED = 'disputed',
   RESOLVED = 'resolved'
@@ -37,6 +42,7 @@ export enum PaymentStatus {
 export enum DeliveryStatus {
   ASSIGNED = 'assigned',
   EN_ROUTE_TO_PICKUP = 'en_route_to_pickup',
+  PENDING_HANDOVER = 'pending_handover',
   PICKED_UP = 'picked_up',
   EN_ROUTE_TO_DROPOFF = 'en_route_to_dropoff',
   DELIVERED = 'delivered',

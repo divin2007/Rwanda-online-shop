@@ -1,5 +1,5 @@
 'use client';
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { AxiosInstance, AxiosRequestConfig, AxiosResponse, AxiosError } from 'axios';
 
 interface UseApiResponse<T> {
@@ -19,10 +19,15 @@ export function useApi<T = any>(
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const dataRef = useRef<T | null>(null);
+  useEffect(() => {
+    dataRef.current = data;
+  }, [data]);
+
   const execute = useCallback(
     async (dynamicData?: any, dynamicConfig?: AxiosRequestConfig) => {
       // Only set loading to true on first load to prevent flickering during polling
-      if (!data) setLoading(true);
+      if (!dataRef.current) setLoading(true);
       setError(null);
       try {
         const config = { ...options, ...dynamicConfig };
@@ -57,7 +62,7 @@ export function useApi<T = any>(
         setLoading(false);
       }
     },
-    [apiInstance, method, url, options, data]
+    [apiInstance, method, url] // Removed options and data to prevent infinite loops
   );
 
   useEffect(() => {

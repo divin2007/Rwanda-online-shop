@@ -1,7 +1,6 @@
 import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
 import { deliverySchema, riderProfileSchema } from '@rmf/database';
-import { AuthGuardModule } from '@rmf/auth';
 import { DeliveryService } from './delivery.service';
 import { DeliveryController } from './delivery.controller';
 import { DeliveryGateway } from './delivery.gateway';
@@ -12,7 +11,8 @@ import { DeliveryGateway } from './delivery.gateway';
       { name: 'Delivery', schema: deliverySchema },
       { name: 'RiderProfile', schema: riderProfileSchema }
     ]),
-    AuthGuardModule.forRoot(),
+    // Auth guard removed: delivery-service is internal-only (called by order-service)
+    // The WebSocket gateway handles its own connection security
   ],
   providers: [DeliveryService, DeliveryGateway],
   controllers: [DeliveryController],

@@ -21,6 +21,7 @@ interface ProductCardProps {
       discount: number;
       promotedPrice: number;
     };
+    attributes?: Record<string, any>;
   };
 }
 
@@ -49,6 +50,7 @@ export const ProductCard = ({ product }: ProductCardProps) => {
           src={product.images[0]} 
           alt={product.name} 
           fill
+          priority
           sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
           className={`object-cover transition-transform duration-500 hover:scale-105 ${!product.inStock ? 'opacity-50 grayscale' : ''}`}
         />
@@ -68,7 +70,9 @@ export const ProductCard = ({ product }: ProductCardProps) => {
         
         <div className="mt-auto pt-4">
           <div className="flex items-baseline gap-2 mb-3">
-            {product.promotion ? (
+            {(product.attributes?.isQuoteRequired === 'true' || product.attributes?.isQuoteRequired === true) ? (
+              <span className="text-lg font-bold text-primary">Price on Quote</span>
+            ) : product.promotion ? (
               <>
                 <span className="text-lg font-bold text-status-warning">{product.promotion.promotedPrice.toLocaleString()} RWF</span>
                 <span className="text-xs text-text-muted line-through">{product.price.toLocaleString()} RWF</span>
@@ -86,7 +90,7 @@ export const ProductCard = ({ product }: ProductCardProps) => {
             disabled={!product.inStock}
             onClick={() => addToCart(product)}
           >
-            Add to Cart
+            {(product.attributes?.isQuoteRequired === 'true' || product.attributes?.isQuoteRequired === true) ? 'Request Quote' : 'Add to Cart'}
           </Button>
         </div>
       </div>

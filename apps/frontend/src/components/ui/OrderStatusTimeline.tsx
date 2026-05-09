@@ -3,7 +3,12 @@ import React from 'react';
 const STEPS = ['placed', 'confirmed', 'picked_up', 'in_transit', 'delivered'];
 
 export const OrderStatusTimeline = ({ currentStatus }: { currentStatus: string }) => {
-  const currentIndex = STEPS.indexOf(currentStatus);
+  const normalizeStatus = (s: string) => {
+    if (['preparing', 'ready_for_pickup'].includes(s)) return 'confirmed';
+    if (['awaiting_confirmation'].includes(s)) return 'in_transit';
+    return s;
+  };
+  const currentIndex = STEPS.indexOf(normalizeStatus(currentStatus));
 
   return (
     <div className="w-full py-6">

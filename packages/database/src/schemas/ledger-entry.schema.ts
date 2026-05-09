@@ -3,6 +3,7 @@ import { Schema, model } from 'mongoose';
 // Immutable Double-entry accounting ledger
 export const ledgerEntrySchema = new Schema({
   ledgerId: { type: String, required: true },
+  userId: { type: Schema.Types.ObjectId, ref: 'User' },
   transactionId: { type: Schema.Types.ObjectId, ref: 'Transaction', required: true },
   type: { type: String, enum: ['debit', 'credit'], required: true },
   account: { type: String, required: true }, // e.g. 'company_commission', 'rider_wallet', 'seller_wallet'

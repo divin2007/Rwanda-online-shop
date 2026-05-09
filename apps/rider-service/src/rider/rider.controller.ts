@@ -1,4 +1,5 @@
-import { Controller, Get, Post, Put, Patch, Body, Param, Request, Query } from '@nestjs/common';
+import { Controller, Get, Post, Put, Patch, Body, Param, Request, Query, UseInterceptors, UploadedFile, BadRequestException } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
 import { RiderService } from './rider.service';
 import type { Coordinates } from '@rmf/location';
 
@@ -75,11 +76,16 @@ export class RiderController {
   }
 
   @Post('upload-document')
-  async uploadDocument(@Body() data: any) {
-    // Mock upload logic (Document 6 requirement: simulated for now)
+  @UseInterceptors(FileInterceptor('file'))
+  async uploadDocument(@UploadedFile() file: any) {
+    if (!file) {
+      throw new BadRequestException('No file uploaded');
+    }
+    const base64 = file.buffer.toString('base64');
+    const dataUri = `data:${file.mimetype};base64,${base64}`;
     return { 
       success: true, 
-      data: { url: "https://placehold.co/800x600/000000/FFFFFF/png?text=Rider+Document" } 
+      data: { url: dataUri } 
     };
   }
 }

@@ -29,10 +29,24 @@ export class AdminController {
   }
 
   @Get('analytics/seller/:id')
-  @Roles(UserRole.ADMIN)
+  @Roles(UserRole.ADMIN, UserRole.SELLER)
   async getSellerAnalytics(@Param('id') id: string) {
     const analytics = await this.adminService.getSellerAnalytics(id);
     return { success: true, data: analytics };
+  }
+
+  @Get('admin/accounting/summary')
+  @Roles(UserRole.ADMIN)
+  async getAccountingSummary(@Query('startDate') startDate?: string, @Query('endDate') endDate?: string) {
+    const summary = await this.adminService.getAccountingSummary(startDate, endDate);
+    return { success: true, data: summary };
+  }
+
+  @Get('admin/accounting/by-seller')
+  @Roles(UserRole.ADMIN)
+  async getAccountingBySeller(@Query('startDate') startDate?: string, @Query('endDate') endDate?: string) {
+    const data = await this.adminService.getAccountingBySeller(startDate, endDate);
+    return { success: true, data };
   }
 
   @Get('admin/fraud-alerts')

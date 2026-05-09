@@ -1,0 +1,41 @@
+version: '3.8'
+
+services:
+  mongodb:
+    image: mongo:latest
+    container_name: rmf-mongodb
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb_data:/data/db
+
+  mongo-express:
+    image: mongo-express:latest
+    container_name: rmf-mongo-express
+    depends_on:
+      - mongodb
+    ports:
+      - "8081:8081"
+    environment:
+      ME_CONFIG_MONGODB_SERVER: mongodb
+      ME_CONFIG_BASICAUTH_USERNAME: admin
+      ME_CONFIG_BASICAUTH_PASSWORD: pass
+
+  redis:
+    image: redis:latest
+    container_name: rmf-redis
+    ports:
+      - "6379:6379"
+
+  maildev:
+    image: maildev/maildev:latest
+    container_name: rmf-maildev
+    ports:
+      - "1080:1080" # Web UI
+      - "1025:1025" # SMTP
+    environment:
+      - MAILDEV_WEB_PORT=1080
+      - MAILDEV_SMTP_PORT=1025
+
+volumes:
+  mongodb_data:
