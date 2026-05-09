@@ -27,7 +27,7 @@ export class ReviewController {
   }
 
   @Get('target/:type/:id')
-  async getReviews(@Param('type') type: 'seller' | 'rider', @Param('id') id: string) {
+  async getReviews(@Param('type') type: 'seller' | 'rider' | 'market' | 'product', @Param('id') id: string) {
     const reviews = await this.reviewService.getReviewsForTarget(type, id);
     return { success: true, data: reviews };
   }

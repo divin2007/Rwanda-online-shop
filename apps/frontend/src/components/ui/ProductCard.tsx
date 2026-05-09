@@ -70,7 +70,13 @@ export const ProductCard = ({ product }: ProductCardProps) => {
         
         <div className="mt-auto pt-4">
           <div className="flex items-baseline gap-2 mb-3">
-            {(product.attributes?.isQuoteRequired === 'true' || product.attributes?.isQuoteRequired === true) ? (
+            {(
+              product.attributes?.isQuoteRequired === 'true' || 
+              product.attributes?.isQuoteRequired === true || 
+              product.attributes?.isCustomizable === 'true' || 
+              product.attributes?.isCustomizable === true ||
+              product.category === 'bakery'
+            ) ? (
               <span className="text-lg font-bold text-primary">Price on Quote</span>
             ) : product.promotion ? (
               <>
@@ -83,15 +89,33 @@ export const ProductCard = ({ product }: ProductCardProps) => {
             <span className="text-xs text-text-secondary">/{product.unit}</span>
           </div>
           
-          <Button 
-            variant="primary" 
-            fullWidth 
-            className="py-2"
-            disabled={!product.inStock}
-            onClick={() => addToCart(product)}
-          >
-            {(product.attributes?.isQuoteRequired === 'true' || product.attributes?.isQuoteRequired === true) ? 'Request Quote' : 'Add to Cart'}
-          </Button>
+          {(
+            product.attributes?.isQuoteRequired === 'true' || 
+            product.attributes?.isQuoteRequired === true || 
+            product.attributes?.isCustomizable === 'true' || 
+            product.attributes?.isCustomizable === true ||
+            product.category === 'bakery'
+          ) ? (
+            <Link href={getProductUrl(product._id, product.marketId?.slug)} className="w-full">
+              <Button 
+                variant="outline" 
+                fullWidth 
+                className="py-2 border-amber-600 text-amber-600 hover:bg-amber-50"
+              >
+                📜 Messaging Quote
+              </Button>
+            </Link>
+          ) : (
+            <Button 
+              variant="primary" 
+              fullWidth 
+              className="py-2"
+              disabled={!product.inStock}
+              onClick={() => addToCart(product)}
+            >
+              Add to Cart
+            </Button>
+          )}
         </div>
       </div>
     </div>

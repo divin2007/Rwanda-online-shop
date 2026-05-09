@@ -16,7 +16,7 @@ const ORDER_TRANSITIONS: Record<string, string[]> = {
   [OrderStatus.PLACED]: [OrderStatus.CONFIRMED, OrderStatus.QUOTE_SENT, OrderStatus.CANCELLED],
   [OrderStatus.CONFIRMED]: [OrderStatus.PREPARING, OrderStatus.READY_FOR_PICKUP, OrderStatus.CANCELLED],
   [OrderStatus.PREPARING]: [OrderStatus.READY_FOR_PICKUP, OrderStatus.CANCELLED],
-  [OrderStatus.READY_FOR_PICKUP]: [OrderStatus.PICKED_UP, OrderStatus.CANCELLED],
+  [OrderStatus.READY_FOR_PICKUP]: [OrderStatus.PICKED_UP, OrderStatus.AWAITING_CONFIRMATION, OrderStatus.DELIVERED, OrderStatus.CANCELLED],
   [OrderStatus.PICKED_UP]: [OrderStatus.IN_TRANSIT, OrderStatus.AWAITING_CONFIRMATION, OrderStatus.DELIVERED],
   [OrderStatus.IN_TRANSIT]: [OrderStatus.AWAITING_CONFIRMATION, OrderStatus.DELIVERED],
   [OrderStatus.AWAITING_CONFIRMATION]: [OrderStatus.DELIVERED, OrderStatus.DISPUTED],
@@ -286,6 +286,14 @@ export class OrderService implements OnModuleInit, OnModuleDestroy {
         this.triggerPayoutFlow(updated).catch(err => {
           this.logger.error(`Failed to trigger payout flow for order ${id} at ${newStatus}: ${err.message}`);
         });
+        
+        // Sync with Delivery Service if the buyer confirms delivery first
+        if (newStatus === OrderStatus.DELIVERED && updated.deliveryId) {
+          const deliveryUrl = process.env.DELIVERY_SERVICE_URL || 'http://localhost:3008/api/v1';
+          axios.put(`${deliveryUrl}/deliveries/${updated.deliveryId}/status`, { 
+            status: 'delivered' 
+          }).catch(err => this.logger.warn(`Failed to sync DELIVERED status to delivery service: ${err.message}`));
+        }
       }
     }
 
@@ -299,6 +307,8 @@ export class OrderService implements OnModuleInit, OnModuleDestroy {
 
       const isPickedUp = order.status === OrderStatus.PICKED_UP;
       const isDelivered = order.status === OrderStatus.DELIVERED;
+      const shouldPaySeller = isPickedUp || isDelivered;
+      const shouldPayRider = isDelivered;
 
       // 1. Get delivery info to find the rider
       const deliveryRes = await axios.get(`${deliveryUrl}/deliveries/${order.deliveryId}`);
@@ -318,9 +328,9 @@ export class OrderService implements OnModuleInit, OnModuleDestroy {
         riderId: delivery.rider.userId,
         subtotal: order.financials.subtotal,
         deliveryFee: order.financials.deliveryFee,
-        // Handout Architecture: Seller gets paid at PICKED_UP, Rider at DELIVERED
-        sellerPayout: isPickedUp ? (order.financials.sellerPayout || order.financials.subtotal * 0.985) : 0,
-        riderPayout: isDelivered ? (order.financials.riderPayout || order.financials.deliveryFee * 0.9) : 0,
+        // Handout Architecture: Seller gets paid at PICKED_UP (or DELIVERED if skipped), Rider at DELIVERED
+        sellerPayout: shouldPaySeller ? (order.financials.sellerPayout || order.financials.subtotal * 0.985) : 0,
+        riderPayout: shouldPayRider ? (order.financials.riderPayout || order.financials.deliveryFee * 0.9) : 0,
         commissionFloorApplied: order.financials.platformCommission === 100
       });
 
@@ -637,11 +647,13 @@ export class OrderService implements OnModuleInit, OnModuleDestroy {
   }
 
   async findAll(query: any): Promise<any> {
-    const { sellerId, buyerId, status } = query;
+    const { sellerId, buyerId, status, isDisputed, 'dispute.resolvedAt': resolvedAt } = query;
     const filter: any = {};
-    if (sellerId) filter['seller.userId'] = sellerId;
-    if (buyerId) filter['buyer.userId'] = buyerId;
-    if (status) filter.status = { $in: status.split(',') };
+    if (sellerId && sellerId !== 'all') filter['seller.userId'] = sellerId;
+    if (buyerId && buyerId !== 'all') filter['buyer.userId'] = buyerId;
+    if (status && status !== 'all') filter.status = { $in: status.split(',') };
+    if (isDisputed === 'true') filter['dispute.isDisputed'] = true;
+    if (resolvedAt === 'null') filter['dispute.resolvedAt'] = null;
     
     const orders = await this.orderModel.find(filter).sort({ createdAt: -1 }).lean().exec();
     

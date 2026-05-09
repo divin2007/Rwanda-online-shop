@@ -53,12 +53,9 @@ export class DeliveryGateway implements OnGatewayConnection, OnGatewayDisconnect
       updatedAt: Date.now()
     });
 
-    // Hash riderId for anonymity
-    const anonymousHash = crypto.createHash('md5').update(payload.riderId).digest('hex').substring(0, 8);
-
-    // Broadcast to public map
+    // Broadcast to public map - sending real ID for admin oversight and profile lookup
     this.server.emit('rider:public:locations', {
-      riderId: anonymousHash, // ANONYMIZED
+      riderId: payload.riderId, 
       lat: payload.lat,
       lng: payload.lng,
       marketId: payload.marketId

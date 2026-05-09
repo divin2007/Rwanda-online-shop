@@ -11,6 +11,7 @@ import { useApi } from '@/hooks/useApi';
 import { useSocket } from '@/hooks/useSocket';
 import { sellerApi, orderApi, adminApi, deliveryApi } from '@/lib/api';
 import toast from 'react-hot-toast';
+import { AnalyticsCharts } from '@/components/ui/AnalyticsCharts';
 
 const RiderMap = dynamic(
   () => import('@/components/ui/RiderMap').then((mod) => mod.RiderMap),
@@ -27,6 +28,7 @@ export default function SellerDashboardPage() {
   const { data: profile, loading: pLoad, execute: fetchProfile } = useApi(sellerApi, 'get', `/sellers/me?userId=${user?.id}`);
   const { data: analytics, loading: aLoad, execute: fetchAnalytics } = useApi(adminApi, 'get', `/analytics/seller/${user?.id}`);
   const { data: activeOrders, loading: oLoad, execute: fetchOrders } = useApi(orderApi, 'get', `/orders?sellerId=${user?.id}&status=awaiting_quote,quote_sent,placed,confirmed,preparing,ready_for_pickup,picked_up,in_transit,awaiting_confirmation,delivered`, { refreshInterval: 5000 });
+  const { data: allOrders, execute: fetchAllOrders } = useApi(orderApi, 'get', `/orders?sellerId=${user?.id}`, { refreshInterval: 30000 });
 
   // Real-time updates for orders
   const { data: socketOrder } = useSocket(process.env.NEXT_PUBLIC_ORDER_SERVICE_URL || 'http://localhost:3006', 'order:seller:updates', localStorage.getItem('accessToken') || undefined);
@@ -37,9 +39,10 @@ export default function SellerDashboardPage() {
       fetchProfile();
       fetchAnalytics();
       fetchOrders();
+      fetchAllOrders();
       hasFetched.current = true;
     }
-  }, [user?.id, fetchProfile, fetchAnalytics, fetchOrders]);
+  }, [user?.id, fetchProfile, fetchAnalytics, fetchOrders, fetchAllOrders]);
 
   useEffect(() => {
     if (socketOrder) {
@@ -164,6 +167,7 @@ export default function SellerDashboardPage() {
           <nav className="space-y-2">
             <Link href="/seller/dashboard" className="block px-4 py-2 bg-primary/10 text-primary font-bold rounded-lg">Dashboard</Link>
             <Link href="/seller/products" className="block px-4 py-2 text-text-secondary hover:bg-background-surface hover:text-text-primary font-medium rounded-lg">Products</Link>
+            <Link href="/seller/reviews" className="block px-4 py-2 text-text-secondary hover:bg-background-surface hover:text-text-primary font-medium rounded-lg">Reviews</Link>
             <Link href="/seller/promotions" className="block px-4 py-2 text-text-secondary hover:bg-background-surface hover:text-text-primary font-medium rounded-lg">Promotions</Link>
             <Link href="/seller/earnings" className="block px-4 py-2 text-text-secondary hover:bg-background-surface hover:text-text-primary font-medium rounded-lg">Earnings</Link>
             <a href={`https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=marketrwanda:stall:${profile?.stallId}`} target="_blank" rel="noreferrer" className="block w-full text-left px-4 py-2 text-text-secondary hover:bg-background-surface hover:text-text-primary font-medium rounded-lg">Print QR Code</a>
@@ -175,6 +179,9 @@ export default function SellerDashboardPage() {
           <div className="mb-8">
             <h1 className="text-2xl font-heading font-bold text-text-primary">Dashboard Overview</h1>
           </div>
+
+          {/* Growth Charts */}
+          <AnalyticsCharts orders={allOrders || []} type="seller" />
 
           {/* KPI Row */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">

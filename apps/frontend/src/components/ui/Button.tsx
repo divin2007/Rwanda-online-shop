@@ -5,6 +5,7 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: 'primary' | 'secondary' | 'outline' | 'ghost';
   size?: 'sm' | 'md' | 'lg';
   fullWidth?: boolean;
+  loading?: boolean;
 }
 
 export const Button = ({
@@ -14,6 +15,7 @@ export const Button = ({
   fullWidth = false,
   className = '',
   disabled,
+  loading = false,
   ...props
 }: ButtonProps) => {
   const baseStyles = 'inline-flex justify-center items-center font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed';
@@ -40,8 +42,17 @@ export const Button = ({
   `;
 
   return (
-    <button className={classes} disabled={disabled} {...props}>
-      {children}
+    <button className={classes} disabled={disabled || loading} {...props}>
+      {loading ? (
+        <span className="opacity-0">{children}</span>
+      ) : (
+        children
+      )}
+      {loading && (
+        <span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
+          ...
+        </span>
+      )}
     </button>
   );
 };

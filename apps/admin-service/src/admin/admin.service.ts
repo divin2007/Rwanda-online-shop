@@ -65,7 +65,8 @@ export class AdminService {
   async getFraudAlerts(): Promise<any> {
     return this.orderModel.find({ 
       'security.isFlagged': true,
-      'security.reviewedBy': { $exists: false }
+      'security.reviewedBy': { $exists: false },
+      status: { $nin: ['delivered', 'cancelled', 'resolved'] }
     })
     .sort({ createdAt: -1 })
     .exec();

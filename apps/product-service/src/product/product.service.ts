@@ -95,14 +95,18 @@ export class ProductService implements OnModuleInit {
 
     const filter: any = { deletedAt: null };
     
-    if (approvedOnly === 'true' || approvedOnly === true) {
+    if (approvedOnly === 'true' || approvedOnly === true || query.isApproved === 'true' || query.isApproved === true) {
       filter.isActive = true;
       filter.isApproved = true;
     } else if (isActive !== undefined) {
       filter.isActive = isActive === 'true' || isActive === true;
+      if (query.isApproved !== undefined) {
+        filter.isApproved = query.isApproved === 'true' || query.isApproved === true;
+      }
     } else if (!sellerId) {
       // Default for public views
       filter.isActive = true;
+      filter.isApproved = true; // Public views should always be approved products
     }
     
     if (marketId) filter.marketId = marketId;
@@ -113,7 +117,7 @@ export class ProductService implements OnModuleInit {
       filter.sellerId = seller ? seller._id : sellerId;
     }
     
-    const dbQuery = this.productModel.find(filter).populate(['sellerId', 'marketId']);
+    const dbQuery = this.productModel.find(filter).populate(['sellerId', 'marketId']).lean();
 
     if (sortBy) {
         dbQuery.sort(sortBy);
@@ -142,7 +146,7 @@ export class ProductService implements OnModuleInit {
     
     if (cached) return cached;
 
-    const product = await this.productModel.findOne({ _id: id, deletedAt: null }).populate(['sellerId', 'marketId']).exec();
+    const product = await this.productModel.findOne({ _id: id, deletedAt: null }).populate(['sellerId', 'marketId']).lean().exec();
     if (!product) {
       throw new NotFoundException('Product not found');
     }
@@ -173,7 +177,24 @@ export class ProductService implements OnModuleInit {
     
     // Invalidate Cache
     await this.cacheManager.del(`product:${id}`);
-    await this.cacheManager.del('products:all');
+    
+    // We need to invalidate list caches. Since they are parameter-dependent,
+    // and cache-manager doesn't easily support wildcard deletion, 
+    // we should at least clear the common ones or use a more robust strategy.
+    // For now, let's clear the primary products:all which is a common prefix.
+    try {
+      // If using redis, we could use keys and del. 
+      // In memory, we can try to clear or just wait.
+      // A better way is to use a cache versioning system or clear the whole store if needed.
+      // But for this project, let's just ensure we clear the most likely ones.
+      await this.cacheManager.del('products:all'); 
+      // Some cache managers allow resetting the whole store
+      if ((this.cacheManager as any).reset) {
+        await (this.cacheManager as any).reset();
+      }
+    } catch (e) {
+      console.error('Cache invalidation failed', e);
+    }
 
     return updatedProduct;
   }

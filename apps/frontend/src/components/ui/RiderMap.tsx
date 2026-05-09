@@ -1,9 +1,19 @@
 'use client';
 import React, { useEffect, useState } from 'react';
-import { MapContainer, TileLayer, Marker, Popup, Tooltip } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Popup, Tooltip, Polyline } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
 import { useSocket } from '@/hooks/useSocket';
+interface RiderProfile {
+  userId: string;
+  fullName?: string;
+  plateNumber?: string;
+  vehicleType?: string;
+  rating?: number;
+  totalDeliveries?: number;
+}
+
+import { marketApi, riderApi } from '@/lib/api';
 
 // Fix for default marker icons in Next.js using a Data URI to bypass Tracking Prevention
 const markerSvg = `PHN2ZyB3aWR0aD0iMjUiIGhlaWdodD0iNDEiIHZpZXdCb3g9IjAgMCAyNSA0MSIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cGF0aCBkPSJNMTIuNSAwQzUuNTk2NDUgMCAwIDUuNTk2NDUgMCAxMi41QzAgMjEuODc1IDEyLjUgNDEgMTIuNSA0MUMxMi41IDQxIDI1IDIxLjg3NSAyNSAxMi41QzI1IDUuNTk2NDUgMTkuNDAzNiAwIDEyLjUgMFpNMTIuNSAxNy4xODc1QzkuOTExMTcgMTcuMTg3NSA3LjgxMjUgMTUuMDg4OCA3LjgxMjUgMTIuNUM3LjgxMjUgOS45MTExNyA5LjkxMTE3IDcuODEyNSAxMi41IDcuODEyNUMxNS4wODg4IDcuODEyNSAxNy4xODc1IDkuOTExMTcgMTcuMTg3NSAxMi41QzE3LjE4NzUgMTUuMDg4OCAxNS4wODg4IDE3LjE4NzUgMTIuNSAxNy4xODc1WiIgZmlsbD0iIzNCODJFNiIvPjwvc3ZnPg==`;
@@ -29,23 +39,67 @@ interface RiderLocation {
   marketId: string;
 }
 
+interface MarketLocation {
+  _id: string;
+  name: string;
+  location: {
+    coordinates: [number, number]; // [lng, lat]
+  };
+}
+
 export const RiderMap = ({ marketId, centerLat = -1.9441, centerLng = 30.0619, marketName }: { marketId: string, centerLat?: number, centerLng?: number, marketName?: string }) => {
   const { data } = useSocket<RiderLocation>(process.env.NEXT_PUBLIC_DELIVERY_SERVICE_URL || 'http://localhost:3008', 'rider:public:locations');
   const [riders, setRiders] = useState<Record<string, RiderLocation>>({});
+  const [profiles, setProfiles] = useState<Record<string, RiderProfile>>({});
+  const [tails, setTails] = useState<Record<string, [number, number][]>>({});
+  const [markets, setMarkets] = useState<MarketLocation[]>([]);
   const [isClient, setIsClient] = useState(false);
+
+  const isAdmin = marketId === 'all-admin';
 
   useEffect(() => {
     setIsClient(true);
-  }, []);
+    if (isAdmin) {
+      marketApi.get('/markets').then(res => {
+        if (res.data?.success) setMarkets(res.data.data);
+      }).catch(err => console.error('Failed to fetch markets for map:', err));
+    }
+  }, [isAdmin]);
 
   useEffect(() => {
     if (data) {
+      // If not admin, only track riders belonging to this market
+      if (!isAdmin && data.marketId !== marketId) return;
+
       setRiders((prev) => ({
         ...prev,
         [data.riderId]: data,
       }));
+      
+      setTails((prev) => {
+        const currentTail = prev[data.riderId] || [];
+        const newTail = [...currentTail, [data.lat, data.lng] as [number, number]].slice(-10); // Keep last 10 points
+        return { ...prev, [data.riderId]: newTail };
+      });
+
+      // Fetch profile if not already cached
+      if (!profiles[data.riderId]) {
+        riderApi.get(`/riders/user/${data.riderId}`).then(res => {
+          if (res.data?.success) {
+            setProfiles(prev => ({ ...prev, [data.riderId]: res.data.data }));
+          }
+        }).catch(() => {
+          // Fallback for simulated riders or errors
+          if (!profiles[data.riderId]) {
+            setProfiles(prev => ({ 
+              ...prev, 
+              [data.riderId]: { userId: data.riderId, fullName: `Rider ${data.riderId.substring(0, 4)}`, plateNumber: 'RAA 000X' } 
+            }));
+          }
+        });
+      }
     }
-  }, [data]);
+  }, [data, marketId, isAdmin, profiles]);
 
   if (!isClient) return <div className="w-full h-full bg-background-surface animate-pulse"></div>;
 
@@ -54,31 +108,83 @@ export const RiderMap = ({ marketId, centerLat = -1.9441, centerLng = 30.0619, m
       <MapContainer 
         key={`rider-map-${marketId}-${centerLat}-${centerLng}`}
         center={[centerLat, centerLng]} 
-        zoom={15} 
+        zoom={isAdmin ? 12 : 15} 
         style={{ height: '100%', width: '100%' }}
       >
         <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
         
-        {/* Shop Location */}
-        <Marker position={[centerLat, centerLng]} icon={shopIcon}>
-           {marketName && <div className="p-2 bg-white rounded shadow-md font-bold">{marketName}</div>}
-        </Marker>
+        {/* Market Locations */}
+        {isAdmin ? (
+          markets.map(m => (
+            <Marker key={m._id} position={[m.location.coordinates[1], m.location.coordinates[0]]} icon={shopIcon}>
+              <Tooltip permanent direction="bottom">
+                <div className="font-bold text-xs">{m.name}</div>
+              </Tooltip>
+            </Marker>
+          ))
+        ) : (
+          <Marker position={[centerLat, centerLng]} icon={shopIcon}>
+            {marketName && (
+              <Tooltip permanent direction="bottom">
+                <div className="font-bold text-xs">{marketName}</div>
+              </Tooltip>
+            )}
+          </Marker>
+        )}
+
+        {/* Movement Tails */}
+        {Object.entries(tails).map(([id, path]) => (
+          <Polyline 
+            key={`tail-${id}`} 
+            positions={path} 
+            color="#3b82f6" 
+            weight={3} 
+            opacity={0.4} 
+            dashArray="5, 10"
+          />
+        ))}
 
         {/* Live Riders */}
-        {Object.values(riders).map((rider) => (
-          <Marker key={rider.riderId} position={[rider.lat, rider.lng]} icon={riderIcon}>
-            <Tooltip permanent direction="top" offset={[0, -40]}>
-              <div className="text-xs font-bold bg-white px-2 py-1 rounded shadow-sm border border-border">Rider {rider.riderId.substring(0, 4)}</div>
-            </Tooltip>
-            <Popup>
-              <div className="p-1">
-                <p className="font-bold">Active Rider</p>
-                <p className="text-xs text-text-secondary italic">Live Location Update</p>
-                <p className="text-xs text-primary mt-1">Ready for assignment</p>
-              </div>
-            </Popup>
-          </Marker>
-        ))}
+        {Object.values(riders).map((rider) => {
+          const profile = profiles[rider.riderId];
+          return (
+            <Marker key={rider.riderId} position={[rider.lat, rider.lng]} icon={riderIcon}>
+              <Tooltip permanent direction="top" offset={[0, -40]}>
+                <div className="text-xs font-bold bg-white px-2 py-1 rounded shadow-sm border border-border">
+                  {profile?.fullName || `Rider ${rider.riderId.substring(0, 4)}`}
+                </div>
+              </Tooltip>
+              <Popup>
+                <div className="p-2 min-w-[200px]">
+                  <div className="flex justify-between items-start mb-2">
+                    <div>
+                      <p className="font-bold text-primary">{profile?.fullName || 'Active Rider'}</p>
+                      <p className="text-[10px] text-text-secondary font-mono">{profile?.plateNumber || 'RAA 000X'}</p>
+                    </div>
+                    {profile?.rating && (
+                      <div className="bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded text-[10px] font-bold">
+                        ⭐ {profile.rating.toFixed(1)}
+                      </div>
+                    )}
+                  </div>
+                  
+                  <div className="grid grid-cols-2 gap-2 mt-3 pt-2 border-t border-border">
+                    <div>
+                      <p className="text-[10px] text-text-secondary uppercase font-bold">Deliveries</p>
+                      <p className="text-sm font-bold">{profile?.totalDeliveries || 0}</p>
+                    </div>
+                    <div>
+                      <p className="text-[10px] text-text-secondary uppercase font-bold">Status</p>
+                      <p className="text-sm font-bold text-status-success">Online</p>
+                    </div>
+                  </div>
+
+                  <p className="text-[10px] text-text-secondary italic mt-3">Last updated: Just now</p>
+                </div>
+              </Popup>
+            </Marker>
+          );
+        })}
       </MapContainer>
     </div>
   );

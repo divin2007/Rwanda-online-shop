@@ -63,22 +63,46 @@ export default function OrderHistoryPage() {
       // Seller Review
       if (rating['seller']) {
         reviewPromises.push(reviewApi.post('/reviews', {
+          buyerId: user?.id,
           targetId: selectedOrder.seller.sellerId || selectedOrder.sellerId,
           targetType: 'seller',
           rating: rating['seller'],
           comment: comments['seller'] || '',
           orderId: selectedOrder._id
+        }).catch(err => {
+          if (err.response?.status === 409) return { success: true }; // Ignore duplicates
+          throw err;
         }));
       }
 
       // Rider Review
-      if (rating['rider'] && selectedOrder.deliveryId) {
+      const delivery = selectedOrder.deliveryId ? deliveryCache[selectedOrder.deliveryId] : null;
+      if (rating['rider'] && delivery?.rider?._id) {
         reviewPromises.push(reviewApi.post('/reviews', {
-          targetId: selectedOrder.deliveryId, // This will be resolved to rider in backend or passed differently
+          buyerId: user?.id,
+          targetId: delivery.rider._id,
           targetType: 'rider',
           rating: rating['rider'],
           comment: comments['rider'] || '',
           orderId: selectedOrder._id
+        }).catch(err => {
+          if (err.response?.status === 409) return { success: true };
+          throw err;
+        }));
+      }
+
+      // Market Review
+      if (rating['market'] && selectedOrder.seller?.marketId) {
+        reviewPromises.push(reviewApi.post('/reviews', {
+          buyerId: user?.id,
+          targetId: selectedOrder.seller.marketId,
+          targetType: 'market',
+          rating: rating['market'],
+          comment: comments['market'] || '',
+          orderId: selectedOrder._id
+        }).catch(err => {
+          if (err.response?.status === 409) return { success: true };
+          throw err;
         }));
       }
 
@@ -87,11 +111,15 @@ export default function OrderHistoryPage() {
         selectedOrder.products.forEach((p: any) => {
           if (rating[`product:${p.productId}`]) {
             reviewPromises.push(reviewApi.post('/reviews', {
+              buyerId: user?.id,
               targetId: p.productId,
               targetType: 'product',
               rating: rating[`product:${p.productId}`],
               comment: comments[`product:${p.productId}`] || '',
               orderId: selectedOrder._id
+            }).catch(err => {
+              if (err.response?.status === 409) return { success: true };
+              throw err;
             }));
           }
         });
@@ -101,7 +129,8 @@ export default function OrderHistoryPage() {
       toast.success('Reviews submitted successfully!');
       setReviewModalOpen(false);
     } catch (e: any) {
-      toast.error('Failed to submit reviews');
+      console.error('Review submission error:', e);
+      toast.error('Failed to submit reviews. Please try again.');
     } finally {
       setSubmittingReview(false);
     }
@@ -197,6 +226,23 @@ export default function OrderHistoryPage() {
                     rows={2}
                     value={comments['rider'] || ''}
                     onChange={e => setComments({...comments, rider: e.target.value})}
+                  ></textarea>
+                </div>
+
+                {/* Market Section */}
+                <div className="space-y-4 pt-4 border-t border-border">
+                  <h4 className="font-bold text-primary flex items-center gap-2">
+                    <span className="text-lg">📍</span> Rate Marketplace Location
+                  </h4>
+                  <div className="flex justify-center">
+                    <StarRating rating={rating['market'] || 0} onRatingChange={(val) => setRating({...rating, market: val})} />
+                  </div>
+                  <textarea 
+                    className="w-full border border-border rounded-lg p-3 text-sm outline-none focus:ring-1 focus:ring-primary"
+                    placeholder="How was the market cleanliness and safety?"
+                    rows={2}
+                    value={comments['market'] || ''}
+                    onChange={e => setComments({...comments, market: e.target.value})}
                   ></textarea>
                 </div>
 

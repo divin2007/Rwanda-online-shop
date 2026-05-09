@@ -6,18 +6,23 @@ import { Button } from '@/components/ui/Button';
 import dynamic from 'next/dynamic';
 const RiderMap = dynamic(() => import('@/components/ui/RiderMap').then(mod => mod.RiderMap), { ssr: false });
 import { useApi } from '@/hooks/useApi';
-import { marketApi, productApi } from '@/lib/api';
+import { marketApi, productApi, reviewApi } from '@/lib/api';
 
 export default function MarketPage({ params }: { params: { slug: string } }) {
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   
   const { data: market, loading: marketLoading, execute: fetchMarket } = useApi(marketApi, 'get', `/markets/slug/${params.slug}`);
+  const { data: marketReviews, execute: fetchMarketReviews } = useApi(reviewApi, 'get', `/reviews/target/market/${market?._id}`);
   const { data: allProducts, loading: productsLoading, execute: fetchProducts } = useApi(productApi, 'get', `/products?isActive=true&isApproved=true&inStock=true`);
   const { data: promotedProducts, execute: fetchPromoted } = useApi(productApi, 'get', `/products?isActive=true&hasPromotion=true`);
 
   useEffect(() => {
     fetchMarket();
   }, [params.slug, fetchMarket]);
+
+  useEffect(() => {
+    if (market?._id) fetchMarketReviews(`/reviews/target/market/${market._id}`);
+  }, [market?._id, fetchMarketReviews]);
 
   useEffect(() => {
     if (market?._id) {
@@ -54,10 +59,12 @@ export default function MarketPage({ params }: { params: { slug: string } }) {
   // Extract unique categories
   const categories = ['all', ...Array.from(new Set(products.map(p => p.category)))];
   
-  // Filter out products that are already shown in promotions
+  // Filter out products that are already shown in promotions (only for the 'All' view to avoid duplication)
   const uniqueProducts = products.filter(p => !promotions.some(promo => promo._id === p._id));
   
-  const filteredProducts = selectedCategory === 'all' ? uniqueProducts : uniqueProducts.filter(p => p.category === selectedCategory);
+  const filteredProducts = selectedCategory === 'all' 
+    ? uniqueProducts 
+    : products.filter(p => p.category === selectedCategory);
 
   return (
     <Layout marketName={market.name}>
@@ -152,6 +159,40 @@ export default function MarketPage({ params }: { params: { slug: string } }) {
               No products found in this category.
             </div>
           )}
+          {/* Market Reviews Section */}
+          <div className="mt-20 pt-10 border-t border-border">
+            <h2 className="text-2xl font-heading font-bold text-text-primary mb-8">Community Feedback for {market.name}</h2>
+            
+            {!marketReviews || marketReviews.length === 0 ? (
+              <div className="bg-background-surface rounded-2xl p-8 text-center text-text-secondary border border-border italic">
+                No market reviews yet. Be the first to share your experience!
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {marketReviews.map((review: any) => (
+                  <div key={review._id} className="bg-background-surface p-6 rounded-2xl border border-border shadow-sm">
+                    <div className="flex justify-between items-start mb-4">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center font-bold text-primary">
+                          {review.buyerName?.[0] || 'U'}
+                        </div>
+                        <div>
+                          <p className="font-bold text-sm text-text-primary">{review.buyerName || 'Verified Buyer'}</p>
+                          <p className="text-[10px] text-text-secondary">{new Date(review.createdAt).toLocaleDateString()}</p>
+                        </div>
+                      </div>
+                      <div className="flex text-status-warning text-sm">
+                        {'★'.repeat(review.rating)}{'☆'.repeat(5 - review.rating)}
+                      </div>
+                    </div>
+                    <p className="text-sm text-text-secondary leading-relaxed italic">
+                      "{review.comment || 'Great marketplace!'}"
+                    </p>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </Layout>

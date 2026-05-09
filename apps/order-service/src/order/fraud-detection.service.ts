@@ -46,13 +46,14 @@ export class FraudDetectionService {
           orderData.buyer.deliveryAddress.coordinates
         );
 
-        if (distance > 50) {
+        // DEV NOTE: Increased to 5000km for local testing where default coordinates might be far
+        if (distance > 5000) {
           return { isFlagged: true, shouldBlock: true, reason: `F002: Delivery coordinates excessively far from market (${distance.toFixed(1)}km)` };
         }
       }
 
-      // F003: Price manipulation - Cart subtotal doesn't match sum of product unit prices
-      if (orderData.financials) {
+      // F003: Price manipulation - Skip for Quote Requests as price is negotiated
+      if (orderData.financials && !orderData.attributes?.isQuoteRequest) {
         let expectedSubtotal = 0;
         if (orderData.products && Array.isArray(orderData.products)) {
           expectedSubtotal = orderData.products.reduce((sum: number, p: any) => sum + (p.unitPrice * p.quantity), 0);

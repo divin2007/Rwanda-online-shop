@@ -49,7 +49,7 @@ export class OrderController {
     return { success: true, data: order };
   }
 
-  @Post(':id/resolve')
+  @Post(':id/dispute/resolve')
   async resolveDispute(@Param('id') id: string, @Body() body: { resolution: DisputeResolution }) {
     const order = await this.orderService.resolveDispute(id, body.resolution);
     return { success: true, data: order };

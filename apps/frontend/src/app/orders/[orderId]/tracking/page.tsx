@@ -102,7 +102,7 @@ export default function OrderTrackingPage({ params }: { params: { orderId: strin
     fetchOrder();
   }, [params.orderId, fetchOrder]);
 
-  const currentStatus = statusUpdate?.status || order?.status || 'placed';
+  const currentStatus = order?.status === 'delivered' ? 'delivered' : (statusUpdate?.status || order?.status || 'placed');
   const showTrackingMap = currentStatus === 'in_transit' || currentStatus === 'picked_up' || 
     (deliveryData && ['assigned', 'en_route_to_pickup', 'pending_handover'].includes(deliveryData.status));
   const showBroadcastMap = !showTrackingMap && (currentStatus === 'placed' || currentStatus === 'confirmed' || currentStatus === 'preparing' || currentStatus === 'ready_for_pickup');

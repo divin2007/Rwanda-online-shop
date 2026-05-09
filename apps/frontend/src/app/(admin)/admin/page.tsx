@@ -6,7 +6,14 @@ import { Button } from '@/components/ui/Button';
 import { ReceiptView, type ReceiptOrder } from '@/components/ui/ReceiptView';
 import { useApi } from '@/hooks/useApi';
 import { adminApi, sellerApi, orderApi, riderApi, deliveryApi, walletApi } from '@/lib/api';
+import dynamic from 'next/dynamic';
 import toast from 'react-hot-toast';
+import { AnalyticsCharts } from '@/components/ui/AnalyticsCharts';
+
+const RiderMap = dynamic(
+  () => import('@/components/ui/RiderMap').then((mod) => mod.RiderMap),
+  { ssr: false, loading: () => <div className="w-full h-full bg-background-surface animate-pulse flex items-center justify-center text-text-secondary">Initializing Satellite View...</div> }
+);
 
 export default function AdminDashboardPage() {
   const [activeTab, setActiveTab] = useState('analytics');
@@ -26,7 +33,7 @@ export default function AdminDashboardPage() {
   const { data: pendingSellers, execute: fetchSellers } = useApi(sellerApi, 'get', '/sellers?isApproved=false');
   const { data: pendingRiders, execute: fetchRiders } = useApi(riderApi, 'get', '/riders?isApproved=false');
   const { data: disputes, execute: fetchDisputes } = useApi(orderApi, 'get', '/orders?isDisputed=true&dispute.resolvedAt=null');
-  const { data: ordersData, execute: fetchOrders } = useApi(orderApi, 'get', `/orders?sellerId=all`);
+  const { data: ordersData, execute: fetchOrders } = useApi(orderApi, 'get', `/orders?sellerId=all`, { refreshInterval: 30000 });
 
   useEffect(() => {
     if (activeTab === 'analytics') fetchAnalytics();
@@ -223,6 +230,7 @@ export default function AdminDashboardPage() {
             {[
               { id: 'analytics', label: 'Analytics & Revenue' },
               { id: 'accounting', label: '📊 Accounting' },
+              { id: 'live-map', label: '🛰️ Live Operations' },
               { id: 'sellers', label: 'Seller Approvals' },
               { id: 'riders', label: 'Rider Approvals' },
               { id: 'disputes', label: 'Disputes & Refunds' },
@@ -241,6 +249,32 @@ export default function AdminDashboardPage() {
 
         <main className="flex-1 p-4 md:p-8">
           <h1 className="text-2xl font-heading font-bold text-text-primary mb-8 capitalize">{activeTab.replace('-', ' ')}</h1>
+
+          {activeTab === 'live-map' && (
+            <div className="space-y-6 animate-fade-in h-[calc(100vh-180px)]">
+               <Card noPadding className="h-full overflow-hidden border-2 border-primary/20">
+                  <div className="p-4 border-b border-border bg-background-surface flex justify-between items-center">
+                     <div>
+                        <h3 className="font-bold text-primary flex items-center gap-2">
+                           <span className="relative flex h-3 w-3">
+                              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
+                              <span className="relative inline-flex rounded-full h-3 w-3 bg-primary"></span>
+                           </span>
+                           Real-Time Logistics Monitor
+                        </h3>
+                        <p className="text-xs text-text-secondary">Tracking all active riders and marketplace density across Rwanda.</p>
+                     </div>
+                     <div className="flex gap-4 text-xs font-bold">
+                        <span className="flex items-center gap-1"><span className="w-3 h-3 bg-primary rounded-full"></span> Active Riders</span>
+                        <span className="flex items-center gap-1"><span className="w-3 h-3 bg-purple-500 rounded-full"></span> Market Hubs</span>
+                     </div>
+                  </div>
+                  <div className="flex-grow h-full relative">
+                     <RiderMap marketId="all-admin" />
+                  </div>
+               </Card>
+            </div>
+          )}
 
           {activeTab === 'analytics' && (
             <div className="space-y-8 animate-fade-in">
@@ -262,6 +296,9 @@ export default function AdminDashboardPage() {
                   <p className="text-2xl font-bold">{analytics?.activeRiders || 0}</p>
                 </Card>
               </div>
+
+              {/* Growth Charts */}
+              <AnalyticsCharts orders={allOrders} type="admin" />
             </div>
           )}
 
