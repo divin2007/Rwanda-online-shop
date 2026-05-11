@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Param, Request, Query } from '@nestjs/common';
+import { Controller, Get, Post, Body, Param, Request, Query, Put } from '@nestjs/common';
 import { NotificationService } from './notification.service';
 
 @Controller('notifications')
@@ -29,5 +29,29 @@ export class NotificationController {
   async getLogs(@Param('userId') userId: string) {
     const logs = await this.notificationService.getLogs(userId);
     return { success: true, data: logs };
+  }
+
+  @Post('in-app')
+  async sendInApp(@Body() body: { userId: string, type: string, params: any, lang?: 'rw'|'en' }) {
+    const result = await this.notificationService.sendInApp(body.userId, body.type, body.params, body.lang);
+    return { success: true, data: result };
+  }
+
+  @Get('unread-count')
+  async getUnreadCount(@Query('userId') userId: string) {
+    const count = await this.notificationService.getUnreadCount(userId);
+    return { success: true, count };
+  }
+
+  @Put('read/:id')
+  async markAsRead(@Param('id') id: string, @Body('userId') userId: string) {
+    const result = await this.notificationService.markAsRead(id, userId);
+    return { success: true, data: result };
+  }
+
+  @Put('read-all')
+  async markAllAsRead(@Body('userId') userId: string) {
+    await this.notificationService.markAllAsRead(userId);
+    return { success: true };
   }
 }

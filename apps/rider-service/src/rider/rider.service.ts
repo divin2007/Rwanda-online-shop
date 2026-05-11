@@ -8,7 +8,8 @@ export class RiderService {
   private locationService: LocationService;
 
   constructor(
-    @InjectModel('RiderProfile') private riderModel: Model<any>
+    @InjectModel('RiderProfile') private riderModel: Model<any>,
+    @InjectModel('Delivery') private deliveryModel: Model<any>
   ) {
     this.locationService = new LocationService();
   }
@@ -140,5 +141,31 @@ export class RiderService {
       { $set: updates },
       { new: true }
     ).exec();
+  }
+
+  async getStats(userId: string): Promise<any> {
+    const rider = await this.riderModel.findOne({ userId }).exec();
+    if (!rider) return { earnings: 0, completion: 100, rating: 5, drops: 0 };
+    
+    // Healing logic: if totalDeliveries is 0, count from Delivery collection
+    let drops = rider.totalDeliveries || 0;
+    if (drops === 0) {
+      const actualCount = await this.deliveryModel.countDocuments({ 
+        'rider.userId': userId, 
+        status: 'delivered' 
+      }).exec();
+      if (actualCount > 0) {
+        drops = actualCount;
+        // Background sync: don't wait
+        this.riderModel.findByIdAndUpdate(rider._id, { $set: { totalDeliveries: actualCount } }).exec();
+      }
+    }
+
+    return {
+      earnings: 0, // Should be fetched from wallet service for full accuracy
+      completion: Math.round((1 - (rider.rejectionRate || 0)) * 100),
+      rating: rider.rating || 5.0,
+      drops
+    };
   }
 }

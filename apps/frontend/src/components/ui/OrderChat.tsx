@@ -36,11 +36,14 @@ interface OrderChatProps {
 
 const NEGOTIATION_STATUSES = ['awaiting_quote', 'quote_sent'];
 
+import { useLanguage } from '@/context/LanguageContext';
+
 export const OrderChat: React.FC<OrderChatProps> = ({
   orderId, initialMessages, recipientName, userRole, orderStatus,
   paymentStatus, marketId, deliveryAddress, deliveryFee: initialDeliveryFee,
   onOrderUpdated
 }) => {
+  const { t } = useLanguage();
   const { user } = useAuth();
   const [messages, setMessages] = useState<Message[]>(initialMessages);
   const [newMessage, setNewMessage] = useState('');
@@ -240,113 +243,113 @@ export const OrderChat: React.FC<OrderChatProps> = ({
   };
 
   return (
-    <div className="flex flex-col h-[500px] bg-bg-secondary rounded-2xl border border-gray-100 overflow-hidden shadow-sm">
-      {/* Header */}
-      <div className="px-6 py-4 bg-white border-b border-gray-100 flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-full bg-brand-primary/10 text-brand-primary flex items-center justify-center font-bold text-sm">
+    <div className="flex flex-col h-[600px] bg-white border-2 border-[#121212] overflow-hidden shadow-2xl">
+      {/* Tactical Header */}
+      <div className="px-8 py-5 bg-[#121212] flex items-center justify-between border-b border-[#F59E0B]/20">
+        <div className="flex items-center gap-4">
+          <div className="w-10 h-10 bg-white border border-[#F59E0B]/50 text-[#121212] flex items-center justify-center font-serif italic text-lg shadow-[0_0_15px_rgba(245,158,11,0.2)]">
             {recipientName[0]}
           </div>
           <div>
-            <h3 className="text-sm font-semibold text-text-primary">{recipientName}</h3>
-            <p className="text-[10px] text-status-success flex items-center gap-1">
-              <span className="w-1.5 h-1.5 bg-status-success rounded-full"></span>
-              {isNegotiationPhase ? 'Active Negotiation' : 'Order in Progress'}
-            </p>
+            <h3 className="text-[11px] font-black uppercase tracking-[0.3em] text-white leading-none mb-1.5">{recipientName}</h3>
+            <div className="flex items-center gap-2">
+               <div className="w-1.5 h-1.5 bg-[#F59E0B] rounded-full animate-pulse"></div>
+               <span className="text-[9px] font-bold uppercase tracking-widest text-[#F59E0B]/80 italic">
+                 {isNegotiationPhase ? 'Live Negotiation Active' : 'Operations Terminal Linked'}
+               </span>
+            </div>
           </div>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-3">
           {canPickLocation && (
-            <Button
-              size="sm"
-              variant={showLocationPicker ? 'outline' : 'primary'}
+            <button
               onClick={() => { setShowLocationPicker(!showLocationPicker); setIsQuoting(false); setIsCountering(false); }}
-              className={!hasValidLocation ? '!bg-amber-500 !border-amber-500 hover:!bg-amber-600 animate-pulse' : ''}
+              className={`px-6 py-2.5 text-[9px] font-black uppercase tracking-widest transition-all border ${
+                showLocationPicker 
+                  ? 'bg-transparent border-[#F59E0B] text-[#F59E0B]' 
+                  : !hasValidLocation 
+                    ? 'bg-[#F59E0B] border-[#F59E0B] text-[#121212] animate-pulse' 
+                    : 'bg-white border-white text-[#121212] hover:bg-[#F59E0B] hover:border-[#F59E0B]'
+              }`}
             >
-              {showLocationPicker ? '✕ Close Map' : hasValidLocation ? '📍 Update Location' : '📍 Set Location'}
-            </Button>
+              {showLocationPicker ? 'Terminate Picker' : hasValidLocation ? 'Recalibrate Zone' : 'Initialize Zone Pin'}
+            </button>
           )}
           {canSendQuote && (
-            <Button 
-              size="sm" 
-              variant={isQuoting ? 'outline' : 'primary'}
+            <button 
               onClick={() => { setIsQuoting(!isQuoting); setShowLocationPicker(false); setIsCountering(false); }}
+              className={`px-6 py-2.5 text-[9px] font-black uppercase tracking-widest transition-all border ${
+                isQuoting 
+                  ? 'bg-transparent border-[#F59E0B] text-[#F59E0B]' 
+                  : 'bg-[#F59E0B] border-[#F59E0B] text-[#121212] hover:bg-white hover:text-[#121212]'
+              }`}
             >
-              {isQuoting ? 'Cancel' : 'Send Quote'}
-            </Button>
+              {isQuoting ? 'Dismiss Quote' : 'Formalize Quote'}
+            </button>
           )}
         </div>
       </div>
 
-      {/* Location Picker (inline, replaces messages temporarily) */}
+      {/* Location Picker Matrix */}
       {showLocationPicker && (
-        <div className="flex-1 flex flex-col animate-in slide-in-from-top duration-300">
-          <div className="px-4 py-2 bg-amber-50 border-b border-amber-200 flex items-center justify-between">
+        <div className="flex-1 flex flex-col bg-[#F8F6F1]">
+          <div className="px-8 py-4 bg-white border-b border-[#E5E1D8] flex items-center justify-between">
             <div>
-              <p className="text-xs font-bold text-amber-700 uppercase">📍 Set Your Delivery Location</p>
-              <p className="text-[10px] text-amber-600">Search or tap the map to drop your pin</p>
+              <p className="text-[10px] font-black text-[#121212] uppercase tracking-[0.3em]">Geospatial Deployment</p>
+              <p className="text-[8px] font-bold text-[#6B665E] uppercase tracking-widest italic opacity-60">Authorize coordinates for fulfillment logistics</p>
             </div>
             {currentDeliveryFee > 0 && (
-              <div className="bg-white rounded-lg px-3 py-1.5 border border-amber-200">
-                <p className="text-[10px] text-text-secondary">Delivery Fee</p>
-                <p className="text-sm font-bold text-brand-primary">{currentDeliveryFee.toLocaleString()} RWF</p>
+              <div className="bg-[#121212] text-white px-4 py-2 border border-[#F59E0B]/30">
+                <p className="text-[8px] text-[#F59E0B] font-black uppercase tracking-widest mb-0.5">Calculated Fee</p>
+                <p className="text-sm font-serif italic text-white">{currentDeliveryFee.toLocaleString()} RWF</p>
               </div>
             )}
           </div>
-          <div className="flex-1 relative min-h-[280px]">
+          <div className="flex-1 relative min-h-[300px]">
             <MapPinPicker
               onLocationSelected={(coords) => setSelectedCoords(coords)}
               centerLat={selectedCoords?.lat || -1.9441}
               centerLng={selectedCoords?.lng || 30.0619}
             />
           </div>
-          <div className="p-3 bg-white border-t border-gray-100 flex items-center gap-3">
+          <div className="p-6 bg-[#121212] border-t border-[#F59E0B]/20 flex items-center gap-6">
             {selectedCoords && (
-              <p className="flex-1 text-xs text-text-secondary">
-                📍 {selectedCoords.lat.toFixed(4)}, {selectedCoords.lng.toFixed(4)}
+              <p className="flex-1 text-[10px] font-mono text-[#F59E0B] tracking-wider opacity-80 uppercase">
+                LAT:{selectedCoords.lat.toFixed(6)} / LNG:{selectedCoords.lng.toFixed(6)}
               </p>
             )}
-            <Button
-              size="sm"
+            <button
               onClick={handleSaveLocation}
               disabled={!selectedCoords || isSavingLocation}
+              className="rmf-btn-primary bg-[#F59E0B] text-[#121212] border-none py-3 px-8 text-[9px] hover:bg-white transition-all disabled:opacity-30"
             >
-              {isSavingLocation ? 'Saving...' : '✓ Confirm Location'}
-            </Button>
+              {isSavingLocation ? 'SYNCHRONIZING...' : 'AUTHORIZE LOCATION'}
+            </button>
           </div>
         </div>
       )}
 
-      {/* Messages Area (hidden when location picker is open) */}
+      {/* Message Feed Matrix */}
       {!showLocationPicker && (
         <>
-          {/* Location badge */}
           {canPickLocation && !hasValidLocation && (
-            <div className="px-4 py-2 bg-amber-50 border-b border-amber-200 flex items-center gap-2">
-              <span className="text-amber-500 text-lg">⚠️</span>
-              <p className="text-xs text-amber-700 font-medium flex-1">
-                Please set your delivery location before the seller sends a quote
+            <div className="px-8 py-3 bg-[#F59E0B]/10 border-b border-[#F59E0B]/30 flex items-center gap-4">
+              <svg className="w-4 h-4 text-[#F59E0B]" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
+              <p className="text-[10px] text-[#121212] font-black uppercase tracking-widest flex-1">
+                Mandate Blocked: Establish deployment zone to receive quote
               </p>
-              <Button size="sm" variant="outline" className="!text-xs !py-1"
+              <button 
                 onClick={() => setShowLocationPicker(true)}
+                className="text-[9px] font-black text-[#F59E0B] uppercase tracking-widest border-b-2 border-[#F59E0B] pb-0.5 hover:text-[#121212] transition-colors"
               >
-                Set Now
-              </Button>
-            </div>
-          )}
-
-          {hasValidLocation && isNegotiationPhase && (
-            <div className="px-4 py-1.5 bg-status-success/5 border-b border-status-success/20 flex items-center gap-2">
-              <span className="text-xs">📍</span>
-              <p className="text-[10px] text-status-success font-medium flex-1">
-                Location set • Delivery fee: {currentDeliveryFee.toLocaleString()} RWF
-              </p>
+                INITIALIZE NOW
+              </button>
             </div>
           )}
 
           <div 
             ref={scrollRef}
-            className="flex-1 overflow-y-auto p-6 space-y-4 scroll-smooth"
+            className="flex-1 overflow-y-auto p-10 space-y-6 scroll-smooth bg-[#F8F6F1]"
           >
             {messages.map((msg, idx) => {
               const isMe = msg.senderRole === userRole;
@@ -354,87 +357,79 @@ export const OrderChat: React.FC<OrderChatProps> = ({
               const isQuote = msg.type === 'QUOTE';
 
               return (
-                <div key={idx} className={`flex flex-col ${isMe ? 'items-end' : 'items-start'} ${isFirst ? 'mb-8' : ''}`}>
+                <div key={idx} className={`flex flex-col ${isMe ? 'items-end' : 'items-start'} ${isFirst ? 'mb-12' : ''}`}>
                   {isFirst && (
-                    <div className="w-full flex items-center gap-2 mb-4">
-                      <div className="h-px flex-1 bg-gray-100"></div>
-                      <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Project Brief</span>
-                      <div className="h-px flex-1 bg-gray-100"></div>
+                    <div className="w-full flex items-center gap-6 mb-8 opacity-40">
+                      <div className="h-px flex-1 bg-[#121212]"></div>
+                      <span className="text-[10px] font-black text-[#121212] uppercase tracking-[0.5em]">Initial Briefing</span>
+                      <div className="h-px flex-1 bg-[#121212]"></div>
                     </div>
                   )}
 
-                  <div className={`max-w-[85%] rounded-2xl shadow-sm overflow-hidden ${
+                  <div className={`max-w-[80%] border-2 ${
                     isQuote
-                      ? 'border-2 border-brand-primary bg-white'
+                      ? 'border-[#121212] bg-white shadow-[10px_10px_0_0_#121212]'
                       : msg.type === 'COUNTER_QUOTE'
-                        ? 'border-2 border-amber-400 bg-amber-50'
+                        ? 'border-[#F59E0B] bg-white shadow-[10px_10px_0_0_#F59E0B]'
                         : isMe
-                          ? 'bg-brand-primary text-white rounded-tr-none'
-                          : 'bg-white text-text-primary rounded-tl-none border border-gray-50'
+                          ? 'bg-[#121212] text-white border-[#121212]'
+                          : 'bg-white text-[#121212] border-[#E5E1D8]'
                   }`}>
                     {msg.imageUrl && (
-                      <div className="relative group">
-                        <img src={msg.imageUrl} alt="Attachment" className="w-full max-h-64 object-cover" />
-                        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors pointer-events-none"></div>
+                      <div className="relative group border-b border-inherit">
+                        <img src={msg.imageUrl} alt="Attachment" className="w-full max-h-80 object-cover" />
+                        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors"></div>
                       </div>
                     )}
 
-                    <div className="p-4">
+                    <div className="p-6">
                       {isQuote && (
-                        <div className="mb-3 pb-3 border-b border-gray-100">
-                          <p className="text-[10px] font-bold text-brand-primary uppercase mb-1">Official Quote</p>
-                          <p className="text-2xl font-bold text-brand-primary">{msg.quoteAmount?.toLocaleString()} RWF</p>
+                        <div className="mb-6 pb-6 border-b border-[#E5E1D8]">
+                          <p className="text-[9px] font-black text-[#A34D15] uppercase tracking-[0.4em] mb-3">Formal Mandate Quote</p>
+                          <p className="text-4xl font-serif italic tracking-tighter text-[#121212]">{msg.quoteAmount?.toLocaleString()} RWF</p>
                         </div>
                       )}
 
                       {msg.type === 'COUNTER_QUOTE' && (
-                        <div className="mb-3 pb-3 border-b border-amber-200">
-                          <p className="text-[10px] font-bold text-amber-600 uppercase mb-1">Counter Offer</p>
-                          <p className="text-2xl font-bold text-amber-600">{msg.quoteAmount?.toLocaleString()} RWF</p>
+                        <div className="mb-6 pb-6 border-b border-[#F59E0B]/30">
+                          <p className="text-[9px] font-black text-[#F59E0B] uppercase tracking-[0.4em] mb-3">Buyer Counter-Offer</p>
+                          <p className="text-4xl font-serif italic tracking-tighter text-[#121212]">{msg.quoteAmount?.toLocaleString()} RWF</p>
                         </div>
                       )}
                       
-                      <p className={`text-sm leading-relaxed ${isQuote ? 'text-text-primary italic' : ''}`}>
+                      <p className={`text-[13px] leading-relaxed tracking-tight ${isQuote || msg.type === 'COUNTER_QUOTE' ? 'italic font-light' : ''}`}>
                         {msg.content}
                       </p>
                       
                       {isQuote && !isMe && (
-                        <div className="mt-4 space-y-2">
-                          <Button
-                            fullWidth
+                        <div className="mt-8 space-y-3">
+                          <button
                             onClick={handleAcceptQuote}
-                            loading={isSending}
-                            disabled={orderStatus === 'paid' || orderStatus === 'placed' || !['awaiting_quote', 'quote_sent', 'placed'].includes(orderStatus)}
+                            disabled={isSending || orderStatus === 'paid' || orderStatus === 'placed' || !['awaiting_quote', 'quote_sent', 'placed'].includes(orderStatus)}
+                            className="w-full bg-[#121212] text-white py-4 text-[10px] font-black uppercase tracking-[0.3em] hover:bg-[#F59E0B] transition-all disabled:opacity-20"
                           >
-                            {(orderStatus === 'paid' || orderStatus === 'placed') ? 'Quote Accepted' : 
-                             (!['awaiting_quote', 'quote_sent', 'placed'].includes(orderStatus)) ? 'Negotiation Closed' : 'Accept Quote & Pay'}
-                          </Button>
+                            {(orderStatus === 'paid' || orderStatus === 'placed') ? 'Mandate Confirmed' : 'Authorize Acquisition'}
+                          </button>
                           {['awaiting_quote', 'quote_sent'].includes(orderStatus) && (
-                            <div className="flex gap-2">
-                              <Button
-                                fullWidth
-                                variant="outline"
-                                size="sm"
+                            <div className="flex gap-4">
+                              <button
                                 onClick={() => setIsCountering(!isCountering)}
+                                className="flex-1 border-2 border-[#121212] py-3 text-[9px] font-black uppercase tracking-widest hover:bg-[#121212] hover:text-white transition-all"
                               >
-                                Counter Offer
-                              </Button>
-                              <Button
-                                fullWidth
-                                variant="outline"
-                                size="sm"
-                                className="!border-status-error !text-status-error hover:!bg-status-error/5"
+                                Propose Adjustment
+                              </button>
+                              <button
                                 onClick={handleDeclineQuote}
-                                loading={isSending}
+                                className="flex-1 border-2 border-red-600 text-red-600 py-3 text-[9px] font-black uppercase tracking-widest hover:bg-red-600 hover:text-white transition-all"
                               >
-                                Decline
-                              </Button>
+                                Reject Mandate
+                              </button>
                             </div>
                           )}
                         </div>
                       )}
 
-                      <p className={`text-[10px] mt-2 opacity-60 ${isMe ? 'text-right' : 'text-left'}`}>
+                      <p className={`text-[8px] font-bold mt-4 uppercase tracking-widest opacity-40 ${isMe ? 'text-right' : 'text-left'}`}>
                         {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                       </p>
                     </div>
@@ -444,100 +439,94 @@ export const OrderChat: React.FC<OrderChatProps> = ({
             })}
           </div>
 
-          {/* Input Area */}
-          <div className="p-4 bg-white border-t border-gray-100 flex flex-col gap-3">
+          {/* Tactical Control Matrix */}
+          <div className="p-8 bg-white border-t-2 border-[#121212] space-y-6 shadow-[0_-20px_50px_-20px_rgba(0,0,0,0.1)]">
             {isQuoting ? (
-              <div className="space-y-3 p-3 bg-brand-primary/5 rounded-xl border border-brand-primary/20 animate-in slide-in-from-bottom-2 duration-300">
-                <div className="flex items-center gap-3">
-                  <div className="flex-1 relative">
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-brand-primary font-bold">RWF</span>
-                    <input
-                      type="number"
-                      value={quotePrice}
-                      onChange={(e) => setQuotePrice(e.target.value)}
-                      placeholder="Enter total price..."
-                      className="w-full bg-white border-brand-primary/30 rounded-lg pl-12 pr-4 py-2 text-sm focus:ring-2 focus:ring-brand-primary/20 outline-none"
-                    />
-                  </div>
-                  <Button onClick={handleSendQuote} disabled={!quotePrice || isSending} loading={isSending}>
-                    Send Official Quote
-                  </Button>
-                </div>
-                {currentDeliveryFee > 0 && (
-                  <p className="text-[10px] text-brand-primary/70">
-                    + {currentDeliveryFee.toLocaleString()} RWF delivery fee will be added
-                  </p>
-                )}
-                <input
-                  type="text"
-                  value={newMessage}
-                  onChange={(e) => setNewMessage(e.target.value)}
-                  placeholder="Add a note to your quote (optional)..."
-                  className="w-full bg-transparent border-none p-0 text-xs text-text-secondary outline-none italic"
-                />
+              <div className="space-y-6 animate-reveal">
+                 <div className="flex items-center gap-6">
+                    <div className="flex-1 relative">
+                       <span className="absolute left-6 top-1/2 -translate-y-1/2 text-[10px] font-black text-[#6B665E] uppercase tracking-widest opacity-40">RWF</span>
+                       <input
+                         type="number"
+                         value={quotePrice}
+                         onChange={(e) => setQuotePrice(e.target.value)}
+                         placeholder="Authorized Quote Value..."
+                         className="w-full bg-[#F8F6F1] border-2 border-dashed border-[#121212]/20 rounded-none pl-20 pr-8 py-5 text-xl font-serif italic outline-none focus:border-[#121212] transition-colors"
+                       />
+                    </div>
+                    <button 
+                      onClick={handleSendQuote} 
+                      disabled={!quotePrice || isSending} 
+                      className="bg-[#121212] text-white px-12 py-5 text-[10px] font-black uppercase tracking-[0.4em] hover:bg-[#F59E0B] transition-all disabled:opacity-30"
+                    >
+                      Broadcast Quote
+                    </button>
+                 </div>
+                 <div className="flex justify-between items-center px-4">
+                    <p className="text-[9px] font-bold text-[#6B665E] uppercase tracking-widest italic">
+                       {currentDeliveryFee > 0 ? `Logistics Facilitation: ${currentDeliveryFee.toLocaleString()} RWF will be synchronized` : 'Awaiting Logistics Calculation'}
+                    </p>
+                    <button onClick={() => setIsQuoting(false)} className="text-[9px] font-black text-[#121212] uppercase tracking-widest border-b border-[#121212]">Dismiss</button>
+                 </div>
               </div>
             ) : isCountering ? (
-              <div className="space-y-3 p-3 bg-amber-50 rounded-xl border border-amber-200 animate-in slide-in-from-bottom-2 duration-300">
-                <p className="text-xs font-bold text-amber-700 uppercase">Propose Your Price</p>
-                <div className="flex items-center gap-3">
-                  <div className="flex-1 relative">
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-amber-600 font-bold">RWF</span>
-                    <input
-                      type="number"
-                      value={counterPrice}
-                      onChange={(e) => setCounterPrice(e.target.value)}
-                      placeholder="Your proposed price..."
-                      className="w-full bg-white border-amber-300 rounded-lg pl-12 pr-4 py-2 text-sm focus:ring-2 focus:ring-amber-300/20 outline-none"
-                    />
-                  </div>
-                  <Button onClick={handleCounterOffer} disabled={!counterPrice || isSending} loading={isSending}>
-                    Send Counter
-                  </Button>
-                </div>
-                <input
-                  type="text"
-                  value={counterNote}
-                  onChange={(e) => setCounterNote(e.target.value)}
-                  placeholder="Explain your counter-offer (optional)..."
-                  className="w-full bg-transparent border-none p-0 text-xs text-text-secondary outline-none italic"
-                />
+              <div className="space-y-6 animate-reveal">
+                 <div className="flex items-center gap-6">
+                    <div className="flex-1 relative">
+                       <span className="absolute left-6 top-1/2 -translate-y-1/2 text-[10px] font-black text-[#6B665E] uppercase tracking-widest opacity-40">RWF</span>
+                       <input
+                         type="number"
+                         value={counterPrice}
+                         onChange={(e) => setCounterPrice(e.target.value)}
+                         placeholder="Adjustment Proposal..."
+                         className="w-full bg-[#F8F6F1] border-2 border-dashed border-[#F59E0B]/40 rounded-none pl-20 pr-8 py-5 text-xl font-serif italic outline-none focus:border-[#F59E0B] transition-colors"
+                       />
+                    </div>
+                    <button 
+                      onClick={handleCounterOffer} 
+                      disabled={!counterPrice || isSending} 
+                      className="bg-[#121212] text-white px-12 py-5 text-[10px] font-black uppercase tracking-[0.4em] hover:bg-[#F59E0B] transition-all"
+                    >
+                      Send Offer
+                    </button>
+                 </div>
+                 <button onClick={() => setIsCountering(false)} className="text-[9px] font-black text-[#121212] uppercase tracking-widest border-b border-[#121212] ml-4">Terminate Proposal</button>
               </div>
             ) : (
-              <>
-                <form 
-                  onSubmit={(e) => { e.preventDefault(); handleSendMessage(newMessage); }} 
-                  className="flex gap-2"
-                >
-                  <input
-                    type="text"
-                    value={newMessage}
-                    onChange={(e) => setNewMessage(e.target.value)}
-                    placeholder="Type a message..."
-                    className="flex-1 bg-gray-50 border-none rounded-xl px-4 py-2 text-sm focus:ring-2 focus:ring-brand-primary/20 transition-all outline-none"
-                  />
-                  <Button 
-                    type="submit" 
-                    disabled={isSending || !newMessage.trim()}
-                    loading={isSending}
-                    size="sm"
-                  >
-                    Send
-                  </Button>
-                </form>
-                
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <ImageUpload 
-                      onUploadSuccess={(url) => handleSendMessage('', url)}
-                      service="order"
-                      endpoint={`/orders/upload-image`}
-                      label="Attach Photo"
-                      compact
+              <div className="flex flex-col gap-6">
+                 <form 
+                   onSubmit={(e) => { e.preventDefault(); handleSendMessage(newMessage); }} 
+                   className="flex gap-4"
+                 >
+                    <input
+                      type="text"
+                      value={newMessage}
+                      onChange={(e) => setNewMessage(e.target.value)}
+                      placeholder="Input Tactical Update..."
+                      className="flex-1 bg-[#F8F6F1] border-2 border-transparent border-b-[#E5E1D8] px-6 py-4 text-[13px] outline-none focus:border-b-[#121212] transition-all"
                     />
-                  </div>
-                  <p className="text-[10px] text-text-secondary italic">Ask for clarifications or send updates</p>
-                </div>
-              </>
+                    <button 
+                      type="submit" 
+                      disabled={isSending || !newMessage.trim()}
+                      className="bg-[#121212] text-white px-10 py-4 text-[10px] font-black uppercase tracking-[0.4em] hover:bg-[#F59E0B] transition-all disabled:opacity-20"
+                    >
+                      Dispatch
+                    </button>
+                 </form>
+                 
+                 <div className="flex items-center justify-between px-2">
+                    <div className="flex items-center gap-6">
+                       <ImageUpload 
+                         onUploadSuccess={(url) => handleSendMessage('', url)}
+                         service="order"
+                         endpoint={`/orders/upload-image`}
+                         label="Capture Artifact"
+                         compact
+                       />
+                    </div>
+                    <p className="text-[9px] font-bold text-[#6B665E] uppercase tracking-[0.4em] italic opacity-40">Secured RMF Comm-Link Active</p>
+                 </div>
+              </div>
             )}
           </div>
         </>

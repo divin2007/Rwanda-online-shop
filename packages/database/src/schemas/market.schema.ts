@@ -15,6 +15,7 @@ export const marketSchema = new Schema({
     }
   },
   description: { type: String },
+  imageUrl: { type: String }, // Display image URL
   location: { type: LocationSubdocument, required: true },
   operatingHours: {
     open: { type: String, required: true }, // HH:mm
@@ -22,6 +23,7 @@ export const marketSchema = new Schema({
     daysOpen: [{ type: String }] // ['Mon', 'Tue']
   },
   isActive: { type: Boolean, default: true },
+  rating: { type: Number, default: 0 },
   totalSellers: { type: Number, default: 0 },
   deletedAt: { type: Date, default: null }
 }, { timestamps: true });

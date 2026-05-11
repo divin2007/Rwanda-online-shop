@@ -20,4 +20,8 @@ export class RegisterDto {
   @IsOptional()
   @IsEnum(UserRole, { message: 'Role must be a valid user role' })
   role?: UserRole;
+
+  @IsOptional()
+  @IsString()
+  referredBy?: string;
 }

@@ -55,6 +55,7 @@ export const TrackingMap = ({ lat, lng, pickup, dropoff, routeGeometry }: Tracki
   const [searchResults, setSearchResults] = useState<any[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [flyToLocation, setFlyToLocation] = useState<{ lat: number, lon: number } | null>(null);
+  const [mapMode, setMapMode] = useState<'standard' | 'satellite'>('standard');
 
   useEffect(() => {
     setIsClient(true);
@@ -166,7 +167,14 @@ export const TrackingMap = ({ lat, lng, pickup, dropoff, routeGeometry }: Tracki
         zoom={15} 
         style={{ height: '100%', width: '100%' }}
       >
-        <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+        {mapMode === 'standard' ? (
+          <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+        ) : (
+          <TileLayer 
+            url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}" 
+            attribution="Tiles &copy; Esri"
+          />
+        )}
         <MapController flyToLocation={flyToLocation} center={center} />
         
         <Marker position={[lat, lng]} icon={riderIcon}>
@@ -206,6 +214,16 @@ export const TrackingMap = ({ lat, lng, pickup, dropoff, routeGeometry }: Tracki
           />
         )}
       </MapContainer>
+
+      {/* Map Mode Toggle */}
+      <div className="absolute bottom-6 right-6 z-[1000]">
+        <button 
+          onClick={() => setMapMode(mapMode === 'standard' ? 'satellite' : 'standard')}
+          className="bg-white/90 backdrop-blur-sm p-3 rounded-2xl shadow-2xl border border-border hover:bg-white transition-all flex items-center gap-2 text-xs font-black text-text-primary uppercase tracking-widest"
+        >
+          {mapMode === 'standard' ? '🛰️ Satellite' : '🗺️ Standard'}
+        </button>
+      </div>
     </div>
   );
 };

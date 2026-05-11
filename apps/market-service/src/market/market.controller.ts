@@ -1,10 +1,21 @@
-import { Controller, Get, Post, Put, Body, Param, Query } from '@nestjs/common';
+import { Controller, Get, Post, Put, Body, Param, Query, UseInterceptors, UploadedFile, BadRequestException } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
 import { MarketService } from './market.service';
-// In a full implementation, we would import AuthGuard here
 
 @Controller('markets')
 export class MarketController {
   constructor(private readonly marketService: MarketService) {}
+
+  @Post('upload-image')
+  @UseInterceptors(FileInterceptor('file'))
+  async uploadImage(@UploadedFile() file: any) {
+    if (!file) {
+      throw new BadRequestException('No image file provided');
+    }
+    const base64 = file.buffer.toString('base64');
+    const dataUri = `data:${file.mimetype};base64,${base64}`;
+    return { success: true, data: { url: dataUri } };
+  }
 
   @Post()
   async create(@Body() marketData: any) {
@@ -40,6 +51,12 @@ export class MarketController {
   async update(@Param('id') id: string, @Body() updateData: any) {
     const market = await this.marketService.update(id, updateData);
     return { success: true, data: market };
+  }
+
+  @Post('sync-imagery')
+  async syncImagery() {
+    await this.marketService.syncInstitutionalImagery();
+    return { success: true, message: 'Institutional imagery synchronized' };
   }
 
   @Post(':id/penalties')

@@ -2,18 +2,19 @@
 import React, { useEffect, useState, useRef } from 'react';
 import Link from 'next/link';
 import { Layout } from '@/components/layout/Layout';
-import { Card } from '@/components/ui/Card';
-import { Button } from '@/components/ui/Button';
 import { useAuth } from '@/context/AuthContext';
 import { useApi } from '@/hooks/useApi';
 import { walletApi, sellerApi, orderApi } from '@/lib/api';
 import { ReceiptView, type ReceiptOrder } from '@/components/ui/ReceiptView';
+import { useLanguage } from '@/context/LanguageContext';
 import toast from 'react-hot-toast';
 
 export default function SellerEarningsPage() {
   const { user } = useAuth();
-  const { data: wallet, execute: fetchWallet } = useApi(walletApi, 'get', '/wallets/me');
-  const { data: ledger, execute: fetchLedger } = useApi(walletApi, 'get', '/wallets/me/transactions');
+  const { t } = useLanguage();
+  
+  const { data: wallet, loading: walletLoading, error: walletError, execute: fetchWallet } = useApi(walletApi, 'get', `/wallets/me?userId=${user?.id}`);
+  const { data: ledger, execute: fetchLedger } = useApi(walletApi, 'get', `/wallets/me/transactions?userId=${user?.id}`);
   const { data: profile, execute: fetchProfile } = useApi(sellerApi, 'get', `/sellers/me?userId=${user?.id}`);
   
   const [payoutForm, setPayoutForm] = useState({ amount: '', phone: '' });
@@ -35,14 +36,22 @@ export default function SellerEarningsPage() {
     if (Number(payoutForm.amount) < 500) return toast.error('Minimum payout is 500 RWF');
     
     try {
-      await walletApi.post(`/wallets/user/${user?.id}/payout`, { amount: Number(payoutForm.amount), method: 'momo', recipientPhone: payoutForm.phone });
-      toast.success('Payout requested successfully. It will be processed shortly.');
-      setPayoutForm({ amount: '', phone: '' });
-      fetchWallet();
+      const res = await walletApi.post(`/wallets/user/${user?.id}/payout`, { 
+        amount: Number(payoutForm.amount), 
+        method: 'momo', 
+        recipientPhone: payoutForm.phone 
+      });
+      if (res.data?.success) {
+        toast.success('Payout requested successfully.');
+        setPayoutForm({ amount: '', phone: '' });
+        fetchWallet();
+        fetchLedger();
+      }
     } catch (err: any) {
       toast.error(err.response?.data?.error || 'Failed to request payout');
     }
   };
+
   const fetchAndOpenReceipt = async (transactionId: string) => {
     setIsFetchingReceipt(true);
     try {
@@ -61,92 +70,159 @@ export default function SellerEarningsPage() {
 
   return (
     <Layout>
-      {selectedReceipt && (
-        <ReceiptView order={selectedReceipt} role="seller" onClose={() => setSelectedReceipt(null)} />
-      )}
-      {isFetchingReceipt && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/20 backdrop-blur-sm">
-          <div className="animate-spin w-10 h-10 border-4 border-primary border-t-transparent rounded-full"></div>
+      <div className="max-w-7xl mx-auto space-y-16 animate-reveal">
+        {selectedReceipt && (
+          <ReceiptView order={selectedReceipt} role="seller" onClose={() => setSelectedReceipt(null)} />
+        )}
+        
+        {/* Institutional Header */}
+        <div className="border-b-2 border-[#121212] pb-10 flex justify-between items-end">
+          <div>
+            <p className="text-[10px] font-black text-[#F59E0B] uppercase tracking-[0.5em] mb-4">Financial Core</p>
+            <h1 className="text-5xl font-serif text-[#121212] italic tracking-tighter">Earnings & Payouts</h1>
+          </div>
+          <div className="text-right">
+             <p className="text-[10px] font-black text-[#121212] uppercase tracking-widest">Stall ID: {profile?.stallId || '---'}</p>
+             <p className="text-[8px] font-bold text-[#6B665E] uppercase tracking-widest opacity-40 mt-1">Ledger Sync Active</p>
+          </div>
         </div>
-      )}
-      <div className="flex flex-col md:flex-row min-h-screen bg-background-main">
-        <aside className="w-full md:w-64 bg-background-card border-r border-border p-6 hidden md:block">
-          <nav className="space-y-2">
-            <Link href="/seller/dashboard" className="block px-4 py-2 text-text-secondary hover:bg-background-surface hover:text-text-primary font-medium rounded-lg">Dashboard</Link>
-            <Link href="/seller/products" className="block px-4 py-2 text-text-secondary hover:bg-background-surface hover:text-text-primary font-medium rounded-lg">Products</Link>
-            <Link href="/seller/promotions" className="block px-4 py-2 text-text-secondary hover:bg-background-surface hover:text-text-primary font-medium rounded-lg">Promotions</Link>
-            <Link href="/seller/earnings" className="block px-4 py-2 bg-primary/10 text-primary font-bold rounded-lg">Earnings</Link>
-            <a href={`https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=marketrwanda:stall:${profile?.stallId}`} target="_blank" rel="noreferrer" className="block w-full text-left px-4 py-2 text-text-secondary hover:bg-background-surface hover:text-text-primary font-medium rounded-lg">Print QR Code</a>
-          </nav>
-        </aside>
 
-        <main className="flex-1 p-4 md:p-8">
-          <h1 className="text-2xl font-heading font-bold text-text-primary mb-8">Earnings & Payouts</h1>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-16">
+          {/* Main Wallet Card */}
+          <div className="lg:col-span-2 space-y-16">
+            <div className="bg-[#121212] text-white p-16 relative overflow-hidden group shadow-2xl border-2 border-[#121212]">
+               <div className="absolute top-0 right-0 w-64 h-64 bg-[#F59E0B]/5 rounded-full -mr-32 -mt-32 group-hover:scale-110 transition-transform duration-1000"></div>
+               <div className="relative z-10">
+                  <p className="text-[11px] font-black uppercase tracking-[0.4em] text-[#F59E0B] mb-6">Available Liquidity</p>
+                  <h2 className="text-8xl font-serif italic tracking-tighter mb-16 text-white drop-shadow-2xl">
+                    {walletLoading ? '---' : (wallet?.balance?.toLocaleString() || 0)} <span className="text-3xl not-italic opacity-40 ml-4">RWF</span>
+                  </h2>
+                  <div className="flex gap-12 pt-12 border-t border-white/5">
+                     <div>
+                        <p className="text-[9px] font-bold uppercase tracking-widest opacity-40 mb-2">Total Settled</p>
+                        <p className="text-2xl font-serif italic text-white/90">{(wallet?.totalEarnings || 0).toLocaleString()} <span className="text-[10px] not-italic opacity-40">RWF</span></p>
+                     </div>
+                     <div className="w-px h-12 bg-white/10 mt-2"></div>
+                     <div>
+                        <p className="text-[9px] font-bold uppercase tracking-widest opacity-40 mb-2">Pending Escrow</p>
+                        <p className="text-2xl font-serif italic text-white/40">{(wallet?.pendingBalance || 0).toLocaleString()} <span className="text-[10px] not-italic opacity-40">RWF</span></p>
+                     </div>
+                  </div>
+               </div>
+            </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8">
-            <Card className="lg:col-span-2 bg-gradient-to-br from-primary to-primary/80 text-secondary border-none">
-              <h2 className="text-secondary/80 font-medium mb-2">Available Balance</h2>
-              <p className="text-5xl font-heading font-bold">{wallet?.balance?.toLocaleString() || 0} <span className="text-2xl">RWF</span></p>
-              <p className="text-sm mt-4 text-secondary/70">Commission of 1.5% is automatically deducted on every order.</p>
-            </Card>
-
-            <Card>
-              <h2 className="text-lg font-bold mb-4">Request Payout</h2>
-              <form onSubmit={requestPayout} className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium mb-1">Amount (RWF)</label>
-                  <input type="number" required min="500" className="w-full p-2 border border-border rounded" value={payoutForm.amount} onChange={e => setPayoutForm({...payoutForm, amount: e.target.value})} />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-1">MTN MoMo Number</label>
-                  <input type="tel" required className="w-full p-2 border border-border rounded" placeholder="078..." value={payoutForm.phone} onChange={e => setPayoutForm({...payoutForm, phone: e.target.value})} />
-                </div>
-                <Button type="submit" fullWidth disabled={!wallet || wallet.balance < 500}>Withdraw</Button>
-              </form>
-            </Card>
+            {/* Transaction Table */}
+            <div className="space-y-8">
+               <h3 className="text-[12px] font-black uppercase tracking-[0.4em] text-[#121212] border-b border-[#E5E1D8] pb-6 italic">Synchronization Log</h3>
+               <div className="bg-white border-2 border-[#121212] overflow-hidden shadow-sm">
+                  <table className="w-full text-left">
+                    <thead>
+                      <tr className="bg-[#F2F0EB]/50 border-b-2 border-[#121212]">
+                        <th className="p-8 text-[9px] font-black uppercase tracking-widest text-[#6B665E]">{t('mandate_id')}</th>
+                        <th className="p-8 text-[9px] font-black uppercase tracking-widest text-[#6B665E]">Description</th>
+                        <th className="p-8 text-[9px] font-black uppercase tracking-widest text-[#6B665E]">Valuation</th>
+                        <th className="p-8 text-[9px] font-black uppercase tracking-widest text-[#6B665E]">Action</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-[#E5E1D8]">
+                      {ledger && ledger.length > 0 ? ledger.map((tx: any) => (
+                        <tr key={tx._id} className="hover:bg-[#F9F7F2] transition-colors group">
+                          <td className="p-8">
+                             <p className="text-[10px] font-black text-[#121212]">#{tx._id.substring(0,8).toUpperCase()}</p>
+                             <p className="text-[8px] text-[#6B665E] font-bold uppercase mt-1 opacity-60">{new Date(tx.createdAt).toLocaleDateString()}</p>
+                          </td>
+                          <td className="p-8">
+                             <p className="text-[11px] font-black text-[#121212] uppercase tracking-widest">{tx.description || 'System Entry'}</p>
+                          </td>
+                          <td className="p-8">
+                             <p className={`text-sm font-black ${tx.type === 'CREDIT' ? 'text-green-600' : 'text-[#121212]'}`}>
+                                {tx.type === 'CREDIT' ? '+' : '-'}{tx.amount?.toLocaleString()} RWF
+                             </p>
+                          </td>
+                          <td className="p-8">
+                             {tx.transactionId && (
+                               <button 
+                                 onClick={() => fetchAndOpenReceipt(tx.transactionId)}
+                                 className="text-[10px] font-black text-[#F59E0B] uppercase tracking-widest border-b border-[#F59E0B]/20 hover:border-[#F59E0B] pb-1 transition-all"
+                               >
+                                 View Artifact 
+                               </button>
+                             )}
+                          </td>
+                        </tr>
+                      )) : (
+                        <tr>
+                          <td colSpan={4} className="p-24 text-center text-[10px] font-black uppercase tracking-[0.4em] opacity-30 italic">
+                            No Financial Movements Recorded
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+               </div>
+            </div>
           </div>
 
-          <Card noPadding>
-            <div className="p-6 border-b border-border"><h2 className="text-lg font-bold">Transaction History</h2></div>
-            <table className="w-full text-left">
-              <thead className="bg-background-surface text-text-secondary text-sm">
-                <tr>
-                  <th className="p-4 font-medium">Date</th>
-                  <th className="p-4 font-medium">Description</th>
-                  <th className="p-4 font-medium">Amount</th>
-                  <th className="p-4 font-medium">Balance</th>
-                  <th className="p-4 font-medium text-center">Receipt</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border">
-                {!ledger || !Array.isArray(ledger) || ledger.length === 0 ? (
-                  <tr><td colSpan={4} className="p-8 text-center text-text-secondary">No transactions yet.</td></tr>
-                ) : (
-                  ledger.map((tx: any) => (
-                    <tr key={tx._id} className="hover:bg-background-surface/50">
-                      <td className="p-4 text-sm text-text-secondary">{new Date(tx.createdAt).toLocaleDateString()}</td>
-                      <td className="p-4 font-medium">{tx.description}</td>
-                      <td className={`p-4 font-bold ${tx.type === 'CREDIT' ? 'text-status-success' : 'text-status-error'}`}>
-                        {tx.type === 'CREDIT' ? '+' : '-'}{tx.amount?.toLocaleString() || 0} RWF
-                      </td>
-                      <td className="p-4 text-text-secondary">{tx.balanceAfter?.toLocaleString() || 0} RWF</td>
-                      <td className="p-4 text-center">
-                        {tx.transactionId && (
-                          <button 
-                            onClick={() => fetchAndOpenReceipt(tx.transactionId)}
-                            className="text-primary hover:text-primary-hover font-bold text-sm"
-                          >
-                            🧾 View
-                          </button>
-                        )}
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </Card>
-        </main>
+          {/* Payout Action Sidebar */}
+          <div className="space-y-12">
+            <div className="bg-white border-2 border-[#121212] p-10 shadow-2xl">
+              <h3 className="text-[11px] font-black uppercase tracking-[0.4em] text-[#121212] mb-12 italic">Tactical Liquidation</h3>
+              <form onSubmit={requestPayout} className="space-y-8">
+                <div className="space-y-4">
+                  <label className="text-[9px] font-black text-[#6B665E] uppercase tracking-widest opacity-60">Liquidation Amount (RWF)</label>
+                  <input 
+                    type="number" 
+                    required 
+                    min="500" 
+                    value={payoutForm.amount}
+                    onChange={e => setPayoutForm({...payoutForm, amount: e.target.value})}
+                    placeholder="Min 500 RWF"
+                    className="rmf-input w-full px-6 py-5" 
+                  />
+                </div>
+                <div className="space-y-4">
+                  <label className="text-[9px] font-black text-[#6B665E] uppercase tracking-widest opacity-60">MTN MoMo Gateway</label>
+                  <input 
+                    type="tel" 
+                    required 
+                    value={payoutForm.phone}
+                    onChange={e => setPayoutForm({...payoutForm, phone: e.target.value})}
+                    placeholder="078..." 
+                    className="rmf-input w-full px-6 py-5" 
+                  />
+                </div>
+                <div className="p-8 bg-[#F2F0EB] space-y-6">
+                   <div className="flex justify-between items-center text-[9px] font-black uppercase tracking-widest">
+                      <span className="opacity-60">Network Protocol</span>
+                      <span className="text-[#F59E0B]">SECURE-MOMO</span>
+                   </div>
+                   <div className="flex justify-between items-center text-[9px] font-black uppercase tracking-widest">
+                      <span className="opacity-60">Fee Analysis</span>
+                      <span>1.5% Applied</span>
+                   </div>
+                </div>
+                <button 
+                  type="submit" 
+                  disabled={!wallet || wallet.balance < 500}
+                  className="w-full rmf-btn-primary py-5 bg-[#121212] hover:bg-[#F59E0B]"
+                >
+                  Initiate Payout →
+                </button>
+              </form>
+            </div>
+
+            <div className="p-10 border border-[#E5E1D8] space-y-8 bg-[#F2F0EB]/30 relative overflow-hidden group">
+               <div className="absolute top-0 right-0 w-2 h-full bg-[#F59E0B] opacity-20 group-hover:opacity-100 transition-opacity"></div>
+               <p className="text-[10px] font-black uppercase tracking-[0.4em] text-[#121212]">Ledger Integrity</p>
+               <p className="text-[10px] leading-relaxed italic text-[#6B665E]">
+                 "All settled earnings are audited by the RMF Financial Gateway. Commission is automatically processed during the acquisition lifecycle."
+               </p>
+               <div className="pt-8 border-t border-[#E5E1D8]">
+                  <Link href="/support" className="text-[9px] font-black uppercase tracking-widest text-[#F59E0B] hover:text-[#121212] transition-colors">Request Support Handshake →</Link>
+               </div>
+            </div>
+          </div>
+        </div>
       </div>
     </Layout>
   );

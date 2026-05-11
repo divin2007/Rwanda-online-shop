@@ -1,21 +1,28 @@
 'use client';
 import React, { useState } from 'react';
 import { useApi } from '@/hooks/useApi';
-import { productApi, sellerApi, deliveryApi, riderApi, orderApi } from '@/lib/api'; // Depends on context
+import { productApi, sellerApi, deliveryApi, riderApi, orderApi, marketApi } from '@/lib/api'; // Depends on context
 
 interface ImageUploadProps {
-  onUploadSuccess: (url: string) => void;
-  service: 'product' | 'seller' | 'rider' | 'delivery' | 'order';
+  onUploadSuccess?: (url: string) => void;
+  onChange?: (url: string) => void;
+  value?: string;
+  service: 'product' | 'seller' | 'rider' | 'delivery' | 'order' | 'market';
   endpoint: string;
   capture?: 'environment' | 'user';
   label?: string;
   compact?: boolean;
 }
 
-export const ImageUpload = ({ onUploadSuccess, service, endpoint, capture, label = "Upload Image", compact }: ImageUploadProps) => {
+export const ImageUpload = ({ onUploadSuccess, onChange, value, service, endpoint, capture, label = "Upload Image", compact }: ImageUploadProps) => {
   const [isUploading, setIsUploading] = useState(false);
-  const [preview, setPreview] = useState<string | null>(null);
+  const [preview, setPreview] = useState<string | null>(value || null);
   
+  // Update preview if value changes externally
+  React.useEffect(() => {
+    if (value) setPreview(value);
+  }, [value]);
+
   // Use a ref for the object URL to clean it up properly
   const previewUrlRef = React.useRef<string | null>(null);
 
@@ -28,12 +35,13 @@ export const ImageUpload = ({ onUploadSuccess, service, endpoint, capture, label
   }, []);
 
   const getApiInstance = () => {
-    const apiMap = {
+    const apiMap: Record<string, any> = {
       product: productApi,
       seller: sellerApi,
       delivery: deliveryApi,
       rider: riderApi,
       order: orderApi,
+      market: marketApi,
     };
     return apiMap[service] || productApi;
   };
@@ -44,7 +52,7 @@ export const ImageUpload = ({ onUploadSuccess, service, endpoint, capture, label
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // Clean up old preview
+    // Clean up old preview IF it was a local object URL
     if (previewUrlRef.current) {
       URL.revokeObjectURL(previewUrlRef.current);
     }
@@ -63,7 +71,9 @@ export const ImageUpload = ({ onUploadSuccess, service, endpoint, capture, label
         headers: { 'Content-Type': 'multipart/form-data' }
       });
       if (res.data?.success) {
-        onUploadSuccess(res.data.data.url);
+        const url = res.data.data.url;
+        if (onUploadSuccess) onUploadSuccess(url);
+        if (onChange) onChange(url);
       }
     } catch (error) {
       console.error('Upload failed', error);

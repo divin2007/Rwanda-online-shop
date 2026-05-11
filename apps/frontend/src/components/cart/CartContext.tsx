@@ -64,10 +64,10 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
 
       // Extract seller info from populated object if possible
       const seller = typeof product.sellerId === 'object' ? product.sellerId : null;
-      const sellerId = seller ? seller._id : product.sellerId;
-      const sellerUserId = seller ? seller.userId : product.sellerUserId;
-      const sellerName = seller?.shopDetails?.name || product.sellerName || 'Verified Seller';
-      const stallId = seller?.stallId || product.stallId || 'N/A';
+      const sellerId = seller ? seller._id : (product.sellerId || product.seller?._id);
+      const sellerUserId = seller ? seller.userId : (product.sellerUserId || product.seller?.userId);
+      const sellerName = seller?.shopDetails?.name || product.sellerName || product.seller?.shopDetails?.name || 'Verified Seller';
+      const stallId = seller?.stallId || product.stallId || product.seller?.stallId || 'N/A';
       
       // Extract market info from populated object
       const market = typeof product.marketId === 'object' ? product.marketId : null;

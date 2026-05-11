@@ -1,191 +1,234 @@
 'use client';
-import React, { useEffect, useRef, useState } from 'react';
-import { Layout } from '@/components/layout/Layout';
-import { Card } from '@/components/ui/Card';
-import { Button } from '@/components/ui/Button';
-import { ReceiptView, type ReceiptOrder } from '@/components/ui/ReceiptView';
+import React, { useEffect, useState } from 'react';
 import { useAuth } from '@/context/AuthContext';
+import { useLanguage } from '@/context/LanguageContext';
+import { Layout } from '@/components/layout/Layout';
 import { useApi } from '@/hooks/useApi';
-import { orderApi, walletApi, deliveryApi } from '@/lib/api';
+import { orderApi, walletApi, productApi } from '@/lib/api';
+import { useWishlist } from '@/context/WishlistContext';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 
-export default function BuyerDashboardPage() {
+export default function DashboardPage() {
   const { user } = useAuth();
-  const { data: orders, loading: oLoad, execute: fetchOrders } = useApi(orderApi, 'get', `/orders?buyerId=${user?.id}`);
-  const { data: wallet, execute: fetchWallet } = useApi(walletApi, 'get', '/wallets/me');
-  const [selectedOrder, setSelectedOrder] = useState<ReceiptOrder | null>(null);
-  const [deliveryCache, setDeliveryCache] = useState<Record<string, any>>({});
+  const { t } = useLanguage();
+  const { wishlist } = useWishlist();
+  const router = useRouter();
 
-  const hasFetched = useRef(false);
   useEffect(() => {
-    if (user?.id && !hasFetched.current) {
-      fetchOrders();
-      fetchWallet();
-      hasFetched.current = true;
+    if (user?.role === 'SELLER') {
+      router.push('/seller/dashboard');
     }
-  }, [user?.id, fetchOrders, fetchWallet]);
+  }, [user, router]);
 
-  // Fetch delivery data for receipt views
-  useEffect(() => {
-    if (!orders || !Array.isArray(orders)) return;
-    
-    orders.forEach((order: any) => {
-      if (order.deliveryId && !deliveryCache[order.deliveryId]) {
-        deliveryApi.get(`/deliveries/${order.deliveryId}`)
-          .then(res => {
-            if (res.data?.data) {
-              setDeliveryCache(prev => ({ ...prev, [order.deliveryId]: res.data.data }));
-            }
-          })
-          .catch(() => {});
-      }
-    });
-  }, [orders]); // Only depend on orders, not deliveryCache itself
+  // Fetch Real Data
+  const { data: ordersData, loading: ordersLoading } = useApi(orderApi, 'get', `/orders?buyerId=${user?.id}&status=placed,confirmed,preparing,ready_for_pickup,picked_up,in_transit`);
+  const { data: walletData, loading: walletLoading } = useApi(walletApi, 'get', `/wallets/me?userId=${user?.id}`);
+  const { data: transactionsData } = useApi(walletApi, 'get', `/wallets/me/transactions?userId=${user?.id}`);
+  const { data: recommendedData } = useApi(productApi, 'get', '/products?limit=4');
 
-  const openReceipt = (order: any) => {
-    const delivery = order.deliveryId ? deliveryCache[order.deliveryId] : null;
-    setSelectedOrder({
-      ...order,
-      delivery: delivery ? { rider: delivery.rider, status: delivery.status, route: delivery.route } : undefined,
-    });
-  };
-
-  const activeOrders = orders?.filter((o: any) => o.status !== 'delivered' && o.status !== 'cancelled') || [];
-  const recentOrders = orders?.slice(0, 5) || [];
+  const orders = ordersData || [];
+  const wallet = walletData || { balance: 0 };
+  const transactions = transactionsData?.slice(0, 3) || [];
+  const recommended = recommendedData || [];
 
   return (
     <Layout>
-      {selectedOrder && (
-        <ReceiptView order={selectedOrder} role="buyer" onClose={() => setSelectedOrder(null)} />
-      )}
-
-      <div className="max-w-6xl mx-auto py-8 px-4">
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
-          <div>
-            <h1 className="text-3xl font-heading font-bold text-text-primary">Welcome back, {user?.fullName || 'Shopper'}!</h1>
-            <p className="text-text-secondary">Manage your orders and account settings.</p>
-          </div>
-          <div className="flex gap-3">
-             <Link href="/orders">
-               <Button variant="outline">View All Orders</Button>
-             </Link>
-             <Link href="/">
-               <Button>Continue Shopping</Button>
-             </Link>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-12">
-          {/* Wallet Summary */}
-          <Card className="bg-primary text-white md:col-span-1 shadow-xl">
-            <p className="text-primary-foreground/80 text-sm mb-1 font-medium">My Wallet Balance</p>
-            <h2 className="text-3xl font-bold mb-4 tracking-tight">{wallet?.balance?.toLocaleString() || 0} RWF</h2>
-            <Button variant="outline" className="bg-white/10 border-white/20 text-white hover:bg-white/20 w-full font-bold">Top Up Wallet</Button>
-          </Card>
-
-          {/* Activity Overview */}
-          <Card className="md:col-span-2 bg-background-card border-border">
-            <h3 className="font-bold mb-6 text-text-primary uppercase text-xs tracking-widest">Platform Activity</h3>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-center">
-              <div className="p-4 rounded-xl bg-background-surface">
-                <p className="text-3xl font-black text-primary">{orders?.length || 0}</p>
-                <p className="text-[10px] font-bold text-text-secondary uppercase mt-1">Total Orders</p>
+      <div className="space-y-32 pb-20 animate-reveal">
+        {/* Institutional Greeting & Tactical Overview */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-16 items-start">
+          <div className="lg:col-span-2 bg-white border-2 border-[#121212] p-20 relative overflow-hidden group">
+            <div className="absolute top-0 right-0 p-10 opacity-5">
+               <div className="text-[120px] font-serif leading-none italic select-none">RMF</div>
+            </div>
+            
+            <div className="relative z-10 max-w-2xl">
+              <div className="flex items-center gap-6 mb-12">
+                 <div className="w-12 h-px bg-[#F59E0B]"></div>
+                 <p className="text-[11px] font-black text-[#F59E0B] uppercase tracking-[0.5em]">Network Station: Active</p>
               </div>
-              <div className="p-4 rounded-xl bg-status-info/5">
-                <p className="text-3xl font-black text-status-info">{activeOrders.length}</p>
-                <p className="text-[10px] font-bold text-text-secondary uppercase mt-1">In Progress</p>
-              </div>
-              <div className="p-4 rounded-xl bg-status-success/5">
-                <p className="text-3xl font-black text-status-success">{orders?.filter((o:any) => o.status === 'delivered').length || 0}</p>
-                <p className="text-[10px] font-bold text-text-secondary uppercase mt-1">Delivered</p>
-              </div>
-              <div className="p-4 rounded-xl bg-status-warning/5">
-                <p className="text-3xl font-black text-status-warning">0</p>
-                <p className="text-[10px] font-bold text-text-secondary uppercase mt-1">My Vouchers</p>
+              
+              <h1 className="text-8xl font-serif mb-10 leading-[0.9] text-[#121212] tracking-tighter italic">
+                Mwaramutse, <br />
+                <span className="text-[#F59E0B] not-italic">{user?.fullName?.split(' ')[0] || 'Member'}.</span>
+              </h1>
+              
+              <p className="text-xl text-[#6B665E] font-light italic leading-relaxed mb-16 border-l-2 border-[#F0EDE4] pl-10 max-w-xl">
+                Your institutional portal is fully synchronized. You have {orders.length} active {t('nav_mandates').toLowerCase()} under facilitation and {wishlist.length} saved artifacts awaiting acquisition.
+              </p>
+              
+              <div className="flex flex-wrap gap-8">
+                <Link href="/orders" className="rmf-btn-primary bg-[#121212] hover:bg-[#F59E0B]">{t('track_order')}</Link>
+                <Link href="/profile" className="rmf-btn-outline border-[#121212]/10 hover:border-[#121212]">{t('profile') || 'Manage Access'}</Link>
               </div>
             </div>
-          </Card>
+          </div>
+          
+          {/* Elite MoMo Wallet Card */}
+          <div className="bg-[#121212] text-white p-12 relative overflow-hidden group shadow-[50px_50px_100px_-50px_rgba(0,0,0,0.5)]">
+            <div className="relative z-10 flex flex-col h-full justify-between gap-20">
+              <div className="flex justify-between items-start">
+                <div>
+                  <p className="text-[10px] font-black uppercase tracking-[0.4em] text-[#F59E0B] mb-6">Secured Liquidity</p>
+                  <div className="flex items-baseline gap-4">
+                    <h2 className="text-7xl font-serif tracking-tighter italic">{wallet.balance?.toLocaleString() || 0}</h2>
+                    <span className="text-2xl font-serif text-[#F59E0B] opacity-60">RWF</span>
+                  </div>
+                </div>
+                <div className="w-16 h-16 bg-[#F59E0B] flex items-center justify-center text-2xl shadow-2xl">💳</div>
+              </div>
+              
+              <div className="space-y-8 pt-10 border-t border-white/10">
+                <div className="flex justify-between items-center">
+                  <div className="text-[9px] font-black text-white/30 uppercase tracking-widest">
+                    Authorized Account Status
+                  </div>
+                  <div className="flex items-center gap-2">
+                     <div className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse"></div>
+                     <span className="text-[9px] font-black text-white uppercase tracking-widest">{t('success')}</span>
+                  </div>
+                </div>
+                <Link href="/wallet" className="w-full rmf-btn-primary py-4 text-[9px] bg-white text-[#121212] hover:bg-[#F59E0B] hover:text-white border-none">{t('dashboard_top_up')}</Link>
+              </div>
+            </div>
+            {/* Visual Decoration */}
+            <div className="absolute -bottom-20 -right-20 text-[200px] font-serif opacity-5 italic select-none">MOMO</div>
+          </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          {/* Active Deliveries */}
-          <div>
-            <h3 className="text-xl font-bold mb-4 flex items-center gap-2 text-text-primary">
-              <span className="w-2 h-2 bg-status-info rounded-full animate-pulse"></span>
-              Live Delivery Tracking
-            </h3>
-            <div className="space-y-4">
-              {activeOrders.length === 0 ? (
-                <Card className="text-center py-12 text-text-secondary italic border-dashed border-2 border-border bg-transparent">
-                  <p>No active deliveries right now.</p>
-                  <p className="text-xs not-italic mt-1">Your orders will appear here once they are processed.</p>
-                </Card>
-              ) : (
-                activeOrders.map((order: any) => (
-                  <Card key={order._id} className="hover:border-primary hover:shadow-lg transition-all duration-300">
-                    <div className="flex justify-between items-start mb-3">
+        {/* Tactical Activity Ledger */}
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-20">
+           <div className="lg:col-span-3">
+              <div className="flex justify-between items-end mb-16 border-b-2 border-[#121212] pb-10">
+                <div>
+                  <p className="rmf-label-sm mb-4">{t('facilitation_process')}</p>
+                  <h2 className="text-5xl font-serif text-[#121212] italic tracking-tighter">{t('nav_mandates')}</h2>
+                </div>
+                <Link href="/orders" className="text-[11px] font-black uppercase tracking-[0.4em] text-[#121212] hover:text-[#F59E0B] transition-colors border-b-2 border-[#121212]/10 hover:border-[#F59E0B] pb-2">{t('dashboard_view_all')} →</Link>
+              </div>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
+                {ordersLoading ? (
+                   [1,2].map(i => <div key={i} className="aspect-video bg-[#F2F0EB] animate-pulse border border-[#E5E1D8]"></div>)
+                ) : orders.length > 0 ? orders.map((order: any) => (
+                  <div key={order._id} className="bg-white border border-[#E5E1D8] p-10 group relative hover:border-[#121212] transition-all">
+                    <div className="absolute top-0 right-0">
+                       <div className="bg-[#121212] text-white text-[8px] font-black uppercase tracking-widest py-3 px-5">
+                          {order.status.replace(/_/g, ' ')}
+                       </div>
+                    </div>
+                    
+                    <div className="flex gap-10 mb-10">
+                       <div className="w-32 h-32 bg-[#F8F6F1] overflow-hidden border border-[#E5E1D8]">
+                          <img src={order.products?.[0]?.images?.[0] || 'https://images.unsplash.com/photo-1590073844006-33379778ae09'} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-1000" alt={order.products?.[0]?.name} />
+                       </div>
+                       <div className="flex-grow pt-4">
+                          <p className="text-[9px] font-black text-[#F59E0B] uppercase tracking-[0.3em] mb-3">MANDATE-#{order._id.substring(0,8).toUpperCase()}</p>
+                          <h4 className="text-3xl font-serif text-[#121212] leading-none tracking-tighter line-clamp-2">{order.products?.[0]?.name || 'Institutional Artifact'}</h4>
+                       </div>
+                    </div>
+                    
+                    <div className="flex justify-between items-end pt-8 border-t border-[#F0EDE4]">
                       <div>
-                        <p className="font-bold text-lg">#{order._id.substring(0,8).toUpperCase()}</p>
-                        <p className="text-sm text-text-secondary">
-                          {order.products?.length
-                            ? `${order.products.length} product(s)`
-                            : order.product?.name || 'Market Purchase'}
-                        </p>
+                        <p className="text-[10px] font-black text-[#121212] uppercase tracking-widest">{order.seller?.marketName || 'Regional Hub'}</p>
+                        <p className="text-[9px] text-[#6B665E] uppercase tracking-widest mt-2 opacity-50">Authorized: {new Date(order.createdAt).toLocaleDateString()}</p>
                       </div>
-                      <span className="bg-status-info/10 text-status-info text-xs font-black px-3 py-1 rounded-full uppercase tracking-tight">
-                        {order.status.replace('_', ' ')}
-                      </span>
+                      <Link href={`/orders/${order._id}/tracking`} className="text-sm font-black text-[#F59E0B] uppercase tracking-[0.2em] group-hover:underline transition-all">Coordinate →</Link>
                     </div>
-                    <div className="flex gap-2">
-                      <Link href={`/orders/${order._id}/tracking`} className="flex-1">
-                        <Button size="sm" fullWidth variant="outline" className="border-primary/20 hover:border-primary text-primary">Track on Live Map</Button>
-                      </Link>
-                      <Button size="sm" variant="outline" onClick={() => openReceipt(order)}>🧾 Receipt</Button>
-                    </div>
-                  </Card>
-                ))
-              )}
-            </div>
-          </div>
-
-          {/* Recent Orders */}
-          <div>
-            <h3 className="text-xl font-bold mb-4 text-text-primary">Recent Purchase History</h3>
-            <Card noPadding className="overflow-hidden border-border">
-              <div className="divide-y divide-border">
-                {recentOrders.length === 0 ? (
-                  <div className="p-12 text-center text-text-secondary italic">No purchase history found.</div>
-                ) : (
-                  recentOrders.map((order: any) => (
-                    <div key={order._id} className="p-4 flex items-center justify-between hover:bg-background-surface transition-colors">
-                      <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 bg-background-main rounded-xl flex items-center justify-center text-xl shadow-inner">🛍️</div>
-                        <div>
-                          <p className="font-bold text-text-primary">Order #{order._id.substring(0,8).toUpperCase()}</p>
-                          <p className="text-xs text-text-secondary font-medium">{new Date(order.createdAt).toLocaleDateString()} • {order.products?.length || 1} items</p>
-                        </div>
-                      </div>
-                      <div className="text-right flex items-center gap-2">
-                        <div>
-                          <p className="font-bold text-primary">{order.financials?.totalAmount?.toLocaleString() || 0} RWF</p>
-                          <p className={`text-[10px] font-bold uppercase ${order.status === 'delivered' ? 'text-status-success' : 'text-text-secondary'}`}>{order.status}</p>
-                        </div>
-                        <Button size="sm" variant="outline" onClick={() => openReceipt(order)}>🧾</Button>
-                      </div>
-                    </div>
-                  ))
+                  </div>
+                )) : (
+                  <div className="md:col-span-2 border-4 border-dashed border-[#F0EDE4] bg-white py-32 text-center">
+                    <p className="text-[12px] font-black text-[#6B665E] uppercase tracking-[0.6em] italic opacity-40">No active mandates synchronized</p>
+                    <Link href="/markets" className="mt-10 inline-block text-[11px] font-black text-[#F59E0B] uppercase tracking-widest hover:underline">+ Initialize New Acquisition</Link>
+                  </div>
                 )}
               </div>
-              {recentOrders.length > 0 && (
-                <div className="p-4 text-center bg-background-surface/50 border-t border-border">
-                  <Link href="/orders" className="text-sm text-primary font-bold hover:underline flex items-center justify-center gap-1">
-                    View Complete History <span className="text-lg">→</span>
-                  </Link>
-                </div>
-              )}
-            </Card>
-          </div>
+           </div>
+
+           {/* Side Ledger: Activity */}
+           <div className="bg-white border-2 border-[#121212] p-12">
+              <div className="flex justify-between items-center mb-12 border-b border-[#F0EDE4] pb-6">
+                <h3 className="text-2xl font-serif text-[#121212] italic tracking-tighter">{t('dashboard_activity')}</h3>
+                <span className="text-xl opacity-20">🕒</span>
+              </div>
+              <div className="space-y-10">
+                {transactions.length > 0 ? transactions.map((act: any, i: number) => (
+                  <div key={i} className="flex items-start gap-6 group">
+                    <div className="w-12 h-12 bg-[#F8F6F1] border border-[#E5E1D8] flex items-center justify-center text-xl group-hover:bg-[#121212] group-hover:text-white transition-all">
+                      {act.type === 'deposit' ? '📈' : '🛍️'}
+                    </div>
+                    <div className="flex-grow">
+                      <p className="text-[10px] font-black uppercase tracking-widest text-[#121212] truncate max-w-[150px]">{act.description || 'System Entry'}</p>
+                      <p className="text-[9px] text-[#6B665E] uppercase tracking-widest mt-1 opacity-50">{new Date(act.createdAt).toLocaleDateString()}</p>
+                      <p className={`text-[11px] font-black mt-2 ${act.type === 'deposit' ? 'text-green-600' : 'text-[#F59E0B]'}`}>
+                        {act.type === 'deposit' ? '+' : '-'} {act.amount?.toLocaleString()} RWF
+                      </p>
+                    </div>
+                  </div>
+                )) : (
+                  <p className="text-[10px] font-black text-[#6B665E] uppercase tracking-widest opacity-30 py-20 text-center">Ledger empty</p>
+                )}
+              </div>
+              <Link href="/wallet" className="block w-full text-center mt-12 text-[10px] font-black uppercase tracking-[0.3em] text-[#F59E0B] hover:text-[#121212] transition-colors pt-10 border-t border-[#F0EDE4]">
+                Audit Full Ledger
+              </Link>
+           </div>
         </div>
+
+        {/* Artifact Reserve (Wishlist) */}
+        <section className="rmf-container-full bg-[#F8F6F1] py-32 border-y border-[#E5E1D8]">
+           <div className="rmf-container">
+              <div className="flex justify-between items-end mb-20">
+                <div>
+                  <p className="rmf-label-sm mb-4">{t('heritage_reserve')}</p>
+                  <h2 className="text-6xl font-serif text-[#121212] tracking-tighter leading-none italic">{t('nav_wishlist')}</h2>
+                </div>
+                <Link href="/wishlist" className="text-[11px] font-black uppercase tracking-[0.4em] text-[#121212] hover:text-[#F59E0B] transition-colors border-b-2 border-[#121212]/10 hover:border-[#F59E0B] pb-2">{t('dashboard_view_all')} →</Link>
+              </div>
+              
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-12">
+                {wishlist.length > 0 ? wishlist.slice(0, 4).map((item: any) => (
+                  <Link key={item._id} href={`/product/${item._id}`} className="group relative">
+                    <div className="aspect-[3/4] bg-white overflow-hidden mb-6 border border-[#E5E1D8] group-hover:border-[#121212] transition-all p-4 shadow-sm">
+                      <img src={item.images?.[0]} className="w-full h-full object-cover grayscale group-hover:grayscale-0 transition-all duration-1000" alt={item.name} />
+                    </div>
+                    <p className="text-[9px] font-black text-[#F59E0B] uppercase tracking-[0.3em] mb-3">{item.category || 'RESERVE'}</p>
+                    <h5 className="text-xl font-serif text-[#121212] tracking-tighter leading-none line-clamp-1 group-hover:italic transition-all">{item.name}</h5>
+                  </Link>
+                )) : (
+                  <div className="col-span-4 py-24 border-4 border-dashed border-[#F0EDE4] bg-white text-center">
+                     <p className="text-[11px] font-black text-[#6B665E] uppercase tracking-[0.6em] italic opacity-40">Artifact reserve is vacant</p>
+                  </div>
+                )}
+              </div>
+           </div>
+        </section>
+
+        {/* Facilitator Recommendations */}
+        <section className="text-center">
+           <div className="max-w-4xl mx-auto mb-24">
+              <p className="rmf-label-sm mb-6">{t('faciliation_curation')}</p>
+              <h2 className="text-7xl font-serif text-[#121212] tracking-tighter leading-none italic">Recommended for You</h2>
+              <p className="text-xl text-[#6B665E] font-light italic mt-8">{t('curation_desc') || 'System-curated artifacts selected for your acquisition profile.'}</p>
+           </div>
+           <div className="grid grid-cols-1 md:grid-cols-4 gap-12 text-left">
+             {recommended.map((prod: any) => (
+               <Link href={`/product/${prod._id}`} key={prod._id} className="space-y-8 group relative">
+                 <div className="aspect-[4/5] bg-white overflow-hidden relative border border-[#E5E1D8] group-hover:border-[#121212] transition-all p-2 shadow-xl">
+                   <img src={prod.images?.[0]} className="w-full h-full object-cover transition-transform duration-[4000ms] group-hover:scale-110" alt={prod.name} />
+                   <div className="absolute inset-0 bg-[#121212]/0 group-hover:bg-[#121212]/5 transition-all"></div>
+                 </div>
+                 <div>
+                   <h4 className="text-3xl font-serif text-[#121212] mb-3 leading-none tracking-tighter group-hover:text-[#F59E0B] transition-colors">{prod.name}</h4>
+                   <div className="flex justify-between items-center">
+                      <p className="text-[10px] font-black text-[#6B665E] uppercase tracking-widest opacity-40 group-hover:opacity-100 transition-opacity">{prod.category || 'COLLECTION'}</p>
+                      <p className="text-lg font-serif italic text-[#121212]">{prod.price?.toLocaleString()} <span className="text-[10px] uppercase not-italic opacity-40 ml-1">RWF</span></p>
+                   </div>
+                 </div>
+               </Link>
+             ))}
+           </div>
+        </section>
       </div>
     </Layout>
   );

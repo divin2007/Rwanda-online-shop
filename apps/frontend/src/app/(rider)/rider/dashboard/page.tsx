@@ -1,577 +1,233 @@
 'use client';
 import React, { useEffect, useState, useRef } from 'react';
-import Link from 'next/link';
-import { Layout } from '@/components/layout/Layout';
-import { Card } from '@/components/ui/Card';
-import { Button } from '@/components/ui/Button';
-import { ImageUpload } from '@/components/ui/ImageUpload';
 import { useAuth } from '@/context/AuthContext';
 import { useApi } from '@/hooks/useApi';
-import { useSocket } from '@/hooks/useSocket';
-import { riderApi, deliveryApi, walletApi, orderApi } from '@/lib/api';
-import { ReceiptView, type ReceiptOrder } from '@/components/ui/ReceiptView';
+import { riderApi, deliveryApi, walletApi } from '@/lib/api';
+import { useLanguage } from '@/context/LanguageContext';
+import { Layout } from '@/components/layout/Layout';
+import Link from 'next/link';
 import toast from 'react-hot-toast';
-import { QrReader } from 'react-qr-reader';
 import dynamic from 'next/dynamic';
-
-const DeliveryMap = dynamic(
-  () => import('@/components/ui/DeliveryMap').then((mod) => mod.DeliveryMap),
-  { ssr: false, loading: () => <div className="w-full h-64 bg-background-surface animate-pulse rounded-xl mb-6"></div> }
-);
-
-const StableScanner = ({ onResult, stallId }: { onResult: (stallId: string) => void, stallId: string }) => {
-  return (
-    <div className="mt-4 border-2 border-primary rounded overflow-hidden relative min-h-[300px] bg-black">
-      <QrReader
-        onResult={(result, error) => {
-          if (result) {
-            const text = result.getText();
-            if (text.startsWith('marketrwanda:stall:')) {
-              const scannedStallId = text.split(':')[2];
-              onResult(scannedStallId);
-            }
-          }
-        }}
-        constraints={{ facingMode: 'environment' }}
-        containerStyle={{ width: '100%' }}
-      />
-      <div className="absolute bottom-4 left-0 right-0 px-4">
-        <Button fullWidth onClick={() => onResult(stallId)} variant="primary">
-          Bypass QR Scan (Dev Mode)
-        </Button>
-      </div>
-    </div>
-  );
-};
-
-const ChatCard = ({ deliveryId, userName }: { deliveryId: string, userName: string }) => {
-  const [message, setMessage] = useState('');
-  const [chatHistory, setChatHistory] = useState<any[]>([]);
-  const { data: socketMsg } = useSocket(process.env.NEXT_PUBLIC_DELIVERY_SERVICE_URL || 'http://localhost:3008', `delivery:${deliveryId}:chat`);
-  const { emit } = useSocket(process.env.NEXT_PUBLIC_DELIVERY_SERVICE_URL || 'http://localhost:3008', `__dummy__`);
-
-  useEffect(() => {
-    if (socketMsg) {
-      setChatHistory((prev) => [...prev, socketMsg]);
-    }
-  }, [socketMsg]);
-
-  const sendMessage = () => {
-    if (!message.trim() || !deliveryId) return;
-    emit('chat:message', {
-      deliveryId,
-      senderId: 'rider',
-      senderName: userName,
-      text: message
-    });
-    setMessage('');
-  };
-
-  return (
-    <Card className="flex flex-col h-[300px] mt-6 border-t-4 border-primary">
-      <h3 className="font-bold mb-2 flex items-center gap-2">
-        <span className="w-2 h-2 bg-status-success rounded-full animate-pulse"></span>
-        Customer Messages
-      </h3>
-      <div className="flex-1 overflow-y-auto space-y-2 mb-3 pr-2 scrollbar-thin text-sm">
-        {chatHistory.length === 0 ? (
-          <div className="text-center py-6 text-text-secondary italic">No messages yet.</div>
-        ) : (
-          chatHistory.map((msg, i) => (
-            <div key={i} className={`flex flex-col ${msg.senderId === 'rider' ? 'items-end' : 'items-start'}`}>
-              <div className={`max-w-[85%] p-2 rounded-lg ${msg.senderId === 'rider' ? 'bg-primary text-white rounded-br-none' : 'bg-background-surface text-text-primary rounded-bl-none border border-border'}`}>
-                {msg.text || msg.message}
-              </div>
-            </div>
-          ))
-        )}
-      </div>
-      <div className="flex gap-2">
-        <input 
-          type="text" 
-          value={message}
-          onChange={(e) => setMessage(e.target.value)}
-          onKeyPress={(e) => e.key === 'Enter' && sendMessage()}
-          placeholder="Reply to customer..." 
-          className="flex-1 bg-background-surface border border-border rounded px-3 py-1.5 text-sm outline-none focus:ring-1 focus:ring-primary"
-        />
-        <Button size="sm" onClick={sendMessage} disabled={!deliveryId}>Send</Button>
-      </div>
-    </Card>
-  );
-};
+const RiderMap = dynamic(() => import('@/components/ui/RiderMap').then(mod => mod.RiderMap), { ssr: false });
 
 export default function RiderDashboardPage() {
   const { user } = useAuth();
-  const { data: profile, execute: fetchProfile } = useApi(riderApi, 'get', `/riders/me?userId=${user?.id}`);
-  const { data: activeDelivery, execute: fetchActiveDelivery } = useApi(deliveryApi, 'get', `/deliveries/active?userId=${user?.id}`);
-  const { data: availableDeliveriesData, execute: fetchAvailable } = useApi(deliveryApi, 'get', '/deliveries/available');
-  const { data: history, execute: fetchHistory } = useApi(deliveryApi, 'get', `/deliveries/history?userId=${user?.id}`);
-  const { data: wallet } = useApi(walletApi, 'get', `/wallets/me?userId=${user?.id}`);
+  const { t } = useLanguage();
+  
+  // Real Data Hooks
+  const { data: profile, loading: profileLoading } = useApi(riderApi, 'get', `/riders/me?userId=${user?.id}`);
+  const { data: statsData } = useApi(riderApi, 'get', `/riders/stats/${user?.id}`);
+  const { data: deliveriesData, execute: fetchDeliveries } = useApi(deliveryApi, 'get', `/deliveries/rider/${user?.id}?status=assigned,picked_up,en_route_to_dropoff`);
+  const { data: availableData, execute: fetchAvailable } = useApi(deliveryApi, 'get', '/deliveries/available');
+  const { data: walletData } = useApi(walletApi, 'get', `/wallets/me?userId=${user?.id}`);
 
-  const [view, setView] = useState<'live' | 'available' | 'history'>('live');
-  const [receiptOrder, setReceiptOrder] = useState<{ order: ReceiptOrder; delivery?: any } | null>(null);
-  const [orderCache, setOrderCache] = useState<Record<string, any>>({});
+  const stats = statsData || { earnings: 0, completion: 100, rating: 5, drops: 0 };
+  const activeDeliveries = deliveriesData || [];
+  const availableDeliveries = availableData || [];
+  const wallet = walletData || { balance: 0 };
 
-  const [isActive, setIsActive] = useState(false);
-  const [incomingDelivery, setIncomingDelivery] = useState<any>(null);
-  const [timer, setTimer] = useState(60);
-  const [photoUrl, setPhotoUrl] = useState('');
-  const [showQrScanner, setShowQrScanner] = useState(false);
-  const [riderLocation, setRiderLocation] = useState<{ lat: number, lng: number } | null>(null);
-
-  // WebSockets for assignment and location broadcasting
-  const { data: assignmentData, emit: emitSocket } = useSocket(process.env.NEXT_PUBLIC_DELIVERY_SERVICE_URL || 'http://localhost:3008', 'delivery:assigned', localStorage.getItem('accessToken') || undefined);
-
-  const hasFetched = useRef(false);
-  useEffect(() => {
-    if (user?.id && !hasFetched.current) {
-      fetchProfile();
-      fetchActiveDelivery();
-      fetchAvailable();
-      fetchHistory();
-      hasFetched.current = true;
-    }
-  }, [user?.id, fetchProfile, fetchActiveDelivery, fetchAvailable, fetchHistory]);
-
-  // Fetch order data for receipt views
-  useEffect(() => {
-    if (!history || !Array.isArray(history)) return;
-    
-    history.forEach((h: any) => {
-      if (h.orderId && !orderCache[h.orderId]) {
-        orderApi.get(`/orders/${h.orderId}`)
-          .then(res => {
-            if (res.data?.data) {
-              setOrderCache(prev => ({ ...prev, [h.orderId]: res.data.data }));
-            }
-          })
-          .catch(() => {});
-      }
-    });
-  }, [history]); // Only depend on history
-
-  const openReceiptFromDelivery = async (delivery: any) => {
+  const handleAccept = async (id: string) => {
     try {
-      let orderData = delivery.orderId ? orderCache[delivery.orderId] : null;
-      if (!orderData && delivery.orderId) {
-        const res = await orderApi.get(`/orders/${delivery.orderId}`);
-        orderData = res.data?.data;
-        if (orderData) setOrderCache(prev => ({ ...prev, [delivery.orderId]: orderData }));
-      }
-      if (orderData) {
-        setReceiptOrder({
-          order: { ...orderData, delivery: { rider: delivery.rider, status: delivery.status, route: delivery.route } },
-          delivery,
-        });
-      } else {
-        // Minimal receipt from delivery data alone
-        setReceiptOrder({
-          order: {
-            _id: delivery.orderId || delivery._id,
-            orderNumber: delivery.orderNumber,
-            status: delivery.status,
-            buyer: { fullName: 'N/A', phone: '' },
-            seller: { fullName: delivery.pickup?.stallId || 'Market', stallId: delivery.pickup?.stallId || '' },
-            financials: { subtotal: 0, deliveryFee: 0, platformCommission: 0, gatewayFee: 0, totalAmount: 0, sellerPayout: 0, riderPayout: 0 },
-            delivery: { rider: delivery.rider, status: delivery.status, route: delivery.route },
-          },
-          delivery,
-        });
-      }
-    } catch {
-      // continue
-    }
-  };
-
-  // Handle Incoming WebSockets
-  useEffect(() => {
-    if (assignmentData) {
+      await deliveryApi.patch(`/deliveries/${id}/accept`, { riderId: user?.id });
+      toast.success('Mandate synchronized to your terminal');
+      fetchDeliveries();
       fetchAvailable();
-      toast('New delivery request available!', { icon: '📦' });
-    }
-  }, [assignmentData, fetchAvailable]);
-
-  // GPS Tracking logic
-  useEffect(() => {
-    if (isActive) {
-      const watchId = navigator.geolocation.watchPosition(
-        pos => {
-          const locationData = { lat: pos.coords.latitude, lng: pos.coords.longitude };
-          setRiderLocation(locationData);
-          riderApi.patch('/riders/me/location', { ...locationData, userId: user?.id });
-          emitSocket('rider:location:update', {
-            riderId: user?.id,
-            ...locationData,
-            marketId: profile?.marketId || 'default'
-          });
-
-          // Also emit to private delivery tracking channel if on a task
-          if (activeDelivery?._id) {
-            emitSocket('delivery:tracking:update', {
-              deliveryId: activeDelivery._id,
-              ...locationData
-            });
-          }
-        },
-        err => console.error(err),
-        { enableHighAccuracy: true, maximumAge: 10000 }
-      );
-      return () => navigator.geolocation.clearWatch(watchId);
-    }
-  }, [isActive, user?.id, emitSocket, profile?.marketId]);
-
-  const toggleActive = () => {
-    if (!isActive) {
-      navigator.geolocation.getCurrentPosition(
-        async pos => {
-          const locationData = { lat: pos.coords.latitude, lng: pos.coords.longitude };
-          setRiderLocation(locationData);
-          await riderApi.patch('/riders/me/status', { isActive: true, location: locationData, userId: user?.id });
-          setIsActive(true);
-          emitSocket('rider:location:update', {
-            riderId: user?.id,
-            ...locationData,
-            marketId: profile?.marketId || 'default'
-          });
-          toast.success("You are now active!");
-        },
-        () => toast.error("Location access is required.")
-      );
-    } else {
-      riderApi.patch('/riders/me/status', { isActive: false, userId: user?.id }).then(() => setIsActive(false));
+    } catch (e: any) {
+      toast.error(e.response?.data?.message || 'Failed to accept mandate');
     }
   };
 
-  const acceptDelivery = async (deliveryId: string) => {
-    try {
-      await deliveryApi.patch(`/deliveries/${deliveryId}/accept`, { riderId: user?.id });
-      fetchActiveDelivery();
-      fetchAvailable();
-      setView('live');
-      toast.success('Delivery accepted! Head to the store.');
-    } catch (e) {
-      toast.error('Failed to accept delivery (maybe taken by someone else)');
-      fetchAvailable();
-    }
-  };
-
-  const cancelDelivery = async () => {
-    try {
-      await deliveryApi.patch(`/deliveries/${activeDelivery._id}/reject`);
-      fetchActiveDelivery();
-      fetchAvailable();
-      toast.success('Delivery cancelled and re-broadcasted.');
-    } catch (e) {
-      toast.error('Failed to cancel delivery');
-    }
-  };
-
-  const confirmHandover = async (deliveryId: string) => {
-    try {
-      await deliveryApi.post(`/deliveries/${deliveryId}/handover`, { role: 'rider' });
-      toast.success('Receipt confirmed! Waiting for seller to confirm handover.');
-      fetchActiveDelivery();
-    } catch (e) {
-      toast.error('Failed to confirm handover');
-    }
-  };
-
-  const completeDelivery = async () => {
-    try {
-      await deliveryApi.patch(`/deliveries/${activeDelivery._id}/complete`);
-      fetchActiveDelivery();
-      toast.success('Delivery completed! Earnings added.');
-    } catch (e) {
-      toast.error('Failed to complete delivery');
-    }
-  };
+  if (profileLoading) {
+    return <Layout><div className="p-20 text-center font-serif text-2xl animate-pulse italic text-[#121212]">Initializing RMF Logistics...</div></Layout>;
+  }
 
   if (!profile) {
     return (
       <Layout>
-        <div className="p-20 text-center">
-          <span className="text-6xl mb-4 block">🛵</span>
-          <h1 className="text-2xl font-bold mb-4">Welcome to Rwanda Market Delivery</h1>
-          <p className="text-text-secondary mb-6">Register to start earning.</p>
-          <Link href="/rider/register">
-            <Button size="lg">Start Registration</Button>
-          </Link>
+        <div className="max-w-4xl mx-auto py-32 text-center space-y-12 animate-reveal">
+          <div className="w-24 h-24 bg-[#F59E0B]/10 border-2 border-[#F59E0B]/30 flex items-center justify-center mx-auto mb-8 shadow-[0_0_50px_rgba(245,158,11,0.1)]">
+            <svg className="w-12 h-12 text-[#F59E0B]" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" /></svg>
+          </div>
+          <h1 className="text-6xl font-serif tracking-tighter italic text-[#121212]">Terminal Offline</h1>
+          <p className="text-[#6B665E] uppercase tracking-[0.3em] text-[10px] font-black max-w-md mx-auto leading-relaxed">
+            Your rider profile has not been synchronized with the RMF network. 
+            Verification required for active mandate assignment.
+          </p>
+          <button 
+            onClick={() => window.location.href = '/rider/register'}
+            className="rmf-btn-primary bg-[#121212] border-none text-white px-12 py-5 text-[11px] font-black uppercase tracking-[0.4em] hover:bg-[#F59E0B] transition-all"
+          >
+            Authorize Terminal Deployment →
+          </button>
         </div>
       </Layout>
     );
   }
 
-  if (profile && !profile.isApproved) {
-    return (
-      <Layout>
-        <div className="p-20 text-center">
-          <h1 className="text-2xl font-bold">Profile Pending Approval</h1>
-        </div>
-      </Layout>
-    );
-  }
+  const currentTask = activeDeliveries[0];
 
   return (
     <Layout>
-      <div className="flex flex-col md:flex-row min-h-screen bg-background-main">
-        {/* Sidebar */}
-        <aside className="w-full md:w-64 bg-background-card border-r border-border p-6 hidden md:block">
-          <div className="mb-8">
-            <h2 className="font-heading font-bold text-xl">{profile?.fullName || 'Rider'}</h2>
-            <p className="text-sm text-text-secondary">{profile?.plateNumber || 'No Vehicle'}</p>
+      <div className="animate-reveal space-y-10 pb-20">
+        {/* RMF Logistics Header */}
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6 border-b-2 border-[#121212] pb-8">
+          <div>
+            <p className="text-[10px] font-black text-[#A34D15] uppercase tracking-[0.5em] mb-4">Official RMF Logistics</p>
+            <h1 className="text-5xl font-serif italic tracking-tighter text-[#121212] leading-none">Transit Terminal</h1>
           </div>
-          <nav className="space-y-2">
-            <button 
-              onClick={() => setView('live')}
-              className={`w-full text-left px-4 py-2 rounded-lg font-medium ${view === 'live' ? 'bg-primary/10 text-primary font-bold' : 'text-text-secondary hover:bg-background-surface'}`}
-            >
-              Active Task
-            </button>
-            <button 
-              onClick={() => { fetchAvailable(); setView('available'); }}
-              className={`w-full text-left flex justify-between items-center px-4 py-2 rounded-lg font-medium ${view === 'available' ? 'bg-primary/10 text-primary font-bold' : 'text-text-secondary hover:bg-background-surface'}`}
-            >
-              <span>Available Tasks</span>
-              {availableDeliveriesData?.length > 0 && (
-                <span className="bg-status-error text-white text-xs px-2 py-0.5 rounded-full">{availableDeliveriesData.length}</span>
-              )}
-            </button>
-            <button 
-              onClick={() => setView('history')}
-              className={`w-full text-left px-4 py-2 rounded-lg font-medium ${view === 'history' ? 'bg-primary/10 text-primary font-bold' : 'text-text-secondary hover:bg-background-surface'}`}
-            >
-              Task History
-            </button>
-            <Link href="/rider/earnings" className="block px-4 py-2 text-text-secondary hover:bg-background-surface hover:text-text-primary font-medium rounded-lg">Financial Overview</Link>
-          </nav>
-        </aside>
-
-        {/* Main Content */}
-        <main className="flex-1 p-4 md:p-8">
-
-          {receiptOrder && (
-            <ReceiptView order={receiptOrder.order} role="rider" onClose={() => setReceiptOrder(null)} />
-          )}
-
-          <div className="flex justify-between items-center mb-8">
-            <h1 className="text-2xl font-heading font-bold text-text-primary">Rider Terminal</h1>
-            <button 
-              className={`px-6 py-2 rounded-full font-bold text-white transition-colors ${isActive ? 'bg-status-success' : 'bg-text-secondary'}`}
-              onClick={toggleActive}
-            >
-              {isActive ? '● ONLINE' : '○ OFFLINE'}
-            </button>
+          <div className="flex items-center gap-4 bg-white border-2 border-[#121212] px-6 py-3 shadow-[4px_4px_0_0_#121212]">
+             <div className="w-2 h-2 bg-[#F59E0B] rounded-full animate-pulse"></div>
+             <p className="text-[10px] font-black uppercase tracking-widest text-[#121212]">Active Agent: {user?.fullName}</p>
           </div>
+        </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-            <Card className="bg-background-surface">
-              <p className="text-sm text-text-secondary mb-1">Current Balance</p>
-              <p className="text-2xl font-bold text-primary">{wallet?.balance?.toLocaleString() || 0} RWF</p>
-            </Card>
-          </div>
+        {/* Performance Stats */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+          {[
+            { label: 'Merchant Balance', value: `${wallet.balance?.toLocaleString() || 0} RWF`, icon: 'W' },
+            { label: 'Reliability Index', value: `${stats.completion}%`, sub: 'Target: 95%+', icon: 'R' },
+            { label: 'Terminal Rating', value: stats.rating?.toFixed(2) || '5.0', sub: 'Verified Facilitator', icon: 'S' },
+            { label: 'Total Deployments', value: `${stats.drops}`, sub: 'Lifetime Fulfillment', icon: 'D' },
+          ].map((stat, i) => (
+            <div key={i} className="bg-white border border-[#E5E1D8] p-6 flex flex-col justify-between group hover:border-[#121212] transition-all shadow-sm">
+              <div className="flex justify-between items-start mb-4">
+                <p className="text-[9px] font-black uppercase tracking-widest text-[#6B665E] opacity-60">{stat.label}</p>
+                <span className="text-[10px] font-serif italic text-[#F59E0B] font-bold">{stat.icon}</span>
+              </div>
+              <h2 className="text-2xl font-serif italic text-[#121212] tracking-tighter">{stat.value}</h2>
+              {stat.sub && <p className="text-[8px] text-[#A34D15] mt-3 font-black uppercase tracking-widest opacity-50">{stat.sub}</p>}
+            </div>
+          ))}
+        </div>
 
-          {view === 'live' ? (
-            activeDelivery ? (
-              <Card className="border-2 border-primary">
-                {/* ... existing header ... */}
-                <div className="flex justify-between items-start mb-6 pb-6 border-b border-border">
-                  <div>
-                    <span className="text-xs font-bold uppercase text-primary tracking-wider mb-1 block">Active Delivery</span>
-                    <h2 className="text-xl font-bold">#{activeDelivery._id.substring(0,8).toUpperCase()}</h2>
-                    <div className="flex items-center gap-2">
-                      <p className="text-sm text-text-secondary">Status: {activeDelivery.status.replace(/_/g, ' ').toUpperCase()}</p>
-                      {(activeDelivery.status === 'assigned' || activeDelivery.status === 'en_route_to_pickup') && (
-                        <button onClick={cancelDelivery} className="text-xs text-status-error underline ml-2 hover:text-status-error/80">Cancel Request</button>
-                      )}
-                    </div>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
+          <div className="lg:col-span-2 space-y-10">
+            {/* Map Matrix */}
+            <div className="bg-white border border-[#E5E1D8] overflow-hidden shadow-sm relative group">
+               <div className="px-8 py-5 bg-[#F8F6F1] border-b border-[#E5E1D8] flex justify-between items-center">
+                  <h3 className="text-[10px] font-black uppercase tracking-widest text-[#121212]">Logistics Deployment Grid</h3>
+                  <span className="text-[8px] font-bold text-[#6B665E] uppercase tracking-widest opacity-40">Kigali Metropolitan Zone</span>
+               </div>
+               <div className="h-[500px] relative">
+                 <RiderMap centerLat={profile.currentLocation?.lat || -1.9441} centerLng={profile.currentLocation?.lng || 30.0619} showAllRiders={false} />
+               </div>
+               <div className="absolute top-20 right-8 z-10 space-y-2">
+                  <div className="bg-[#121212] text-white px-4 py-2 text-[9px] font-black uppercase tracking-widest border border-[#F59E0B]/30 shadow-2xl">
+                    Live Telemetry: Operational
                   </div>
-                  <div className="text-right">
-                    <p className="text-xs text-text-secondary">Your Earnings</p>
-                    <p className="text-lg font-bold text-primary">{(activeDelivery.financials?.riderPayout || 0).toLocaleString()} RWF</p>
-                    <Button size="sm" variant="outline" className="mt-2" onClick={() => openReceiptFromDelivery(activeDelivery)}>🧾 Receipt</Button>
+               </div>
+            </div>
+
+            {/* Available Mandates Matrix */}
+            <div className="bg-white border-2 border-[#121212] shadow-[8px_8px_0_0_#121212]">
+               <div className="px-8 py-6 bg-[#121212] flex justify-between items-center">
+                  <div className="flex items-center gap-4">
+                    <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-white">Broadcasting Mandates</h3>
+                    <div className="w-2 h-2 bg-[#F59E0B] rounded-full animate-pulse"></div>
                   </div>
+                  <button onClick={fetchAvailable} className="text-[8px] font-black text-[#F59E0B] uppercase tracking-widest border-b border-[#F59E0B]/30">Refresh Pipeline</button>
+               </div>
+               <div className="divide-y divide-[#F0EDE4]">
+                 {availableDeliveries.length > 0 ? availableDeliveries.map((delivery: any) => (
+                   <div key={delivery._id} className="p-8 flex flex-col md:flex-row md:items-center justify-between gap-6 hover:bg-[#F9F7F2] transition-colors group">
+                      <div className="space-y-4">
+                         <div className="flex items-center gap-4">
+                            <span className="text-xl font-serif italic text-[#121212]">#{delivery.orderNumber?.substring(0,8) || delivery._id.substring(0,8).toUpperCase()}</span>
+                            <span className="text-[8px] font-black text-[#A34D15] border border-[#A34D15]/20 px-3 py-1 uppercase tracking-tighter">UNASSIGNED</span>
+                         </div>
+                         <div className="space-y-1">
+                            <p className="text-[11px] text-[#121212] font-medium italic leading-relaxed opacity-80">
+                               Pickup: {delivery.pickup?.address || 'Verified Hub'}
+                            </p>
+                            <p className="text-[11px] text-[#121212] font-medium italic leading-relaxed opacity-80">
+                               Deployment: {delivery.dropoff?.address || 'Terminal Destination'}
+                            </p>
+                         </div>
+                      </div>
+                      <div className="flex items-center gap-8">
+                         <div className="text-right">
+                            <p className="text-[9px] font-black text-[#6B665E] uppercase tracking-widest mb-1 opacity-40 italic">Logistics Fee</p>
+                            <p className="text-xl font-serif text-[#121212] italic tracking-tighter">{(delivery.financials?.deliveryFee || 0).toLocaleString()} RWF</p>
+                         </div>
+                         <button 
+                           onClick={() => handleAccept(delivery._id)}
+                           className="bg-[#121212] text-white px-10 py-4 text-[10px] font-black uppercase tracking-[0.3em] hover:bg-[#F59E0B] transition-all"
+                         >
+                           Acquire Mandate
+                         </button>
+                      </div>
+                   </div>
+                 )) : (
+                   <div className="p-20 text-center space-y-4">
+                      <p className="text-[10px] font-black text-[#6B665E] uppercase tracking-[0.5em] opacity-30 italic">No Mandates Available in Sector</p>
+                      <div className="w-10 h-1 bg-[#121212]/10 mx-auto"></div>
+                   </div>
+                 )}
+               </div>
+            </div>
+          </div>
+
+          {/* Active Workload Sidebar */}
+          <div className="space-y-10">
+            {currentTask ? (
+              <div className="bg-[#121212] text-white p-10 relative overflow-hidden group shadow-2xl border-t-4 border-[#F59E0B]">
+                <div className="absolute top-0 right-0 p-8 opacity-5 group-hover:opacity-10 transition-opacity">
+                   <svg className="w-32 h-32" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" /></svg>
+                </div>
+                <p className="text-[9px] font-black uppercase tracking-[0.5em] mb-8 text-[#F59E0B]">Active Deployment</p>
+                <h2 className="text-4xl font-serif italic mb-10 leading-tight tracking-tighter">Mandate #{currentTask.orderNumber?.substring(0,8) || currentTask._id.substring(0,8).toUpperCase()}</h2>
+                
+                <div className="space-y-8 mb-12">
+                   <div className="flex items-start gap-4">
+                      <div className="w-1.5 h-1.5 bg-[#F59E0B] rounded-full mt-1.5"></div>
+                      <div>
+                        <p className="text-[8px] font-black text-[#F59E0B] uppercase tracking-widest mb-1 opacity-60 italic">Deployment Address</p>
+                        <p className="text-xs font-medium leading-relaxed italic opacity-80">{currentTask.dropoff?.address || 'Terminal Destination'}</p>
+                      </div>
+                   </div>
+                   <div className="flex items-start gap-4">
+                      <div className="w-1.5 h-1.5 bg-[#F59E0B] rounded-full mt-1.5 opacity-30"></div>
+                      <div>
+                        <p className="text-[8px] font-black text-[#F59E0B] uppercase tracking-widest mb-1 opacity-60 italic">Facilitation Valuation</p>
+                        <p className="text-xl font-serif italic">{(currentTask.financials?.deliveryFee || 0).toLocaleString()} RWF</p>
+                      </div>
+                   </div>
                 </div>
 
-                {riderLocation && (
-                  <div className="h-72 w-full mb-6 relative">
-                    <DeliveryMap 
-                      riderLocation={riderLocation}
-                      pickupLocation={activeDelivery.pickup?.coordinates}
-                      dropoffLocation={activeDelivery.dropoff?.coordinates}
-                      status={activeDelivery.status}
-                      routeGeometry={activeDelivery.route?.geometry}
-                    />
-                    <button 
-                      onClick={() => {
-                        navigator.geolocation.getCurrentPosition(
-                          pos => setRiderLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
-                          err => toast.error("GPS Signal Weak"),
-                          { enableHighAccuracy: true }
-                        );
-                      }}
-                      className="absolute bottom-4 right-4 z-[400] bg-white p-2 rounded-full shadow-lg border border-border hover:bg-background-surface active:scale-95 transition-all"
-                      title="Recenter on My Location"
-                    >
-                      🎯
-                    </button>
-                    <div className="absolute top-4 left-4 z-[400] bg-status-success/90 backdrop-blur text-white text-[10px] px-2 py-1 rounded shadow-md font-bold animate-pulse">
-                      LIVE GPS ACTIVE
-                    </div>
-                  </div>
-                )}
-
-                {(activeDelivery.status === 'assigned' || activeDelivery.status === 'en_route_to_pickup') && (
-                  <div className="space-y-6">
-                    <div className="bg-background-surface p-4 rounded-lg border border-border">
-                    <h3 className="font-bold mb-1">Pickup at {activeDelivery.pickup?.stallId || 'Stall'}</h3>
-                    <p className="text-sm text-text-secondary">{activeDelivery.pickup?.address || 'Market Location'}</p>
-                    {activeDelivery.notes && (
-                      <div className="mt-3 p-3 bg-amber-50 border border-amber-200 rounded-lg">
-                        <p className="text-xs font-bold text-amber-700 uppercase tracking-wider mb-1">Customer Notes</p>
-                        <p className="text-sm italic text-gray-700">"{activeDelivery.notes}"</p>
-                      </div>
-                    )}
-                  </div>
-
-                    <div className="space-y-4">
-                      <h3 className="font-bold">Handover Steps:</h3>
-                      <ImageUpload 
-                        onUploadSuccess={(url) => setPhotoUrl(url)} 
-                        service="delivery"
-                        endpoint={`/deliveries/${activeDelivery._id}/pickup-photo`}
-                        label="1. Photo of goods"
-                        capture="environment"
-                      />
-                      
-                      <Button 
-                        size="lg" 
-                        fullWidth 
-                        disabled={!photoUrl} 
-                        onClick={() => setShowQrScanner(true)}
-                      >
-                        2. Scan Seller QR
-                      </Button>
-                    </div>
-
-                    {showQrScanner && (
-                      <StableScanner 
-                        onResult={async (stallId) => {
-                          try {
-                            await deliveryApi.post(`/deliveries/${activeDelivery._id}/scan-qr`, { stallId, photoUrl });
-                            toast.success('QR Scanned! Now confirm the condition.');
-                            setShowQrScanner(false);
-                            fetchActiveDelivery();
-                          } catch (e) {
-                            toast.error('Invalid QR code');
-                          }
-                        }} 
-                        stallId={activeDelivery.pickup?.stallId} 
-                      />
-                    )}
-                  </div>
-                )}
-
-                {activeDelivery.status === 'pending_handover' && (
-                  <div className="space-y-6 py-4">
-                    <div className="bg-primary/5 p-4 rounded-lg border border-primary/20 text-center">
-                      <p className="font-bold text-primary mb-2">Awaiting Handover Confirmation</p>
-                      <p className="text-sm text-text-secondary">Please inspect the items carefully. Once satisfied, click below to confirm receipt.</p>
-                      {activeDelivery.pickup?.sellerConfirmed && (
-                        <p className="text-xs text-status-success font-bold mt-2">✅ Seller has already confirmed handover</p>
-                      )}
-                    </div>
-                    <Button size="lg" fullWidth onClick={() => confirmHandover(activeDelivery._id)}>
-                      {activeDelivery.pickup?.riderConfirmed ? 'Waiting for Seller...' : 'Confirm Receipt & Start Trip'}
-                    </Button>
-                  </div>
-                )}
-
-                {(activeDelivery.status === 'picked_up' || activeDelivery.status === 'en_route_to_dropoff') && (
-                  <div className="space-y-4 text-center py-6">
-                    <span className="text-6xl block mb-4">📍</span>
-                    <p className="text-lg font-bold">En Route to Drop-off</p>
-                    <p className="text-text-secondary mb-2">{activeDelivery.dropoff?.address || 'Customer Address'}</p>
-                    {activeDelivery.notes && (
-                      <div className="max-w-md mx-auto mb-6 p-3 bg-amber-50 border border-amber-200 rounded-lg text-left">
-                        <p className="text-xs font-bold text-amber-700 uppercase tracking-wider mb-1">Customer Notes</p>
-                        <p className="text-sm italic text-gray-700">"{activeDelivery.notes}"</p>
-                      </div>
-                    )}
-                    <Button size="lg" fullWidth onClick={completeDelivery}>Arrived & Handed Over</Button>
-                  </div>
-                )}
-
-                <ChatCard deliveryId={activeDelivery._id} userName={profile?.fullName || 'Rider'} />
-              </Card>
+                <Link href={`/orders/${currentTask.orderId}/tracking`} className="block w-full bg-[#F59E0B] text-[#121212] py-5 text-[11px] font-black uppercase tracking-[0.4em] hover:bg-white transition-all shadow-[0_10px_30px_rgba(245,158,11,0.3)]">
+                  Access Tracking →
+                </Link>
+              </div>
             ) : (
-              <Card className="text-center py-20">
-                <span className="text-6xl block mb-4 opacity-50">🛵</span>
-                <p className="text-text-secondary mb-4">
-                  {isActive ? 'You have no active tasks right now.' : 'Go ONLINE to start receiving requests.'}
-                </p>
-                {isActive && (
-                  <Button variant="outline" onClick={() => { fetchAvailable(); setView('available'); }}>View Available Tasks</Button>
-                )}
-              </Card>
-            )
-          ) : view === 'available' ? (
-            <Card noPadding>
-              <div className="p-6 border-b border-border flex justify-between items-center">
-                <h2 className="text-lg font-bold">Available Tasks</h2>
-                <Button size="sm" variant="outline" onClick={() => fetchAvailable()}>Refresh</Button>
+              <div className="bg-[#F8F6F1] border-2 border-dashed border-[#121212]/20 p-12 text-center space-y-6">
+                 <div className="w-12 h-12 border border-[#121212]/10 flex items-center justify-center mx-auto opacity-30">
+                    <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                 </div>
+                 <p className="text-[10px] font-black text-[#6B665E] uppercase tracking-[0.4em] opacity-40 italic">Waiting for terminal assignment...</p>
               </div>
-              <div className="divide-y divide-border">
-                {!availableDeliveriesData || availableDeliveriesData.length === 0 ? (
-                  <div className="p-8 text-center text-text-secondary">No available tasks right now. Check back soon.</div>
-                ) : (
-                  availableDeliveriesData.map((d: any) => (
-                    <div key={d._id} className="p-4 hover:bg-background-surface transition-colors flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                      <div>
-                        <p className="font-bold">From: {d.pickup?.marketName || 'Market'} <span className="text-text-secondary text-sm font-normal">({d.pickup?.address})</span></p>
-                        <p className="text-sm text-text-secondary mt-1">To: {d.dropoff?.address}</p>
-                        <p className="text-xs text-text-secondary mt-1">Est. Distance: {d.route?.distanceKm?.toFixed(1) || '?'} km</p>
-                      </div>
-                      <div className="text-left md:text-right w-full md:w-auto flex flex-col items-start md:items-end gap-2">
-                        <p className="font-bold text-primary text-xl">{d.fee} RWF</p>
-                        <Button size="sm" onClick={() => acceptDelivery(d._id)} disabled={!!activeDelivery}>
-                          {activeDelivery ? 'Finish active task first' : 'Accept Request'}
-                        </Button>
-                      </div>
+            )}
+
+            <div className="space-y-8">
+              <h3 className="text-[10px] font-black uppercase tracking-[0.4em] text-[#121212] border-b border-[#F0EDE4] pb-4">Assigned Pipeline</h3>
+              {activeDeliveries.slice(1).length > 0 ? activeDeliveries.slice(1).map((delivery: any, i: number) => (
+                <div key={i} className="bg-white border border-[#E5E1D8] p-8 flex justify-between items-center group cursor-pointer hover:border-[#121212] transition-all">
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-3">
+                      <span className="text-[8px] font-black text-[#F59E0B] border border-[#F59E0B]/20 px-3 py-1 uppercase tracking-tighter">QUEUED</span>
+                      <span className="text-[8px] font-bold text-[#6B665E] uppercase tracking-widest opacity-40 italic">#{delivery.orderNumber?.substring(0,8) || delivery._id.substring(0,8).toUpperCase()}</span>
                     </div>
-                  ))
-                )}
-              </div>
-            </Card>
-          ) : (
-            <Card noPadding>
-              <div className="p-6 border-b border-border">
-                <h2 className="text-lg font-bold">Delivery History</h2>
-              </div>
-              <div className="divide-y divide-border">
-                {!history || history.length === 0 ? (
-                  <div className="p-8 text-center text-text-secondary">No completed deliveries found.</div>
-                ) : (
-                  history.map((h: any) => (
-                    <div key={h._id} className="p-4 hover:bg-background-surface transition-colors flex justify-between items-center">
-                      <div>
-                        <p className="font-bold">#{h._id.substring(0,8).toUpperCase()}</p>
-                        <p className="text-xs text-text-secondary">{new Date(h.createdAt).toLocaleDateString()} • {h.dropoff?.address}</p>
-                      </div>
-                      <div className="text-right flex items-center gap-3">
-                        <div>
-                          <p className="font-bold text-primary">+{h.financials?.riderPayout?.toLocaleString()} RWF</p>
-                          <p className="text-[10px] uppercase text-status-success font-bold">Completed</p>
-                        </div>
-                        <Button size="sm" variant="outline" onClick={() => openReceiptFromDelivery(h)}>🧾</Button>
-                      </div>
-                    </div>
-                  ))
-                )}
-              </div>
-            </Card>
-          )}
-        </main>
+                    <h4 className="text-sm font-serif italic text-[#121212] line-clamp-1">{delivery.dropoff?.address || 'Terminal Destination'}</h4>
+                  </div>
+                  <span className="text-xl opacity-20 group-hover:opacity-100 group-hover:translate-x-1 transition-all">→</span>
+                </div>
+              )) : (
+                <div className="px-2">
+                   <p className="text-[9px] font-black text-[#6B665E] uppercase tracking-widest opacity-20 italic">No Queued Deliveries</p>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
       </div>
     </Layout>
   );

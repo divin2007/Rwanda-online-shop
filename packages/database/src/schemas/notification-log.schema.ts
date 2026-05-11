@@ -8,6 +8,8 @@ export const notificationLogSchema = new Schema({
   referenceType: { type: String },
   content: { type: String, required: true },
   status: { type: String, required: true }, // PENDING, SENT, DELIVERED, FAILED
+  isRead: { type: Boolean, default: false },
+  readAt: { type: Date },
   failureReason: { type: String },
   sentAt: Date,
   deliveredAt: Date

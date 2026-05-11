@@ -1,22 +1,26 @@
+'use client';
 import React from 'react';
 import { Layout } from '@/components/layout/Layout';
 import { Card } from '@/components/ui/Card';
+import { useLanguage } from '@/context/LanguageContext';
 
 export default function TermsPage() {
+  const { t } = useLanguage();
+  
   return (
     <Layout>
       <div className="max-w-4xl mx-auto py-12 px-4">
-        <h1 className="text-4xl font-heading font-bold mb-8">Terms of Service</h1>
+        <h1 className="text-4xl font-heading font-bold mb-8">{t('terms_title')}</h1>
         <Card className="prose prose-slate max-w-none">
-          <p>Last updated: May 3, 2026</p>
-          <h2>1. Acceptance of Terms</h2>
-          <p>By accessing and using Rwanda Market Facilitator, you agree to be bound by these Terms of Service.</p>
-          <h2>2. Description of Service</h2>
-          <p>We provide a digital marketplace connecting Rwandan physical markets with online buyers and delivery riders.</p>
-          <h2>3. User Responsibilities</h2>
-          <p>Users must provide accurate information and comply with Rwandan e-commerce laws.</p>
-          <h2>4. Payments</h2>
-          <p>Payments are handled via integrated mobile money services. Commissions are automatically deducted.</p>
+          <p>{t('terms_last_updated')}</p>
+          <h2>{t('terms_1_title')}</h2>
+          <p>{t('terms_1_desc')}</p>
+          <h2>{t('terms_2_title')}</h2>
+          <p>{t('terms_2_desc')}</p>
+          <h2>{t('terms_3_title')}</h2>
+          <p>{t('terms_3_desc')}</p>
+          <h2>{t('terms_4_title')}</h2>
+          <p>{t('terms_4_desc')}</p>
         </Card>
       </div>
     </Layout>

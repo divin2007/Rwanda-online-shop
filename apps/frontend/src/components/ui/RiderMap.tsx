@@ -54,6 +54,7 @@ export const RiderMap = ({ marketId, centerLat = -1.9441, centerLng = 30.0619, m
   const [tails, setTails] = useState<Record<string, [number, number][]>>({});
   const [markets, setMarkets] = useState<MarketLocation[]>([]);
   const [isClient, setIsClient] = useState(false);
+  const [mapMode, setMapMode] = useState<'standard' | 'satellite'>('standard');
 
   const isAdmin = marketId === 'all-admin';
 
@@ -111,7 +112,14 @@ export const RiderMap = ({ marketId, centerLat = -1.9441, centerLng = 30.0619, m
         zoom={isAdmin ? 12 : 15} 
         style={{ height: '100%', width: '100%' }}
       >
-        <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+        {mapMode === 'standard' ? (
+          <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+        ) : (
+          <TileLayer 
+            url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}" 
+            attribution="Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EBP, and the GIS User Community"
+          />
+        )}
         
         {/* Market Locations */}
         {isAdmin ? (
@@ -186,6 +194,16 @@ export const RiderMap = ({ marketId, centerLat = -1.9441, centerLng = 30.0619, m
           );
         })}
       </MapContainer>
+      
+      {/* Map Control Toggle */}
+      <div className="absolute top-4 right-4 z-[1000] flex flex-col gap-2">
+        <button 
+          onClick={() => setMapMode(mapMode === 'standard' ? 'satellite' : 'standard')}
+          className="bg-white p-2 rounded-lg shadow-lg border border-border hover:bg-background-surface transition-colors flex items-center gap-2 text-xs font-bold text-text-primary"
+        >
+          {mapMode === 'standard' ? '🛰️ Satellite View' : '🗺️ Standard View'}
+        </button>
+      </div>
     </div>
   );
 };

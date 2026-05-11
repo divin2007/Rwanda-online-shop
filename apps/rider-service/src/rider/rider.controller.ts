@@ -39,6 +39,12 @@ export class RiderController {
     return { success: true, data: rider };
   }
 
+  @Get('stats/:userId')
+  async getStats(@Param('userId') userId: string) {
+    const stats = await this.riderService.getStats(userId);
+    return { success: true, data: stats };
+  }
+
   @Get('user/:userId')
   async findByUserId(@Param('userId') userId: string) {
     const rider = await this.riderService.findByUserId(userId);

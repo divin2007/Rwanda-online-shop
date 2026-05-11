@@ -1,8 +1,9 @@
-import React from 'react';
+import { useLanguage } from '@/context/LanguageContext';
 
 const STEPS = ['placed', 'confirmed', 'picked_up', 'in_transit', 'delivered'];
 
 export const OrderStatusTimeline = ({ currentStatus }: { currentStatus: string }) => {
+  const { t } = useLanguage();
   const normalizeStatus = (s: string) => {
     if (['preparing', 'ready_for_pickup'].includes(s)) return 'confirmed';
     if (['awaiting_confirmation'].includes(s)) return 'in_transit';
@@ -31,10 +32,10 @@ export const OrderStatusTimeline = ({ currentStatus }: { currentStatus: string }
               }`}>
                 {isCompleted ? '✓' : index + 1}
               </div>
-              <span className={`absolute top-10 text-xs font-bold whitespace-nowrap capitalize ${
+              <span className={`absolute top-10 text-xs font-bold whitespace-nowrap ${
                 isCompleted ? 'text-text-primary' : 'text-text-muted'
               }`}>
-                {step.replace('_', ' ')}
+                {t(`status_${step}` as any)}
               </span>
             </div>
           );

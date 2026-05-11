@@ -4,10 +4,20 @@ import { productSchema, sellerProfileSchema, marketSchema, promotionSchema } fro
 import { ProductService } from './product.service';
 import { ProductController } from './product.controller';
 import { CacheModule } from '@nestjs/cache-manager';
+import { createKeyv } from '@keyv/redis';
 
 @Module({
   imports: [
-    CacheModule.register(),
+    CacheModule.register({
+      stores: [
+        createKeyv({
+          socket: {
+            host: process.env.REDIS_HOST || 'localhost',
+            port: parseInt(process.env.REDIS_PORT || '6379'),
+          },
+        }),
+      ],
+    }),
     MongooseModule.forFeature([
       { name: 'Product', schema: productSchema },
       { name: 'SellerProfile', schema: sellerProfileSchema },

@@ -1,4 +1,4 @@
-import { Schema, model } from 'mongoose';
+import mongoose, { Schema, model } from 'mongoose';
 
 export const reviewSchema = new Schema({
   orderId: { type: Schema.Types.ObjectId, ref: 'Transaction', required: true },
@@ -12,4 +12,4 @@ export const reviewSchema = new Schema({
 
 reviewSchema.index({ orderId: 1, targetType: 1, targetId: 1 }, { unique: true });
 
-export const Review = model('Review', reviewSchema);
+export const Review = mongoose.models.Review || model('Review', reviewSchema);

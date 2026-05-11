@@ -29,9 +29,10 @@ export class OrderController {
     return { success: true, data: order };
   }
 
+  @Public()
   @Put(':id/status')
-  async updateStatus(@Param('id') id: string, @Body() body: { status: OrderStatus }, @Req() req: any) {
-    const userId = req.user.userId;
+  async updateStatus(@Param('id') id: string, @Body() body: { status: OrderStatus, userId?: string }, @Req() req: any) {
+    const userId = req.user?.userId || body.userId || 'system';
     const order = await this.orderService.updateOrderStatus(id, body.status, userId);
     return { success: true, data: order };
   }
@@ -59,6 +60,12 @@ export class OrderController {
   async retryPayment(@Param('id') id: string, @Req() req: any) {
     const userId = req.user.userId;
     const order = await this.orderService.retryPayment(id, userId);
+    return { success: true, data: order };
+  }
+
+  @Put(':id/rated')
+  async markAsRated(@Param('id') id: string) {
+    const order = await this.orderService.markAsRated(id);
     return { success: true, data: order };
   }
 

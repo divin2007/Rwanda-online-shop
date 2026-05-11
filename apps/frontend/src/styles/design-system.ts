@@ -1,48 +1,43 @@
-// Extracted from design references (screen1.png, screen2.png, 3.png, t.png)
+// RMF (Rwanda Market Facilitator) Design System - Matching Reference Screenshot
 export const designSystem = {
   colors: {
-    // Primary brand color - vibrant yellow/orange for delivery focus
     primary: {
-      DEFAULT: '#FFD700', // Yellow base seen in UI
-      hover: '#F0C800',
-      light: '#FFF9D6',
+      DEFAULT: '#F59E0B', // RMF Amber (Yellow Version)
+      hover: '#D97706',
+      light: '#F59E0B1A',
     },
-    // Secondary brand - deep blue/black
     secondary: {
-      DEFAULT: '#1E293B',
-      hover: '#0F172A',
+      DEFAULT: '#1A1A1A', // Charcoal
+      hover: '#000000',
     },
-    // Background and structural colors
     background: {
-      main: '#F8FAFC',
+      main: '#F9F7F2', // Cream
       card: '#FFFFFF',
-      surface: '#F1F5F9',
+      surface: '#FDFCFB',
     },
-    // Status colors
     status: {
-      success: '#10B981', // Green for completed/approved
-      error: '#EF4444',   // Red for failed/cancelled
-      warning: '#F59E0B', // Orange for pending/warning
-      info: '#3B82F6',    // Blue for active/transit
+      success: '#1a7f4b', 
+      error: '#EF4444',   
+      warning: '#F59E0B', 
+      info: '#3B82F6',    
     },
-    // Typography colors
     text: {
-      primary: '#0F172A',
-      secondary: '#64748B',
-      muted: '#94A3B8',
+      primary: '#1A1A1A',
+      secondary: '#6B665E', // Muted brownish gray
+      muted: '#A8A29A',
       inverse: '#FFFFFF',
     },
-    // Borders
     border: {
-      DEFAULT: '#E2E8F0',
-      light: '#F1F5F9',
-      dark: '#CBD5E1',
+      DEFAULT: '#E5E1D8',
+      light: '#F2F0EB',
+      dark: '#D1CCC0',
     }
   },
   typography: {
     fontFamilies: {
-      sans: ['var(--font-inter)', 'system-ui', 'sans-serif'],
-      heading: ['var(--font-poppins)', 'system-ui', 'sans-serif'],
+      sans: ['Inter', 'system-ui', 'sans-serif'],
+      serif: ['Playfair Display', 'serif'],
+      heading: ['Playfair Display', 'serif'],
     },
   },
   spacing: {
@@ -54,16 +49,16 @@ export const designSystem = {
     '2xl': '48px',
   },
   borderRadius: {
-    sm: '4px',
-    DEFAULT: '8px', // Common for cards
-    md: '12px',
-    lg: '16px',
-    full: '9999px', // Pill buttons
+    sm: '0px', // Screenshot uses very sharp corners for primary buttons
+    DEFAULT: '4px',
+    md: '8px',
+    lg: '12px',
+    full: '9999px',
   },
   shadows: {
     sm: '0 1px 2px 0 rgba(0, 0, 0, 0.05)',
-    DEFAULT: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)', // Standard card
-    md: '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)', // Elevated dropdown
-    lg: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)', // Modals
+    DEFAULT: '0 2px 4px rgba(0,0,0,0.02)',
+    md: '0 4px 6px rgba(0,0,0,0.04)',
+    lg: '0 20px 25px -5px rgba(0, 0, 0, 0.1)',
   }
 };

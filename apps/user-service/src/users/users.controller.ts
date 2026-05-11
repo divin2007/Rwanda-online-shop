@@ -23,4 +23,26 @@ export class UsersController {
     delete userObj.passwordHash;
     return { success: true, data: userObj };
   }
+
+  @UseGuards(JwtAuthGuard)
+  @Post('wishlist')
+  async addToWishlist(@Request() req: any, @Body('productId') productId: string) {
+    const user = await this.usersService.addToWishlist(req.user.userId, productId);
+    return { success: true, data: user.wishlist };
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Get('wishlist')
+  async getWishlist(@Request() req: any) {
+    console.log(`[UsersController] Fetching wishlist for userId: ${req.user?.userId}`);
+    const wishlist = await this.usersService.getWishlist(req.user.userId);
+    return { success: true, data: wishlist };
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Post('wishlist/remove')
+  async removeFromWishlist(@Request() req: any, @Body('productId') productId: string) {
+    const user = await this.usersService.removeFromWishlist(req.user.userId, productId);
+    return { success: true, data: user.wishlist };
+  }
 }

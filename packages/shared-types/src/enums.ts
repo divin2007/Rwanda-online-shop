@@ -54,3 +54,8 @@ export enum DisputeResolution {
   REDELIVER = 'redeliver',
   REJECT = 'reject'
 }
+export enum StockType {
+  FINITE = 'finite',
+  INFINITE = 'infinite',
+  ON_DEMAND = 'on_demand'
+}

@@ -20,10 +20,17 @@ export class UsersService {
     const salt = await bcrypt.genSalt(10);
     const passwordHash = await bcrypt.hash(userData.password, salt);
 
+    // Generate a unique 8-character referral code based on their name + random string
+    const codeBase = userData.fullName.substring(0, 3).toUpperCase().replace(/[^A-Z]/g, 'X');
+    const randomChars = Math.random().toString(36).substring(2, 7).toUpperCase();
+    const referralCode = `${codeBase}-${randomChars}`;
+
     const newUser = new this.userModel({
       ...userData,
       passwordHash,
       role: userData.role || UserRole.BUYER,
+      referralCode,
+      referredBy: userData.referredBy || null
     });
 
     const savedUser = await newUser.save();
@@ -68,6 +75,40 @@ export class UsersService {
         
         await this.userModel.updateOne({ email }, { $set: updates });
       }
+    }
+  }
+
+  async addToWishlist(userId: string, productId: string): Promise<any> {
+    return this.userModel.findByIdAndUpdate(
+      userId,
+      { $addToSet: { wishlist: productId } },
+      { new: true }
+    ).exec();
+  }
+
+  async removeFromWishlist(userId: string, productId: string): Promise<any> {
+    return this.userModel.findByIdAndUpdate(
+      userId,
+      { $pull: { wishlist: productId } },
+      { new: true }
+    ).exec();
+  }
+
+  async getWishlist(userId: string): Promise<any> {
+    if (!userId || userId === 'undefined') {
+      console.warn('[UserService] getWishlist called with invalid userId');
+      throw new NotFoundException('Invalid user ID');
+    }
+    
+    try {
+      const user = await this.userModel.findById(userId).exec();
+      if (!user) throw new NotFoundException('User not found');
+      return user.wishlist || [];
+    } catch (error) {
+      console.error(`[UserService] Error fetching wishlist for user ${userId}:`, error.message);
+      if (error.name === 'CastError') throw new NotFoundException('User ID format invalid');
+      if (error instanceof NotFoundException) throw error;
+      throw error;
     }
   }
 }

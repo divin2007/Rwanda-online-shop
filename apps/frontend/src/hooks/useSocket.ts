@@ -2,7 +2,7 @@
 import { useEffect, useState, useRef, useCallback } from 'react';
 import io, { Socket } from 'socket.io-client';
 
-export function useSocket<T = any>(url: string, channel: string, token?: string) {
+export function useSocket<T = any>(url: string, channel: string, token?: string, options?: any) {
   const [data, setData] = useState<T | null>(null);
   const [isConnected, setIsConnected] = useState(false);
   const socketRef = useRef<Socket | null>(null);
@@ -19,6 +19,7 @@ export function useSocket<T = any>(url: string, channel: string, token?: string)
       reconnectionDelay: 1000,
       timeout: 20000,
       ...(token ? { auth: { token } } : {}),
+      ...(options || {})
     });
 
     socketRef.current = socket;

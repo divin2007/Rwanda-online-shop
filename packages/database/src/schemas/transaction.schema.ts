@@ -7,6 +7,7 @@ export const transactionSchema = new Schema({
     userId: { type: Schema.Types.ObjectId, ref: 'User', required: true },
     fullName: { type: String, required: true },
     phone: { type: String },
+    nationalId: { type: String }, // For KYC Lite (high value orders)
     deliveryAddress: {
       address: { type: String },
       coordinates: {
@@ -62,6 +63,7 @@ export const transactionSchema = new Schema({
     resolution: { type: String, enum: Object.values(DisputeResolution) }
   },
   attributes: { type: Map, of: String },
+  hasBeenRated: { type: Boolean, default: false },
   messages: [{
     senderId: { type: Schema.Types.ObjectId, ref: 'User', required: true },
     senderRole: { type: String, enum: ['BUYER', 'SELLER'], required: true },
@@ -94,5 +96,12 @@ export const transactionSchema = new Schema({
   },
   deletedAt: { type: Date, default: null }
 }, { timestamps: true });
+
+transactionSchema.index({ 'seller.sellerId': 1, createdAt: -1 });
+transactionSchema.index({ 'seller.userId': 1, createdAt: -1 });
+transactionSchema.index({ 'seller.marketId': 1, createdAt: -1 });
+transactionSchema.index({ 'buyer.userId': 1, createdAt: -1 });
+transactionSchema.index({ status: 1, createdAt: -1 });
+transactionSchema.index({ deletedAt: 1 });
 
 export const Transaction = mongoose.models.Transaction || model('Transaction', transactionSchema);

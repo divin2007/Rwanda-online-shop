@@ -46,4 +46,4 @@ if (!(Test-Path "node_modules")) {
 # 4. Start the Platform
 Write-Host "Starting all services via Turbo... (Frontend will be on http://localhost:3000)" -ForegroundColor Green
 Write-Host "Note: For subdomains, use http://[market-slug].localhost:3000" -ForegroundColor Cyan
-npm run dev -- --concurrency=20
+npm run dev

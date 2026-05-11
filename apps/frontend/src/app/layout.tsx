@@ -1,25 +1,38 @@
 import type { Metadata } from "next";
-import { Inter, Poppins } from "next/font/google";
+import { Outfit, Fraunces } from "next/font/google";
 import "./globals.css";
 import { CartProvider } from "@/components/cart/CartContext";
 import { AuthProvider } from "@/context/AuthContext";
+import { LanguageProvider } from "@/context/LanguageContext";
+import { WishlistProvider } from "@/context/WishlistContext";
+import { TacticalToaster } from "@/components/ui/TacticalToaster";
 
-const inter = Inter({
+const outfit = Outfit({
   subsets: ["latin"],
-  variable: "--font-inter",
+  variable: "--font-outfit",
   display: "swap",
 });
 
-const poppins = Poppins({
-  weight: ["400", "500", "600", "700", "800"],
+const fraunces = Fraunces({
   subsets: ["latin"],
-  variable: "--font-poppins",
+  variable: "--font-fraunces",
+  style: ["normal", "italic"],
   display: "swap",
 });
 
 export const metadata: Metadata = {
-  title: "Rwanda Market Facilitator",
-  description: "Your digital gateway to Rwanda's vibrant public markets. Shop fresh, shop local.",
+  title: "RMF | Rwanda Market Facilitator",
+  description: "Official digital gateway to Rwanda's public markets. Professional facilitation for buyers, sellers, and logistics.",
+  manifest: "/manifest.json",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "RMF",
+  },
+};
+
+export const viewport = {
+  themeColor: "#A34D15",
 };
 
 export default function RootLayout({
@@ -28,13 +41,22 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={`${inter.variable} ${poppins.variable}`}>
+    <html lang="en" className={`${outfit.variable} ${fraunces.variable}`}>
+      <head>
+        <link rel="apple-touch-icon" href="/icon-192.png" />
+        <meta name="mobile-web-app-capable" content="yes" />
+      </head>
       <body className="antialiased font-sans bg-background-main text-text-primary">
-        <AuthProvider>
-          <CartProvider>
-            {children}
-          </CartProvider>
-        </AuthProvider>
+        <LanguageProvider>
+          <AuthProvider>
+            <CartProvider>
+              <WishlistProvider>
+                <TacticalToaster />
+                {children}
+              </WishlistProvider>
+            </CartProvider>
+          </AuthProvider>
+        </LanguageProvider>
       </body>
     </html>
   );

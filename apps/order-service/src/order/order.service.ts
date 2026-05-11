@@ -48,6 +48,16 @@ export class OrderService implements OnModuleInit, OnModuleDestroy {
     private orderGateway: OrderGateway
   ) {}
 
+  private async triggerNotification(userId: string, type: string, params: any) {
+    try {
+      const url = `${process.env.NOTIFICATION_SERVICE_URL || 'http://localhost:3009/api/v1'}/notifications/in-app`;
+      await axios.post(url, { userId, type, params });
+      this.logger.log(`Notification triggered: ${type} for user ${userId}`);
+    } catch (error) {
+      this.logger.error(`Failed to trigger notification: ${type}`, error);
+    }
+  }
+
   async onModuleInit() {
     // Recover payment polling for orders in PENDING status after a restart
     this.logger.log('Recovering pending payment polls after restart...');
@@ -106,6 +116,18 @@ export class OrderService implements OnModuleInit, OnModuleDestroy {
       const orderNumber = `ORD-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
       const status = isQuoteRequest ? OrderStatus.AWAITING_QUOTE : (orderData.schedule ? OrderStatus.SCHEDULED : OrderStatus.PLACED);
 
+      // Ensure seller.userId is populated from SellerProfile if missing
+      if (!orderData.seller?.userId && orderData.seller?.sellerId) {
+        try {
+          const profile = await this.sellerModel.findById(orderData.seller.sellerId).exec();
+          if (profile?.userId) {
+            orderData.seller.userId = profile.userId;
+          }
+        } catch (e) {
+          this.logger.warn(`Failed to lookup userId for seller ${orderData.seller.sellerId}`);
+        }
+      }
+
       // Save the order FIRST so it exists in the database
       const newOrder = new this.orderModel({
         ...orderData,
@@ -146,6 +168,10 @@ export class OrderService implements OnModuleInit, OnModuleDestroy {
         });
         const updated = await this.orderModel.findById(saved._id);
         this.orderGateway.sendOrderUpdate({ type: 'NEW_ORDER', order: updated });
+        
+        // Notify Seller about new Quote Request
+        this.triggerNotification(orderData.seller.userId, 'order.placed', { orderNumber, orderId: saved._id });
+        
         return updated;
       }
 
@@ -295,6 +321,19 @@ export class OrderService implements OnModuleInit, OnModuleDestroy {
           }).catch(err => this.logger.warn(`Failed to sync DELIVERED status to delivery service: ${err.message}`));
         }
       }
+
+      // Trigger In-App Notifications for status changes
+      if (newStatus === OrderStatus.CONFIRMED) {
+        this.triggerNotification(order.seller.userId, 'order.placed', { orderNumber: order.orderNumber, orderId: order._id });
+        this.triggerNotification(order.buyer.userId, 'payment.confirmed', { amount: order.financials.totalAmount, orderId: order._id });
+      } else if (newStatus === OrderStatus.PREPARING) {
+        this.triggerNotification(order.buyer.userId, 'order.preparing', { orderNumber: order.orderNumber, orderId: order._id });
+      } else if (newStatus === OrderStatus.READY_FOR_PICKUP) {
+        this.triggerNotification(order.buyer.userId, 'order.ready', { orderNumber: order.orderNumber, orderId: order._id });
+      } else if (newStatus === OrderStatus.DELIVERED) {
+        this.triggerNotification(order.buyer.userId, 'order.delivered', { orderNumber: order.orderNumber, orderId: order._id });
+        this.triggerNotification(order.seller.userId, 'order.delivered', { orderNumber: order.orderNumber, orderId: order._id });
+      }
     }
 
     return updated;
@@ -319,12 +358,24 @@ export class OrderService implements OnModuleInit, OnModuleDestroy {
         return;
       }
 
+      // Robustness: If seller.userId is missing (legacy orders), try to lookup from profile
+      let sellerUserId = order.seller?.userId;
+      if (!sellerUserId && order.seller?.sellerId) {
+        const profile = await this.sellerModel.findById(order.seller.sellerId).exec();
+        sellerUserId = profile?.userId;
+      }
+
+      if (!sellerUserId) {
+        this.logger.error(`Cannot process payout for order ${order._id}: Seller userId missing and could not be recovered`);
+        return;
+      }
+
       // 2. Call wallet-service to process the transaction (idempotent)
       await axios.post(`${walletUrl}/wallets/transaction`, {
         transactionId: order._id,
         orderNumber: order.orderNumber,
         description: `Order #${order.orderNumber} ${isPickedUp ? 'Handover' : 'Final Delivery'} Payout`,
-        sellerId: order.seller.userId,
+        sellerId: sellerUserId,
         riderId: delivery.rider.userId,
         subtotal: order.financials.subtotal,
         deliveryFee: order.financials.deliveryFee,
@@ -391,6 +442,10 @@ export class OrderService implements OnModuleInit, OnModuleDestroy {
         status: updated.payment.status,
         orderId: updated._id 
       });
+
+      // Notify Buyer & Seller about successful payment
+      this.triggerNotification(updated.buyer.userId, 'payment.confirmed', { amount: updated.financials.totalAmount, orderId: updated._id });
+      this.triggerNotification(updated.seller.userId, 'order.placed', { orderNumber, orderId: updated._id });
       
       // Decrement stock for all products in the order
       this.decrementProductStock(updated).catch(err => {
@@ -531,6 +586,13 @@ export class OrderService implements OnModuleInit, OnModuleDestroy {
   
   async getOrderById(id: string): Promise<any> {
     return this.orderModel.findById(id).exec();
+  }
+
+  async markAsRated(id: string): Promise<any> {
+    const order = await this.orderModel.findById(id);
+    if (!order) throw new NotFoundException('Order not found');
+    order.hasBeenRated = true;
+    return order.save();
   }
 
   async retryPayment(id: string, userId?: string): Promise<any> {
@@ -758,6 +820,9 @@ export class OrderService implements OnModuleInit, OnModuleDestroy {
         status: OrderStatus.QUOTE_SENT 
       });
       this.orderGateway.sendOrderUpdate({ type: 'STATUS_UPDATE', orderId: id, status: OrderStatus.QUOTE_SENT });
+      
+      // Notify Buyer about new Quote
+      this.triggerNotification(updated.buyer.userId, 'order.ready', { orderNumber: updated.orderNumber, orderId: id });
     }
 
     return updated;
@@ -828,6 +893,9 @@ export class OrderService implements OnModuleInit, OnModuleDestroy {
         status: OrderStatus.AWAITING_QUOTE
       });
       this.orderGateway.sendOrderUpdate({ type: 'STATUS_UPDATE', orderId: id, status: OrderStatus.AWAITING_QUOTE });
+
+      // Notify Seller about Counter Offer
+      this.triggerNotification(updated.seller.userId, 'order.placed', { orderNumber: updated.orderNumber, orderId: id });
     }
 
     return updated;

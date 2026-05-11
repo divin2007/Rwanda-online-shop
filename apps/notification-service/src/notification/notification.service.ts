@@ -13,6 +13,12 @@ export class NotificationService {
     this.initTransporter();
   }
 
+  private gateway: any | null = null;
+
+  setGateway(gateway: any) {
+    this.gateway = gateway;
+  }
+
   private transporter: nodemailer.Transporter | null = null;
 
   private initTransporter() {
@@ -42,6 +48,18 @@ export class NotificationService {
       'payment.confirmed': {
         en: `Payment of ${params.amount} RWF confirmed.`,
         rw: `Uwishyuye ${params.amount} RWF byemejwe.`
+      },
+      'order.preparing': {
+        en: `Your order ${params.orderNumber} is now being prepared.`,
+        rw: `Komande yawe ${params.orderNumber} irimo gutegurwa.`
+      },
+      'order.ready': {
+        en: `Your order ${params.orderNumber} is ready for pickup!`,
+        rw: `Komande yawe ${params.orderNumber} yabonetse!`
+      },
+      'order.delivered': {
+        en: `Your order ${params.orderNumber} has been delivered. Enjoy!`,
+        rw: `Komande yawe ${params.orderNumber} yageze. Mwizihirwe!`
       }
     };
     
@@ -134,5 +152,48 @@ export class NotificationService {
 
   async getLogs(userId: string): Promise<any> {
     return this.logModel.find({ userId }).sort({ createdAt: -1 }).limit(50).exec();
+  }
+
+  async sendInApp(userId: string, type: string, params: any, lang: 'rw' | 'en' = 'en'): Promise<any> {
+    const content = this.getTemplate(type, lang, params);
+    
+    const logEntry = new this.logModel({
+      userId,
+      channel: 'IN_APP',
+      type,
+      referenceId: params.orderId || params.referenceId,
+      referenceType: params.referenceType || 'Order',
+      content,
+      status: 'DELIVERED',
+      sentAt: new Date(),
+      deliveredAt: new Date(),
+      isRead: false
+    });
+    const savedLog = await logEntry.save();
+
+    if (this.gateway) {
+      this.gateway.emitToUser(userId, 'notification:new', savedLog);
+    }
+
+    return savedLog;
+  }
+
+  async markAsRead(notificationId: string, userId: string): Promise<any> {
+    return this.logModel.findOneAndUpdate(
+      { _id: notificationId, userId },
+      { isRead: true, readAt: new Date() },
+      { new: true }
+    );
+  }
+
+  async markAllAsRead(userId: string): Promise<any> {
+    return this.logModel.updateMany(
+      { userId, isRead: false, channel: 'IN_APP' },
+      { isRead: true, readAt: new Date() }
+    );
+  }
+
+  async getUnreadCount(userId: string): Promise<number> {
+    return this.logModel.countDocuments({ userId, isRead: false, channel: 'IN_APP' });
   }
 }

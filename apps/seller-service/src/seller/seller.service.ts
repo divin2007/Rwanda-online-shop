@@ -44,6 +44,8 @@ export class SellerService {
         code: (shopDetails.slug || sellerData.slug || 'SHOP').substring(0, 3).toUpperCase(),
         type: MarketType.INDIVIDUAL,
         ownerId: sellerData.userId,
+        imageUrl: shopDetails.imageUrl || null,
+        description: shopDetails.description || sellerData.description || null,
         location: {
             type: 'Point',
             coordinates: [location.lng, location.lat],
@@ -72,6 +74,7 @@ export class SellerService {
       stallId,
       stallName: sellerData.shopDetails?.name || sellerData.stallName || sellerData.shopName,
       description: sellerData.shopDetails?.description || sellerData.description,
+      shopDetails: sellerData.shopDetails || {}, // Persist full details including imageUrl
       businessPermitUrl: sellerData.documents?.rdb || sellerData.businessPermitUrl,
       idCardUrl: sellerData.documents?.id || sellerData.idCardUrl,
       stallPhotoUrl: sellerData.documents?.photo || sellerData.stallPhotoUrl,

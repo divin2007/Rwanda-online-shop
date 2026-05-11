@@ -15,8 +15,14 @@ const PLATFORM_ROUTES = [
   '/admin',
   '/markets',
   '/market',
+  '/wallet',
+  '/wishlist',
   '/privacy',
   '/terms',
+  '/manifest.json',
+  '/robots.txt',
+  '/sitemap.xml',
+  '/favicon.ico',
 ];
 
 export function middleware(req: NextRequest) {
@@ -27,11 +33,16 @@ export function middleware(req: NextRequest) {
   const cleanHostname = hostname.replace(/:\d+$/, '');
   const hostParts = cleanHostname.split('.');
   
-  // System reserved paths — skip middleware entirely
+  // System reserved paths and root static files — skip middleware entirely
   if (url.pathname.startsWith('/_next') || 
       url.pathname.startsWith('/api') || 
       url.pathname.startsWith('/static') || 
-      url.pathname.startsWith('/favicon.ico')) {
+      url.pathname.endsWith('.json') ||
+      url.pathname.endsWith('.png') ||
+      url.pathname.endsWith('.ico') ||
+      url.pathname.endsWith('.txt') ||
+      url.pathname.endsWith('.xml') ||
+      url.pathname === '/favicon.ico') {
     return NextResponse.next();
   }
 
@@ -76,6 +87,6 @@ export function middleware(req: NextRequest) {
 
 export const config = {
   matcher: [
-    '/((?!_next/static|_next/image|favicon.ico).*)',
+    '/((?!_next/static|_next/image|favicon.ico|manifest.json|robots.txt|sitemap.xml).*)',
   ],
 };

@@ -5,10 +5,11 @@ import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { ReceiptView, type ReceiptOrder } from '@/components/ui/ReceiptView';
 import { useApi } from '@/hooks/useApi';
-import { adminApi, sellerApi, orderApi, riderApi, deliveryApi, walletApi } from '@/lib/api';
+import { adminApi, sellerApi, orderApi, riderApi, deliveryApi, walletApi, marketApi, productApi } from '@/lib/api';
 import dynamic from 'next/dynamic';
 import toast from 'react-hot-toast';
 import { AnalyticsCharts } from '@/components/ui/AnalyticsCharts';
+import { ImageUpload } from '@/components/ui/ImageUpload';
 
 const RiderMap = dynamic(
   () => import('@/components/ui/RiderMap').then((mod) => mod.RiderMap),
@@ -27,26 +28,45 @@ export default function AdminDashboardPage() {
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
   const [fetchError, setFetchError] = useState<string | null>(null);
+  const [isAddingMarket, setIsAddingMarket] = useState(false);
+  const [newMarket, setNewMarket] = useState({
+    name: '',
+    code: '',
+    type: 'public',
+    description: '',
+    imageUrl: '',
+    lat: -1.9441,
+    lng: 30.0619,
+    address: ''
+  });
 
   const { data: analytics, execute: fetchAnalytics } = useApi(adminApi, 'get', '/admin/analytics');
+  const { data: dashboardAnalytics, execute: fetchDashboardAnalytics } = useApi(adminApi, 'get', '/admin/dashboard/analytics');
   const { data: fraudAlerts, execute: fetchFraud } = useApi(adminApi, 'get', '/admin/fraud-alerts');
   const { data: pendingSellers, execute: fetchSellers } = useApi(sellerApi, 'get', '/sellers?isApproved=false');
+  const { data: pendingProducts, execute: fetchPendingProducts } = useApi(productApi, 'get', '/products?isApproved=false');
   const { data: pendingRiders, execute: fetchRiders } = useApi(riderApi, 'get', '/riders?isApproved=false');
   const { data: disputes, execute: fetchDisputes } = useApi(orderApi, 'get', '/orders?isDisputed=true&dispute.resolvedAt=null');
   const { data: ordersData, execute: fetchOrders } = useApi(orderApi, 'get', `/orders?sellerId=all`, { refreshInterval: 30000 });
+  const { data: markets, execute: fetchMarkets } = useApi(marketApi, 'get', '/markets');
 
   useEffect(() => {
-    if (activeTab === 'analytics') fetchAnalytics();
+    if (activeTab === 'analytics') {
+      fetchAnalytics();
+      fetchDashboardAnalytics();
+    }
     if (activeTab === 'fraud') fetchFraud();
     if (activeTab === 'sellers') fetchSellers();
+    if (activeTab === 'products') fetchPendingProducts();
     if (activeTab === 'riders') fetchRiders();
     if (activeTab === 'disputes') fetchDisputes();
+    if (activeTab === 'markets') fetchMarkets();
     if (activeTab === 'accounting') {
       setFetchError(null);
       fetchOrders().catch(() => setFetchError('Failed to load orders. Please try again.'));
       fetchAnalytics();
     }
-  }, [activeTab, fetchAnalytics, fetchFraud, fetchSellers, fetchRiders, fetchDisputes, fetchOrders]);
+  }, [activeTab, fetchAnalytics, fetchDashboardAnalytics, fetchFraud, fetchSellers, fetchPendingProducts, fetchRiders, fetchDisputes, fetchOrders]);
 
   // Reset page when filters change
   useEffect(() => { setPage(1); }, [dateRange, customStartDate, customEndDate]);
@@ -154,6 +174,27 @@ export default function AdminDashboardPage() {
     }
   };
 
+  const approveProduct = async (id: string) => {
+    try {
+      await productApi.patch(`/products/${id}`, { isApproved: true });
+      toast.success('Product approved and is now live');
+      fetchPendingProducts();
+    } catch (e) {
+      toast.error('Failed to approve product');
+    }
+  };
+
+  const declineProduct = async (id: string) => {
+    if (!confirm('Are you sure you want to decline and delete this product?')) return;
+    try {
+      await productApi.delete(`/products/${id}`);
+      toast.success('Product declined and removed');
+      fetchPendingProducts();
+    } catch (e) {
+      toast.error('Failed to decline product');
+    }
+  };
+
   const declineSeller = async (id: string) => {
     if (!confirm('Are you sure you want to decline this application? This will permanently reject the request.')) return;
     try {
@@ -175,6 +216,74 @@ export default function AdminDashboardPage() {
       fetchDisputes();
     } catch (e) {
       toast.error('Failed to resolve dispute');
+    }
+  };
+
+  const [editingMarket, setEditingMarket] = useState<any>(null);
+
+  const handleCreateMarket = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      const payload = {
+        ...newMarket,
+        slug: newMarket.name.toLowerCase().replace(/ /g, '-'),
+        location: {
+          type: 'Point',
+          coordinates: [newMarket.lng, newMarket.lat],
+          address: newMarket.address || `${newMarket.name}, Rwanda`
+        },
+        operatingHours: {
+          open: '07:00',
+          close: '19:00',
+          daysOpen: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+        }
+      };
+      await marketApi.post('/markets', payload);
+      toast.success('Market Hub Deployed Successfully');
+      setIsAddingMarket(false);
+      fetchMarkets();
+      setNewMarket({
+        name: '',
+        code: '',
+        type: 'public',
+        description: '',
+        imageUrl: '',
+        lat: -1.9441,
+        lng: 30.0619,
+        address: ''
+      });
+    } catch (e) {
+      toast.error('Failed to deploy market hub');
+    }
+  };
+
+  const handleUpdateMarket = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingMarket) return;
+    try {
+      const payload = {
+        ...editingMarket,
+        location: {
+          ...editingMarket.location,
+          coordinates: [editingMarket.lng || editingMarket.location?.coordinates?.[0], editingMarket.lat || editingMarket.location?.coordinates?.[1]]
+        }
+      };
+      await marketApi.put(`/markets/${editingMarket._id}`, payload);
+      toast.success('Market Hub Updated');
+      setEditingMarket(null);
+      fetchMarkets();
+    } catch (e) {
+      toast.error('Failed to update hub');
+    }
+  };
+
+  const handleSyncImagery = async () => {
+    try {
+      await marketApi.post('/markets/sync-imagery');
+      toast.success('Institutional Imagery Synchronized');
+      fetchMarkets();
+    } catch (e) {
+      toast.error('Sync failed');
     }
   };
 
@@ -222,16 +331,21 @@ export default function AdminDashboardPage() {
           </div>
         )}
 
-        <aside className="w-full md:w-64 bg-background-card border-r border-border p-6 hidden md:block">
+        <aside className="w-full md:w-64 bg-[#0a0a0a] border-r border-white/5 p-6 hidden md:block">
           <div className="mb-8">
-            <h2 className="font-heading font-bold text-xl text-primary">Platform Admin</h2>
+            <h2 className="font-heading font-bold text-xl text-white tracking-wider uppercase flex items-center gap-2">
+              <span className="w-2 h-2 bg-primary rounded-full"></span>
+              Coordination
+            </h2>
           </div>
-          <nav className="space-y-2">
+          <nav className="space-y-1">
             {[
-              { id: 'analytics', label: 'Analytics & Revenue' },
-              { id: 'accounting', label: '📊 Accounting' },
-              { id: 'live-map', label: '🛰️ Live Operations' },
-              { id: 'sellers', label: 'Seller Approvals' },
+              { id: 'analytics', label: 'Analytics & Revenue📊' },
+              { id: 'accounting', label: 'Accounting🛰️' },
+              { id: 'live-map', label: 'Live Operations' },
+              { id: 'sellers', label: 'Seller Approvals🏛️' },
+              { id: 'markets', label: 'Manage Markets' },
+              { id: 'products', label: '📦 Product Approvals' },
               { id: 'riders', label: 'Rider Approvals' },
               { id: 'disputes', label: 'Disputes & Refunds' },
               { id: 'fraud', label: 'Fraud Alerts' }
@@ -239,7 +353,7 @@ export default function AdminDashboardPage() {
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={`w-full text-left px-4 py-2 font-medium rounded-lg ${activeTab === tab.id ? 'bg-primary/10 text-primary font-bold' : 'text-text-secondary hover:bg-background-surface hover:text-text-primary'}`}
+                className={`w-full text-left px-4 py-3 text-sm font-medium rounded-lg transition-all duration-200 ${activeTab === tab.id ? 'bg-white/10 text-white font-bold border-l-2 border-primary' : 'text-white/60 hover:bg-white/5 hover:text-white'}`}
               >
                 {tab.label}
               </button>
@@ -298,7 +412,7 @@ export default function AdminDashboardPage() {
               </div>
 
               {/* Growth Charts */}
-              <AnalyticsCharts orders={allOrders} type="admin" />
+              <AnalyticsCharts orders={allOrders} data={dashboardAnalytics} type="admin" />
             </div>
           )}
 
@@ -515,6 +629,50 @@ export default function AdminDashboardPage() {
             </Card>
           )}
 
+          {activeTab === 'products' && (
+            <Card noPadding className="animate-fade-in">
+              <table className="w-full text-left">
+                <thead className="bg-background-surface text-text-secondary text-sm">
+                  <tr>
+                    <th className="p-4 font-medium">Product</th>
+                    <th className="p-4 font-medium">Price & Stock</th>
+                    <th className="p-4 font-medium">Date</th>
+                    <th className="p-4 font-medium text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border">
+                  {!pendingProducts || pendingProducts.length === 0 ? (
+                    <tr><td colSpan={4} className="p-8 text-center text-text-secondary">No pending product approvals.</td></tr>
+                  ) : (
+                    pendingProducts.map((p: any) => (
+                      <tr key={p._id}>
+                        <td className="p-4 flex items-center gap-3">
+                          <div className="w-12 h-12 rounded bg-border overflow-hidden">
+                            {p.images?.[0] && <img src={p.images[0]} alt={p.name} loading="lazy" className="w-full h-full object-cover" />}
+                          </div>
+                          <div>
+                            <p className="font-bold">{p.name}</p>
+                            <p className="text-xs text-text-secondary">Category: {p.category}</p>
+                            {p.isMadeInRwanda && <span className="text-[10px] bg-green-100 text-green-700 font-bold px-1.5 py-0.5 rounded-full mt-1 inline-block">🇷🇼 RW</span>}
+                          </div>
+                        </td>
+                        <td className="p-4">
+                          <p className="font-bold">{p.price.toLocaleString()} RWF</p>
+                          <p className="text-sm text-text-secondary">{p.stockType === 'finite' ? `${p.stockQuantity} ${p.unit}` : p.stockType === 'infinite' ? '∞ Unlimited' : '🎨 By Command'}</p>
+                        </td>
+                        <td className="p-4 text-sm">{new Date(p.createdAt).toLocaleDateString()}</td>
+                        <td className="p-4 text-right flex justify-end gap-2">
+                          <Button size="sm" variant="outline" className="text-status-error border-status-error hover:bg-status-error/10" onClick={() => declineProduct(p._id)}>Reject & Delete</Button>
+                          <Button size="sm" onClick={() => approveProduct(p._id)}>Approve</Button>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </Card>
+          )}
+
           {activeTab === 'disputes' && (
             <div className="space-y-4 animate-fade-in">
               <div className="bg-status-info/10 border border-status-info/20 rounded p-4 flex justify-between items-center mb-6">
@@ -555,6 +713,185 @@ export default function AdminDashboardPage() {
                   </tbody>
                 </table>
               </Card>
+            </div>
+          )}
+
+          {activeTab === 'markets' && (
+            <div className="space-y-6 animate-fade-in">
+              <div className="flex justify-between items-center mb-6">
+                 <div>
+                   <h2 className="text-xl font-bold">Marketplace Hubs</h2>
+                   <p className="text-sm text-text-secondary">Managing active regional terminals and facilitator centers.</p>
+                 </div>
+                 <div className="flex gap-3">
+                   <Button variant="outline" onClick={handleSyncImagery}>Sync Institutional Imagery</Button>
+                   <Button onClick={() => setIsAddingMarket(true)}>Deploy New Hub</Button>
+                 </div>
+              </div>
+
+              {isAddingMarket && (
+                <Card className="border-2 border-primary/30">
+                  <form onSubmit={handleCreateMarket} className="space-y-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <label className="text-xs font-bold uppercase tracking-widest text-text-secondary">Hub Name</label>
+                        <input 
+                          required
+                          className="rmf-input w-full p-3 bg-background-surface border border-border rounded-lg"
+                          value={newMarket.name}
+                          onChange={e => setNewMarket(prev => ({ ...prev, name: e.target.value }))}
+                          placeholder="e.g. Kimironko Elite Hub"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-xs font-bold uppercase tracking-widest text-text-secondary">Hub Code</label>
+                        <input 
+                          required
+                          className="rmf-input w-full p-3 bg-background-surface border border-border rounded-lg"
+                          value={newMarket.code}
+                          onChange={e => setNewMarket(prev => ({ ...prev, code: e.target.value.toUpperCase() }))}
+                          placeholder="e.g. KIM"
+                        />
+                      </div>
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <label className="text-xs font-bold uppercase tracking-widest text-text-secondary">Market Hub Photography</label>
+                      <ImageUpload 
+                        service="market"
+                        endpoint="/markets/upload-image"
+                        value={newMarket.imageUrl}
+                        onChange={(url) => setNewMarket(prev => ({ ...prev, imageUrl: url }))}
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <label className="text-xs font-bold uppercase tracking-widest text-text-secondary">Description</label>
+                      <textarea 
+                        className="rmf-input w-full p-3 bg-background-surface border border-border rounded-lg h-24"
+                        value={newMarket.description}
+                        onChange={e => setNewMarket(prev => ({ ...prev, description: e.target.value }))}
+                        placeholder="Strategic terminal overview..."
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                       <div className="space-y-2">
+                          <label className="text-xs font-bold uppercase tracking-widest text-text-secondary">Latitude</label>
+                          <input type="number" step="any" className="rmf-input w-full p-3 bg-background-surface border border-border rounded-lg" value={newMarket.lat} onChange={e => setNewMarket(prev => ({ ...prev, lat: parseFloat(e.target.value) }))} />
+                       </div>
+                       <div className="space-y-2">
+                          <label className="text-xs font-bold uppercase tracking-widest text-text-secondary">Longitude</label>
+                          <input type="number" step="any" className="rmf-input w-full p-3 bg-background-surface border border-border rounded-lg" value={newMarket.lng} onChange={e => setNewMarket(prev => ({ ...prev, lng: parseFloat(e.target.value) }))} />
+                       </div>
+                       <div className="space-y-2">
+                          <label className="text-xs font-bold uppercase tracking-widest text-text-secondary">Type</label>
+                          <select className="rmf-input w-full p-3 bg-background-surface border border-border rounded-lg" value={newMarket.type} onChange={e => setNewMarket(prev => ({ ...prev, type: e.target.value }))}>
+                             <option value="public">Public (HUB)</option>
+                             <option value="individual">Individual</option>
+                          </select>
+                       </div>
+                    </div>
+
+                    <div className="flex justify-end gap-3 pt-4">
+                       <Button variant="outline" type="button" onClick={() => setIsAddingMarket(false)}>Cancel</Button>
+                       <Button type="submit">Deploy Hub</Button>
+                    </div>
+                  </form>
+                </Card>
+              )}
+
+              <Card noPadding>
+                <table className="w-full text-left">
+                  <thead className="bg-background-surface text-text-secondary text-sm">
+                    <tr>
+                      <th className="p-4 font-medium">Hub Information</th>
+                      <th className="p-4 font-medium">Code</th>
+                      <th className="p-4 font-medium">Status</th>
+                      <th className="p-4 font-medium text-right">Scale</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border">
+                    {!markets || markets.length === 0 ? (
+                      <tr><td colSpan={4} className="p-8 text-center text-text-secondary">No market hubs deployed.</td></tr>
+                    ) : (
+                      markets.map((m: any) => (
+                        <tr key={m._id} className="hover:bg-background-surface/50">
+                          <td className="p-4">
+                            <div className="flex items-center gap-4">
+                               <div className="w-12 h-12 bg-border rounded overflow-hidden">
+                                  {m.imageUrl && <img src={m.imageUrl} alt={m.name} className="w-full h-full object-cover" />}
+                               </div>
+                               <div>
+                                  <p className="font-bold">{m.name}</p>
+                                  <p className="text-xs text-text-secondary truncate max-w-xs">{m.description || 'No description'}</p>
+                               </div>
+                            </div>
+                          </td>
+                          <td className="p-4 font-mono font-bold text-primary">{m.code}</td>
+                          <td className="p-4">
+                            <span className="px-2 py-1 bg-green-100 text-green-700 rounded text-xs font-bold uppercase">Active Hub</span>
+                          </td>
+                          <td className="p-4 text-right flex justify-end gap-2 items-center">
+                             <div className="text-right mr-4">
+                               <p className="font-bold">{m.totalSellers || 0}</p>
+                               <p className="text-[10px] text-text-secondary uppercase">Vendors</p>
+                             </div>
+                             <Button size="sm" variant="outline" onClick={() => setEditingMarket({
+                               ...m,
+                               lat: m.location?.coordinates?.[1],
+                               lng: m.location?.coordinates?.[0]
+                             })}>Edit</Button>
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </Card>
+
+              {editingMarket && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+                  <div className="bg-background-card w-full max-w-2xl rounded-2xl shadow-2xl overflow-hidden animate-scale-in">
+                    <div className="p-6 border-b border-border flex justify-between items-center bg-background-surface">
+                      <h2 className="text-xl font-bold">Modify Hub: {editingMarket.name}</h2>
+                      <button onClick={() => setEditingMarket(null)} className="text-2xl hover:text-primary">&times;</button>
+                    </div>
+                    <form onSubmit={handleUpdateMarket} className="p-8 space-y-6 max-h-[80vh] overflow-y-auto">
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <label className="text-xs font-bold uppercase tracking-widest text-text-secondary">Hub Name</label>
+                          <input required className="rmf-input w-full p-3 bg-background-surface border border-border rounded-lg" value={editingMarket.name} onChange={e => setEditingMarket((prev: any) => ({ ...prev, name: e.target.value }))} />
+                        </div>
+                        <div className="space-y-2">
+                          <label className="text-xs font-bold uppercase tracking-widest text-text-secondary">Hub Code</label>
+                          <input required className="rmf-input w-full p-3 bg-background-surface border border-border rounded-lg" value={editingMarket.code} onChange={e => setEditingMarket((prev: any) => ({ ...prev, code: e.target.value.toUpperCase() }))} />
+                        </div>
+                      </div>
+
+                      <div className="space-y-2">
+                        <label className="text-xs font-bold uppercase tracking-widest text-text-secondary">Hub Photography</label>
+                        <ImageUpload 
+                          service="market"
+                          endpoint="/markets/upload-image"
+                          value={editingMarket.imageUrl}
+                          onChange={(url) => setEditingMarket((prev: any) => ({ ...prev, imageUrl: url }))}
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <label className="text-xs font-bold uppercase tracking-widest text-text-secondary">Description</label>
+                        <textarea className="rmf-input w-full p-3 bg-background-surface border border-border rounded-lg h-24" value={editingMarket.description} onChange={e => setEditingMarket((prev: any) => ({ ...prev, description: e.target.value }))} />
+                      </div>
+
+                      <div className="flex justify-end gap-3 pt-4">
+                        <Button variant="outline" type="button" onClick={() => setEditingMarket(null)}>Cancel</Button>
+                        <Button type="submit">Save Changes</Button>
+                      </div>
+                    </form>
+                  </div>
+                </div>
+              )}
             </div>
           )}
 

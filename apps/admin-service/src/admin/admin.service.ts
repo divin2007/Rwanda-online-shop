@@ -1,5 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
+import * as mongoose from 'mongoose';
 import { Model } from 'mongoose';
 
 @Injectable()
@@ -140,8 +141,8 @@ export class AdminService {
   }
 
   async getSellerAnalytics(sellerId: string): Promise<any> {
-    const orders = await this.orderModel.aggregate([
-      { $match: { 'seller.userId': sellerId } },
+    const stats = await this.orderModel.aggregate([
+      { $match: { 'seller.userId': new mongoose.Types.ObjectId(sellerId), deletedAt: null } },
       {
         $group: {
           _id: null,
@@ -154,11 +155,122 @@ export class AdminService {
       }
     ]);
 
+    // Calculate real avg prep time from statusHistory
+    const prepStats = await this.orderModel.aggregate([
+      { 
+        $match: { 
+          'seller.userId': new mongoose.Types.ObjectId(sellerId),
+          'statusHistory.status': { $all: ['confirmed', 'ready_for_pickup'] }
+        } 
+      },
+      {
+        $project: {
+          confirmedAt: {
+            $filter: { input: "$statusHistory", as: "h", cond: { $eq: ["$$h.status", "confirmed"] } }
+          },
+          readyAt: {
+            $filter: { input: "$statusHistory", as: "h", cond: { $eq: ["$$h.status", "ready_for_pickup"] } }
+          }
+        }
+      },
+      {
+        $project: {
+          prepTimeMs: {
+            $subtract: [
+              { $arrayElemAt: ["$readyAt.changedAt", 0] },
+              { $arrayElemAt: ["$confirmedAt.changedAt", 0] }
+            ]
+          }
+        }
+      },
+      {
+        $group: {
+          _id: null,
+          avgPrepTimeMs: { $avg: "$prepTimeMs" }
+        }
+      }
+    ]);
+
+    const avgPrepTimeMin = prepStats[0]?.avgPrepTimeMs 
+      ? Math.round(prepStats[0].avgPrepTimeMs / 60000) 
+      : 15; // Fallback to 15 if no data
+
     return {
-      salesToday: orders[0]?.totalSales || 0,
-      totalOrders: orders[0]?.totalOrders || 0,
-      completedOrders: orders[0]?.completedOrders || 0,
-      avgPrepTime: 15, // Mock value
+      salesToday: stats[0]?.totalSales || 0,
+      totalOrders: stats[0]?.totalOrders || 0,
+      completedOrders: stats[0]?.completedOrders || 0,
+      avgPrepTime: avgPrepTimeMin,
+    };
+  }
+
+  async getAnalyticsDashboard(sellerId?: string): Promise<any> {
+    const match: any = { deletedAt: null };
+    if (sellerId) {
+      match['seller.userId'] = new mongoose.Types.ObjectId(sellerId);
+    }
+
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+    // Run aggregations in parallel for better performance
+    const [trends, statusDistribution, performanceData] = await Promise.all([
+      // 1. Revenue Trends (Last 30 days)
+      this.orderModel.aggregate([
+        { $match: { ...match, createdAt: { $gte: thirtyDaysAgo } } },
+        {
+          $group: {
+            _id: { $dateToString: { format: "%Y-%m-%d", date: "$createdAt" } },
+            revenue: { $sum: "$financials.totalAmount" },
+            count: { $sum: 1 }
+          }
+        },
+        { $sort: { "_id": 1 } }
+      ]),
+
+      // 2. Status Distribution
+      this.orderModel.aggregate([
+        { $match: match },
+        {
+          $group: {
+            _id: "$status",
+            count: { $sum: 1 }
+          }
+        }
+      ]),
+
+      // 3. Performance (Top Sellers or Top Products)
+      !sellerId ? 
+        this.orderModel.aggregate([
+          { $match: match },
+          {
+            $group: {
+              _id: "$seller.fullName",
+              revenue: { $sum: "$financials.totalAmount" }
+            }
+          },
+          { $sort: { revenue: -1 } },
+          { $limit: 5 },
+          { $project: { name: "$_id", revenue: 1, _id: 0 } }
+        ]) :
+        this.orderModel.aggregate([
+          { $match: match },
+          { $unwind: "$products" },
+          {
+            $group: {
+              _id: "$products.name",
+              sales: { $sum: "$products.quantity" }
+            }
+          },
+          { $sort: { sales: -1 } },
+          { $limit: 5 },
+          { $project: { name: "$_id", sales: 1, _id: 0 } }
+        ])
+    ]);
+
+    return {
+      trends: trends.map(t => ({ date: t._id, revenue: t.revenue, count: t.count })),
+      statusDistribution: statusDistribution.map(s => ({ name: s._id, value: s.count })),
+      performance: performanceData
     };
   }
 }

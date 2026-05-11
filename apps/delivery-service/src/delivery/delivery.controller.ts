@@ -37,6 +37,12 @@ export class DeliveryController {
     return { success: true, data: history };
   }
 
+  @Get('rider/:userId')
+  async getRiderDeliveries(@Param('userId') userId: string, @Query('status') status?: string) {
+    const deliveries = await this.deliveryService.getRiderDeliveries(userId, status);
+    return { success: true, data: deliveries };
+  }
+
   @Public()
   @Get(':id')
   async getDeliveryById(@Param('id') id: string) {
@@ -70,7 +76,7 @@ export class DeliveryController {
 
   @Post(':id/scan-qr')
   async scanQr(@Param('id') id: string, @Body() data: { stallId: string, photoUrl?: string }) {
-    const delivery = await this.deliveryService.photoVerifiedPickup(id, data.photoUrl || "dummy_photo_url", `marketrwanda:stall:${data.stallId}`);
+    const delivery = await this.deliveryService.photoVerifiedPickup(id, data.photoUrl || "", `marketrwanda:stall:${data.stallId}`);
     return { success: true, data: delivery };
   }
 

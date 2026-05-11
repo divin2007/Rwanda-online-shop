@@ -18,8 +18,9 @@ export class MarketService implements OnModuleInit {
   }
 
   async onModuleInit() {
-    // Removed auto-activate migration — it overrode admin suspensions on every restart.
-    // Markets default to isActive: true via the schema when created.
+    await this.cacheManager.del('markets:all:true');
+    await this.cacheManager.del('markets:all:false');
+    console.log('✅ Market Service Initialized (Cache Cleared).');
   }
 
   async create(marketData: any): Promise<any> {
@@ -42,7 +43,8 @@ export class MarketService implements OnModuleInit {
     try {
       const newMarket = new this.marketModel(marketData);
       const saved = await newMarket.save();
-      await this.cacheManager.del('markets:all');
+      await this.cacheManager.del('markets:all:true');
+      await this.cacheManager.del('markets:all:false');
       return saved;
     } catch (error: any) {
       if (error.code === 11000) {
@@ -58,8 +60,33 @@ export class MarketService implements OnModuleInit {
     
     if (cached) return cached;
 
-    const query = activeOnly ? { isActive: true, deletedAt: null } : { deletedAt: null };
-    const results = await this.marketModel.find(query).exec();
+    const match: any = { deletedAt: null };
+    if (activeOnly) match.isActive = true;
+
+    const results = await this.marketModel.aggregate([
+      { $match: match },
+      {
+        $lookup: {
+          from: 'sellerprofiles',
+          localField: '_id',
+          foreignField: 'marketId',
+          as: 'sellers'
+        }
+      },
+      {
+        $addFields: {
+          imageUrl: {
+            $ifNull: [
+              '$imageUrl',
+              { $arrayElemAt: ['$sellers.shopDetails.imageUrl', 0] },
+              { $arrayElemAt: ['$sellers.stallPhotoUrl', 0] }
+            ]
+          },
+          totalSellers: { $size: '$sellers' }
+        }
+      },
+      { $project: { sellers: 0 } }
+    ]).exec();
     
     // 30 minute TTL for markets
     await this.cacheManager.set(cacheKey, results, 1800000);
@@ -139,5 +166,31 @@ export class MarketService implements OnModuleInit {
       4. Quality Standards: All goods must meet Rwanda's national quality and hygiene standards.
       5. Delivery Participation: Sellers agree to hand over goods to authorized Market Rwanda riders within 30 minutes of order confirmation.
     `;
+  }
+
+  async syncInstitutionalImagery(): Promise<void> {
+    const marketsToFix = await this.marketModel.aggregate([
+      { $match: { $or: [{ imageUrl: null }, { imageUrl: '' }], deletedAt: null } },
+      {
+        $lookup: {
+          from: 'sellerprofiles',
+          localField: '_id',
+          foreignField: 'marketId',
+          as: 'sellers'
+        }
+      },
+      { $match: { 'sellers.0': { $exists: true } } }
+    ]).exec();
+
+    for (const m of marketsToFix) {
+      const firstSeller = m.sellers[0];
+      const newImageUrl = firstSeller.shopDetails?.imageUrl || firstSeller.stallPhotoUrl;
+      if (newImageUrl) {
+        await this.marketModel.findByIdAndUpdate(m._id, { $set: { imageUrl: newImageUrl } });
+      }
+    }
+
+    await this.cacheManager.del('markets:all:true');
+    await this.cacheManager.del('markets:all:false');
   }
 }

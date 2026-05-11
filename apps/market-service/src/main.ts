@@ -1,8 +1,13 @@
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
+import { json, urlencoded } from 'express';
 
 async function bootstrap() {
+  console.log('--- INITIALIZING RMF MARKET SERVICE ---');
   const app = await NestFactory.create(AppModule);
+
+  app.use(json({ limit: '100mb' }));
+  app.use(urlencoded({ limit: '100mb', extended: true }));
 
     const corsOrigin = process.env.CORS_ORIGIN || 'http://localhost:3000,https://rwshop.org,https://www.rwshop.org';
   const allowedOrigins = corsOrigin.split(',').map(s => s.trim());
@@ -25,8 +30,8 @@ async function bootstrap() {
   });
 
   app.setGlobalPrefix('api/v1');
-  await app.listen(process.env.PORT || 3002, '0.0.0.0');
-  console.log(`Market Service is running on port ${process.env.PORT || 3002}`);
+  const port = process.env.PORT || 3002;
+  await app.listen(port, '0.0.0.0');
+  console.log(`Market Service is running on port ${port}`);
 }
 bootstrap();
-

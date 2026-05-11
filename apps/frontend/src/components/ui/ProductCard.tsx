@@ -1,8 +1,11 @@
+'use client';
 import React from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { Button } from './Button';
+import { useLanguage } from '@/context/LanguageContext';
 import { useCart } from '@/components/cart/CartContext';
+import { useWishlist } from '@/context/WishlistContext';
+import { formatCurrency } from '@/lib/format';
 import { getProductUrl } from '@/lib/urls';
 
 interface ProductCardProps {
@@ -21,101 +24,93 @@ interface ProductCardProps {
       discount: number;
       promotedPrice: number;
     };
-    attributes?: Record<string, any>;
+    stockType?: 'finite' | 'infinite' | 'on_demand';
+    isMadeInRwanda?: boolean;
+    category?: string;
   };
 }
 
 export const ProductCard = ({ product }: ProductCardProps) => {
+  const { t } = useLanguage();
   const { addToCart } = useCart();
+  const { isInWishlist, toggleWishlist } = useWishlist();
 
-  if (!product.images || product.images.length === 0) {
-    return null; // CRITICAL RULE: Do not render if no images
-  }
-
-  const finalPrice = product.promotion ? product.promotion.promotedPrice : product.price;
+  if (!product.images || product.images.length === 0) return null;
 
   return (
-    <div className="bg-background-card border border-border rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-shadow relative flex flex-col h-full">
-      {/* Badges */}
-      <div className="absolute top-2 left-2 z-10 flex flex-col gap-1">
-        {product.promotion && (
-          <span className="bg-status-warning text-white text-xs font-bold px-2 py-1 rounded">
-            {product.promotion.type === 'percentage' ? `-${product.promotion.discount}% OFF` : `-${product.promotion.discount} RWF`}
-          </span>
-        )}
+    <div className="glass-card group flex flex-col h-full animate-reveal relative overflow-hidden bg-white">
+      {/* Visual Header / Image Area */}
+      <div className="relative aspect-[3/4] overflow-hidden bg-[#F2F0EB]">
+        {/* Verification Badge */}
+        <div className="absolute top-0 left-0 z-20">
+           <div className="bg-[#121212] text-white text-[7px] font-black uppercase tracking-[0.4em] py-3 px-5 origin-top-left">
+              Verified Hub Artifact
+           </div>
+        </div>
+
+        {/* Wishlist Toggle */}
+        <button
+          onClick={(e) => {
+            e.preventDefault();
+            toggleWishlist(product._id);
+          }}
+          className="absolute top-5 right-5 z-20 w-10 h-10 bg-white/90 backdrop-blur-md border border-[#E5E1D8] flex items-center justify-center transition-all hover:bg-[#121212] hover:text-white"
+        >
+          <span className="text-sm font-light">{isInWishlist(product._id) ? '●' : '○'}</span>
+        </button>
+
+        <Link href={getProductUrl(product._id, product.marketId?.slug)} className="block w-full h-full relative">
+          <Image
+            src={product.images[0]}
+            alt={product.name}
+            fill
+            className={`object-cover transition-transform duration-[2000ms] group-hover:scale-110 ${!product.inStock && product.stockType !== 'infinite' ? 'opacity-40 grayscale' : ''}`}
+          />
+          {/* Overlay gradient for depth */}
+          <div className="absolute inset-0 bg-gradient-to-t from-[#121212]/20 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-700"></div>
+        </Link>
+
+        {/* Floating Add to Cart for professional feel */}
+        <div className="absolute bottom-0 left-0 right-0 translate-y-full group-hover:translate-y-0 transition-transform duration-500 z-30">
+           <button 
+             onClick={() => addToCart(product)}
+             className="w-full bg-[#121212] text-white py-5 text-[9px] font-black uppercase tracking-[0.5em] hover:bg-[#A34D15] transition-colors"
+           >
+             {t('product_add_to_cart')}
+           </button>
+        </div>
       </div>
 
-      <Link href={getProductUrl(product._id, product.marketId?.slug)} className="block relative aspect-square bg-background-surface overflow-hidden">
-        <Image 
-          src={product.images[0]} 
-          alt={product.name} 
-          fill
-          priority
-          sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-          className={`object-cover transition-transform duration-500 hover:scale-105 ${!product.inStock ? 'opacity-50 grayscale' : ''}`}
-        />
-        {!product.inStock && (
-          <div className="absolute inset-0 flex items-center justify-center">
-            <span className="bg-status-error text-white font-bold px-4 py-2 rounded shadow-lg transform -rotate-12">OUT OF STOCK</span>
-          </div>
-        )}
-      </Link>
-      
-      <div className="p-4 flex flex-col flex-grow">
-        <h3 className="font-bold text-text-primary mb-1 line-clamp-2 min-h-[40px]">
-          <Link href={getProductUrl(product._id, product.marketId?.slug)} className="hover:text-primary transition-colors">
+      {/* Content Area */}
+      <div className="p-5 flex flex-col flex-grow bg-white border-t border-[#E5E1D8]">
+        <div className="flex justify-between items-start mb-3">
+           <span className="rmf-label-sm">{product.category || 'Curated Artifact'}</span>
+           {product.isMadeInRwanda && (
+             <span className="text-[10px] grayscale opacity-50">🇷🇼</span>
+           )}
+        </div>
+
+        <h3 className="text-lg font-serif text-[#121212] mb-4 leading-[1.2] line-clamp-2 italic tracking-tight group-hover:text-[#A34D15] transition-colors">
+          <Link href={getProductUrl(product._id, product.marketId?.slug)}>
             {product.name}
           </Link>
         </h3>
-        
-        <div className="mt-auto pt-4">
-          <div className="flex items-baseline gap-2 mb-3">
-            {(
-              product.attributes?.isQuoteRequired === 'true' || 
-              product.attributes?.isQuoteRequired === true || 
-              product.attributes?.isCustomizable === 'true' || 
-              product.attributes?.isCustomizable === true ||
-              product.category === 'bakery'
-            ) ? (
-              <span className="text-lg font-bold text-primary">Price on Quote</span>
-            ) : product.promotion ? (
-              <>
-                <span className="text-lg font-bold text-status-warning">{product.promotion.promotedPrice.toLocaleString()} RWF</span>
-                <span className="text-xs text-text-muted line-through">{product.price.toLocaleString()} RWF</span>
-              </>
-            ) : (
-              <span className="text-lg font-bold text-primary">{product.price.toLocaleString()} RWF</span>
-            )}
-            <span className="text-xs text-text-secondary">/{product.unit}</span>
+
+        <div className="mt-auto pt-4 border-t border-[#F0EDE4] flex justify-between items-end">
+          <div className="flex flex-col">
+            <span className="text-[8px] font-bold text-[#6B665E] uppercase tracking-widest mb-0.5 opacity-50">Valuation</span>
+            <span className="text-lg font-bold text-[#121212] tracking-tighter">
+              {formatCurrency(product.price)}
+              <span className="text-[9px] font-normal text-[#6B665E] ml-1 lowercase">/ {product.unit}</span>
+            </span>
           </div>
           
-          {(
-            product.attributes?.isQuoteRequired === 'true' || 
-            product.attributes?.isQuoteRequired === true || 
-            product.attributes?.isCustomizable === 'true' || 
-            product.attributes?.isCustomizable === true ||
-            product.category === 'bakery'
-          ) ? (
-            <Link href={getProductUrl(product._id, product.marketId?.slug)} className="w-full">
-              <Button 
-                variant="outline" 
-                fullWidth 
-                className="py-2 border-amber-600 text-amber-600 hover:bg-amber-50"
-              >
-                📜 Messaging Quote
-              </Button>
-            </Link>
-          ) : (
-            <Button 
-              variant="primary" 
-              fullWidth 
-              className="py-2"
-              disabled={!product.inStock}
-              onClick={() => addToCart(product)}
-            >
-              Add to Cart
-            </Button>
-          )}
+          <div className="flex flex-col items-end">
+            <span className="text-[8px] font-bold text-[#A34D15] uppercase tracking-widest mb-1">Status</span>
+            <span className={`text-[9px] font-black uppercase tracking-widest ${product.inStock ? 'text-green-800' : 'text-red-800'}`}>
+               {product.inStock ? 'Ready for Deployment' : 'In Production'}
+            </span>
+          </div>
         </div>
       </div>
     </div>

@@ -16,6 +16,10 @@ export const userSchema = new Schema({
   isVerified: { type: Boolean, default: false },
   isActive: { type: Boolean, default: true },
   avatarUrl: { type: String },
+  wishlist: [{ type: Schema.Types.ObjectId, ref: 'Product' }],
+  referralCode: { type: String, unique: true, sparse: true },
+  referredBy: { type: String }, // Stores the code of the user who referred them
+  referralEarnings: { type: Number, default: 0 },
   devices: [{ 
     token: String, 
     platform: String, 

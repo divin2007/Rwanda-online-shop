@@ -2,8 +2,135 @@
 @tailwind components;
 @tailwind utilities;
 
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@200;300;400;500;600;700;800&family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,900;1,9..144,400;1,9..144,900&display=swap');
+
+:root {
+  /* RMF Institutional Palette */
+  --rmf-rust: #A34D15;
+  --rmf-rust-dark: #823D11;
+  --rmf-rust-light: #C25D1D;
+  --rmf-charcoal: #121212;
+  --rmf-charcoal-muted: #1A1A1A;
+  --rmf-cream: #F8F6F1;
+  --rmf-cream-dark: #F0EDE4;
+  --rmf-border: #E5E1D8;
+  --rmf-border-strong: #D1CDC2;
+  --rmf-text: #1A1A1A;
+  --rmf-text-muted: #6B665E;
+  --rmf-white: #FFFFFF;
+  
+  --primary: var(--rmf-rust);
+  --secondary: var(--rmf-charcoal);
+  --background: var(--rmf-cream);
+  --foreground: var(--rmf-text);
+}
+
 @layer base {
   body {
-    @apply text-text-primary bg-background-main antialiased;
+    @apply bg-[var(--rmf-cream)] text-[var(--rmf-text)] font-sans antialiased selection:bg-[var(--rmf-rust)] selection:text-white;
+  }
+  
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-serif font-black text-[var(--rmf-charcoal)] tracking-tighter;
+  }
+
+  .font-sans { font-family: 'Outfit', sans-serif; }
+  .font-serif { font-family: 'Fraunces', serif; }
+}
+
+@layer components {
+  .rmf-container {
+    @apply max-w-[1600px] mx-auto px-12 md:px-20;
+  }
+
+  .glass-header {
+    @apply bg-white/80 backdrop-blur-xl border-b border-[var(--rmf-border)] sticky top-0 z-50;
+  }
+
+  .glass-card {
+    @apply bg-white border border-[var(--rmf-border)] transition-all duration-500 hover:border-[var(--rmf-rust)] hover:shadow-[0_20px_50px_-20px_rgba(163,77,21,0.15)];
+  }
+
+  .rmf-btn-primary {
+    @apply relative overflow-hidden bg-[var(--rmf-charcoal)] text-white px-10 py-5 text-[11px] font-extrabold uppercase tracking-[0.3em] transition-all duration-300 hover:bg-[var(--rmf-rust)] hover:shadow-2xl hover:-translate-y-0.5 active:translate-y-0 disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+
+  .rmf-btn-outline {
+    @apply border-2 border-[var(--rmf-charcoal)] text-[var(--rmf-charcoal)] px-10 py-5 text-[11px] font-extrabold uppercase tracking-[0.3em] transition-all duration-300 hover:bg-[var(--rmf-charcoal)] hover:text-white disabled:opacity-50;
+  }
+
+  /* ELITE FORM FIELDS */
+  .rmf-form-group {
+    @apply flex flex-col gap-4 mb-8;
+  }
+
+  .rmf-label {
+    @apply text-[10px] font-black uppercase tracking-[0.4em] text-[var(--rmf-charcoal)] flex justify-between items-center;
+  }
+
+  .rmf-input {
+    @apply bg-white border-2 border-[var(--rmf-border)] px-8 py-5 text-[12px] font-bold uppercase tracking-widest outline-none transition-all duration-300 placeholder:opacity-20 placeholder:font-normal focus:border-[var(--rmf-charcoal)] focus:ring-4 focus:ring-[rgba(163,77,21,0.05)];
+  }
+
+  .rmf-input-error {
+    @apply border-red-500 bg-red-50/10 focus:ring-red-500/5;
+  }
+
+  .rmf-error-text {
+    @apply text-[9px] font-bold text-red-600 uppercase tracking-widest mt-2 flex items-center gap-2;
+  }
+
+  .rmf-select {
+    @apply bg-white border-2 border-[var(--rmf-border)] px-8 py-5 text-[12px] font-bold uppercase tracking-widest outline-none appearance-none cursor-pointer focus:border-[var(--rmf-charcoal)];
+  }
+
+  .rmf-checkbox-group {
+    @apply flex items-start gap-4 cursor-pointer group;
+  }
+
+  .rmf-checkbox {
+    @apply w-6 h-6 border-2 border-[var(--rmf-border)] transition-all duration-300 flex-shrink-0 flex items-center justify-center group-hover:border-[var(--rmf-rust)] checked:bg-[var(--rmf-rust)] checked:border-[var(--rmf-rust)];
+  }
+
+  .rmf-label-sm {
+    @apply text-[9px] font-black uppercase tracking-[0.4em] text-[var(--rmf-rust)];
+  }
+
+  /* DARK CONTEXT UTILITY */
+  .dark-context .rmf-label {
+    @apply text-white/90;
+  }
+  .dark-context h1, .dark-context h2, .dark-context h3 {
+    @apply text-white;
+  }
+  .dark-context p {
+    @apply text-white/70;
   }
 }
+
+/* Institutional Grid */
+.rmf-grid {
+  display: grid;
+  grid-template-columns: repeat(var(--cols, 4), 1fr);
+  gap: 2.5rem;
+}
+
+/* Animations */
+@keyframes reveal {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-reveal {
+  animation: reveal 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar { width: 5px; }
+::-webkit-scrollbar-track { background: var(--rmf-cream); }
+::-webkit-scrollbar-thumb { 
+  background: var(--rmf-border-strong); 
+  border-radius: 0;
+  transition: background 0.3s;
+}
+::-webkit-scrollbar-thumb:hover { background: var(--rmf-rust); }

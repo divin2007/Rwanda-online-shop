@@ -1,4 +1,4 @@
-import { Schema, model } from 'mongoose';
+import mongoose, { Schema, model } from 'mongoose';
 
 export const riderProfileSchema = new Schema({
   userId: { type: Schema.Types.ObjectId, ref: 'User', required: true, unique: true },
@@ -20,4 +20,4 @@ export const riderProfileSchema = new Schema({
   deletedAt: { type: Date, default: null }
 }, { timestamps: true });
 
-export const RiderProfile = model('RiderProfile', riderProfileSchema);
+export const RiderProfile = mongoose.models.RiderProfile || model('RiderProfile', riderProfileSchema);

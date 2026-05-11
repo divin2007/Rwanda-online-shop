@@ -1,6 +1,6 @@
 'use client';
 import React, { useEffect, useState, useRef } from 'react';
-import { MapContainer, TileLayer, Marker, useMapEvents, useMap, Polyline } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, useMapEvents, useMap, Polyline, Circle } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
 
@@ -182,7 +182,14 @@ export const MapPinPicker = ({
         />
         <MapController flyToLocation={flyToLocation} />
         {marketLocation && (
-          <Marker position={[marketLocation.lat, marketLocation.lng]} icon={marketIcon}></Marker>
+          <>
+            <Marker position={[marketLocation.lat, marketLocation.lng]} icon={marketIcon}></Marker>
+            <Circle 
+              center={[marketLocation.lat, marketLocation.lng]} 
+              radius={15000} // 15km delivery zone
+              pathOptions={{ fillColor: '#3B82F6', fillOpacity: 0.1, color: '#3B82F6', weight: 1, dashArray: '5, 5' }} 
+            />
+          </>
         )}
         {roadGeometry.length > 0 && (
           <Polyline positions={roadGeometry} pathOptions={{ color: '#3B82F6', weight: 5, opacity: 0.8 }} />

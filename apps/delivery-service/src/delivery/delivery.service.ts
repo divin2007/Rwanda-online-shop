@@ -93,14 +93,35 @@ export class DeliveryService {
 
     const saved = await delivery.save();
     
-    // Notify all active riders via Socket.io
+    // Notify all active riders via Socket.io AND permanent in-app notifications
     try {
       this.deliveryGateway.emitAssignment(saved.toObject());
+      
+      // Create permanent logs for all riders so it shows in their "bell"
+      const riders = await this.riderModel.find({ isActive: true }).exec();
+      for (const rider of riders) {
+        this.triggerNotification(rider.userId, 'order.placed', { 
+          orderNumber: saved.orderNumber, 
+          orderId: saved.orderId,
+          referenceId: saved._id,
+          referenceType: 'Delivery'
+        });
+      }
     } catch (e) {
       console.error('Failed to broadcast delivery request', e);
     }
 
     return saved;
+  }
+
+  private async triggerNotification(userId: string, type: string, params: any) {
+    try {
+      const url = `${process.env.NOTIFICATION_SERVICE_URL || 'http://localhost:3009/api/v1'}/notifications/in-app`;
+      const axios = require('axios');
+      await axios.post(url, { userId, type, params });
+    } catch (error: any) {
+      console.error(`Failed to trigger notification: ${type}`, error.message);
+    }
   }
 
   async updateStatus(id: string, newStatus: DeliveryStatus): Promise<any> {
@@ -113,6 +134,15 @@ export class DeliveryService {
 
     if (newStatus === DeliveryStatus.DELIVERED) {
       updates['dropoff.deliveredAt'] = new Date();
+      if (delivery.rider?.userId) {
+        this.triggerNotification(delivery.rider.userId, 'order.delivered', { orderNumber: delivery.orderNumber, orderId: delivery.orderId });
+      }
+      // Increment rider stats
+      if (delivery.rider?.riderId) {
+        await this.riderModel.findByIdAndUpdate(delivery.rider.riderId, {
+          $inc: { totalDeliveries: 1 }
+        }).catch(err => console.error('Failed to increment rider deliveries:', err.message));
+      }
     }
 
     const updatedDelivery = await this.deliveryModel.findByIdAndUpdate(
@@ -305,6 +335,14 @@ export class DeliveryService {
       { new: true }
     );
 
+    if (updatedDelivery) {
+      this.triggerNotification(riderProfile.userId, 'delivery.assigned', { 
+        orderNumber: updatedDelivery.orderNumber, 
+        orderId: updatedDelivery.orderId,
+        riderName: 'You' 
+      });
+    }
+
     // Notify the frontend tracking page that a rider is coming
     if (updatedDelivery?.orderId) {
       // Move delivery status to EN_ROUTE_TO_PICKUP via internal update (triggers gateway)
@@ -395,5 +433,17 @@ export class DeliveryService {
       'rider.riderId': riderProfileId,
       status: DeliveryStatus.DELIVERED
     }).sort({ createdAt: -1 }).limit(50).exec();
+  }
+
+  async getRiderDeliveries(userId: string, status?: string): Promise<any[]> {
+    let riderProfileId = userId;
+    const riderProfile = await this.riderModel.findOne({ userId }).exec();
+    if (riderProfile) riderProfileId = riderProfile._id.toString();
+
+    const query: any = { 'rider.riderId': riderProfileId };
+    if (status) {
+      query.status = { $in: status.split(',') };
+    }
+    return this.deliveryModel.find(query).sort({ createdAt: -1 }).exec();
   }
 }

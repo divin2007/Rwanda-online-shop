@@ -74,5 +74,12 @@ export function useApi<T = any>(
     }
   }, [execute, options?.refreshInterval, method]);
 
+  // Auto-execute on mount for GET requests
+  useEffect(() => {
+    if (method === 'get' && url) {
+      execute();
+    }
+  }, [execute, method, url]);
+
   return { data, loading, error, execute };
 }

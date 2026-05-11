@@ -15,8 +15,52 @@ export class ProductService implements OnModuleInit {
   ) {}
 
   async onModuleInit() {
-    // Removed auto-approve migration — it overrode admin decisions on every restart.
-    // Products default to isApproved: false via the schema and must be approved by an admin.
+    console.log('🚀 FORCING Institutional Product Seeding...');
+    try {
+      const markets = await this.marketModel.find().exec();
+      const categories = ['Produce', 'Handcrafts', 'Textiles', 'Spices', 'Dairy', 'Artisan', 'Household'];
+      
+      // Find a default seller to link products to (Products require a sellerId)
+      let defaultSeller = await this.sellerModel.findOne().exec();
+      
+      for (const market of markets) {
+        console.log(`📦 Seeding Products for Hub: ${market.name}`);
+        for (let i = 1; i <= 5; i++) {
+          const category = categories[(i + Math.floor(Math.random() * 7)) % categories.length];
+          const prodName = `${market.name.split(' ')[0]} ${category} Item #${i}`;
+          
+          await this.productModel.findOneAndUpdate(
+            { name: prodName, marketId: market._id },
+            {
+              name: prodName,
+              description: `Authentic ${category} from the ${market.name}. Sustainably sourced and verified Made in Rwanda.`,
+              price: (Math.floor(Math.random() * 25) + 2) * 1000,
+              category,
+              marketId: market._id,
+              sellerId: defaultSeller?._id || new Types.ObjectId(), 
+              images: [market.imageUrl || 'https://images.unsplash.com/photo-1542838132-92c53300491e'],
+              stockType: 'infinite',
+              stockQuantity: 999,
+              unit: i % 2 === 0 ? 'kg' : 'pcs',
+              isApproved: true,
+              isActive: true,
+              isMadeInRwanda: true
+            },
+            { upsert: true }
+          );
+        }
+      }
+      
+      try {
+        await this.cacheManager.del('products:all');
+        if ((this.cacheManager as any).reset) {
+          await (this.cacheManager as any).reset();
+        }
+      } catch (e) {}
+      console.log('✅ Product Seeding & Cache Reset Complete.');
+    } catch (err) {
+      console.error('❌ Product Seeding Failed:', err.message);
+    }
   }
 
   async create(productData: any): Promise<any> {
@@ -85,9 +129,9 @@ export class ProductService implements OnModuleInit {
   }
 
   async findAll(query: any): Promise<any[]> {
-    const { marketId, sellerId, approvedOnly, isActive, limit, sortBy } = query;
+    const { marketId, sellerId, approvedOnly, isActive, limit, sortBy, search, category, minPrice, maxPrice } = query;
     // Normalize cache key: only include fields that affect the query, in sorted order
-    const canonicalQuery = JSON.stringify({ marketId, sellerId, approvedOnly, isActive, limit, sortBy });
+    const canonicalQuery = JSON.stringify({ marketId, sellerId, approvedOnly, isActive, limit, sortBy, search, category, minPrice, maxPrice });
     const cacheKey = `products:all:${canonicalQuery}`;
     const cached = await this.cacheManager.get<any[]>(cacheKey);
 
@@ -110,6 +154,16 @@ export class ProductService implements OnModuleInit {
     }
     
     if (marketId) filter.marketId = marketId;
+    if (query.category) filter.category = query.category;
+    if (query.search) {
+      filter.name = { $regex: query.search, $options: 'i' };
+    }
+    
+    if (query.minPrice || query.maxPrice) {
+      filter.price = {};
+      if (query.minPrice) filter.price.$gte = Number(query.minPrice);
+      if (query.maxPrice) filter.price.$lte = Number(query.maxPrice);
+    }
     
     if (sellerId) {
       // Check if sellerId is a User ID (from frontend) and map to SellerProfile ID
@@ -200,7 +254,18 @@ export class ProductService implements OnModuleInit {
   }
 
   async updateStock(id: string, quantityChange: number): Promise<any> {
-    const product = await this.findById(id);
+    const product = await this.productModel.findById(id).exec();
+    if (!product) throw new NotFoundException('Product not found');
+
+    // For infinite stock or on-demand products, we don't reduce stock
+    if (product.stockType === 'infinite' || product.stockType === 'on_demand') {
+      // Ensure it stays 'inStock'
+      if (!product.inStock) {
+        return this.update(id, { inStock: true });
+      }
+      return product;
+    }
+
     const newStock = product.stockQuantity + quantityChange;
     
     if (newStock < 0) {

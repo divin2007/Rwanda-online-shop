@@ -55,4 +55,18 @@ export class AdminController {
     const alerts = await this.adminService.getFraudAlerts();
     return { success: true, data: alerts };
   }
+
+  @Get('admin/dashboard/analytics')
+  @Roles(UserRole.ADMIN)
+  async getAdminDashboardAnalytics() {
+    const analytics = await this.adminService.getAnalyticsDashboard();
+    return { success: true, data: analytics };
+  }
+
+  @Get('seller/dashboard/analytics/:id')
+  @Roles(UserRole.ADMIN, UserRole.SELLER)
+  async getSellerDashboardAnalytics(@Param('id') id: string) {
+    const analytics = await this.adminService.getAnalyticsDashboard(id);
+    return { success: true, data: analytics };
+  }
 }
