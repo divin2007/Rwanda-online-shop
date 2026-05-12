@@ -7,6 +7,12 @@ import { UserRole } from '@rmf/shared-types';
 export class AdminController {
   constructor(private readonly adminService: AdminService) {}
 
+  @Get('analytics/summary')
+  async getSummaryAnalytics() {
+    const stats = await this.adminService.getSummaryAnalytics();
+    return { success: true, data: stats };
+  }
+
   @Get('admin/approvals')
   @Roles(UserRole.ADMIN)
   async getPendingApprovals() {

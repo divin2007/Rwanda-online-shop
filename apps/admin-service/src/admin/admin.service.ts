@@ -33,6 +33,25 @@ export class AdminService {
     return this.orderModel.find(query).exec();
   }
 
+  async getSummaryAnalytics(): Promise<any> {
+    const [marketCount, sellerCount, orderCount] = await Promise.all([
+      this.marketModel.countDocuments({ isActive: true, deletedAt: null }),
+      this.sellerModel.countDocuments({ isApproved: true, deletedAt: null }),
+      this.orderModel.countDocuments({ deletedAt: null })
+    ]);
+
+    // Calculate trust rating based on successful deliveries vs total orders
+    const deliveredCount = await this.orderModel.countDocuments({ status: { $in: ['delivered', 'resolved'] }, deletedAt: null });
+    const trustRating = orderCount > 0 ? (deliveredCount / orderCount) * 100 : 99.2;
+
+    return {
+      marketCount,
+      sellerCount,
+      orderCount,
+      trustRating: Math.round(trustRating * 10) / 10
+    };
+  }
+
   async getSystemAnalytics(): Promise<any> {
     const now = new Date();
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);

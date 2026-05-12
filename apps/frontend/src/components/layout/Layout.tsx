@@ -27,13 +27,13 @@ export const Layout = ({ children, marketName }: LayoutProps) => {
     }
   };
 
-  // Define Nav Items based on Role (Professional Icons)
+  // Navigation items per role — using natural e-commerce language
   const buyerNav = [
-    { label: t('nav_hub') || 'Market Hub', icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg>, href: '/markets' },
-    { label: t('nav_dashboard') || 'My Dashboard', icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>, href: '/dashboard', auth: true },
+    { label: t('nav_hub') || 'Markets', icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg>, href: '/markets' },
+    { label: t('nav_dashboard') || 'My Account', icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>, href: '/dashboard', auth: true },
     { label: t('nav_mandates') || 'My Orders', icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>, href: '/orders', auth: true },
-    { label: t('nav_wallet') || 'Heritage Wallet', icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>, href: '/wallet', auth: true },
-    { label: t('nav_wishlist') || 'Curated List', icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>, href: '/wishlist' },
+    { label: t('nav_wallet') || 'Wallet', icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>, href: '/wallet', auth: true },
+    { label: t('nav_wishlist') || 'Wishlist', icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>, href: '/wishlist', auth: true },
   ];
 
   const sellerNav = [
@@ -48,7 +48,10 @@ export const Layout = ({ children, marketName }: LayoutProps) => {
     { label: 'Deliveries', icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="1" y="3" width="15" height="13"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>, href: '/rider/deliveries' },
   ];
 
-  const navItems = user?.role === 'SELLER' ? sellerNav : (user?.role === 'RIDER' ? riderNav : buyerNav);
+  type NavItem = { label: string; icon: React.ReactElement; href: string; auth?: boolean };
+
+  const navItems: NavItem[] = user?.role === 'SELLER' ? sellerNav : (user?.role === 'RIDER' ? riderNav : buyerNav);
+  const visibleNavItems = navItems.filter(item => !item.auth || user);
   const isWorkstation = user?.role === 'SELLER' || user?.role === 'RIDER';
   const isDashboard = pathname.startsWith('/dashboard') || 
                       pathname.startsWith('/seller') || 
@@ -58,14 +61,14 @@ export const Layout = ({ children, marketName }: LayoutProps) => {
 
   return (
     <div className="min-h-screen bg-[#F8F6F1] font-sans selection:bg-[#F59E0B] selection:text-white flex flex-col">
-      {/* RMF Unified Institutional Gateway */}
+      {/* Main Header */}
       <header className="h-20 bg-white border-b border-[#E5E1D8] flex items-center justify-between px-10 md:px-16 sticky top-0 z-50 shadow-sm relative overflow-hidden">
         {/* Subtle Background Detail */}
         <div className="absolute inset-0 opacity-5 pointer-events-none">
            <div className="absolute top-0 right-0 w-1/3 h-full bg-[radial-gradient(circle_at_100%_0%,#F59E0B,transparent_70%)]"></div>
         </div>
 
-        {/* Branding Hub */}
+        {/* Logo */}
         <div className="relative z-10 flex items-center gap-8 border-r border-[#E5E1D8] pr-8 mr-6">
           <Link href="/" className="flex flex-col group">
             <div className="flex items-baseline gap-1">
@@ -73,15 +76,15 @@ export const Layout = ({ children, marketName }: LayoutProps) => {
               <div className="w-1.5 h-1.5 bg-[#F59E0B] rounded-full"></div>
             </div>
             <span className="text-[7px] font-black text-[#A34D15] uppercase tracking-[0.4em] leading-none mt-1 opacity-80">
-              {user?.role === 'SELLER' ? 'Vendor Station' : (user?.role === 'RIDER' ? 'Rider Terminal' : 'Market Facilitator')}
+              {user?.role === 'SELLER' ? 'Seller Hub' : (user?.role === 'RIDER' ? 'Rider Hub' : 'Marketplace')}
             </span>
           </Link>
         </div>
 
-        {/* Tactical Navigation (Horizontal - Hidden on Dashboard if using Sidebar) */}
+        {/* Navigation */}
         {!isDashboard ? (
           <nav className="relative z-10 flex-grow flex items-center gap-1 max-w-4xl">
-            {navItems.map((item) => {
+            {visibleNavItems.map((item) => {
               const isActive = pathname === item.href || pathname.startsWith(item.href + '/');
               return (
                 <Link 
@@ -106,13 +109,13 @@ export const Layout = ({ children, marketName }: LayoutProps) => {
           </nav>
         ) : (
           <div className="flex-grow flex items-center px-8">
-             <span className="text-[9px] font-black uppercase tracking-[0.6em] text-[#121212]/40 italic">Operational Workstation Active</span>
+             <span className="text-[9px] font-black uppercase tracking-[0.6em] text-[#121212]/40 italic">Dashboard</span>
           </div>
         )}
 
-        {/* Action Matrix */}
+        {/* Right Actions */}
         <div className="relative z-10 flex items-center gap-6 border-l border-[#E5E1D8] pl-8 ml-6">
-          {/* Language Matrix */}
+          {/* Language Selector */}
           <div className="hidden xl:flex gap-2">
             {['en', 'fr', 'kin'].map(lang => (
               <button 
@@ -155,10 +158,10 @@ export const Layout = ({ children, marketName }: LayoutProps) => {
               <div 
                 onClick={logout}
                 className="w-12 h-12 bg-white text-[#121212] border-2 border-[#121212] flex flex-col items-center justify-center hover:bg-[#121212] hover:text-white transition-all cursor-pointer shadow-sm group"
-                title="Terminate Session"
+                title="Sign Out"
               >
                 <span className="text-[11px] font-black tracking-tighter leading-none">{user?.fullName ? user.fullName[0].toUpperCase() : 'U'}</span>
-                <span className="text-[6px] font-black tracking-tighter uppercase opacity-60 mt-1">Exit</span>
+                <span className="text-[6px] font-black tracking-tighter uppercase opacity-60 mt-1">Out</span>
               </div>
             ) : (
               <div className="flex items-center gap-3">
@@ -181,56 +184,56 @@ export const Layout = ({ children, marketName }: LayoutProps) => {
         {isDashboard && (
           <aside className="w-[260px] bg-[#121212] border-r border-white/5 flex flex-col sticky top-20 h-[calc(100vh-5rem)] z-40 overflow-y-auto">
             <div className="px-6 py-8">
-               <p className="text-[8px] font-black text-[#F59E0B] uppercase tracking-[0.5em] opacity-40 mb-6">Control Terminal</p>
-               <nav className="space-y-1">
-                 {navItems.map((item) => {
-                   const isActive = pathname === item.href || pathname.startsWith(item.href + '/');
-                   return (
-                     <Link 
-                       key={item.href} 
-                       href={item.href}
-                       className={`flex items-center gap-4 px-4 py-3.5 text-[9px] font-black uppercase tracking-[0.3em] transition-all relative group overflow-hidden ${
-                         isActive 
-                           ? 'text-white bg-white/5 border-l-2 border-[#F59E0B]' 
-                           : 'text-white/40 hover:text-white hover:bg-white/5'
-                       }`}
-                     >
-                       <span className={`transition-transform duration-500 group-hover:scale-110 ${isActive ? 'text-[#F59E0B]' : 'text-white/20 group-hover:text-white/70'}`}>
-                         {item.icon}
-                       </span>
-                       <span className="relative z-10">{item.label}</span>
-                     </Link>
-                   );
-                 })}
-               </nav>
+               <p className="text-[8px] font-black text-[#F59E0B] uppercase tracking-[0.5em] opacity-40 mb-6">Navigation</p>
+                <nav className="space-y-1">
+                  {visibleNavItems.map((item) => {
+                    const isActive = pathname === item.href || pathname.startsWith(item.href + '/');
+                    return (
+                      <Link 
+                        key={item.href} 
+                        href={item.href}
+                        className={`flex items-center gap-4 px-4 py-3.5 text-[9px] font-black uppercase tracking-[0.3em] transition-all relative group overflow-hidden ${
+                          isActive 
+                            ? 'text-white bg-white/5 border-l-2 border-[#F59E0B]' 
+                            : 'text-white/40 hover:text-white hover:bg-white/5'
+                        }`}
+                      >
+                        <span className={`transition-transform duration-500 group-hover:scale-110 ${isActive ? 'text-[#F59E0B]' : 'text-white/20 group-hover:text-white/70'}`}>
+                          {item.icon}
+                        </span>
+                        <span className="relative z-10">{item.label}</span>
+                      </Link>
+                    );
+                  })}
+                </nav>
 
                <div className="mt-12 pt-6 border-t border-white/5">
-                  <p className="text-[7px] font-black text-white/20 uppercase tracking-[0.4em] mb-4">Session Security</p>
+                  <p className="text-[7px] font-black text-white/20 uppercase tracking-[0.4em] mb-4">Account</p>
                   <button 
                     onClick={logout}
                     className="w-full flex items-center gap-4 px-4 py-3 text-[9px] font-black uppercase tracking-[0.3em] text-red-500/60 hover:text-red-500 hover:bg-red-500/5 transition-all"
                   >
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
-                    <span>Terminate</span>
+                    <span>Sign Out</span>
                   </button>
                </div>
             </div>
           </aside>
         )}
 
-        {/* Main Deployment Framework */}
+        {/* Main Content */}
         <main className="flex-grow flex flex-col relative overflow-hidden">
-          {/* Secondary Context Bar (Optional Search/Market Info) */}
+          {/* Search Bar for Markets Page */}
           {!isWorkstation && pathname === '/markets' && (
              <div className="h-10 bg-white border-b border-[#E5E1D8] flex items-center px-16">
                 <div className="flex items-center gap-6">
-                   <span className="text-[7px] font-black text-[#A34D15] uppercase tracking-widest animate-pulse">● System Live</span>
+                   <span className="text-[7px] font-black text-[#A34D15] uppercase tracking-widest animate-pulse">● Live</span>
                    <div className="h-3 w-px bg-[#E5E1D8]"></div>
                    <form onSubmit={handleSearch} className="relative group">
                       <span className="absolute left-0 top-1/2 -translate-y-1/2 text-[#121212] opacity-40 text-[10px]">🔍</span>
                       <input 
                         type="text" 
-                        placeholder="SEARCH NETWORK INFRASTRUCTURE..." 
+                        placeholder="Search markets & products..." 
                         value={globalSearch}
                         onChange={(e) => setGlobalSearch(e.target.value)}
                         className="bg-transparent border-none pl-5 text-[7px] font-black uppercase tracking-widest outline-none w-64"
@@ -246,44 +249,43 @@ export const Layout = ({ children, marketName }: LayoutProps) => {
         </main>
       </div>
 
-      {/* Global Institutional Footer */}
+      {/* Footer */}
       <footer className="bg-white border-t-4 border-[#121212] pt-40 pb-20 mt-auto">
         <div className="rmf-container">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-24 mb-40">
             <div className="space-y-12">
               <Link href="/" className="flex flex-col group w-fit">
                 <span className="text-6xl font-serif font-black tracking-tighter text-[#121212] group-hover:text-[#F59E0B] transition-colors">RMF</span>
-                <span className="text-[11px] font-black text-[#F59E0B] uppercase tracking-[0.6em] mt-4">Market Facilitator</span>
+                <span className="text-[11px] font-black text-[#F59E0B] uppercase tracking-[0.6em] mt-4">Marketplace</span>
               </Link>
               <p className="text-sm text-[#6B665E] leading-relaxed italic max-w-xs">
-                Rwanda&apos;s official digital gateway facilitating institutional-grade artisanal commerce and regional hub deployment.
+                Rwanda&apos;s trusted online marketplace — connecting local markets, sellers, and buyers with fast home delivery across Kigali and beyond.
               </p>
             </div>
             <div className="space-y-10">
-              <p className="text-[11px] font-black text-[#121212] uppercase tracking-[0.5em]">Network Directives</p>
+              <p className="text-[11px] font-black text-[#121212] uppercase tracking-[0.5em]">Quick Links</p>
               <div className="flex flex-col gap-6">
-                <Link href="/privacy" className="text-[10px] font-bold text-[#6B665E] uppercase tracking-widest hover:text-[#F59E0B] transition-colors">Privacy Protocol</Link>
-                <Link href="/terms" className="text-[10px] font-bold text-[#6B665E] uppercase tracking-widest hover:text-[#F59E0B] transition-colors">Terms of Facilitation</Link>
-                <Link href="/contact" className="text-[10px] font-bold text-[#6B665E] uppercase tracking-widest hover:text-[#F59E0B] transition-colors">Facilitator Support</Link>
+                <Link href="/privacy" className="text-[10px] font-bold text-[#6B665E] uppercase tracking-widest hover:text-[#F59E0B] transition-colors">Privacy Policy</Link>
+                <Link href="/terms" className="text-[10px] font-bold text-[#6B665E] uppercase tracking-widest hover:text-[#F59E0B] transition-colors">Terms of Service</Link>
+                <Link href="/contact" className="text-[10px] font-bold text-[#6B665E] uppercase tracking-widest hover:text-[#F59E0B] transition-colors">Contact Us</Link>
               </div>
             </div>
             <div className="space-y-10">
-               <p className="text-[11px] font-black text-[#121212] uppercase tracking-[0.5em]">System Status</p>
+               <p className="text-[11px] font-black text-[#121212] uppercase tracking-[0.5em]">Platform Status</p>
                <div className="p-8 border-2 border-[#F0EDE4] bg-[#F8F6F1]">
                   <div className="flex items-center gap-4 mb-4">
                      <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-                     <span className="text-[10px] font-black uppercase tracking-widest text-[#121212]">Network Operational</span>
+                     <span className="text-[10px] font-black uppercase tracking-widest text-[#121212]">All Systems Online</span>
                   </div>
-                  <p className="text-[9px] text-[#6B665E] italic">All facilitation hubs are currently active across the regional network.</p>
+                  <p className="text-[9px] text-[#6B665E] italic">All markets and delivery services are currently active and accepting orders.</p>
                </div>
             </div>
           </div>
           <div className="flex flex-col md:flex-row justify-between items-center gap-10 pt-20 border-t border-[#F0EDE4]">
-            <p className="text-[9px] font-black text-[#A34D15] uppercase tracking-[0.4em]">© 2026 RMF PLATFORMS • DIGITAL INFRASTRUCTURE UNIT</p>
+            <p className="text-[9px] font-black text-[#A34D15] uppercase tracking-[0.4em]">© 2026 Rwanda Market Facilitator</p>
             <div className="flex gap-10 opacity-30 grayscale">
                <span className="text-xs">🇷🇼</span>
-               <span className="text-xs">EAC</span>
-               <span className="text-xs">ISO:9001</span>
+               <span className="text-xs">Made in Rwanda</span>
             </div>
           </div>
         </div>

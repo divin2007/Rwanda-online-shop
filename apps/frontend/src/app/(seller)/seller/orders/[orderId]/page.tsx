@@ -43,7 +43,7 @@ export default function SellerOrderDetailPage({ params }: { params: { orderId: s
     if (!order.deliveryId) return;
     try {
       await deliveryApi.post(`/deliveries/${order.deliveryId}/handover`, { role: 'seller' });
-      toast.success('Handover confirmed. Mandate transitioning to transit.');
+      toast.success('Handover confirmed! Rider is now in transit.');
       fetchOrder();
       // Refresh delivery info
       deliveryApi.get(`/deliveries/${order.deliveryId}`).then(res => setDelivery(res.data?.data));
@@ -100,10 +100,10 @@ export default function SellerOrderDetailPage({ params }: { params: { orderId: s
                   Terminal Dashboard
                </Link>
                <span className="text-[#E5E1D8]">/</span>
-               <span className="text-[10px] font-black uppercase tracking-widest text-[#A34D15]">Active Mandate</span>
+               <span className="text-[10px] font-black uppercase tracking-widest text-[#A34D15]">Active Order</span>
             </div>
             <h1 className="text-5xl font-serif tracking-tighter italic text-[#121212] leading-none mb-4">
-              Mandate {orderNumber}
+              Order {orderNumber}
             </h1>
             <div className="flex items-center gap-6 text-[10px] font-bold text-[#6B665E] uppercase tracking-widest italic opacity-60">
                <span>Initialized: {order.createdAt ? new Date(order.createdAt).toLocaleDateString() : 'N/A'}</span>
@@ -139,7 +139,7 @@ export default function SellerOrderDetailPage({ params }: { params: { orderId: s
             {/* Artifact Table */}
             <div className="bg-white border border-[#E5E1D8] overflow-hidden shadow-sm">
                <div className="px-8 py-6 bg-[#F8F6F1] border-b border-[#E5E1D8] flex justify-between items-center">
-                  <h3 className="text-[10px] font-black uppercase tracking-widest text-[#121212]">Artifact Collection</h3>
+                  <h3 className="text-[10px] font-black uppercase tracking-widest text-[#121212]">Items Ordered</h3>
                   <span className="text-[9px] font-bold text-[#6B665E] uppercase">{totalQty} Total Unit(s)</span>
                </div>
                <div className="overflow-x-auto">
@@ -183,7 +183,7 @@ export default function SellerOrderDetailPage({ params }: { params: { orderId: s
                      <svg className="w-20 h-20" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                   </div>
                   <div>
-                    <p className="text-[9px] font-black text-[#F59E0B] uppercase tracking-[0.4em] mb-4">Mandate Valuation</p>
+                    <p className="text-[9px] font-black text-[#F59E0B] uppercase tracking-[0.4em] mb-4">Order Total</p>
                     <h3 className="text-5xl font-serif italic tracking-tighter">{(order.financials?.totalAmount || 0).toLocaleString()} RWF</h3>
                   </div>
                   <div className="space-y-4 pt-8 border-t border-white/10">
@@ -338,7 +338,7 @@ export default function SellerOrderDetailPage({ params }: { params: { orderId: s
                         <p className="text-[11px] font-bold text-[#121212]">{order.buyer?.phone || 'Encrypted'}</p>
                      </div>
                      <div className="space-y-2">
-                        <p className="text-[8px] font-black text-[#A34D15] uppercase tracking-widest">Deployment Address</p>
+                        <p className="text-[8px] font-black text-[#A34D15] uppercase tracking-widest">Delivery Address</p>
                         <p className="text-[11px] font-medium text-[#121212] italic leading-relaxed">{order.buyer?.deliveryAddress?.address || 'Terminal Pickup'}</p>
                      </div>
                   </div>
@@ -361,7 +361,7 @@ export default function SellerOrderDetailPage({ params }: { params: { orderId: s
         {(order.status === 'awaiting_quote' || order.status === 'quote_sent' || (order.status === 'placed' && order.payment?.status !== 'paid')) && (
            <div className="bg-white border-2 border-[#121212] p-12">
               <div className="flex items-center gap-6 mb-12 border-b border-[#F0EDE4] pb-6">
-                 <h2 className="text-3xl font-serif italic tracking-tighter text-[#121212]">Mandate Negotiation Terminal</h2>
+                 <h2 className="text-3xl font-serif italic tracking-tighter text-[#121212]">Order Chat</h2>
                  <div className="flex items-center gap-2">
                     <div className="w-2 h-2 bg-[#F59E0B] rounded-full animate-pulse"></div>
                     <span className="text-[9px] font-black uppercase tracking-widest text-[#121212]">Live Handshake Active</span>

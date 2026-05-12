@@ -255,7 +255,7 @@ export const OrderChat: React.FC<OrderChatProps> = ({
             <div className="flex items-center gap-2">
                <div className="w-1.5 h-1.5 bg-[#F59E0B] rounded-full animate-pulse"></div>
                <span className="text-[9px] font-bold uppercase tracking-widest text-[#F59E0B]/80 italic">
-                 {isNegotiationPhase ? 'Live Negotiation Active' : 'Operations Terminal Linked'}
+                 {isNegotiationPhase ? 'Negotiation in Progress' : 'Chat Connected'}
                </span>
             </div>
           </div>
@@ -272,7 +272,7 @@ export const OrderChat: React.FC<OrderChatProps> = ({
                     : 'bg-white border-white text-[#121212] hover:bg-[#F59E0B] hover:border-[#F59E0B]'
               }`}
             >
-              {showLocationPicker ? 'Terminate Picker' : hasValidLocation ? 'Recalibrate Zone' : 'Initialize Zone Pin'}
+              {showLocationPicker ? 'Close' : hasValidLocation ? 'Change Location' : 'Set Delivery Location'}
             </button>
           )}
           {canSendQuote && (
@@ -284,7 +284,7 @@ export const OrderChat: React.FC<OrderChatProps> = ({
                   : 'bg-[#F59E0B] border-[#F59E0B] text-[#121212] hover:bg-white hover:text-[#121212]'
               }`}
             >
-              {isQuoting ? 'Dismiss Quote' : 'Formalize Quote'}
+              {isQuoting ? 'Cancel Quote' : 'Send Quote'}
             </button>
           )}
         </div>
@@ -295,8 +295,8 @@ export const OrderChat: React.FC<OrderChatProps> = ({
         <div className="flex-1 flex flex-col bg-[#F8F6F1]">
           <div className="px-8 py-4 bg-white border-b border-[#E5E1D8] flex items-center justify-between">
             <div>
-              <p className="text-[10px] font-black text-[#121212] uppercase tracking-[0.3em]">Geospatial Deployment</p>
-              <p className="text-[8px] font-bold text-[#6B665E] uppercase tracking-widest italic opacity-60">Authorize coordinates for fulfillment logistics</p>
+              <p className="text-[10px] font-black text-[#121212] uppercase tracking-[0.3em]">Set Delivery Location</p>
+              <p className="text-[8px] font-bold text-[#6B665E] uppercase tracking-widest italic opacity-60">Drop a pin on the map for your delivery address</p>
             </div>
             {currentDeliveryFee > 0 && (
               <div className="bg-[#121212] text-white px-4 py-2 border border-[#F59E0B]/30">
@@ -307,7 +307,7 @@ export const OrderChat: React.FC<OrderChatProps> = ({
           </div>
           <div className="flex-1 relative min-h-[300px]">
             <MapPinPicker
-              onLocationSelected={(coords) => setSelectedCoords(coords)}
+              onLocationSelected={(coords: any) => setSelectedCoords(coords)}
               centerLat={selectedCoords?.lat || -1.9441}
               centerLng={selectedCoords?.lng || 30.0619}
             />
@@ -323,7 +323,7 @@ export const OrderChat: React.FC<OrderChatProps> = ({
               disabled={!selectedCoords || isSavingLocation}
               className="rmf-btn-primary bg-[#F59E0B] text-[#121212] border-none py-3 px-8 text-[9px] hover:bg-white transition-all disabled:opacity-30"
             >
-              {isSavingLocation ? 'SYNCHRONIZING...' : 'AUTHORIZE LOCATION'}
+              {isSavingLocation ? 'Saving...' : 'Confirm Location'}
             </button>
           </div>
         </div>
@@ -336,13 +336,13 @@ export const OrderChat: React.FC<OrderChatProps> = ({
             <div className="px-8 py-3 bg-[#F59E0B]/10 border-b border-[#F59E0B]/30 flex items-center gap-4">
               <svg className="w-4 h-4 text-[#F59E0B]" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
               <p className="text-[10px] text-[#121212] font-black uppercase tracking-widest flex-1">
-                Mandate Blocked: Establish deployment zone to receive quote
+                Please set your delivery location before the seller can quote you.
               </p>
               <button 
                 onClick={() => setShowLocationPicker(true)}
                 className="text-[9px] font-black text-[#F59E0B] uppercase tracking-widest border-b-2 border-[#F59E0B] pb-0.5 hover:text-[#121212] transition-colors"
               >
-                INITIALIZE NOW
+                Set Location Now
               </button>
             </div>
           )}
@@ -361,7 +361,7 @@ export const OrderChat: React.FC<OrderChatProps> = ({
                   {isFirst && (
                     <div className="w-full flex items-center gap-6 mb-8 opacity-40">
                       <div className="h-px flex-1 bg-[#121212]"></div>
-                      <span className="text-[10px] font-black text-[#121212] uppercase tracking-[0.5em]">Initial Briefing</span>
+                      <span className="text-[10px] font-black text-[#121212] uppercase tracking-[0.5em]">Order Request</span>
                       <div className="h-px flex-1 bg-[#121212]"></div>
                     </div>
                   )}
@@ -385,7 +385,7 @@ export const OrderChat: React.FC<OrderChatProps> = ({
                     <div className="p-6">
                       {isQuote && (
                         <div className="mb-6 pb-6 border-b border-[#E5E1D8]">
-                          <p className="text-[9px] font-black text-[#A34D15] uppercase tracking-[0.4em] mb-3">Formal Mandate Quote</p>
+                          <p className="text-[9px] font-black text-[#A34D15] uppercase tracking-[0.4em] mb-3">Seller Quote</p>
                           <p className="text-4xl font-serif italic tracking-tighter text-[#121212]">{msg.quoteAmount?.toLocaleString()} RWF</p>
                         </div>
                       )}
@@ -405,24 +405,24 @@ export const OrderChat: React.FC<OrderChatProps> = ({
                         <div className="mt-8 space-y-3">
                           <button
                             onClick={handleAcceptQuote}
-                            disabled={isSending || orderStatus === 'paid' || orderStatus === 'placed' || !['awaiting_quote', 'quote_sent', 'placed'].includes(orderStatus)}
+                            disabled={isSending || orderStatus === 'paid' || orderStatus === 'placed' || !['awaiting_quote', 'quote_sent', 'placed'].includes(orderStatus || '')}
                             className="w-full bg-[#121212] text-white py-4 text-[10px] font-black uppercase tracking-[0.3em] hover:bg-[#F59E0B] transition-all disabled:opacity-20"
                           >
-                            {(orderStatus === 'paid' || orderStatus === 'placed') ? 'Mandate Confirmed' : 'Authorize Acquisition'}
+                            {(orderStatus === 'paid' || orderStatus === 'placed') ? 'Quote Accepted' : 'Accept Quote & Pay'}
                           </button>
-                          {['awaiting_quote', 'quote_sent'].includes(orderStatus) && (
+                          {['awaiting_quote', 'quote_sent'].includes(orderStatus || '') && (
                             <div className="flex gap-4">
                               <button
                                 onClick={() => setIsCountering(!isCountering)}
                                 className="flex-1 border-2 border-[#121212] py-3 text-[9px] font-black uppercase tracking-widest hover:bg-[#121212] hover:text-white transition-all"
                               >
-                                Propose Adjustment
+                                Counter Offer
                               </button>
                               <button
                                 onClick={handleDeclineQuote}
                                 className="flex-1 border-2 border-red-600 text-red-600 py-3 text-[9px] font-black uppercase tracking-widest hover:bg-red-600 hover:text-white transition-all"
                               >
-                                Reject Mandate
+                                Decline Quote
                               </button>
                             </div>
                           )}
@@ -450,7 +450,7 @@ export const OrderChat: React.FC<OrderChatProps> = ({
                          type="number"
                          value={quotePrice}
                          onChange={(e) => setQuotePrice(e.target.value)}
-                         placeholder="Authorized Quote Value..."
+                         placeholder="Enter your price in RWF..."
                          className="w-full bg-[#F8F6F1] border-2 border-dashed border-[#121212]/20 rounded-none pl-20 pr-8 py-5 text-xl font-serif italic outline-none focus:border-[#121212] transition-colors"
                        />
                     </div>
@@ -459,12 +459,12 @@ export const OrderChat: React.FC<OrderChatProps> = ({
                       disabled={!quotePrice || isSending} 
                       className="bg-[#121212] text-white px-12 py-5 text-[10px] font-black uppercase tracking-[0.4em] hover:bg-[#F59E0B] transition-all disabled:opacity-30"
                     >
-                      Broadcast Quote
+                      Send Quote
                     </button>
                  </div>
                  <div className="flex justify-between items-center px-4">
                     <p className="text-[9px] font-bold text-[#6B665E] uppercase tracking-widest italic">
-                       {currentDeliveryFee > 0 ? `Logistics Facilitation: ${currentDeliveryFee.toLocaleString()} RWF will be synchronized` : 'Awaiting Logistics Calculation'}
+                       {currentDeliveryFee > 0 ? `Delivery fee: ${currentDeliveryFee.toLocaleString()} RWF will be added` : 'Delivery fee calculated after buyer sets location'}
                     </p>
                     <button onClick={() => setIsQuoting(false)} className="text-[9px] font-black text-[#121212] uppercase tracking-widest border-b border-[#121212]">Dismiss</button>
                  </div>
@@ -478,7 +478,7 @@ export const OrderChat: React.FC<OrderChatProps> = ({
                          type="number"
                          value={counterPrice}
                          onChange={(e) => setCounterPrice(e.target.value)}
-                         placeholder="Adjustment Proposal..."
+                         placeholder="Your counter offer price..."
                          className="w-full bg-[#F8F6F1] border-2 border-dashed border-[#F59E0B]/40 rounded-none pl-20 pr-8 py-5 text-xl font-serif italic outline-none focus:border-[#F59E0B] transition-colors"
                        />
                     </div>
@@ -490,7 +490,7 @@ export const OrderChat: React.FC<OrderChatProps> = ({
                       Send Offer
                     </button>
                  </div>
-                 <button onClick={() => setIsCountering(false)} className="text-[9px] font-black text-[#121212] uppercase tracking-widest border-b border-[#121212] ml-4">Terminate Proposal</button>
+                 <button onClick={() => setIsCountering(false)} className="text-[9px] font-black text-[#121212] uppercase tracking-widest border-b border-[#121212] ml-4">Cancel</button>
               </div>
             ) : (
               <div className="flex flex-col gap-6">
@@ -502,7 +502,7 @@ export const OrderChat: React.FC<OrderChatProps> = ({
                       type="text"
                       value={newMessage}
                       onChange={(e) => setNewMessage(e.target.value)}
-                      placeholder="Input Tactical Update..."
+                      placeholder="Type a message..."
                       className="flex-1 bg-[#F8F6F1] border-2 border-transparent border-b-[#E5E1D8] px-6 py-4 text-[13px] outline-none focus:border-b-[#121212] transition-all"
                     />
                     <button 
@@ -510,7 +510,7 @@ export const OrderChat: React.FC<OrderChatProps> = ({
                       disabled={isSending || !newMessage.trim()}
                       className="bg-[#121212] text-white px-10 py-4 text-[10px] font-black uppercase tracking-[0.4em] hover:bg-[#F59E0B] transition-all disabled:opacity-20"
                     >
-                      Dispatch
+                      Send
                     </button>
                  </form>
                  
@@ -520,11 +520,11 @@ export const OrderChat: React.FC<OrderChatProps> = ({
                          onUploadSuccess={(url) => handleSendMessage('', url)}
                          service="order"
                          endpoint={`/orders/upload-image`}
-                         label="Capture Artifact"
+                         label="Send Image"
                          compact
                        />
                     </div>
-                    <p className="text-[9px] font-bold text-[#6B665E] uppercase tracking-[0.4em] italic opacity-40">Secured RMF Comm-Link Active</p>
+                    <p className="text-[9px] font-bold text-[#6B665E] uppercase tracking-[0.4em] italic opacity-40">End-to-end secure</p>
                  </div>
               </div>
             )}

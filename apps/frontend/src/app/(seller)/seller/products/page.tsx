@@ -38,7 +38,7 @@ export default function SellerProductsPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (formData.images.length === 0) return toast.error('Artifact documentation (image) is required');
+    if (formData.images.length === 0) return toast.error('At least one product image is required');
     
     setIsSubmitting(true);
     try {
@@ -49,25 +49,25 @@ export default function SellerProductsPage() {
         weight: Number(formData.weight) || 0,
         sellerId: user?.id
       });
-      toast.success('Artifact synchronized successfully');
+      toast.success('Product added successfully');
       setIsModalOpen(false);
       setFormData({ name: '', description: '', category: '', price: '', unit: '', stockType: 'finite', stockQuantity: '', weight: '', isMadeInRwanda: true, images: [], attributes: {} });
       fetchProducts();
     } catch (error: any) {
-      toast.error(error.response?.data?.message || 'Synchronization failed');
+      toast.error(error.response?.data?.message || 'Failed to save product. Try again.');
     } finally {
       setIsSubmitting(false);
     }
   };
 
   const handleDelete = async (id: string) => {
-    if (confirm('Terminate artifact record? This cannot be undone.')) {
+    if (confirm('Delete this product? This cannot be undone.')) {
       try {
         await productApi.delete(`/products/${id}`);
-        toast.success('Artifact record terminated');
+        toast.success('Product deleted');
         fetchProducts();
       } catch (e) {
-        toast.error('Termination failed');
+        toast.error('Delete failed');
       }
     }
   };
@@ -79,14 +79,14 @@ export default function SellerProductsPage() {
         <div className="flex justify-between items-end border-b-2 border-[#121212] pb-10">
           <div>
             <p className="text-[10px] font-black text-[#A34D15] uppercase tracking-[0.5em] mb-3 italic">Inventory Management</p>
-            <h1 className="text-6xl font-serif text-[#121212] italic tracking-tighter">Artifact Collection</h1>
-            <p className="text-[9px] font-bold text-[#6B665E] uppercase tracking-widest mt-2 opacity-60">Verified {products?.length || 0} Assets Registered</p>
+            <h1 className="text-6xl font-serif text-[#121212] italic tracking-tighter">My Products</h1>
+            <p className="text-[9px] font-bold text-[#6B665E] uppercase tracking-widest mt-2 opacity-60">{products?.length || 0} Products Listed</p>
           </div>
           <Link 
             href="/seller/products/new"
             className="bg-[#121212] text-white text-[10px] px-12 py-5 font-bold uppercase tracking-[0.3em] hover:bg-[#A34D15] transition-all shadow-xl flex items-center gap-3"
           >
-            <span className="text-lg">+</span> Register New Artifact
+            <span className="text-lg">+</span> Add New Product
           </Link>
         </div>
 
@@ -95,8 +95,8 @@ export default function SellerProductsPage() {
           <table className="w-full text-left">
             <thead>
               <tr className="bg-[#121212] text-white">
-                <th className="p-8 text-[9px] font-black uppercase tracking-[0.4em]">Artifact Identity</th>
-                <th className="p-8 text-[9px] font-black uppercase tracking-[0.4em]">Commercial Value</th>
+                <th className="p-8 text-[9px] font-black uppercase tracking-[0.4em]">Product</th>
+                <th className="p-8 text-[9px] font-black uppercase tracking-[0.4em]">Price</th>
                 <th className="p-8 text-[9px] font-black uppercase tracking-[0.4em]">Availability</th>
                 <th className="p-8 text-[9px] font-black uppercase tracking-[0.4em]">Status</th>
                 <th className="p-8 text-[9px] font-black uppercase tracking-[0.4em] text-right">Actions</th>
@@ -131,21 +131,21 @@ export default function SellerProductsPage() {
                   </td>
                   <td className="p-8">
                     <span className={`text-[8px] font-black px-4 py-1 uppercase tracking-widest border-2 ${p.inStock ? 'border-green-500 text-green-600' : 'border-red-500 text-red-600'}`}>
-                      {p.inStock ? 'Facilitating' : 'Depleted'}
+                      {p.inStock ? 'In Stock' : 'Out of Stock'}
                     </span>
                   </td>
                   <td className="p-8 text-right">
                     <div className="flex justify-end gap-6">
                       <button className="text-[9px] font-black uppercase tracking-widest text-[#121212] hover:text-[#A34D15] transition-colors">Edit</button>
-                      <button onClick={() => handleDelete(p._id)} className="text-[9px] font-black uppercase tracking-widest text-red-500 hover:text-red-700 transition-colors">Terminate</button>
+                      <button onClick={() => handleDelete(p._id)} className="text-[9px] font-black uppercase tracking-widest text-red-500 hover:text-red-700 transition-colors">Delete</button>
                     </div>
                   </td>
                 </tr>
               )) : (
                 <tr>
                   <td colSpan={5} className="p-32 text-center">
-                    <p className="text-[12px] font-black text-[#6B665E] uppercase tracking-[0.5em] italic opacity-40">No artifact records found in network database</p>
-                    <Link href="/seller/products/new" className="mt-8 text-[11px] font-black text-[#A34D15] uppercase tracking-widest hover:underline">+ Register First Asset</Link>
+                     <p className="text-[12px] font-black text-[#6B665E] uppercase tracking-[0.5em] italic opacity-40">No products listed yet</p>
+                     <Link href="/seller/products/new" className="mt-8 text-[11px] font-black text-[#A34D15] uppercase tracking-widest hover:underline">+ Add Your First Product</Link>
                   </td>
                 </tr>
               )}
@@ -156,12 +156,12 @@ export default function SellerProductsPage() {
         {/* Tactical Guidance */}
         <div className="bg-[#121212] text-white p-12 relative overflow-hidden shadow-2xl">
            <div className="absolute top-0 right-0 p-10 opacity-5">
-              <div className="text-[80px] font-serif leading-none italic select-none">ASSET</div>
+              <div className="text-[80px] font-serif leading-none italic select-none">PRODUCT</div>
            </div>
            <div className="relative z-10 max-w-3xl">
               <h3 className="text-2xl font-serif italic text-[#A34D15] mb-6">Commercial Standards</h3>
               <p className="text-sm italic leading-relaxed text-white/70">
-                Maintain high-resolution visual documentation for all artifacts. Clear descriptions and accurate stock counts significantly improve facilitation success within the RMF network. Verified "Made in Rwanda" assets receive priority visibility.
+                 Keep your product photos clear and your stock updated. Accurate descriptions and high-quality images help buyers find your products and increase sales. "Made in Rwanda" products get priority visibility.
               </p>
            </div>
         </div>

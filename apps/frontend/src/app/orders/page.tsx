@@ -10,7 +10,7 @@ import toast from 'react-hot-toast';
 
 export default function OrderHistoryPage() {
   const { user } = useAuth();
-  const { data: orders, execute: fetchOrders } = useApi(orderApi, 'get', `/orders?buyerId=${user?.id}`);
+  const { data: orders, loading, execute: fetchOrders } = useApi(orderApi, 'get', `/orders?buyerId=${user?.id}`);
   const [receiptOrder, setReceiptOrder] = useState<any>(null);
   const [deliveryCache, setDeliveryCache] = useState<Record<string, any>>({});
 
@@ -29,56 +29,110 @@ export default function OrderHistoryPage() {
     });
   }, [orders]);
 
+  const statusColors: Record<string, string> = {
+    awaiting_quote: 'bg-yellow-100 text-yellow-800 border-yellow-300',
+    quote_sent: 'bg-blue-100 text-blue-800 border-blue-300',
+    placed: 'bg-purple-100 text-purple-800 border-purple-300',
+    confirmed: 'bg-green-100 text-green-800 border-green-300',
+    preparing: 'bg-orange-100 text-orange-800 border-orange-300',
+    ready_for_pickup: 'bg-teal-100 text-teal-800 border-teal-300',
+    delivered: 'bg-gray-100 text-gray-800 border-gray-300',
+  };
+
   return (
     <Layout>
       {receiptOrder && (
         <ReceiptView order={receiptOrder} role="buyer" onClose={() => setReceiptOrder(null)} />
       )}
       
-      <div className="max-w-5xl mx-auto space-y-12 animate-fade-in pb-20">
-        <div className="border-b border-[#E5E1D8] pb-8">
-          <p className="text-[10px] font-bold text-[#A34D15] uppercase tracking-[0.4em] mb-2">Member Portal</p>
-          <h1 className="text-5xl font-serif text-[#1A1A1A]">Fulfillment Mandates</h1>
+      <div className="max-w-6xl mx-auto space-y-12 animate-reveal pb-24 pt-10 px-6">
+        
+        {/* Header */}
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-end border-b-2 border-[#121212] pb-6 gap-6">
+          <div>
+            <p className="text-[10px] font-black text-[#A34D15] uppercase tracking-[0.5em] mb-2">My Account</p>
+            <h1 className="text-5xl font-serif text-[#121212] tracking-tighter italic leading-none">Order History</h1>
+          </div>
+          <Link href="/markets" className="text-[10px] font-black uppercase tracking-[0.3em] text-[#121212] hover:text-[#A34D15] border-b-2 border-transparent hover:border-[#A34D15] pb-1 transition-all">
+            Continue Shopping →
+          </Link>
         </div>
 
-        <div className="bg-white border border-[#E5E1D8] overflow-hidden">
-          {!orders || orders.length === 0 ? (
-            <div className="p-24 text-center">
-              <p className="text-[10px] font-bold text-[#6B665E] uppercase tracking-widest opacity-40 italic">No Active Mandates Found</p>
-              <Link href="/" className="inline-block mt-8 text-[10px] font-bold uppercase tracking-widest text-[#A34D15] border-b border-[#A34D15]/20 pb-1">Start Exploring Markets →</Link>
+        {/* Orders List */}
+        <div className="space-y-6">
+          {loading ? (
+            [1, 2, 3].map(i => (
+              <div key={i} className="h-40 bg-[#F2F0EB] animate-pulse border border-[#E5E1D8]" />
+            ))
+          ) : !orders || orders.length === 0 ? (
+            <div className="bg-white border-2 border-dashed border-[#E5E1D8] p-24 text-center">
+              <div className="text-6xl mb-6 opacity-80">🛍️</div>
+              <h3 className="text-2xl font-serif italic text-[#121212] mb-2">No orders yet</h3>
+              <p className="text-[11px] font-black text-[#6B665E] uppercase tracking-widest opacity-60 mb-8">Your recent purchases will appear here</p>
+              <Link href="/markets" className="bg-[#121212] text-white px-10 py-4 text-[10px] font-black uppercase tracking-[0.4em] hover:bg-[#A34D15] transition-all inline-block shadow-lg">
+                Explore Markets
+              </Link>
             </div>
           ) : (
-            <div className="divide-y divide-[#E5E1D8]">
-              {orders.map((order: any) => (
-                <div key={order._id} className="p-10 flex flex-col md:flex-row md:items-center justify-between gap-10 hover:bg-[#F9F7F2] transition-colors group">
-                  <div className="space-y-4">
-                    <div className="flex items-center gap-4">
-                      <span className="text-xl font-serif text-[#1A1A1A]">#{order._id.substring(0,8).toUpperCase()}</span>
-                      <span className="text-[8px] font-bold text-[#A34D15] border border-[#A34D15]/20 px-3 py-1 uppercase tracking-tighter">
+            orders.map((order: any) => (
+              <div key={order._id} className="bg-white border border-[#E5E1D8] hover:border-[#121212] transition-colors p-6 md:p-8 flex flex-col lg:flex-row items-start lg:items-center justify-between gap-8 group">
+                
+                {/* Left: Product Info & Meta */}
+                <div className="flex items-center gap-6 flex-1 min-w-0">
+                  <div className="w-24 h-24 bg-[#F8F6F1] border border-[#E5E1D8] flex-shrink-0 overflow-hidden hidden sm:block">
+                    <img 
+                      src={order.products?.[0]?.images?.[0] || 'https://placehold.co/100x100/F8F6F1/121212?text=📦'} 
+                      className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" 
+                      alt="" 
+                    />
+                  </div>
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-3 flex-wrap">
+                      <span className="text-xl font-serif text-[#121212] italic tracking-tighter leading-none">
+                        #{order._id.substring(0,8).toUpperCase()}
+                      </span>
+                      <span className={`text-[9px] font-black px-2.5 py-1 uppercase tracking-widest border ${statusColors[order.status] || 'bg-gray-100 text-gray-700 border-gray-300'}`}>
                         {order.status.replace(/_/g, ' ')}
                       </span>
                     </div>
                     <div>
-                      <p className="text-[9px] font-bold text-[#6B665E] uppercase tracking-widest mb-1">{new Date(order.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</p>
-                      <p className="text-sm font-serif text-[#1A1A1A]">
-                        {order.products?.[0]?.name || 'Premium Heritage Item'} {order.products?.length > 1 ? `+${order.products.length - 1} more` : ''}
+                      <p className="text-lg font-serif text-[#121212] leading-snug">
+                        {order.products?.[0]?.name || 'Market Item'} 
+                        {order.products?.length > 1 && <span className="text-[#6B665E] italic"> +{order.products.length - 1} more</span>}
+                      </p>
+                      <p className="text-[10px] font-black text-[#6B665E] uppercase tracking-widest mt-1 opacity-70">
+                        {new Date(order.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })} · {order.sellerName || 'Verified Seller'}
                       </p>
                     </div>
                   </div>
+                </div>
 
-                  <div className="flex items-center gap-12">
-                    <div className="text-right">
-                      <p className="text-[9px] font-bold text-[#6B665E] uppercase tracking-widest mb-1">Total Valuation</p>
-                      <p className="text-xl font-bold text-[#1A1A1A]">{(order.financials?.totalAmount || 0).toLocaleString()} RWF</p>
-                    </div>
-                    <div className="flex gap-4">
-                      <Link href={`/orders/${order._id}/tracking`} className="bg-[#A34D15] text-white px-8 py-3 text-[10px] font-bold uppercase tracking-widest hover:bg-[#823D11] transition-all">Track</Link>
-                      <button onClick={() => setReceiptOrder(order)} className="border border-[#E5E1D8] text-[#1A1A1A] px-8 py-3 text-[10px] font-bold uppercase tracking-widest hover:bg-[#1A1A1A]/5 transition-colors">Receipt</button>
-                    </div>
+                {/* Right: Financials & Actions */}
+                <div className="flex flex-wrap sm:flex-nowrap items-center gap-6 lg:gap-10 w-full lg:w-auto pt-6 lg:pt-0 border-t lg:border-t-0 border-[#F0EDE4]">
+                  <div className="text-left lg:text-right flex-1 sm:flex-none">
+                    <p className="text-[9px] font-black text-[#6B665E] uppercase tracking-widest mb-1">Total Paid</p>
+                    <p className="text-2xl font-serif italic text-[#121212] tracking-tighter">
+                      {(order.financials?.totalAmount || 0).toLocaleString()} <span className="text-sm font-sans not-italic text-[#A34D15] tracking-widest uppercase font-bold">RWF</span>
+                    </p>
+                  </div>
+                  <div className="flex gap-3 w-full sm:w-auto">
+                    <Link 
+                      href={`/orders/${order._id}/tracking`} 
+                      className="flex-1 sm:flex-none text-center bg-[#121212] text-white px-6 py-4 text-[10px] font-black uppercase tracking-[0.3em] hover:bg-[#A34D15] transition-all shadow-md"
+                    >
+                      Track
+                    </Link>
+                    <button 
+                      onClick={() => setReceiptOrder(order)} 
+                      className="flex-1 sm:flex-none text-center border-2 border-[#E5E1D8] text-[#121212] px-6 py-4 text-[10px] font-black uppercase tracking-[0.3em] hover:border-[#121212] transition-colors"
+                    >
+                      Receipt
+                    </button>
                   </div>
                 </div>
-              ))}
-            </div>
+
+              </div>
+            ))
           )}
         </div>
       </div>

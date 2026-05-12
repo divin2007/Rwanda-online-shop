@@ -11,6 +11,7 @@ export default function LoginPage() {
   const { t } = useLanguage();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPw, setShowPw] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const { login } = useAuth();
   const router = useRouter();
@@ -18,24 +19,21 @@ export default function LoginPage() {
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
-
     try {
       const res = await userApi.post('/auth/login', { email, password });
       if (res.data?.success) {
         const { accessToken, user } = res.data.data;
         login(user, accessToken);
-        toast.success(t('success'));
-
-        // Role-based redirection
+        toast.success('Welcome back!');
         if (user.role === 'SELLER') router.push('/seller/dashboard');
         else if (user.role === 'RIDER') router.push('/rider/dashboard');
         else if (user.role === 'ADMIN') router.push('/admin');
         else router.push('/');
       } else {
-        toast.error(res.data?.error || t('error'));
+        toast.error(res.data?.error || 'Login failed');
       }
     } catch (error: any) {
-      toast.error(error.response?.data?.error || t('error'));
+      toast.error(error.response?.data?.error || 'Incorrect email or password');
     } finally {
       setIsLoading(false);
     }
@@ -46,121 +44,165 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#F8F6F1] font-sans selection:bg-[#A34D15] selection:text-white flex items-center justify-center p-6 md:p-12">
-      <div className="max-w-7xl w-full flex flex-col lg:flex-row items-stretch justify-center animate-reveal">
-        {/* Institutional Identity Panel */}
-        <div className="hidden lg:flex w-1/2 bg-[#121212] text-white p-20 flex-col justify-between border-2 border-[#121212] relative overflow-hidden group shadow-2xl">
-          <div className="absolute inset-0 opacity-20 pointer-events-none">
-             <div className="absolute top-0 left-0 w-full h-full bg-[radial-gradient(circle_at_50%_50%,rgba(163,77,21,0.2),transparent_70%)]"></div>
-             <div className="text-[200px] font-serif italic absolute -bottom-10 -right-10 leading-none select-none opacity-10">RMF</div>
-          </div>
-          
-          <div className="relative z-10">
-            <Link href="/" className="inline-flex items-baseline gap-1 mb-20 group/logo">
-              <span className="text-5xl font-serif font-black tracking-tighter text-white group-hover/logo:text-[#A34D15] transition-colors">RMF</span>
-              <div className="w-2 h-2 bg-[#A34D15] rounded-full"></div>
-            </Link>
-            
-            <div className="flex items-center gap-6 mb-12">
-               <div className="w-12 h-px bg-[#A34D15]"></div>
-               <p className="text-[11px] font-black text-[#A34D15] uppercase tracking-[0.5em]">{t('auth_identity_portal')}</p>
-            </div>
-            <h2 className="text-7xl font-serif tracking-tighter italic leading-none mb-12 text-white">
-              {t('auth_access_core').split('<br/>').map((line, i) => (
-                <React.Fragment key={i}>{line}{i === 0 && <br/>}</React.Fragment>
-              ))}
-            </h2>
-            <p className="text-xl text-white/70 font-light italic leading-relaxed max-w-sm border-l-2 border-white/20 pl-10">
-               {t('auth_core_desc')}
-            </p>
-          </div>
+    <div className="min-h-screen flex font-sans selection:bg-[#F59E0B] selection:text-white">
 
-          <div className="relative z-10 pt-12 border-t border-white/20 flex justify-between items-end">
-             <div>
-                <p className="text-[9px] font-black uppercase tracking-[0.4em] text-white/60 mb-2">{t('auth_system_status')}</p>
-                <div className="flex items-center gap-3">
-                   <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-                   <span className="text-[10px] font-black uppercase tracking-widest text-white/90">{t('auth_gateway_nominal')}</span>
-                </div>
-             </div>
-             <p className="text-[8px] font-bold text-white/40 uppercase tracking-[0.6em]">Ver: 2.4.0-STABLE</p>
-          </div>
+      {/* ── Left: Brand Panel ── */}
+      <div className="hidden lg:flex w-[46%] bg-[#121212] flex-col justify-between p-16 relative overflow-hidden">
+        {/* Background decoration */}
+        <div className="absolute inset-0 pointer-events-none">
+          <div className="absolute top-0 left-0 w-full h-full bg-[radial-gradient(circle_at_30%_70%,rgba(163,77,21,0.15),transparent_60%)]" />
+          <div className="absolute -bottom-8 -right-8 text-[220px] font-serif italic leading-none select-none opacity-[0.04] text-white">RMF</div>
         </div>
 
-        {/* Elite Authentication Workstation */}
-        <div className="w-full lg:w-1/2 bg-white border-2 border-[#121212] lg:border-l-0 p-12 md:p-24 flex flex-col justify-center shadow-2xl">
-          <div className="mb-16">
-            <h1 className="text-5xl font-serif text-[#121212] tracking-tighter italic mb-4">{t('login_title')}</h1>
-            <p className="text-[11px] font-black text-[#6B665E] uppercase tracking-[0.4em] opacity-60">{t('login_subtitle')}</p>
+        {/* Logo */}
+        <div className="relative z-10">
+          <Link href="/" className="inline-flex items-baseline gap-2 group">
+            <span className="text-4xl font-serif font-black tracking-tighter text-white group-hover:text-[#F59E0B] transition-colors">RMF</span>
+            <div className="w-2 h-2 bg-[#F59E0B] rounded-full" />
+          </Link>
+          <p className="text-[9px] font-black text-white/30 uppercase tracking-[0.5em] mt-2">Rwanda Market Facilitator</p>
+        </div>
+
+        {/* Main copy */}
+        <div className="relative z-10 space-y-8">
+          <div className="flex items-center gap-4">
+            <div className="w-8 h-px bg-[#F59E0B]" />
+            <p className="text-[10px] font-black text-[#F59E0B] uppercase tracking-[0.5em]">Welcome Back</p>
+          </div>
+          <h2 className="text-6xl font-serif italic tracking-tighter leading-[0.95] text-white">
+            Your local<br />
+            <span className="text-[#F59E0B]">marketplace</span><br />
+            awaits.
+          </h2>
+          <p className="text-base text-white/50 font-light italic leading-relaxed max-w-sm border-l-2 border-white/10 pl-6">
+            Shop from verified sellers across Kigali's best markets. Fast delivery, secure MoMo payments, real-time tracking.
+          </p>
+        </div>
+
+        {/* Trust badges */}
+        <div className="relative z-10 grid grid-cols-3 gap-4 pt-10 border-t border-white/10">
+          {[
+            { icon: '🛡️', label: 'Verified Sellers' },
+            { icon: '🔒', label: 'Secure MoMo' },
+            { icon: '🛵', label: 'Fast Delivery' },
+          ].map(b => (
+            <div key={b.label} className="text-center space-y-2">
+              <div className="text-2xl">{b.icon}</div>
+              <p className="text-[8px] font-black text-white/40 uppercase tracking-widest leading-tight">{b.label}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* ── Right: Form Panel ── */}
+      <div className="flex-1 bg-white flex items-center justify-center p-8 md:p-16">
+        <div className="w-full max-w-md space-y-10 animate-reveal">
+
+          {/* Mobile logo */}
+          <div className="lg:hidden flex items-baseline gap-2 mb-4">
+            <span className="text-3xl font-serif font-black tracking-tighter text-[#121212]">RMF</span>
+            <div className="w-1.5 h-1.5 bg-[#F59E0B] rounded-full" />
           </div>
 
-          <form onSubmit={handleLogin} className="space-y-12">
-            <div className="rmf-form-group">
-              <label className="rmf-label" htmlFor="email">
-                {t('email_label')}
-                <span className="opacity-40">{t('auth_required')}</span>
-              </label>
-              <input
-                id="email" 
-                type="email" 
-                required
-                className="rmf-input"
-                placeholder={t('auth_secure_email')} 
-                value={email} 
-                onChange={(e) => setEmail(e.target.value)}
-              />
-            </div>
-
-            <div className="rmf-form-group">
-              <label className="rmf-label" htmlFor="password">
-                {t('password_label')}
-                <span className="opacity-40">{t('auth_secure_mask')}</span>
-              </label>
-              <input
-                id="password" 
-                type="password" 
-                required
-                className="rmf-input"
-                placeholder="••••••••••••" 
-                value={password} 
-                onChange={(e) => setPassword(e.target.value)}
-              />
-            </div>
-
-            <div className="pt-6">
-              <button 
-                type="submit" 
-                disabled={isLoading}
-                className="rmf-btn-primary w-full group relative"
-              >
-                <span className="relative z-10">{isLoading ? t('signing_in') : t('sign_in')}</span>
-                <div className="absolute right-8 top-1/2 -translate-y-1/2 opacity-40 group-hover:translate-x-2 transition-transform">→</div>
-              </button>
-            </div>
-          </form>
-
-          <div className="mt-12 flex items-center gap-6">
-            <div className="h-px flex-grow bg-[#F0EDE4]"></div>
-            <span className="text-[9px] font-black text-[#6B665E] uppercase tracking-[0.3em] opacity-60">{t('auth_external_protocols')}</span>
-            <div className="h-px flex-grow bg-[#F0EDE4]"></div>
-          </div>
-
-          <button
-            onClick={handleGoogleAuth}
-            className="mt-12 w-full flex items-center justify-center gap-6 py-5 border-2 border-[#F0EDE4] hover:border-[#121212] transition-all text-[11px] font-black uppercase tracking-[0.3em] group"
-          >
-            <img src="https://www.svgrepo.com/show/475656/google-color.svg" alt="Google" className="w-5 h-5 grayscale group-hover:grayscale-0 transition-all opacity-80 group-hover:opacity-100" />
-            <span className="text-[#121212]/80 group-hover:text-[#121212]">{t('continue_google')}</span>
-          </button>
-
-          <div className="mt-20 pt-10 border-t border-[#F0EDE4] text-center">
-            <p className="text-[10px] font-black text-[#6B665E] uppercase tracking-[0.3em]">
-              {t('login_no_account')} 
-              <Link href="/register" className="text-[#A34D15] ml-4 border-b-2 border-[#A34D15]/40 hover:border-[#A34D15] transition-all">
-                {t('login_register')}
-              </Link>
+          {/* Header */}
+          <div>
+            <h1 className="text-4xl font-serif text-[#121212] italic tracking-tighter mb-2">Sign In</h1>
+            <p className="text-sm text-[#6B665E]">
+              New to RMF?{' '}
+              <Link href="/register" className="text-[#A34D15] font-black hover:underline">Create a free account →</Link>
             </p>
           </div>
+
+          {/* Google Button */}
+          <button
+            onClick={handleGoogleAuth}
+            className="w-full flex items-center justify-center gap-4 py-4 border-2 border-[#E5E1D8] hover:border-[#121212] transition-all text-sm font-bold text-[#121212] group"
+          >
+            <img src="https://www.svgrepo.com/show/475656/google-color.svg" alt="Google" className="w-5 h-5" />
+            Continue with Google
+          </button>
+
+          <div className="flex items-center gap-4">
+            <div className="h-px flex-1 bg-[#F0EDE4]" />
+            <span className="text-[10px] font-black text-[#6B665E] uppercase tracking-widest">or sign in with email</span>
+            <div className="h-px flex-1 bg-[#F0EDE4]" />
+          </div>
+
+          {/* Form */}
+          <form onSubmit={handleLogin} className="space-y-6">
+            {/* Email */}
+            <div className="space-y-2">
+              <label className="text-[10px] font-black text-[#121212] uppercase tracking-[0.4em] block" htmlFor="email">
+                Email Address
+              </label>
+              <input
+                id="email"
+                type="email"
+                required
+                autoComplete="email"
+                placeholder="you@example.com"
+                value={email}
+                onChange={e => setEmail(e.target.value)}
+                className="w-full bg-[#F8F6F1] border-2 border-[#E5E1D8] focus:border-[#121212] px-5 py-4 text-sm outline-none transition-colors rounded-none font-medium"
+              />
+            </div>
+
+            {/* Password */}
+            <div className="space-y-2">
+              <div className="flex justify-between items-center">
+                <label className="text-[10px] font-black text-[#121212] uppercase tracking-[0.4em] block" htmlFor="password">
+                  Password
+                </label>
+                <button type="button" className="text-[10px] font-black text-[#A34D15] uppercase tracking-widest hover:underline">
+                  Forgot Password?
+                </button>
+              </div>
+              <div className="relative">
+                <input
+                  id="password"
+                  type={showPw ? 'text' : 'password'}
+                  required
+                  autoComplete="current-password"
+                  placeholder="••••••••••"
+                  value={password}
+                  onChange={e => setPassword(e.target.value)}
+                  className="w-full bg-[#F8F6F1] border-2 border-[#E5E1D8] focus:border-[#121212] px-5 py-4 text-sm outline-none transition-colors rounded-none font-medium pr-14"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPw(!showPw)}
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-[#6B665E] hover:text-[#121212] transition-colors"
+                >
+                  {showPw ? (
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+                  ) : (
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                  )}
+                </button>
+              </div>
+            </div>
+
+            {/* Submit */}
+            <button
+              type="submit"
+              disabled={isLoading}
+              className="w-full bg-[#121212] text-white py-5 text-[11px] font-black uppercase tracking-[0.4em] hover:bg-[#A34D15] transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-3"
+            >
+              {isLoading ? (
+                <>
+                  <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  Signing in...
+                </>
+              ) : 'Sign In →'}
+            </button>
+          </form>
+
+          {/* Register link */}
+          <p className="text-center text-[10px] font-bold text-[#6B665E] uppercase tracking-widest pt-4 border-t border-[#F0EDE4]">
+            Want to sell on RMF?{' '}
+            <Link href="/register?role=SELLER" className="text-[#A34D15] font-black hover:underline">Apply as Seller</Link>
+          </p>
+
         </div>
       </div>
     </div>

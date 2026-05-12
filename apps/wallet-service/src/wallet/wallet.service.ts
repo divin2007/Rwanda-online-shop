@@ -138,14 +138,54 @@ export class WalletService {
   }
 
   async deductWeeklyInsurance(): Promise<any> {
-    // Retrieve all riders with active wallets
-    // For this stub, we just pretend to deduct 500 RWF
     const INSURANCE_FEE = 500;
     const ledgerId = `INS-${Date.now()}`;
 
-    // This would typically be an aggregation or batch update
-    // e.g. updateMany({ balance: { $gte: INSURANCE_FEE } }, { $inc: { balance: -INSURANCE_FEE } })
-    return { success: true, message: `Deducted ${INSURANCE_FEE} from eligible riders` };
+    try {
+      // Find all rider wallets with sufficient balance
+      // Riders are identified by having a wallet and being referenced in rider profiles
+      const eligibleWallets = await this.walletModel.find({
+        balance: { $gte: INSURANCE_FEE }
+      }).exec();
+
+      let deducted = 0;
+      const errors: string[] = [];
+
+      for (const wallet of eligibleWallets) {
+        try {
+          const updatedWallet = await this.walletModel.findOneAndUpdate(
+            { _id: wallet._id, balance: { $gte: INSURANCE_FEE } },
+            { $inc: { balance: -INSURANCE_FEE } },
+            { new: true }
+          );
+
+          if (updatedWallet) {
+            await new this.ledgerModel({
+              ledgerId: `${ledgerId}-${deducted}`,
+              userId: wallet.userId,
+              transactionId: ledgerId,
+              type: 'debit',
+              account: 'rider_insurance',
+              amount: INSURANCE_FEE,
+              description: `Weekly insurance deduction`,
+              balanceAfter: updatedWallet.balance
+            }).save();
+            deducted++;
+          }
+        } catch (err) {
+          errors.push(`Failed for wallet ${wallet._id}: ${err}`);
+        }
+      }
+
+      return {
+        success: true,
+        message: `Deducted ${INSURANCE_FEE} RWF from ${deducted} rider wallets`,
+        deducted,
+        errors: errors.length > 0 ? errors : undefined
+      };
+    } catch (error) {
+      return { success: false, message: 'Insurance deduction batch failed', error };
+    }
   }
 
   async requestPayout(userId: string, amount: number, method: string, recipientPhone: string): Promise<any> {

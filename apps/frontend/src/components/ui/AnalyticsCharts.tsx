@@ -15,9 +15,10 @@ interface AnalyticsChartsProps {
     performance: { name: string; revenue?: number; sales?: number }[];
   };
   type: 'admin' | 'seller';
+  hidePerformance?: boolean;
 }
 
-export const AnalyticsCharts = ({ orders = [], data, type }: AnalyticsChartsProps) => {
+export const AnalyticsCharts = ({ orders = [], data, type, hidePerformance = false }: AnalyticsChartsProps) => {
   // 1. Process data for Revenue Trend (Last 7 days)
   let revenueData = [];
   if (data?.trends) {
@@ -97,9 +98,9 @@ export const AnalyticsCharts = ({ orders = [], data, type }: AnalyticsChartsProp
           <span className="w-2 h-2 bg-[#F59E0B] rounded-full animate-pulse"></span>
           Revenue Trend (Last 7 Days)
         </h3>
-        <div className="h-[300px] w-full">
+        <div className="h-[350px] w-full">
           <ResponsiveContainer width="100%" height="100%">
-            <AreaChart data={revenueData}>
+            <AreaChart data={revenueData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
               <defs>
                 <linearGradient id="colorRev" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="5%" stopColor="#F59E0B" stopOpacity={0.1}/>
@@ -107,7 +108,7 @@ export const AnalyticsCharts = ({ orders = [], data, type }: AnalyticsChartsProp
                 </linearGradient>
               </defs>
               <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-              <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{ fontSize: 9, fontWeight: '900', fill: '#121212', textTransform: 'uppercase', letterSpacing: '0.1em' }} />
+              <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{ fontSize: 9, fontWeight: '900', fill: '#121212' }} minTickGap={15} />
               <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 9, fontWeight: '900', fill: '#64748b' }} tickFormatter={(value) => `${value / 1000}k`} />
               <Tooltip 
                 contentStyle={{ background: '#121212', border: '1px solid #F59E0B', borderRadius: '0px', padding: '12px' }}
@@ -127,7 +128,7 @@ export const AnalyticsCharts = ({ orders = [], data, type }: AnalyticsChartsProp
           <span className="w-2 h-2 bg-[#121212] rounded-full"></span>
           Order Status Distribution
         </h3>
-        <div className="h-[300px] w-full flex items-center">
+        <div className="h-[350px] w-full flex items-center">
           <ResponsiveContainer width="100%" height="100%">
             <PieChart>
               <Pie
@@ -148,40 +149,42 @@ export const AnalyticsCharts = ({ orders = [], data, type }: AnalyticsChartsProp
                  contentStyle={{ background: '#121212', border: '1px solid #F59E0B', borderRadius: '0px' }}
                  itemStyle={{ color: '#F59E0B', fontSize: '10px', fontWeight: '900' }}
               />
-              <Legend verticalAlign="bottom" height={36} iconType="rect" formatter={(value) => <span className="text-[8px] font-black uppercase tracking-widest text-[#6B665E]">{value}</span>}/>
+              <Legend verticalAlign="bottom" wrapperStyle={{ paddingTop: '20px' }} iconType="rect" formatter={(value) => <span className="text-[8px] font-black uppercase tracking-widest text-[#6B665E] leading-relaxed">{value}</span>}/>
             </PieChart>
           </ResponsiveContainer>
         </div>
       </div>
 
       {/* Performance Bar Chart */}
-      <div className="bg-white p-10 border-2 border-[#121212] shadow-[8px_8px_0_0_#121212] lg:col-span-2 mt-6">
-        <h3 className="text-[10px] font-black uppercase tracking-[0.4em] mb-10 flex items-center gap-4 text-[#121212]">
-          <span className="w-2 h-2 bg-[#A34D15] rounded-full"></span>
-          {type === 'admin' ? 'Top Selling Vendors' : 'Top Performing Artifacts'}
-        </h3>
-        <div className="h-[350px] w-full">
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={performanceData} layout="vertical" margin={{ left: 40, right: 40 }}>
-              <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#f1f5f9" />
-              <XAxis type="number" axisLine={false} tickLine={false} tick={{ fontSize: 9, fontWeight: '900', fill: '#64748b' }} />
-              <YAxis dataKey="name" type="category" axisLine={false} tickLine={false} tick={{ fontSize: 9, fontWeight: '900', fill: '#121212', textTransform: 'uppercase' }} width={120} />
-              <Tooltip 
-                cursor={{ fill: '#F8F6F1' }}
-                contentStyle={{ background: '#121212', border: '1px solid #F59E0B', borderRadius: '0px' }}
-                itemStyle={{ color: '#F59E0B', fontSize: '10px', fontWeight: '900' }}
-                labelStyle={{ color: '#fff', fontSize: '8px', marginBottom: '4px' }}
-              />
-              <Bar 
-                dataKey={type === 'admin' ? 'revenue' : 'sales'} 
-                fill="#121212" 
-                radius={[0, 0, 0, 0]} 
-                barSize={24}
-              />
-            </BarChart>
-          </ResponsiveContainer>
+      {!hidePerformance && (
+        <div className="bg-white p-10 border-2 border-[#121212] shadow-[8px_8px_0_0_#121212] lg:col-span-2 mt-6">
+          <h3 className="text-[10px] font-black uppercase tracking-[0.4em] mb-10 flex items-center gap-4 text-[#121212]">
+            <span className="w-2 h-2 bg-[#A34D15] rounded-full"></span>
+            {type === 'admin' ? 'Top Selling Vendors' : 'Top Selling Products'}
+          </h3>
+          <div className="h-[350px] w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={performanceData} layout="vertical" margin={{ left: 40, right: 40 }}>
+                <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#f1f5f9" />
+                <XAxis type="number" axisLine={false} tickLine={false} tick={{ fontSize: 9, fontWeight: '900', fill: '#64748b' }} />
+                <YAxis dataKey="name" type="category" axisLine={false} tickLine={false} tick={{ fontSize: 9, fontWeight: '900', fill: '#121212' }} width={120} />
+                <Tooltip 
+                  cursor={{ fill: '#F8F6F1' }}
+                  contentStyle={{ background: '#121212', border: '1px solid #F59E0B', borderRadius: '0px' }}
+                  itemStyle={{ color: '#F59E0B', fontSize: '10px', fontWeight: '900' }}
+                  labelStyle={{ color: '#fff', fontSize: '8px', marginBottom: '4px' }}
+                />
+                <Bar 
+                  dataKey={type === 'admin' ? 'revenue' : 'sales'} 
+                  fill="#121212" 
+                  radius={[0, 0, 0, 0]} 
+                  barSize={24}
+                />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 };

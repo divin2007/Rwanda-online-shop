@@ -1,7 +1,8 @@
 const mongoose = require('mongoose');
 
 async function seedOrders() {
-  await mongoose.connect('mongodb://localhost:27017/rwanda-market');
+  const uri = process.env.MONGODB_URI || 'mongodb://localhost:27017/rmf-platform';
+  await mongoose.connect(uri);
   const Order = mongoose.model('Transaction', new mongoose.Schema({}, { strict: false }));
   
   // Clear existing orders if any

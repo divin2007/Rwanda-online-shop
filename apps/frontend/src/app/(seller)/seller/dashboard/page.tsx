@@ -23,11 +23,9 @@ export default function SellerDashboardPage() {
     }
   }, [user, router]);
 
-  // Real Data Handshaking
   const profileUrl = user?.id ? `/sellers/me?userId=${user.id}` : null;
   const { data: profile, loading: profileLoading, error: profileError } = useApi(sellerApi, 'get', profileUrl || '');
-  
-  // Grace Period to prevent handshake loops immediately after onboarding
+
   const [isSettled, setIsSettled] = useState(false);
   useEffect(() => {
     if (!profileLoading) {
@@ -38,11 +36,8 @@ export default function SellerDashboardPage() {
     }
   }, [profileLoading]);
 
-  // 1. Redirection Logic: If no profile exists, send to onboarding
   useEffect(() => {
-    // ONLY redirect if we are settled, have a user, and we are CERTAIN no profile exists for them
     if (isSettled && user?.id && !profileLoading && profile === null && user.role === 'SELLER') {
-      console.log('[Dashboard] No profile found after grace period. Redirecting to onboarding.');
       router.push('/seller/onboarding');
     }
   }, [profile, profileLoading, user, router, isSettled]);
@@ -61,239 +56,277 @@ export default function SellerDashboardPage() {
     return (
       <Layout>
         <div className="p-20 text-center space-y-6">
-          <div className="text-red-500 text-6xl">⚠</div>
-          <h2 className="text-2xl font-serif">Connection Interrupted</h2>
-          <p className="text-sm text-[#6B665E] italic max-w-md mx-auto">The secure link to your vendor profile was lost. Please re-authenticate.</p>
-          <button onClick={() => window.location.reload()} className="rmf-btn-primary px-12">Re-initialize Handshake</button>
+          <div className="text-5xl">⚠️</div>
+          <h2 className="text-2xl font-serif italic">Connection Error</h2>
+          <p className="text-sm text-[#6B665E] italic max-w-md mx-auto">Could not load your seller profile. Please try again.</p>
+          <button onClick={() => window.location.reload()} className="rmf-btn-primary px-12">Retry</button>
         </div>
       </Layout>
     );
   }
 
-  // Only show full-page loading if we are actually loading the profile
   if (profileLoading || (profile === null && !profileError)) {
     return (
       <Layout>
-        <div className="p-20 text-center flex flex-col items-center justify-center space-y-12 min-h-[60vh] animate-reveal">
+        <div className="p-20 text-center flex flex-col items-center justify-center space-y-8 min-h-[60vh] animate-reveal">
           <div className="relative">
-             <div className="w-24 h-24 border-2 border-[#121212]/10 rounded-full"></div>
-             <div className="absolute top-0 left-0 w-24 h-24 border-t-2 border-[#F59E0B] rounded-full animate-spin"></div>
+            <div className="w-20 h-20 border-4 border-[#F59E0B]/20 rounded-full" />
+            <div className="absolute inset-0 w-20 h-20 border-4 border-t-[#F59E0B] rounded-full animate-spin" />
           </div>
-          <div className="space-y-4">
-            <h2 className="font-serif text-3xl italic tracking-tighter">Synchronizing Institutional Identity...</h2>
-            <div className="flex items-center justify-center gap-4">
-               <div className="w-8 h-px bg-[#F59E0B]"></div>
-               <p className="text-[10px] font-black uppercase tracking-[0.4em] opacity-40">Verifying RMF Merchant Mandate</p>
-               <div className="w-8 h-px bg-[#F59E0B]"></div>
-            </div>
-            <p className="text-[9px] text-[#6B665E] italic max-w-xs mx-auto opacity-60 leading-relaxed mt-6">
-               Establishing secure link to regional hub registry. This process ensures your facilitation credentials are live across the network.
-            </p>
-          </div>
+          <p className="text-[10px] font-black uppercase tracking-[0.5em] text-[#6B665E] opacity-60">Loading your shop...</p>
         </div>
       </Layout>
     );
   }
 
-  // 2. Pending State: If profile exists but not approved
   if (profile && !profile.isApproved) {
     return (
       <Layout>
-        <div className="min-h-[80vh] flex flex-col items-center justify-center p-12 animate-reveal">
-           <div className="max-w-3xl w-full bg-white border-2 border-[#121212] p-16 shadow-2xl relative overflow-hidden">
-              <div className="absolute top-0 left-0 w-full h-2 bg-[#F59E0B]"></div>
-              <div className="absolute -top-10 -right-10 opacity-5 pointer-events-none">
-                 <div className="text-[200px] font-serif italic leading-none">PEND</div>
-              </div>
-              
-              <div className="relative z-10 space-y-12">
-                 <div className="space-y-6 text-center">
-                    <p className="text-[11px] font-black text-[#F59E0B] uppercase tracking-[0.5em]">Institutional Status: Awaiting Verification</p>
-                    <h1 className="text-6xl font-serif tracking-tighter italic leading-none text-[#121212]">
-                       Mandate Processing
-                    </h1>
-                    <div className="w-24 h-px bg-[#121212]/20 mx-auto"></div>
-                 </div>
-
-                 <div className="bg-[#F8F6F1] p-10 space-y-8 border border-[#E5E1D8]">
-                    <div className="flex gap-8">
-                       <div className="w-12 h-12 bg-[#121212] flex items-center justify-center flex-shrink-0">
-                          <span className="text-white text-xl">🛡</span>
-                       </div>
-                       <div className="space-y-2">
-                          <h4 className="text-[13px] font-black uppercase tracking-widest text-[#121212]">Verification in Progress</h4>
-                          <p className="text-xs italic text-[#6B665E] leading-relaxed">Your artisan credentials and facility details are currently being audited by the RMF regional administration to ensure network compliance.</p>
-                       </div>
-                    </div>
-
-                    <div className="flex gap-8">
-                       <div className="w-12 h-12 border-2 border-[#121212] flex items-center justify-center flex-shrink-0">
-                          <span className="text-xl">⏳</span>
-                       </div>
-                       <div className="space-y-2">
-                          <h4 className="text-[13px] font-black uppercase tracking-widest text-[#121212]">Deployment Timeline</h4>
-                          <p className="text-xs italic text-[#6B665E] leading-relaxed">Typical verification cycles complete within 24 operational hours. You will receive an encrypted notification once your workstation is live.</p>
-                       </div>
-                    </div>
-                 </div>
-
-                 <div className="pt-8 flex flex-col items-center gap-6">
-                    <p className="text-[10px] font-bold text-[#6B665E] uppercase tracking-widest opacity-60 italic">Current Facility: {profile.shopDetails?.name || 'RMF Hub Stall'}</p>
-                    <Link href="/" className="rmf-btn-primary px-12 bg-transparent text-[#121212] border-2 border-[#121212] hover:bg-[#121212] hover:text-white shadow-none">Return to Network Hub</Link>
-                 </div>
-              </div>
-           </div>
+        <div className="min-h-[80vh] flex items-center justify-center p-12 animate-reveal">
+          <div className="max-w-2xl w-full bg-white border-2 border-[#121212] p-16 shadow-2xl">
+            <div className="h-2 bg-[#F59E0B] -mx-16 -mt-16 mb-16" />
+            <div className="text-center space-y-4 mb-12">
+              <p className="text-[11px] font-black text-[#F59E0B] uppercase tracking-[0.5em]">Status: Under Review</p>
+              <h1 className="text-5xl font-serif italic tracking-tighter text-[#121212]">Application Received!</h1>
+            </div>
+            <div className="space-y-6 bg-[#F8F6F1] p-8 border border-[#E5E1D8] mb-10">
+              {[
+                { icon: '🛡️', title: 'Verification in Progress', desc: "We're checking your business documents. This ensures all RMF sellers meet our quality standards." },
+                { icon: '⏳', title: 'Timeline: Up to 24 hours', desc: "You'll receive a notification once your shop is live and ready to accept orders." },
+              ].map(item => (
+                <div key={item.title} className="flex gap-6">
+                  <div className="w-12 h-12 bg-[#121212] flex items-center justify-center text-xl flex-shrink-0">{item.icon}</div>
+                  <div>
+                    <h4 className="text-sm font-black uppercase tracking-widest text-[#121212] mb-1">{item.title}</h4>
+                    <p className="text-xs italic text-[#6B665E] leading-relaxed">{item.desc}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+            <div className="text-center">
+              <p className="text-[10px] font-bold text-[#6B665E] uppercase tracking-widest mb-6">Shop: {profile.shopDetails?.name || 'Your Shop'}</p>
+              <Link href="/" className="bg-[#121212] text-white px-10 py-4 text-[10px] font-black uppercase tracking-[0.4em] hover:bg-[#A34D15] transition-all inline-block">
+                Back to Homepage
+              </Link>
+            </div>
+          </div>
         </div>
       </Layout>
     );
   }
 
+  const statusColors: Record<string, string> = {
+    awaiting_quote: 'bg-yellow-100 text-yellow-800 border-yellow-300',
+    quote_sent: 'bg-blue-100 text-blue-800 border-blue-300',
+    placed: 'bg-purple-100 text-purple-800 border-purple-300',
+    confirmed: 'bg-green-100 text-green-800 border-green-300',
+    preparing: 'bg-orange-100 text-orange-800 border-orange-300',
+    ready_for_pickup: 'bg-teal-100 text-teal-800 border-teal-300',
+  };
+
   return (
     <Layout>
-      <div className="animate-reveal space-y-20 pb-20">
-        {/* Tactical Header */}
-        <div className="relative bg-white text-[#121212] p-16 overflow-hidden group shadow-2xl border-2 border-[#121212]">
-          <div className="absolute top-0 right-0 p-10 opacity-5">
-             <div className="text-[150px] font-serif leading-none italic select-none">VEND</div>
+      <div className="animate-reveal space-y-8 pb-16">
+
+        {/* ── Header Bar ── */}
+        <div className="bg-[#121212] text-white px-10 py-8 flex flex-col md:flex-row justify-between items-start md:items-center gap-6 relative overflow-hidden">
+          <div className="absolute inset-0 opacity-[0.04] pointer-events-none">
+            <div className="absolute -right-4 top-0 text-[180px] font-serif italic leading-none select-none">SHOP</div>
           </div>
-          
-          <div className="relative z-10 flex flex-col lg:flex-row justify-between items-start lg:items-end gap-12">
-            <div className="space-y-6">
-               <div className="flex items-center gap-6">
-                  <div className="w-12 h-px bg-[#F59E0B]"></div>
-                  <p className="text-[11px] font-black text-[#F59E0B] uppercase tracking-[0.5em]">Workstation Active: {profile?.stallId || 'STALL-00'}</p>
-               </div>
-               <h1 className="text-7xl font-serif tracking-tighter italic leading-none text-[#121212]">
-                 {profile?.shopDetails?.name || 'Artisan Facility'}
-               </h1>
-               <div className="flex items-center gap-8 text-[10px] font-bold uppercase tracking-widest text-[#121212]/60 italic">
-                  <span className="flex items-center gap-2">
-                    <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span> {t('verified_facility')}
-                  </span>
-                  <span>•</span>
-                  <span>{profile?.shopDetails?.category || 'General Artisanal'}</span>
-               </div>
+          <div className="relative z-10">
+            <div className="flex items-center gap-3 mb-2">
+              <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
+              <p className="text-[9px] font-black text-white/40 uppercase tracking-[0.5em]">Seller Hub · {profile?.shopDetails?.category || 'General'}</p>
             </div>
-            
-            <div className="flex flex-wrap gap-6">
-               <Link href="/seller/products/new" className="rmf-btn-primary bg-[#F59E0B] hover:bg-[#C25D1D] shadow-[0_20px_50px_-15px_rgba(163,77,21,0.4)] border-none">
-                 + New Artifact
-               </Link>
-               <Link href="/seller/qr" className="rmf-btn-outline border-[#121212] text-[#121212] hover:bg-[#121212] hover:text-white">
-                 Print Stall QR
-               </Link>
-            </div>
+            <h1 className="text-4xl font-serif italic tracking-tighter text-white">{profile?.shopDetails?.name || 'My Shop'}</h1>
+            <p className="text-[10px] font-bold text-white/30 uppercase tracking-widest mt-1">Stall: {profile?.stallId || '—'}</p>
+          </div>
+          <div className="relative z-10 flex flex-wrap gap-3">
+            <Link href="/seller/products/new" className="bg-[#F59E0B] text-[#121212] px-6 py-3 text-[10px] font-black uppercase tracking-[0.3em] hover:bg-white transition-all">
+              + Add Product
+            </Link>
+            <Link href="/seller/products" className="border border-white/20 text-white px-6 py-3 text-[10px] font-black uppercase tracking-[0.3em] hover:bg-white/10 transition-all">
+              My Products
+            </Link>
+            <Link href="/seller/qr" className="border border-white/20 text-white px-6 py-3 text-[10px] font-black uppercase tracking-[0.3em] hover:bg-white/10 transition-all">
+              🖨 QR Code
+            </Link>
           </div>
         </div>
 
-        {/* Dynamic Metrics Matrix */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12">
-           {[
-             { label: 'Network Liquidity', val: `${wallet.balance?.toLocaleString() || 0} RWF`, sub: 'Ready for payout', icon: '💰', color: 'text-white', border: 'border-[#F59E0B]/40' },
-             { label: 'Active Mandates', val: activeOrders.length, sub: 'Requires fulfillment', icon: '📦', color: 'text-white', border: 'border-white/10' },
-             { label: 'Artifact Inventory', val: products.length, sub: 'Verified collection', icon: '🏺', color: 'text-white', border: 'border-white/10' },
-             { label: 'Merchant Trust', val: `${analytics.avgRating?.toFixed(1) || '5.0'} / 5.0`, sub: 'RMF Verification', icon: '⭐', color: 'text-amber-500', border: 'border-white/10' },
-           ].map((stat, i) => (
-             <div key={i} className={`bg-[#121212] border ${stat.border} p-10 group hover:border-[#F59E0B] transition-all relative`}>
-                <div className="flex justify-between items-start mb-8">
-                  <p className="text-[10px] font-black uppercase tracking-widest text-[#F59E0B] opacity-60">{stat.label}</p>
-                  <span className={`text-2xl opacity-30 group-hover:opacity-100 transition-opacity ${stat.color}`}>{stat.icon}</span>
-                </div>
-                <h3 className={`text-4xl font-serif tracking-tighter ${stat.color}`}>{stat.val}</h3>
-                <p className="text-[9px] font-bold uppercase tracking-widest text-white/40 mt-3 opacity-40 italic">{stat.sub}</p>
-             </div>
-           ))}
+        {/* ── KPI Cards ── */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 px-6">
+          {[
+            { label: 'Wallet Balance', val: `${(wallet.balance || 0).toLocaleString()}`, unit: 'RWF', sub: 'Ready to withdraw', icon: '💰', accent: 'border-l-[#F59E0B]', valColor: 'text-[#121212]', action: { label: 'Withdraw', href: '/seller/earnings' } },
+            { label: 'Pending Orders', val: String(activeOrders.length), unit: '', sub: 'Needs your attention', icon: '📦', accent: activeOrders.length > 0 ? 'border-l-red-500' : 'border-l-green-500', valColor: activeOrders.length > 0 ? 'text-red-600' : 'text-green-600', action: { label: 'View Orders', href: '/seller/orders' } },
+            { label: 'Products Listed', val: String(products.length), unit: '', sub: 'Active in your shop', icon: '🏪', accent: 'border-l-[#121212]', valColor: 'text-[#121212]', action: { label: 'Manage', href: '/seller/products' } },
+            { label: 'Avg. Rating', val: analytics.avgRating?.toFixed(1) || '5.0', unit: '/ 5', sub: 'From customer reviews', icon: '⭐', accent: 'border-l-[#A34D15]', valColor: 'text-[#A34D15]', action: { label: 'See Reviews', href: '/seller/reviews' } },
+          ].map((stat, i) => (
+            <div key={i} className={`bg-white border border-[#E5E1D8] border-l-4 ${stat.accent} p-6 hover:shadow-md transition-all`}>
+              <div className="flex justify-between items-start mb-4">
+                <p className="text-[9px] font-black text-[#6B665E] uppercase tracking-widest">{stat.label}</p>
+                <span className="text-xl">{stat.icon}</span>
+              </div>
+              <div className="flex items-baseline gap-2 mb-1">
+                <span className={`text-3xl font-serif italic tracking-tighter ${stat.valColor}`}>{stat.val}</span>
+                {stat.unit && <span className="text-sm text-[#6B665E] font-bold">{stat.unit}</span>}
+              </div>
+              <p className="text-[9px] text-[#6B665E] uppercase tracking-widest opacity-60 mb-4">{stat.sub}</p>
+              <Link href={stat.action.href} className="text-[9px] font-black text-[#A34D15] uppercase tracking-widest hover:underline">
+                {stat.action.label} →
+              </Link>
+            </div>
+          ))}
         </div>
 
-        {/* Operational Analytics: Revenue Velocity */}
-        <div className="bg-white border-2 border-[#121212] p-12 relative overflow-hidden shadow-2xl">
-           <div className="flex justify-between items-end border-b-2 border-[#121212] pb-8 mb-12">
+        {/* ── Orders + Sidebar ── */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 px-6">
+
+          {/* Orders */}
+          <div className="lg:col-span-2 space-y-4">
+            <div className="flex justify-between items-center border-b-2 border-[#121212] pb-4">
               <div>
-                <p className="text-[10px] font-black text-[#F59E0B] uppercase tracking-[0.5em] mb-4">Operational Analytics</p>
-                <h2 className="text-5xl font-serif italic tracking-tighter text-[#121212]">Revenue Velocity</h2>
-                <p className="text-[9px] font-bold text-[#6B665E] uppercase tracking-widest mt-2 opacity-60">Last 30 Operational Cycles • Active Sync</p>
+                <p className="text-[9px] font-black text-[#A34D15] uppercase tracking-[0.4em] mb-1">Action Required</p>
+                <h2 className="text-3xl font-serif italic tracking-tighter text-[#121212]">Pending Orders</h2>
               </div>
-              <div className="flex items-center gap-4 bg-[#F8F6F1] px-6 py-3 border border-[#E5E1D8]">
-                 <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-                 <span className="text-[9px] font-black uppercase tracking-widest">Live Telemetry</span>
-              </div>
-           </div>
-           
-           <div className="w-full">
-              <AnalyticsCharts type="seller" data={analyticsData} />
-           </div>
-           
-           <div className="mt-12 pt-8 border-t border-[#F0EDE4] flex justify-between items-center">
-              <p className="text-[8px] font-black text-[#6B665E] uppercase tracking-[0.4em] opacity-40 italic">RMF Institutional Analytics Node v4.2</p>
-              <Link href="/seller/analytics" className="text-[10px] font-black uppercase tracking-[0.3em] text-[#F59E0B] hover:underline">Access Detailed Dossier →</Link>
-           </div>
-        </div>
+              <Link href="/seller/orders" className="text-[10px] font-black uppercase tracking-[0.3em] text-[#121212] hover:text-[#F59E0B] border-b-2 border-transparent hover:border-[#F59E0B] pb-1 transition-all">
+                Full History →
+              </Link>
+            </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-16">
-           {/* Centerpiece: Active Commercial Mandates */}
-           <div className="lg:col-span-2 space-y-12">
-              <div className="flex justify-between items-end border-b-2 border-[#121212] pb-8">
-                 <div>
-                   <p className="text-[9px] font-black text-[#F59E0B] uppercase tracking-[0.4em] mb-3">Live Operations</p>
-                   <h2 className="text-4xl font-serif italic tracking-tighter text-[#121212]">Pending Fulfillment</h2>
-                 </div>
-                 <Link href="/seller/orders" className="text-[10px] font-black uppercase tracking-[0.3em] text-[#121212] hover:text-[#F59E0B] transition-colors border-b-2 border-[#121212]/10 hover:border-[#F59E0B] pb-2">View History →</Link>
+            {ordersLoading ? (
+              <div className="space-y-3">
+                {[1,2,3].map(i => <div key={i} className="h-24 bg-[#F2F0EB] animate-pulse border border-[#E5E1D8]" />)}
               </div>
-
-              <div className="space-y-6">
-                {ordersLoading ? (
-                   <div className="h-64 bg-[#F2F0EB] animate-pulse border-2 border-dashed border-[#E5E1D8]"></div>
-                ) : activeOrders.length > 0 ? activeOrders.map((order: any) => (
-                   <div key={order._id} className="bg-white border border-[#E5E1D8] p-8 flex flex-col md:flex-row gap-10 items-center group hover:border-[#121212] transition-all relative overflow-hidden">
-                      <div className="w-24 h-24 bg-[#F8F6F1] flex-shrink-0 border border-[#E5E1D8]">
-                         <img src={order.products?.[0]?.images?.[0] || 'https://images.unsplash.com/photo-1544441893-675973e31985'} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-1000" alt={order.products?.[0]?.name} />
+            ) : activeOrders.length > 0 ? (
+              <div className="space-y-3">
+                {activeOrders.slice(0, 8).map((order: any) => (
+                  <Link href={`/seller/orders/${order._id}`} key={order._id}>
+                    <div className="bg-white border border-[#E5E1D8] hover:border-[#121212] transition-all p-5 flex items-center gap-5 group cursor-pointer">
+                      <div className="w-16 h-16 bg-[#F8F6F1] border border-[#E5E1D8] flex-shrink-0 overflow-hidden">
+                        <img
+                          src={order.products?.[0]?.images?.[0] || 'https://placehold.co/64x64/F8F6F1/121212?text=📦'}
+                          className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                          alt=""
+                        />
                       </div>
-                      <div className="flex-grow text-center md:text-left">
-                         <div className="flex flex-wrap justify-center md:justify-start gap-4 mb-3">
-                            <span className="text-[8px] font-black bg-[#121212] text-white px-3 py-1 uppercase tracking-tighter">#{order._id.substring(0,8).toUpperCase()}</span>
-                            <span className="text-[8px] font-black border border-[#F59E0B] text-[#F59E0B] px-3 py-1 uppercase tracking-tighter">{order.status.replace(/_/g, ' ')}</span>
-                         </div>
-                         <h4 className="text-2xl font-serif text-[#121212] tracking-tighter italic leading-none mb-2">{order.products?.[0]?.name || 'Institutional Mandate'}</h4>
-                         <p className="text-[10px] font-bold text-[#6B665E] uppercase tracking-widest opacity-60 italic">Facilitated: {new Date(order.createdAt).toLocaleDateString()} • {order.products?.length || 1} Item(s)</p>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-1 flex-wrap">
+                          <span className="text-[8px] font-black bg-[#121212] text-white px-2 py-0.5 uppercase tracking-wider">
+                            #{order._id.substring(0,8).toUpperCase()}
+                          </span>
+                          <span className={`text-[8px] font-black px-2 py-0.5 uppercase tracking-wider border ${statusColors[order.status] || 'bg-gray-100 text-gray-700 border-gray-300'}`}>
+                            {order.status.replace(/_/g, ' ')}
+                          </span>
+                        </div>
+                        <p className="text-base font-serif italic text-[#121212] truncate">{order.products?.[0]?.name || 'Order'}</p>
+                        <p className="text-[9px] text-[#6B665E] uppercase tracking-widest opacity-60">
+                          {order.products?.length || 1} item{(order.products?.length || 1) > 1 ? 's' : ''} · {new Date(order.createdAt).toLocaleDateString()}
+                        </p>
                       </div>
-                      <div className="text-right">
-                         <p className="text-xl font-serif text-[#121212] mb-4">{(order.financials?.totalAmount || 0).toLocaleString()} RWF</p>
-                         <Link href={`/seller/orders/${order._id}`} className="rmf-btn-primary py-3 text-[8px] bg-transparent text-[#121212] border-2 border-[#121212] hover:bg-[#121212] hover:text-white shadow-none">Manage Mandate</Link>
+                      <div className="text-right flex-shrink-0">
+                        <p className="text-lg font-serif italic text-[#121212]">{(order.financials?.totalAmount || 0).toLocaleString()}</p>
+                        <p className="text-[9px] font-black text-[#A34D15] uppercase tracking-widest">RWF</p>
                       </div>
-                   </div>
-                )) : (
-                   <div className="border-4 border-dashed border-[#F0EDE4] bg-[#F9F7F2]/50 py-32 text-center">
-                      <p className="text-[12px] font-black text-[#6B665E] uppercase tracking-[0.6em] italic opacity-40">No pending commercial mandates synchronized</p>
-                   </div>
-                )}
-              </div>
-           </div>
-
-           {/* Tactical Sidebar: Status & Growth */}
-           <div className="space-y-12">
-              <div className="bg-[#F8F6F1] border border-[#E5E1D8] p-10 space-y-10">
-                 <div>
-                    <p className="text-[9px] font-black text-[#121212] uppercase tracking-[0.4em] mb-6 border-b border-[#E5E1D8] pb-4">Merchant Status</p>
-                    <div className="space-y-6">
-                       <div className="flex justify-between items-end">
-                          <span className="text-[10px] font-bold text-[#6B665E] uppercase tracking-widest opacity-60 italic">Handover Delay</span>
-                          <span className="text-lg font-serif text-green-600 italic">Optimal (12m)</span>
-                       </div>
-                       <div className="flex justify-between items-end">
-                          <span className="text-[10px] font-bold text-[#6B665E] uppercase tracking-widest opacity-60 italic">Compliance Rating</span>
-                          <span className="text-lg font-serif text-[#F59E0B] italic">Premium (98%)</span>
-                       </div>
+                      <span className="text-[#E5E1D8] group-hover:text-[#121212] transition-colors">→</span>
                     </div>
-                 </div>
-                 
-                 <div className="bg-[#121212] text-white p-8">
-                    <p className="text-[9px] font-black text-[#F59E0B] uppercase tracking-[0.4em] mb-4 italic">Next Step</p>
-                    <p className="text-xs italic leading-relaxed opacity-70 mb-8">You have artifacts waiting for replenishment. Update stock to maintain visibility.</p>
-                    <Link href="/seller/products" className="text-[10px] font-black uppercase tracking-widest border-b border-[#F59E0B] pb-1 hover:text-[#F59E0B] transition-colors">Audit Inventory</Link>
-                 </div>
+                  </Link>
+                ))}
               </div>
-           </div>
+            ) : (
+              <div className="border-2 border-dashed border-[#F0EDE4] py-20 text-center bg-white">
+                <div className="text-5xl mb-4">🎉</div>
+                <p className="text-lg font-serif italic text-[#6B665E]">No pending orders right now</p>
+                <p className="text-sm text-[#6B665E]/60 mt-2">New orders will appear here automatically</p>
+              </div>
+            )}
+          </div>
+
+          {/* Sidebar */}
+          <div className="space-y-5">
+            {/* Revenue */}
+            <div className="bg-[#121212] text-white p-8 space-y-6">
+              <div className="flex items-center gap-3 border-b border-white/10 pb-5">
+                <span className="text-xl">📊</span>
+                <div>
+                  <p className="text-[9px] font-black text-[#F59E0B] uppercase tracking-widest">This Month</p>
+                  <h3 className="text-2xl font-serif italic tracking-tighter">Revenue</h3>
+                </div>
+              </div>
+              <div>
+                <p className="text-5xl font-serif italic tracking-tighter">{(analytics.totalRevenue || 0).toLocaleString()}</p>
+                <p className="text-[9px] font-black text-[#F59E0B] uppercase tracking-widest mt-2">RWF Earned</p>
+              </div>
+              <Link href="/seller/analytics" className="block text-center text-[10px] font-black uppercase tracking-widest border border-white/20 py-3 hover:bg-white/10 transition-all">
+                View Analytics →
+              </Link>
+            </div>
+
+            {/* Performance */}
+            <div className="bg-white border border-[#E5E1D8] p-6 space-y-5">
+              <p className="text-[9px] font-black text-[#121212] uppercase tracking-[0.4em] border-b border-[#F0EDE4] pb-4">Shop Performance</p>
+              {[
+                { label: 'Avg. Prep Time', val: '12 min', color: 'text-green-600' },
+                { label: 'Fulfillment Rate', val: '98%', color: 'text-[#F59E0B]' },
+                { label: 'Repeat Buyers', val: '34%', color: 'text-[#A34D15]' },
+              ].map(m => (
+                <div key={m.label} className="flex justify-between items-center">
+                  <span className="text-[10px] font-bold text-[#6B665E] uppercase tracking-widest">{m.label}</span>
+                  <span className={`text-lg font-serif italic ${m.color}`}>{m.val}</span>
+                </div>
+              ))}
+            </div>
+
+            {/* Tip */}
+            <div className="bg-[#F59E0B] p-6 space-y-3">
+              <p className="text-[9px] font-black text-[#121212] uppercase tracking-[0.4em]">💡 Seller Tip</p>
+              <p className="text-sm text-[#121212]/80 leading-relaxed font-medium">
+                Shops with 5+ product photos get <strong>3× more clicks</strong>. Update your listings today!
+              </p>
+              <Link href="/seller/products" className="block text-[10px] font-black uppercase tracking-widest text-[#121212] hover:underline">
+                Update Products →
+              </Link>
+            </div>
+
+            {/* Quick links */}
+            <div className="bg-white border border-[#E5E1D8] divide-y divide-[#F0EDE4]">
+              {[
+                { icon: '🏷', label: 'Promotions & Discounts', href: '/seller/promotions' },
+                { icon: '💵', label: 'Earnings & Withdrawals', href: '/seller/earnings' },
+                { icon: '⭐', label: 'Customer Reviews', href: '/seller/reviews' },
+                { icon: '📱', label: 'Stall QR Code', href: '/seller/qr' },
+              ].map(link => (
+                <Link key={link.href} href={link.href} className="flex items-center gap-4 px-5 py-4 hover:bg-[#F8F6F1] transition-colors group">
+                  <span className="text-lg">{link.icon}</span>
+                  <span className="text-[11px] font-black uppercase tracking-widest text-[#121212] group-hover:text-[#A34D15] transition-colors flex-1">{link.label}</span>
+                  <span className="text-[#D0CBC4] group-hover:text-[#121212] transition-colors">→</span>
+                </Link>
+              ))}
+            </div>
+          </div>
         </div>
+
+        {/* ── Analytics ── */}
+        <div className="bg-white border border-[#E5E1D8] mx-6 p-8">
+          <div className="flex justify-between items-end border-b border-[#F0EDE4] pb-6 mb-8">
+            <div>
+              <p className="text-[9px] font-black text-[#A34D15] uppercase tracking-[0.4em] mb-2">Performance</p>
+              <h2 className="text-3xl font-serif italic tracking-tighter text-[#121212]">Sales Overview</h2>
+              <p className="text-[9px] text-[#6B665E] uppercase tracking-widest mt-1 opacity-60">Last 30 days · Updated live</p>
+            </div>
+            <div className="flex items-center gap-2 bg-[#F8F6F1] px-4 py-2 border border-[#E5E1D8]">
+              <div className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse" />
+              <span className="text-[9px] font-black uppercase tracking-widest">Live</span>
+            </div>
+          </div>
+          <AnalyticsCharts type="seller" data={analyticsData} />
+          <div className="mt-6 pt-4 border-t border-[#F0EDE4] flex justify-end">
+            <Link href="/seller/analytics" className="text-[10px] font-black uppercase tracking-widest text-[#A34D15] hover:underline">
+              View Detailed Report →
+            </Link>
+          </div>
+        </div>
+
       </div>
     </Layout>
   );

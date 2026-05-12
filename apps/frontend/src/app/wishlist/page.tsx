@@ -52,13 +52,13 @@ export default function WishlistPage() {
           <div className="relative z-10 space-y-6">
              <div className="flex items-center gap-6">
                 <div className="w-12 h-px bg-[#F59E0B]"></div>
-                <p className="text-[11px] font-black text-[#F59E0B] uppercase tracking-[0.5em]">Inventory Curation Active</p>
+                 <p className="text-[11px] font-black text-[#F59E0B] uppercase tracking-[0.5em]">Your Wishlist</p>
              </div>
              <h1 className="text-7xl font-serif tracking-tighter italic leading-none text-[#121212]">
-               Curated Artifacts
+               Saved Items
              </h1>
              <p className="text-[10px] font-bold uppercase tracking-widest text-[#121212]/60 italic">
-               Saved acquisitions awaiting procurement facilitation.
+               Products you've saved for later.
              </p>
           </div>
         </div>
@@ -75,13 +75,13 @@ export default function WishlistPage() {
                <div className="w-20 h-20 bg-white border border-[#E5E1D8] flex items-center justify-center mx-auto mb-10 group-hover:bg-[#121212] group-hover:text-white transition-all shadow-sm">
                   <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
                </div>
-               <h2 className="text-3xl font-serif italic tracking-tighter text-[#121212] mb-4">Zero Artifacts Synchronized</h2>
-               <p className="text-[11px] font-black text-[#6B665E] uppercase tracking-[0.5em] mb-12 opacity-60">Your institutional curation list is currently empty.</p>
+               <h2 className="text-3xl font-serif italic tracking-tighter text-[#121212] mb-4">Your wishlist is empty</h2>
+               <p className="text-[11px] font-black text-[#6B665E] uppercase tracking-[0.5em] mb-12 opacity-60">You haven't saved any products yet.</p>
                <Link 
                  href="/markets" 
                  className="rmf-btn-primary bg-[#121212] text-white px-12 py-5 shadow-[0_20px_50px_-15px_rgba(0,0,0,0.3)] hover:bg-[#F59E0B]"
                >
-                 Explore Hubs →
+                 Browse Markets →
                </Link>
             </div>
           ) : (

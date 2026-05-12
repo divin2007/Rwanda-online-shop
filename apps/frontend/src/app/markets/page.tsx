@@ -25,9 +25,9 @@ const getSimilarity = (s1: string, s2: string): number => {
   if (b1.size === 0 || b2.size === 0) return 0;
   
   let intersection = 0;
-  for (const b of b1) {
+  Array.from(b1).forEach(b => {
     if (b2.has(b)) intersection++;
-  }
+  });
   return (2 * intersection) / (b1.size + b2.size);
 };
 
@@ -58,7 +58,7 @@ export default function MarketsPage() {
       });
     }
 
-    // 2. Valuation Range (Mapped to Total Sellers for Markets)
+    // 2. Seller Count Range
     if (valuationRange.min) {
       results = results.filter((m: any) => (m.totalSellers || 0) >= Number(valuationRange.min));
     }
@@ -66,14 +66,11 @@ export default function MarketsPage() {
       results = results.filter((m: any) => (m.totalSellers || 0) <= Number(valuationRange.max));
     }
 
-    // 3. Hub Classification
+    // 3. Market Type
     if (selectedCategory !== 'ALL') {
-      // Map Hub Classification to Backend Types
-      // HUB/COOPERATIVE -> public, INDIVIDUAL -> individual
       const typeMap: Record<string, string> = {
         'INDIVIDUAL': 'individual',
-        'HUB': 'public',
-        'COOPERATIVE': 'public' // Assuming cooperatives are public markets in this context
+        'PUBLIC': 'public',
       };
       const targetType = typeMap[selectedCategory];
       results = results.filter((m: any) => m.type === targetType);
@@ -85,17 +82,17 @@ export default function MarketsPage() {
   return (
     <Layout>
       <div className="flex flex-col lg:flex-row gap-20 pb-32">
-        {/* Discovery Matrix Sidebar */}
+        {/* Filters Sidebar */}
         <aside className="w-full lg:w-80 space-y-20">
           <div className="space-y-10">
-            <p className="text-[11px] font-black text-[#121212] uppercase tracking-[0.4em] border-b-2 border-[#121212] pb-6 italic">Discovery Matrix</p>
+            <p className="text-[11px] font-black text-[#121212] uppercase tracking-[0.4em] border-b-2 border-[#121212] pb-6 italic">Filters</p>
             
             <div className="space-y-12">
               <div className="space-y-4">
-                <label className="text-[9px] font-black text-[#6B665E] uppercase tracking-widest opacity-50">Authorized Search</label>
+                <label className="text-[9px] font-black text-[#6B665E] uppercase tracking-widest opacity-50">Search</label>
                 <div className="relative group">
                   <input 
-                    placeholder="Search collection..." 
+                    placeholder="Search markets..." 
                     className="rmf-input w-full px-6 py-4 border-2 border-[#E5E1D8] focus:border-[#121212] bg-white text-[11px] font-black uppercase tracking-widest" 
                     type="text" 
                     value={searchQuery}
@@ -106,7 +103,7 @@ export default function MarketsPage() {
               </div>
 
               <div className="space-y-4">
-                <label className="text-[9px] font-black text-[#6B665E] uppercase tracking-widest opacity-50">Merchant Capacity</label>
+                <label className="text-[9px] font-black text-[#6B665E] uppercase tracking-widest opacity-50">Number of Sellers</label>
                 <div className="grid grid-cols-2 gap-4">
                   <input 
                     placeholder="Min" 
@@ -126,17 +123,21 @@ export default function MarketsPage() {
               </div>
 
               <div className="space-y-4">
-                <label className="text-[9px] font-black text-[#6B665E] uppercase tracking-widest opacity-50">Hub Classification</label>
+                <label className="text-[9px] font-black text-[#6B665E] uppercase tracking-widest opacity-50">Market Type</label>
                 <div className="space-y-3">
-                  {['ALL', 'INDIVIDUAL', 'COOPERATIVE', 'HUB'].map(cat => (
+                  {[
+                    { key: 'ALL', label: 'All Markets' },
+                    { key: 'PUBLIC', label: 'Public Markets' },
+                    { key: 'INDIVIDUAL', label: 'Individual Shops' },
+                  ].map(cat => (
                     <button 
-                      key={cat}
-                      onClick={() => setSelectedCategory(cat)}
+                      key={cat.key}
+                      onClick={() => setSelectedCategory(cat.key)}
                       className={`w-full text-left px-6 py-4 text-[10px] font-black uppercase tracking-widest border-2 transition-all ${
-                        selectedCategory === cat ? 'bg-[#121212] text-white border-[#121212]' : 'bg-white border-[#E5E1D8] text-[#6B665E] hover:border-[#121212]'
+                        selectedCategory === cat.key ? 'bg-[#121212] text-white border-[#121212]' : 'bg-white border-[#E5E1D8] text-[#6B665E] hover:border-[#121212]'
                       }`}
                     >
-                      {cat}
+                      {cat.label}
                     </button>
                   ))}
                 </div>
@@ -146,23 +147,23 @@ export default function MarketsPage() {
 
           <div className="p-10 bg-[#121212] text-white space-y-6 shadow-2xl relative overflow-hidden">
              <div className="absolute top-0 right-0 w-20 h-20 bg-[#A34D15]/20 rounded-full -mr-10 -mt-10"></div>
-             <p className="text-[9px] font-black uppercase tracking-[0.4em] text-[#A34D15]">Facilitator Mandate</p>
+             <p className="text-[9px] font-black uppercase tracking-[0.4em] text-[#A34D15]">About RMF</p>
              <p className="text-[10px] leading-relaxed italic opacity-70">
-               "System-wide verification ensures every regional hub maintains the highest standards of artisanal excellence."
+               "Every market on our platform is verified. Sellers are checked for business registration and tax compliance before going live."
              </p>
           </div>
         </aside>
 
-        {/* Main Hub Content */}
+        {/* Main Content */}
         <main className="flex-grow space-y-24">
           <div className="flex justify-between items-end border-b-2 border-[#121212] pb-12">
             <div>
-              <p className="text-[10px] font-black text-[#A34D15] uppercase tracking-[0.5em] mb-4">{t('official_infrastructure')}</p>
-              <h1 className="text-7xl font-serif text-[#121212] tracking-tighter leading-none italic">{t('regional_hubs')}</h1>
+              <p className="text-[10px] font-black text-[#A34D15] uppercase tracking-[0.5em] mb-4">Browse</p>
+              <h1 className="text-7xl font-serif text-[#121212] tracking-tighter leading-none italic">Markets</h1>
             </div>
             <div className="text-right">
-               <p className="text-[10px] font-black text-[#121212] uppercase tracking-widest">{filteredMarkets.length} Hubs Found</p>
-               <p className="text-[8px] font-bold text-[#6B665E] uppercase tracking-widest opacity-40">Synchronization Active</p>
+               <p className="text-[10px] font-black text-[#121212] uppercase tracking-widest">{filteredMarkets.length} Markets Found</p>
+               <p className="text-[8px] font-bold text-[#6B665E] uppercase tracking-widest opacity-40">Updated Live</p>
             </div>
           </div>
 
@@ -174,7 +175,7 @@ export default function MarketsPage() {
             </div>
           ) : filteredMarkets.length === 0 ? (
             <div className="py-48 text-center border-4 border-dashed border-[#F0EDE4] bg-white">
-              <p className="text-[12px] font-black text-[#6B665E] uppercase tracking-[0.6em] italic opacity-40">{t('no_hubs_deployed')}</p>
+              <p className="text-[12px] font-black text-[#6B665E] uppercase tracking-[0.6em] italic opacity-40">No markets match your filters</p>
             </div>
           ) : (
             <div className="grid grid-cols-[repeat(auto-fill,minmax(320px,1fr))] gap-10">

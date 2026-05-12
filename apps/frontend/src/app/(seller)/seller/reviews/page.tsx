@@ -9,12 +9,9 @@ import Link from 'next/link';
 
 export default function SellerReviewsPage() {
   const { user } = useAuth();
-  const { data: profile } = useApi(sellerApi, 'get', `/sellers/me?userId=${user?.id}`);
-  const { data: reviews, loading, execute: fetchReviews } = useApi(reviewApi, 'get', `/reviews/target/seller/${user?.id}`);
+  const { data: profile } = useApi(sellerApi, 'get', user?.id ? `/sellers/me?userId=${user?.id}` : '');
+  const { data: reviews, loading, execute: fetchReviews } = useApi(reviewApi, 'get', user?.id ? `/reviews/target/seller/${user?.id}` : '');
 
-  useEffect(() => {
-    if (user?.id) fetchProfile();
-  }, [user?.id, fetchProfile]);
 
   useEffect(() => {
     if (profile?._id) fetchReviews(`/reviews/target/seller/${profile._id}`);

@@ -37,15 +37,33 @@ export const ProductCard = ({ product }: ProductCardProps) => {
 
   if (!product.images || product.images.length === 0) return null;
 
+  const hasPromotion = product.promotion && product.promotion.promotedPrice > 0;
+  const displayPrice = hasPromotion ? product.promotion!.promotedPrice : product.price;
+  const discountLabel = hasPromotion 
+    ? (product.promotion!.type === 'percentage' 
+        ? `-${product.promotion!.discount}%` 
+        : `-${formatCurrency(product.promotion!.discount)}`)
+    : null;
+
   return (
     <div className="glass-card group flex flex-col h-full animate-reveal relative overflow-hidden bg-white">
-      {/* Visual Header / Image Area */}
+      {/* Image Area */}
       <div className="relative aspect-[3/4] overflow-hidden bg-[#F2F0EB]">
-        {/* Verification Badge */}
-        <div className="absolute top-0 left-0 z-20">
-           <div className="bg-[#121212] text-white text-[7px] font-black uppercase tracking-[0.4em] py-3 px-5 origin-top-left">
-              Verified Hub Artifact
+        {/* Badges */}
+        <div className="absolute top-0 left-0 z-20 flex flex-col gap-1">
+           <div className="bg-[#121212] text-white text-[7px] font-black uppercase tracking-[0.4em] py-3 px-5">
+              Verified
            </div>
+           {hasPromotion && (
+             <div className="bg-[#E53E3E] text-white text-[8px] font-black uppercase tracking-[0.2em] py-2 px-5 animate-pulse">
+                {discountLabel} OFF
+             </div>
+           )}
+           {product.stockType === 'on_demand' && (
+             <div className="bg-[#F59E0B] text-[#121212] text-[7px] font-black uppercase tracking-[0.3em] py-2 px-5">
+                Custom Order
+             </div>
+           )}
         </div>
 
         {/* Wishlist Toggle */}
@@ -70,13 +88,13 @@ export const ProductCard = ({ product }: ProductCardProps) => {
           <div className="absolute inset-0 bg-gradient-to-t from-[#121212]/20 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-700"></div>
         </Link>
 
-        {/* Floating Add to Cart for professional feel */}
+        {/* Floating Add to Cart */}
         <div className="absolute bottom-0 left-0 right-0 translate-y-full group-hover:translate-y-0 transition-transform duration-500 z-30">
            <button 
              onClick={() => addToCart(product)}
              className="w-full bg-[#121212] text-white py-5 text-[9px] font-black uppercase tracking-[0.5em] hover:bg-[#A34D15] transition-colors"
            >
-             {t('product_add_to_cart')}
+             {product.stockType === 'on_demand' ? 'Request Quote' : t('product_add_to_cart')}
            </button>
         </div>
       </div>
@@ -84,7 +102,7 @@ export const ProductCard = ({ product }: ProductCardProps) => {
       {/* Content Area */}
       <div className="p-5 flex flex-col flex-grow bg-white border-t border-[#E5E1D8]">
         <div className="flex justify-between items-start mb-3">
-           <span className="rmf-label-sm">{product.category || 'Curated Artifact'}</span>
+           <span className="rmf-label-sm">{product.category || 'Product'}</span>
            {product.isMadeInRwanda && (
              <span className="text-[10px] grayscale opacity-50">🇷🇼</span>
            )}
@@ -98,17 +116,23 @@ export const ProductCard = ({ product }: ProductCardProps) => {
 
         <div className="mt-auto pt-4 border-t border-[#F0EDE4] flex justify-between items-end">
           <div className="flex flex-col">
-            <span className="text-[8px] font-bold text-[#6B665E] uppercase tracking-widest mb-0.5 opacity-50">Valuation</span>
-            <span className="text-lg font-bold text-[#121212] tracking-tighter">
-              {formatCurrency(product.price)}
-              <span className="text-[9px] font-normal text-[#6B665E] ml-1 lowercase">/ {product.unit}</span>
-            </span>
+            <span className="text-[8px] font-bold text-[#6B665E] uppercase tracking-widest mb-0.5 opacity-50">Price</span>
+            <div className="flex items-baseline gap-2">
+              <span className="text-lg font-bold text-[#121212] tracking-tighter">
+                {formatCurrency(displayPrice)}
+              </span>
+              {hasPromotion && (
+                <span className="text-[11px] font-medium text-[#6B665E] line-through opacity-50">
+                  {formatCurrency(product.price)}
+                </span>
+              )}
+            </div>
+            <span className="text-[9px] font-normal text-[#6B665E] lowercase">per {product.unit}</span>
           </div>
           
           <div className="flex flex-col items-end">
-            <span className="text-[8px] font-bold text-[#A34D15] uppercase tracking-widest mb-1">Status</span>
             <span className={`text-[9px] font-black uppercase tracking-widest ${product.inStock ? 'text-green-800' : 'text-red-800'}`}>
-               {product.inStock ? 'Ready for Deployment' : 'In Production'}
+               {product.inStock ? 'In Stock' : (product.stockType === 'on_demand' ? 'Made to Order' : 'Out of Stock')}
             </span>
           </div>
         </div>

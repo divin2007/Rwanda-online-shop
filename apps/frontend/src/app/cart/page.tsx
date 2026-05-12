@@ -16,19 +16,15 @@ export default function CartPage() {
   const router = useRouter();
 
   const handleCheckout = () => {
-    console.log('[RMF-LOG] Checkout triggered. Auth State:', { isAuthenticated, authLoading });
-    
     if (authLoading) {
-      toast.loading('Synchronizing security credentials...', { duration: 1000 });
+      toast.loading('Checking account status...', { duration: 1000 });
       return;
     }
     
     if (!isAuthenticated) {
-      console.warn('[RMF-LOG] Checkout aborted: Unauthorized session.');
-      toast.error(t('login_required_checkout') || 'Authorization Required: Please sign in to proceed.');
+      toast.error('Please sign in to proceed to checkout.');
       router.push(`/login?redirect=/cart`);
     } else {
-      console.log('[RMF-LOG] Checkout authorized. Redirecting to logistics matrix.');
       toast.loading('Redirecting to checkout...', { duration: 1000 });
       router.push('/checkout');
     }
@@ -36,63 +32,70 @@ export default function CartPage() {
 
   return (
     <Layout>
-      <div className="space-y-32 pb-40 animate-reveal">
-        {/* Mandate Registry Header */}
-        <div className="border-b-2 border-[#121212] pb-16">
-          <div className="flex items-center gap-6 mb-8">
-             <div className="w-12 h-px bg-[#A34D15]"></div>
-             <p className="text-[11px] font-black text-[#A34D15] uppercase tracking-[0.5em]">{t('official_facilitator')}</p>
+      <div className="max-w-7xl mx-auto space-y-24 pb-40 pt-10 px-6 animate-reveal">
+        {/* ── Header ── */}
+        <div className="border-b-2 border-[#121212] pb-12">
+          <div className="flex items-center gap-4 mb-6">
+             <div className="w-12 h-px bg-[#F59E0B]" />
+             <p className="text-[10px] font-black text-[#F59E0B] uppercase tracking-[0.5em]">Your Cart</p>
           </div>
-          <h1 className="text-[100px] font-serif text-[#121212] leading-[0.85] tracking-tighter italic">{t('cart_title')}</h1>
+          <h1 className="text-7xl font-serif text-[#121212] leading-[0.85] tracking-tighter italic">Shopping Bag</h1>
         </div>
 
         {items.length === 0 ? (
-          <div className="bg-white border-4 border-dashed border-[#F0EDE4] py-60 text-center space-y-16">
-            <div className="text-8xl opacity-10 italic font-serif select-none">Empty Registry</div>
-            <div className="space-y-6">
-              <h2 className="text-4xl font-serif text-[#121212] italic tracking-tighter">{t('cart_empty')}</h2>
-              <p className="text-xl text-[#6B665E] font-light italic max-w-xl mx-auto">{t('cart_empty_desc')}</p>
+          <div className="bg-white border-2 border-dashed border-[#E5E1D8] py-40 text-center space-y-12">
+            <div className="text-8xl opacity-30 select-none">🛍️</div>
+            <div className="space-y-4">
+              <h2 className="text-4xl font-serif text-[#121212] italic tracking-tighter">Your cart is empty</h2>
+              <p className="text-lg text-[#6B665E] font-medium max-w-md mx-auto">Looks like you haven't added anything to your cart yet. Discover fresh products from our local markets.</p>
             </div>
-            <Link href="/markets" className="inline-block rmf-btn-primary bg-[#121212] hover:bg-[#A34D15] px-20">
-               {t('start_shopping')}
+            <Link href="/markets" className="inline-block bg-[#121212] text-white hover:bg-[#F59E0B] px-16 py-6 text-[10px] font-black uppercase tracking-[0.4em] transition-all">
+               Start Shopping
             </Link>
           </div>
         ) : (
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-32 items-start">
-            {/* Artifact List */}
-            <div className="lg:col-span-8 space-y-16">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-16 xl:gap-24 items-start">
+            
+            {/* ── Cart Items ── */}
+            <div className="lg:col-span-8 space-y-10">
               {items.map((item) => (
-                <div key={item.id} className="flex flex-col sm:flex-row gap-12 group border-b border-[#F0EDE4] pb-16 last:border-0 relative">
-                  <div className="w-60 h-60 bg-white border-2 border-[#121212] overflow-hidden flex-shrink-0 relative p-4 group-hover:shadow-2xl transition-all">
-                    <img src={item.image} alt={item.name} className="w-full h-full object-cover grayscale group-hover:grayscale-0 transition-all duration-1000" />
-                    <div className="absolute top-0 left-0 bg-[#121212] text-white text-[8px] font-black uppercase px-3 py-1">ARTIFACT</div>
+                <div key={item.id} className="flex flex-col sm:flex-row gap-8 sm:gap-12 group border-b border-[#F0EDE4] pb-10 last:border-0 relative">
+                  
+                  {/* Image */}
+                  <div className="w-full sm:w-48 h-48 bg-[#F8F6F1] border border-[#E5E1D8] overflow-hidden flex-shrink-0 relative group-hover:border-[#121212] transition-colors p-3">
+                    <img src={item.image} alt={item.name} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
                   </div>
                   
-                  <div className="flex-grow flex flex-col justify-between py-4">
-                    <div className="flex justify-between items-start">
-                      <div className="space-y-4">
-                        <p className="text-[10px] font-black text-[#A34D15] uppercase tracking-[0.4em] italic">{t('master_artisan')} Faciliated</p>
-                        <h3 className="text-4xl font-serif text-[#121212] tracking-tighter italic leading-none group-hover:text-[#A34D15] transition-colors">{item.name}</h3>
-                        <p className="text-xl font-serif italic text-[#121212]/40 tracking-tighter pt-2">{formatCurrency(item.price)}</p>
+                  {/* Details */}
+                  <div className="flex-grow flex flex-col justify-between py-2">
+                    <div className="flex justify-between items-start gap-4">
+                      <div className="space-y-2">
+                        <p className="text-[9px] font-black text-[#A34D15] uppercase tracking-[0.4em]">Verified Seller</p>
+                        <h3 className="text-3xl font-serif text-[#121212] tracking-tighter italic leading-tight group-hover:text-[#A34D15] transition-colors">{item.name}</h3>
+                        <p className="text-xl font-serif italic text-[#6B665E] tracking-tighter">{formatCurrency(item.price)}</p>
                       </div>
                       <button 
                         onClick={() => removeFromCart(item.id)} 
-                        className="w-12 h-12 border-2 border-[#121212]/10 flex items-center justify-center text-[#121212] hover:bg-[#A34D15] hover:text-white hover:border-[#A34D15] transition-all font-serif"
+                        className="w-10 h-10 border border-[#E5E1D8] flex items-center justify-center text-[#121212] hover:bg-[#121212] hover:text-white transition-all font-serif"
+                        aria-label="Remove item"
                       >
                         ✕
                       </button>
                     </div>
 
-                    <div className="flex flex-wrap justify-between items-end mt-12 gap-8">
-                      <div className="flex items-center border-2 border-[#121212] bg-white">
-                        <button className="w-12 h-12 flex items-center justify-center font-black text-[#121212] hover:bg-[#F8F6F1] transition-colors" onClick={() => updateQuantity(item.id, Math.max(1, item.quantity - 1))}>-</button>
-                        <span className="w-16 text-center font-serif text-lg italic font-bold text-[#121212] border-x-2 border-[#121212] h-12 flex items-center justify-center">{item.quantity}</span>
-                        <button className="w-12 h-12 flex items-center justify-center font-black text-[#121212] hover:bg-[#F8F6F1] transition-colors" onClick={() => updateQuantity(item.id, item.quantity + 1)}>+</button>
+                    <div className="flex flex-wrap justify-between items-end mt-10 gap-6">
+                      {/* Quantity Control */}
+                      <div className="flex items-center border border-[#121212] bg-white">
+                        <button className="w-12 h-12 flex items-center justify-center text-lg font-medium text-[#121212] hover:bg-[#F8F6F1] transition-colors" onClick={() => updateQuantity(item.id, Math.max(1, item.quantity - 1))}>-</button>
+                        <span className="w-14 text-center font-serif text-lg italic text-[#121212] border-x border-[#121212] h-12 flex items-center justify-center">{item.quantity}</span>
+                        <button className="w-12 h-12 flex items-center justify-center text-lg font-medium text-[#121212] hover:bg-[#F8F6F1] transition-colors" onClick={() => updateQuantity(item.id, item.quantity + 1)}>+</button>
                       </div>
+                      
+                      {/* Subtotal */}
                       <div className="text-right">
-                        <p className="text-[9px] font-black text-[#6B665E] uppercase tracking-[0.3em] mb-2 opacity-50">Acquisition Subtotal</p>
-                        <span className="text-4xl font-serif italic tracking-tighter font-black text-[#121212]">
-                          {formatCurrency(item.price * item.quantity)}
+                        <p className="text-[9px] font-black text-[#6B665E] uppercase tracking-[0.3em] mb-1">Subtotal</p>
+                        <span className="text-3xl font-serif italic tracking-tighter text-[#121212]">
+                          {formatCurrency(item.price * item.quantity)} <span className="text-sm not-italic font-sans text-[#A34D15] font-black uppercase tracking-widest">RWF</span>
                         </span>
                       </div>
                     </div>
@@ -101,30 +104,30 @@ export default function CartPage() {
               ))}
             </div>
 
-            {/* Strategic Summary */}
+            {/* ── Order Summary ── */}
             <div className="lg:col-span-4">
-              <div className="bg-[#121212] text-white p-16 sticky top-32 shadow-[50px_50px_100px_-50px_rgba(0,0,0,0.5)]">
-                <div className="flex items-center gap-6 mb-12">
-                   <div className="w-12 h-px bg-[#A34D15]"></div>
-                   <p className="text-[11px] font-black text-[#A34D15] uppercase tracking-[0.5em] italic">Mandate Ledger</p>
+              <div className="bg-[#121212] text-white p-12 lg:p-14 sticky top-32 shadow-2xl">
+                <div className="flex items-center gap-4 mb-10">
+                   <div className="w-8 h-px bg-[#F59E0B]" />
+                   <p className="text-[10px] font-black text-[#F59E0B] uppercase tracking-[0.4em]">Order Summary</p>
                 </div>
                 
-                <div className="space-y-10 mb-16 pb-16 border-b border-white/10">
+                <div className="space-y-6 mb-12 pb-10 border-b border-white/10">
                   <div className="flex justify-between items-end">
-                    <span className="text-[10px] font-black uppercase tracking-[0.4em] opacity-30">{t('cart_subtotal')}</span>
-                    <span className="text-3xl font-serif italic tracking-tighter">{formatCurrency(cartTotal)}</span>
+                    <span className="text-[10px] font-black uppercase tracking-[0.3em] opacity-50">Subtotal</span>
+                    <span className="text-2xl font-serif italic tracking-tighter">{formatCurrency(cartTotal)}</span>
                   </div>
                   <div className="flex justify-between items-end">
-                    <span className="text-[10px] font-black uppercase tracking-[0.4em] opacity-30">{t('cart_delivery')}</span>
-                    <span className="text-[10px] font-black uppercase tracking-[0.2em] text-[#A34D15]">{t('cart_calculated_at_checkout')}</span>
+                    <span className="text-[10px] font-black uppercase tracking-[0.3em] opacity-50">Delivery</span>
+                    <span className="text-[10px] font-black uppercase tracking-[0.2em] text-[#F59E0B]">Calculated at checkout</span>
                   </div>
                 </div>
 
-                <div className="flex justify-between items-end mb-20">
-                  <span className="text-[11px] font-black uppercase tracking-[0.5em] opacity-50 italic">{t('cart_estimated_total')}</span>
+                <div className="flex justify-between items-end mb-16">
+                  <span className="text-[10px] font-black uppercase tracking-[0.4em] opacity-70">Estimated Total</span>
                   <div className="text-right">
-                    <span className="text-6xl font-serif italic tracking-tighter font-black">{formatCurrency(cartTotal)}</span>
-                    <p className="text-[10px] font-black uppercase tracking-[0.4em] text-[#A34D15] mt-4">RWF Authorized</p>
+                    <span className="text-5xl font-serif italic tracking-tighter text-white">{formatCurrency(cartTotal)}</span>
+                     <p className="text-[9px] font-black uppercase tracking-[0.4em] text-[#F59E0B] mt-2">RWF</p>
                   </div>
                 </div>
 
@@ -132,24 +135,22 @@ export default function CartPage() {
                   <Link 
                     href="/checkout"
                     onClick={() => toast.loading('Redirecting to checkout...', { duration: 1000 })}
-                    className="rmf-btn-primary w-full py-8 text-[11px] bg-white text-[#121212] hover:bg-[#A34D15] hover:text-white border-none flex items-center justify-center no-underline"
+                    className="w-full py-6 text-[10px] font-black uppercase tracking-[0.3em] bg-white text-[#121212] hover:bg-[#F59E0B] hover:text-white flex items-center justify-center transition-all"
                   >
-                    {t('cart_proceed_checkout')} →
+                    Proceed to Checkout →
                   </Link>
                 ) : (
                   <button 
                     onClick={handleCheckout}
                     disabled={authLoading}
-                    className="rmf-btn-primary w-full py-8 text-[11px] bg-white text-[#121212] hover:bg-[#A34D15] hover:text-white border-none disabled:opacity-50"
+                    className="w-full py-6 text-[10px] font-black uppercase tracking-[0.3em] bg-white text-[#121212] hover:bg-[#F59E0B] hover:text-white transition-all disabled:opacity-50"
                   >
-                    {authLoading ? 'Authorizing...' : `${t('cart_proceed_checkout')} →`}
+                    {authLoading ? 'Checking...' : 'Proceed to Checkout →'}
                   </button>
                 )}
                 
-                <p className="text-[9px] font-black uppercase tracking-[0.6em] text-center mt-10 opacity-20 italic">Secure Facilitation Protocol Active</p>
+                <p className="text-[8px] font-black uppercase tracking-[0.5em] text-center mt-8 text-white/20">Secure Checkout</p>
                 
-                {/* Visual Decoration */}
-                <div className="absolute -bottom-20 -left-20 text-[200px] font-serif opacity-5 italic select-none">RMF</div>
               </div>
             </div>
           </div>

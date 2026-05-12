@@ -24,16 +24,13 @@ interface MarketCardProps {
 export const MarketCard = ({ market, index = 0, variant = 'standard' }: MarketCardProps) => {
   const { t } = useLanguage();
   
-  // Dynamic mapping of hub types to professional facilitation labels
-  const hubTypeLabel = market.type === 'INDIVIDUAL' 
-    ? 'Private Artisanal Hub' 
-    : market.type === 'COOPERATIVE' 
-    ? 'Artisan Cooperative' 
-    : 'Regional Facilitation Hub';
+  const marketTypeLabel = market.type === 'individual' 
+    ? 'Individual Shop' 
+    : 'Public Market';
 
   return (
     <Link href={getMarketUrl(market.slug)} className="group flex flex-col h-full animate-reveal bg-white">
-      {/* Visual Header */}
+      {/* Image */}
       <div className={`relative overflow-hidden border border-[#E5E1D8] bg-[#F2F0EB] aspect-[4/5]`}>
         <div 
           className="w-full h-full bg-cover bg-center transition-transform duration-[4000ms] group-hover:scale-105"
@@ -43,24 +40,24 @@ export const MarketCard = ({ market, index = 0, variant = 'standard' }: MarketCa
           aria-label={market.name}
         />
         
-        {/* Hub ID Badge */}
+        {/* Index Badge */}
         <div className="absolute top-0 right-0 z-20">
            <div className="bg-[#121212] text-white text-[8px] font-black uppercase tracking-[0.3em] py-2 px-4 border-l-2 border-[#A34D15]">
               #{index + 1}
            </div>
         </div>
 
-        {/* Tactical Overlay */}
+        {/* Hover Overlay */}
         <div className="absolute inset-0 bg-[#121212]/0 group-hover:bg-[#121212]/10 transition-colors duration-700"></div>
         
         <div className="absolute bottom-4 left-4">
            <span className="text-[7px] font-black uppercase tracking-widest bg-white/95 backdrop-blur-md px-3 py-1 border border-[#E5E1D8] shadow-lg">
-             {t('verified_facility')}
+             Verified
            </span>
         </div>
       </div>
 
-      {/* Content Area */}
+      {/* Content */}
       <div className="p-4 flex-grow flex flex-col border border-t-0 border-[#E5E1D8] shadow-sm group-hover:shadow-xl transition-shadow">
         <div className="flex justify-between items-start mb-2">
           <h3 className="text-lg font-serif text-[#121212] leading-tight italic tracking-tight group-hover:text-[#A34D15] transition-colors line-clamp-2">
@@ -70,29 +67,29 @@ export const MarketCard = ({ market, index = 0, variant = 'standard' }: MarketCa
         
         <div className="flex flex-col gap-2 mb-4">
            <div className="flex flex-col">
-              <span className="text-[7px] font-bold text-[#6B665E] uppercase tracking-widest opacity-60">Classification</span>
-              <span className="text-[9px] font-black uppercase tracking-widest text-[#121212] truncate">{hubTypeLabel}</span>
+              <span className="text-[7px] font-bold text-[#6B665E] uppercase tracking-widest opacity-60">Type</span>
+              <span className="text-[9px] font-black uppercase tracking-widest text-[#121212] truncate">{marketTypeLabel}</span>
            </div>
            <div className="flex flex-col">
-              <span className="text-[7px] font-bold text-[#6B665E] uppercase tracking-widest opacity-60">Capacity</span>
+              <span className="text-[7px] font-bold text-[#6B665E] uppercase tracking-widest opacity-60">Sellers</span>
               <span className="text-[9px] font-black uppercase tracking-widest text-[#121212]">{market.totalSellers || '0'} Merchants</span>
            </div>
         </div>
 
         <div className="mb-4">
-           <p className="text-[7px] font-black text-[#A34D15] uppercase tracking-[0.3em] mb-0.5">Deployment Zone</p>
+           <p className="text-[7px] font-black text-[#A34D15] uppercase tracking-[0.3em] mb-0.5">Location</p>
            <p className="text-[9px] font-medium text-[#121212] uppercase tracking-wider italic truncate">
-              {market.location?.address || 'Metropolitan'}
+              {market.location?.address || 'Kigali'}
            </p>
         </div>
 
         <p className="text-[9px] text-[#6B665E] leading-relaxed italic mb-4 border-l border-[#F0EDE4] pl-3 line-clamp-2">
-          {market.description || 'Verified regional hub facilitating authentic artisanal commerce.'}
+          {market.description || 'A verified market on the RMF platform.'}
         </p>
         
         <div className="mt-auto pt-4 border-t border-[#F0EDE4] flex justify-between items-center group/btn">
           <span className="text-[9px] font-black text-[#121212] uppercase tracking-[0.3em] group-hover/btn:text-[#A34D15] transition-colors">
-            Access →
+            Browse Shop →
           </span>
           <div className="w-6 h-px bg-[#E5E1D8] group-hover/btn:w-10 group-hover/btn:bg-[#A34D15] transition-all"></div>
         </div>

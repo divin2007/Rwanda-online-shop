@@ -24,6 +24,7 @@ export const productSchema = new Schema({
   isApproved: { type: Boolean, default: false },
   isActive: { type: Boolean, default: true },
   isMadeInRwanda: { type: Boolean, default: false },
+  isNegotiable: { type: Boolean, default: false },
   rating: { type: Number, default: 0 },
   totalOrders: { type: Number, default: 0 },
   deletedAt: { type: Date, default: null }

@@ -10,171 +10,282 @@ import toast from 'react-hot-toast';
 import { useLanguage } from '@/context/LanguageContext';
 
 const registerSchema = z.object({
-  fullName: z.string().min(3, "Full name must be at least 3 characters"),
-  email: z.string().email("Invalid email address"),
-  phone: z.string().min(10, "Phone number is too short"),
-  password: z.string().min(8, "Password must be at least 8 characters"),
+  fullName: z.string().min(3, 'Full name must be at least 3 characters'),
+  email: z.string().email('Invalid email address'),
+  phone: z.string().min(10, 'Phone number is too short'),
+  password: z.string().min(8, 'Password must be at least 8 characters'),
   confirmPassword: z.string(),
   role: z.enum(['BUYER', 'SELLER', 'RIDER']),
-  referredBy: z.string().optional()
-}).refine((data) => data.password === data.confirmPassword, {
+  referredBy: z.string().optional(),
+}).refine(d => d.password === d.confirmPassword, {
   message: "Passwords don't match",
-  path: ["confirmPassword"],
+  path: ['confirmPassword'],
 });
 
 type RegisterFormValues = z.infer<typeof registerSchema>;
+
+const roles = [
+  {
+    key: 'BUYER' as const,
+    icon: '🛒',
+    label: 'Buyer',
+    desc: 'Shop from local markets & get delivered to your door',
+  },
+  {
+    key: 'SELLER' as const,
+    icon: '🏪',
+    label: 'Seller',
+    desc: 'List your products and grow your local business online',
+  },
+  {
+    key: 'RIDER' as const,
+    icon: '🛵',
+    label: 'Rider',
+    desc: 'Earn money delivering orders across Kigali',
+  },
+];
 
 export default function RegisterPage() {
   const { t } = useLanguage();
   const router = useRouter();
   const searchParams = useSearchParams();
   const refCode = searchParams.get('ref') || '';
+  const preRole = (searchParams.get('role') as 'BUYER' | 'SELLER' | 'RIDER') || 'BUYER';
   const [isLoading, setIsLoading] = useState(false);
+  const [selectedRole, setSelectedRole] = useState<'BUYER' | 'SELLER' | 'RIDER'>(preRole);
 
-  const { register, handleSubmit, formState: { errors } } = useForm<RegisterFormValues>({
+  const { register, handleSubmit, setValue, formState: { errors } } = useForm<RegisterFormValues>({
     resolver: zodResolver(registerSchema),
-    defaultValues: { role: 'BUYER', referredBy: refCode }
+    defaultValues: { role: preRole, referredBy: refCode },
   });
+
+  const handleRoleSelect = (role: 'BUYER' | 'SELLER' | 'RIDER') => {
+    setSelectedRole(role);
+    setValue('role', role);
+  };
 
   const onSubmit = async (data: RegisterFormValues) => {
     setIsLoading(true);
     try {
       const { confirmPassword, ...payload } = data;
       const res = await userApi.post('/users/register', payload);
-
       if (res.data?.success) {
-        toast.success(t('success'));
+        toast.success('Account created! Please sign in.');
         router.push('/login');
       } else {
-        toast.error(res.data?.error || t('error'));
+        toast.error(res.data?.error || 'Registration failed');
       }
     } catch (error: any) {
-      toast.error(error.response?.data?.error || t('error'));
+      toast.error(error.response?.data?.error || 'Something went wrong');
     } finally {
       setIsLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen bg-[#F8F6F1] font-sans selection:bg-[#F59E0B] selection:text-white flex items-center justify-center p-6 md:p-12">
-      <div className="max-w-7xl w-full flex flex-col lg:flex-row-reverse items-stretch justify-center animate-reveal">
-        {/* Institutional Mission Panel */}
-        <div className="hidden lg:flex w-5/12 bg-[#121212] text-white p-20 flex-col justify-between border-2 border-[#121212] relative overflow-hidden group shadow-2xl">
-          <div className="absolute inset-0 opacity-20 pointer-events-none">
-             <div className="absolute bottom-0 right-0 w-full h-full bg-[radial-gradient(circle_at_0%_100%,rgba(163,77,21,0.2),transparent_70%)]"></div>
-          </div>
-          
-          <div className="relative z-10">
-            <Link href="/" className="inline-flex items-baseline gap-1 mb-20 group/logo">
-              <span className="text-5xl font-serif font-black tracking-tighter text-white group-hover/logo:text-[#F59E0B] transition-colors">RMF</span>
-              <div className="w-2 h-2 bg-[#F59E0B] rounded-full"></div>
-            </Link>
+    <div className="min-h-screen flex font-sans selection:bg-[#F59E0B] selection:text-white">
 
-            <div className="flex items-center gap-6 mb-12">
-               <div className="w-12 h-px bg-[#F59E0B]"></div>
-               <p className="text-[11px] font-black text-[#F59E0B] uppercase tracking-[0.5em]">{t('auth_network_registry')}</p>
-            </div>
-            <h2 className="text-7xl font-serif tracking-tighter italic leading-none mb-12 text-white">
-              {t('auth_join_infrastructure').split('<br/>').map((line, i) => (
-                <React.Fragment key={i}>{line}{i === 0 && <br/>}</React.Fragment>
-              ))}
-            </h2>
-            <p className="text-xl text-white/70 font-light italic leading-relaxed max-w-sm border-l-2 border-white/20 pl-10">
-               {t('auth_infrastructure_desc')}
+      {/* ── Left: Form Panel ── */}
+      <div className="flex-1 bg-white flex items-center justify-center p-8 md:p-16 overflow-y-auto">
+        <div className="w-full max-w-lg space-y-8 animate-reveal py-8">
+
+          {/* Mobile logo */}
+          <div className="lg:hidden flex items-baseline gap-2">
+            <span className="text-3xl font-serif font-black tracking-tighter text-[#121212]">RMF</span>
+            <div className="w-1.5 h-1.5 bg-[#F59E0B] rounded-full" />
+          </div>
+
+          {/* Header */}
+          <div>
+            <h1 className="text-4xl font-serif text-[#121212] italic tracking-tighter mb-2">Create Account</h1>
+            <p className="text-sm text-[#6B665E]">
+              Already have an account?{' '}
+              <Link href="/login" className="text-[#A34D15] font-black hover:underline">Sign in →</Link>
             </p>
           </div>
 
-          <div className="relative z-10 space-y-12">
-             <div className="p-10 bg-white/5 border border-white/20 space-y-6">
-                <p className="text-[9px] font-black uppercase tracking-[0.4em] text-[#F59E0B]">{t('auth_compliance_protocol')}</p>
-                <p className="text-[10px] text-white/80 leading-relaxed italic">{t('auth_compliance_desc')}</p>
-             </div>
-             <p className="text-[8px] font-bold text-white/40 uppercase tracking-[0.6em]">{t('auth_registry_id')}: REG-HUB-RW-2026</p>
-          </div>
-        </div>
+          <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
 
-        {/* Elite Registration Workstation */}
-        <div className="w-full lg:w-7/12 bg-white border-2 border-[#121212] lg:border-r-0 p-12 md:p-24 flex flex-col justify-center shadow-2xl">
-          <div className="mb-16">
-            <h1 className="text-5xl font-serif text-[#121212] tracking-tighter italic mb-4">{t('register_title')}</h1>
-            <p className="text-[11px] font-black text-[#6B665E] uppercase tracking-[0.4em] opacity-60">{t('register_subtitle')}</p>
-          </div>
-
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-12">
-            {/* Role Selection: Tactical Hub Type */}
-            <div className="rmf-form-group">
-              <label className="rmf-label mb-6">{t('i_want_to_be')}</label>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
-                {['BUYER', 'SELLER', 'RIDER'].map(role => (
-                  <label key={role} className="relative cursor-pointer group">
-                    <input type="radio" value={role} {...register('role')} className="sr-only peer" />
-                    <div className="p-8 border-2 border-[#E5E1D8] text-center transition-all peer-checked:border-[#121212] peer-checked:bg-[#121212] peer-checked:text-white hover:border-[#F59E0B]">
-                       <p className="text-[10px] font-black uppercase tracking-[0.3em]">{role}</p>
-                       <p className="text-[8px] mt-2 opacity-60 italic uppercase tracking-widest">{role === 'BUYER' ? t('auth_acquisitions') : role === 'SELLER' ? t('auth_merchant') : t('auth_logistics')}</p>
+            {/* Role Selection */}
+            <div className="space-y-3">
+              <p className="text-[10px] font-black text-[#121212] uppercase tracking-[0.4em]">I want to join as a...</p>
+              <div className="grid grid-cols-3 gap-3">
+                {roles.map(r => (
+                  <label key={r.key} className="cursor-pointer" onClick={() => handleRoleSelect(r.key)}>
+                    <input type="radio" value={r.key} {...register('role')} className="sr-only" />
+                    <div className={`p-4 border-2 text-center transition-all ${selectedRole === r.key ? 'border-[#121212] bg-[#121212] text-white' : 'border-[#E5E1D8] text-[#121212] hover:border-[#F59E0B]'}`}>
+                      <div className="text-2xl mb-2">{r.icon}</div>
+                      <p className="text-[10px] font-black uppercase tracking-wider">{r.label}</p>
                     </div>
                   </label>
                 ))}
               </div>
-              {errors.role && <p className="rmf-error-text">⚠ {errors.role.message}</p>}
+              {selectedRole && (
+                <p className="text-[10px] text-[#6B665E] italic pl-1">
+                  {roles.find(r => r.key === selectedRole)?.desc}
+                </p>
+              )}
             </div>
 
-            <div className="rmf-form-group">
-              <label className="rmf-label">{t('full_name')}</label>
-              <input type="text" {...register('fullName')} className={`rmf-input ${errors.fullName ? 'rmf-input-error' : ''}`} placeholder={t('auth_official_name')} />
-              {errors.fullName && <p className="rmf-error-text">⚠ {errors.fullName.message}</p>}
+            {/* Full Name */}
+            <div className="space-y-2">
+              <label className="text-[10px] font-black text-[#121212] uppercase tracking-[0.4em] block" htmlFor="fullName">
+                Full Name
+              </label>
+              <input
+                id="fullName"
+                type="text"
+                {...register('fullName')}
+                placeholder="e.g. Amina Uwase"
+                className={`w-full bg-[#F8F6F1] border-2 px-5 py-4 text-sm outline-none rounded-none transition-colors ${errors.fullName ? 'border-red-400 focus:border-red-500' : 'border-[#E5E1D8] focus:border-[#121212]'}`}
+              />
+              {errors.fullName && <p className="text-[10px] text-red-500 font-bold">⚠ {errors.fullName.message}</p>}
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
-              <div className="rmf-form-group">
-                <label className="rmf-label">{t('email_label')}</label>
-                <input type="email" {...register('email')} className={`rmf-input ${errors.email ? 'rmf-input-error' : ''}`} placeholder={t('auth_secure_email')} />
-                {errors.email && <p className="rmf-error-text">⚠ {errors.email.message}</p>}
+            {/* Email + Phone */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <label className="text-[10px] font-black text-[#121212] uppercase tracking-[0.4em] block" htmlFor="email">
+                  Email
+                </label>
+                <input
+                  id="email"
+                  type="email"
+                  {...register('email')}
+                  placeholder="you@example.com"
+                  autoComplete="email"
+                  className={`w-full bg-[#F8F6F1] border-2 px-5 py-4 text-sm outline-none rounded-none transition-colors ${errors.email ? 'border-red-400' : 'border-[#E5E1D8] focus:border-[#121212]'}`}
+                />
+                {errors.email && <p className="text-[10px] text-red-500 font-bold">⚠ {errors.email.message}</p>}
               </div>
-              <div className="rmf-form-group">
-                <label className="rmf-label">{t('phone_number')}</label>
-                <input type="tel" {...register('phone')} className={`rmf-input ${errors.phone ? 'rmf-input-error' : ''}`} placeholder="07XXXXXXXX" />
-                {errors.phone && <p className="rmf-error-text">⚠ {errors.phone.message}</p>}
+              <div className="space-y-2">
+                <label className="text-[10px] font-black text-[#121212] uppercase tracking-[0.4em] block" htmlFor="phone">
+                  Phone (MTN/Airtel)
+                </label>
+                <input
+                  id="phone"
+                  type="tel"
+                  {...register('phone')}
+                  placeholder="07XXXXXXXX"
+                  className={`w-full bg-[#F8F6F1] border-2 px-5 py-4 text-sm outline-none rounded-none transition-colors ${errors.phone ? 'border-red-400' : 'border-[#E5E1D8] focus:border-[#121212]'}`}
+                />
+                {errors.phone && <p className="text-[10px] text-red-500 font-bold">⚠ {errors.phone.message}</p>}
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
-              <div className="rmf-form-group">
-                <label className="rmf-label">{t('password_label')}</label>
-                <input type="password" {...register('password')} className={`rmf-input ${errors.password ? 'rmf-input-error' : ''}`} placeholder="••••••••" />
-                {errors.password && <p className="rmf-error-text">⚠ {errors.password.message}</p>}
+            {/* Password + Confirm */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <label className="text-[10px] font-black text-[#121212] uppercase tracking-[0.4em] block" htmlFor="password">
+                  Password
+                </label>
+                <input
+                  id="password"
+                  type="password"
+                  {...register('password')}
+                  placeholder="Min. 8 characters"
+                  autoComplete="new-password"
+                  className={`w-full bg-[#F8F6F1] border-2 px-5 py-4 text-sm outline-none rounded-none transition-colors ${errors.password ? 'border-red-400' : 'border-[#E5E1D8] focus:border-[#121212]'}`}
+                />
+                {errors.password && <p className="text-[10px] text-red-500 font-bold">⚠ {errors.password.message}</p>}
               </div>
-              <div className="rmf-form-group">
-                <label className="rmf-label">{t('confirm_password')}</label>
-                <input type="password" {...register('confirmPassword')} className={`rmf-input ${errors.confirmPassword ? 'rmf-input-error' : ''}`} placeholder="••••••••" />
-                {errors.confirmPassword && <p className="rmf-error-text">⚠ {errors.confirmPassword.message}</p>}
+              <div className="space-y-2">
+                <label className="text-[10px] font-black text-[#121212] uppercase tracking-[0.4em] block" htmlFor="confirmPassword">
+                  Confirm Password
+                </label>
+                <input
+                  id="confirmPassword"
+                  type="password"
+                  {...register('confirmPassword')}
+                  placeholder="Re-enter password"
+                  autoComplete="new-password"
+                  className={`w-full bg-[#F8F6F1] border-2 px-5 py-4 text-sm outline-none rounded-none transition-colors ${errors.confirmPassword ? 'border-red-400' : 'border-[#E5E1D8] focus:border-[#121212]'}`}
+                />
+                {errors.confirmPassword && <p className="text-[10px] text-red-500 font-bold">⚠ {errors.confirmPassword.message}</p>}
               </div>
             </div>
 
-            <div className="rmf-form-group">
-              <label className="rmf-label">{t('referral_code')} <span className="opacity-40">{t('auth_optional')}</span></label>
-              <input type="text" {...register('referredBy')} className="rmf-input border-dashed" placeholder="RMF-XXXX-XXXX" />
+            {/* Referral Code */}
+            <div className="space-y-2">
+              <label className="text-[10px] font-black text-[#121212] uppercase tracking-[0.4em] block">
+                Referral Code <span className="font-normal opacity-50">(optional)</span>
+              </label>
+              <input
+                type="text"
+                {...register('referredBy')}
+                placeholder="RMF-XXXX"
+                className="w-full bg-[#F8F6F1] border-2 border-dashed border-[#E5E1D8] focus:border-[#121212] px-5 py-4 text-sm outline-none rounded-none transition-colors"
+              />
             </div>
 
-            <div className="pt-10">
-              <button 
-                type="submit" 
-                disabled={isLoading}
-                className="rmf-btn-primary w-full group relative"
-              >
-                <span className="relative z-10">{isLoading ? t('creating_account') : t('create_account')}</span>
-                <div className="absolute right-8 top-1/2 -translate-y-1/2 opacity-40 group-hover:translate-x-2 transition-transform">→</div>
-              </button>
-            </div>
-          </form>
+            {/* Submit */}
+            <button
+              type="submit"
+              disabled={isLoading}
+              className="w-full bg-[#121212] text-white py-5 text-[11px] font-black uppercase tracking-[0.4em] hover:bg-[#A34D15] transition-all disabled:opacity-50 flex items-center justify-center gap-3"
+            >
+              {isLoading ? (
+                <>
+                  <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  Creating account...
+                </>
+              ) : `Create ${selectedRole.charAt(0) + selectedRole.slice(1).toLowerCase()} Account →`}
+            </button>
 
-          <div className="mt-20 pt-10 border-t border-[#F0EDE4] text-center">
-            <p className="text-[10px] font-black text-[#6B665E] uppercase tracking-[0.3em]">
-              {t('already_have_account')} 
-              <Link href="/login" className="text-[#F59E0B] ml-4 border-b-2 border-[#F59E0B]/40 hover:border-[#F59E0B] transition-all">
-                {t('sign_in')}
-              </Link>
+            <p className="text-[9px] text-center text-[#6B665E] opacity-60 leading-relaxed">
+              By registering you agree to our{' '}
+              <Link href="/terms" className="underline hover:text-[#121212]">Terms of Service</Link>
+              {' '}and{' '}
+              <Link href="/privacy" className="underline hover:text-[#121212]">Privacy Policy</Link>.
             </p>
+          </form>
+        </div>
+      </div>
+
+      {/* ── Right: Brand Panel ── */}
+      <div className="hidden lg:flex w-[38%] bg-[#121212] flex-col justify-between p-16 relative overflow-hidden">
+        <div className="absolute inset-0 pointer-events-none">
+          <div className="absolute bottom-0 left-0 w-full h-full bg-[radial-gradient(circle_at_20%_100%,rgba(245,158,11,0.08),transparent_60%)]" />
+          <div className="absolute -bottom-4 -left-4 text-[200px] font-serif italic leading-none select-none opacity-[0.04] text-white">RMF</div>
+        </div>
+
+        {/* Logo */}
+        <div className="relative z-10">
+          <Link href="/" className="inline-flex items-baseline gap-2 group">
+            <span className="text-4xl font-serif font-black tracking-tighter text-white group-hover:text-[#F59E0B] transition-colors">RMF</span>
+            <div className="w-2 h-2 bg-[#F59E0B] rounded-full" />
+          </Link>
+          <p className="text-[9px] font-black text-white/30 uppercase tracking-[0.5em] mt-2">Rwanda Market Facilitator</p>
+        </div>
+
+        {/* Copy */}
+        <div className="relative z-10 space-y-8">
+          <div className="flex items-center gap-4">
+            <div className="w-8 h-px bg-[#F59E0B]" />
+            <p className="text-[10px] font-black text-[#F59E0B] uppercase tracking-[0.5em]">Join the Community</p>
           </div>
+          <h2 className="text-5xl font-serif italic tracking-tighter leading-[0.95] text-white">
+            Rwanda's<br />
+            <span className="text-[#F59E0B]">marketplace</span><br />
+            is growing.
+          </h2>
+          <p className="text-base text-white/50 font-light italic leading-relaxed border-l-2 border-white/10 pl-6">
+            Join 120+ verified sellers, thousands of buyers, and a growing network of riders delivering across Kigali.
+          </p>
+        </div>
+
+        {/* Stats */}
+        <div className="relative z-10 grid grid-cols-3 gap-4 pt-10 border-t border-white/10">
+          {[
+            { val: '120+', label: 'Sellers' },
+            { val: '10+', label: 'Markets' },
+            { val: '500+', label: 'Orders' },
+          ].map(s => (
+            <div key={s.label} className="text-center">
+              <p className="text-2xl font-serif italic text-white">{s.val}</p>
+              <p className="text-[8px] font-black text-[#F59E0B] uppercase tracking-widest mt-1">{s.label}</p>
+            </div>
+          ))}
         </div>
       </div>
     </div>
