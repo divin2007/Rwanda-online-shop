@@ -1,5 +1,6 @@
 import { Controller, Get } from '@nestjs/common';
-import { HealthCheck, HealthCheckService, MongooseHealthIndicator } from '@nestjs/terminus';
+import { HealthCheck, HealthCheckService, HealthIndicatorResult, MongooseHealthIndicator } from '@nestjs/terminus';
+import { Socket } from 'net';
 
 @Controller('health')
 export class HealthController {
@@ -13,7 +14,41 @@ export class HealthController {
   check() {
     return this.health.check([
       () => this.mongoose.pingCheck('mongodb'),
-      // In a real app we'd add Redis check here too
+      () => this.redisCheck(),
     ]);
+  }
+
+  private async redisCheck(): Promise<HealthIndicatorResult> {
+    const redisUrl = process.env.REDIS_URL;
+    if (!redisUrl) {
+      return { redis: { status: 'up', skipped: true } };
+    }
+
+    return new Promise((resolve, reject) => {
+      const parsed = new URL(redisUrl);
+      const socket = new Socket();
+      const timeoutMs = Number(process.env.HEALTH_REDIS_TIMEOUT_MS || 1000);
+      const port = Number(parsed.port || 6379);
+
+      const cleanup = () => {
+        socket.removeAllListeners();
+        socket.destroy();
+      };
+
+      socket.setTimeout(timeoutMs);
+      socket.once('connect', () => {
+        cleanup();
+        resolve({ redis: { status: 'up' } });
+      });
+      socket.once('timeout', () => {
+        cleanup();
+        reject(new Error('Redis health check timed out'));
+      });
+      socket.once('error', (error) => {
+        cleanup();
+        reject(error);
+      });
+      socket.connect(port, parsed.hostname);
+    });
   }
 }

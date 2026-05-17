@@ -1,4 +1,5 @@
 'use client';
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import React, { useEffect, useState } from 'react';
 import { Layout } from '@/components/layout/Layout';
 import { useAuth } from '@/context/AuthContext';
@@ -62,35 +63,35 @@ export default function SellerPromotionsPage() {
 
   return (
     <Layout>
-      <div className="max-w-7xl mx-auto animate-reveal space-y-16 pb-32">
+      <div className="max-w-7xl mx-auto animate-reveal space-y-8 pb-20">
         {/* ── Header ── */}
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6 border-b-2 border-[#121212] pb-10">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6 border-b-2 border-[#e0e0e0] pb-10">
           <div>
             <div className="flex items-center gap-4 mb-4">
-               <div className="w-12 h-px bg-[#F59E0B]" />
-               <p className="text-[10px] font-black text-[#F59E0B] uppercase tracking-[0.5em]">Discounts & Sales</p>
+               <div className="w-12 h-px bg-[#c1ecd4]" />
+               <p className="text-[10px] font-black text-[#1b4332] uppercase tracking-[0.22em]">Discounts & Sales</p>
             </div>
-            <h1 className="text-6xl md:text-7xl font-serif text-[#121212] italic tracking-tighter leading-none">Promotions</h1>
-            <p className="text-[10px] font-bold text-[#6B665E] uppercase tracking-widest mt-4 opacity-70">
+            <h1 className="text-4xl md:text-5xl font-sans text-[#1b1c1c] tracking-normal leading-none">Promotions</h1>
+            <p className="text-[10px] font-bold text-[#414844] uppercase tracking-widest mt-4 opacity-70">
               {promotions?.length || 0} Active Promotions
             </p>
           </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-16">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
            {/* ── Left: Create Promotion Form ── */}
            <div className="lg:col-span-1">
-              <div className="bg-white border border-[#E5E1D8] p-8 md:p-10 shadow-sm relative overflow-hidden">
-                 <div className="absolute top-0 left-0 w-full h-1 bg-[#121212]" />
+              <div className="bg-white border border-[#e0e0e0] p-5 md:p-6 shadow-sm relative overflow-hidden">
+                 <div className="absolute top-0 left-0 w-full h-1 bg-[#012d1d]" />
                  <div className="mb-8">
-                    <p className="text-[9px] font-black text-[#A34D15] uppercase tracking-[0.4em] mb-2">Grow Sales</p>
-                    <h3 className="text-3xl font-serif italic tracking-tighter text-[#121212]">New Deal</h3>
+                    <p className="text-[9px] font-black text-[#1b4332] uppercase tracking-[0.18em] mb-2">Grow Sales</p>
+                    <h3 className="text-3xl font-sans tracking-normal text-[#1b1c1c]">New Deal</h3>
                  </div>
 
                  <form onSubmit={handleSubmit} className="space-y-6">
                     <div className="space-y-2">
-                       <label className="text-[9px] font-black uppercase tracking-widest text-[#121212]">Select Product</label>
-                       <select required className="w-full bg-[#F8F6F1] border border-[#E5E1D8] p-4 text-sm outline-none focus:border-[#121212] transition-colors" value={formData.productId} onChange={e => setFormData({...formData, productId: e.target.value})}>
+                       <label className="text-[9px] font-black uppercase tracking-widest text-[#1b1c1c]">Select Product</label>
+                       <select required className="w-full bg-[#fcf9f8] border border-[#e0e0e0] p-4 text-sm outline-none focus:border-[#1b4332] transition-colors" value={formData.productId} onChange={e => setFormData({...formData, productId: e.target.value})}>
                           <option value="">Choose an item...</option>
                           {products?.map((p:any) => <option key={p._id} value={p._id}>{p.name} ({p.price} RWF)</option>)}
                        </select>
@@ -98,31 +99,31 @@ export default function SellerPromotionsPage() {
 
                     <div className="grid grid-cols-2 gap-4">
                        <div className="space-y-2">
-                          <label className="text-[9px] font-black uppercase tracking-widest text-[#121212]">Discount Type</label>
-                          <select className="w-full bg-[#F8F6F1] border border-[#E5E1D8] p-4 text-sm outline-none focus:border-[#121212] transition-colors" value={formData.type} onChange={e => setFormData({...formData, type: e.target.value})}>
+                          <label className="text-[9px] font-black uppercase tracking-widest text-[#1b1c1c]">Discount Type</label>
+                          <select className="w-full bg-[#fcf9f8] border border-[#e0e0e0] p-4 text-sm outline-none focus:border-[#1b4332] transition-colors" value={formData.type} onChange={e => setFormData({...formData, type: e.target.value})}>
                             <option value="percentage">Percentage (%)</option>
                             <option value="fixed_amount">Fixed Amount</option>
                           </select>
                        </div>
                        <div className="space-y-2">
-                          <label className="text-[9px] font-black uppercase tracking-widest text-[#121212]">Value</label>
-                          <input type="number" required placeholder="e.g. 10" className="w-full bg-[#F8F6F1] border border-[#E5E1D8] p-4 text-sm outline-none focus:border-[#121212] transition-colors" value={formData.discount} onChange={e => setFormData({...formData, discount: e.target.value})} />
+                          <label className="text-[9px] font-black uppercase tracking-widest text-[#1b1c1c]">Value</label>
+                          <input type="number" required placeholder="e.g. 10" className="w-full bg-[#fcf9f8] border border-[#e0e0e0] p-4 text-sm outline-none focus:border-[#1b4332] transition-colors" value={formData.discount} onChange={e => setFormData({...formData, discount: e.target.value})} />
                        </div>
                     </div>
 
                     <div className="space-y-2">
-                       <label className="text-[9px] font-black uppercase tracking-widest text-[#121212]">End Date</label>
-                       <input type="datetime-local" required className="w-full bg-[#F8F6F1] border border-[#E5E1D8] p-4 text-sm outline-none focus:border-[#121212] transition-colors" value={formData.endDate} onChange={e => setFormData({...formData, endDate: e.target.value})} />
+                       <label className="text-[9px] font-black uppercase tracking-widest text-[#1b1c1c]">End Date</label>
+                       <input type="datetime-local" required className="w-full bg-[#fcf9f8] border border-[#e0e0e0] p-4 text-sm outline-none focus:border-[#1b4332] transition-colors" value={formData.endDate} onChange={e => setFormData({...formData, endDate: e.target.value})} />
                     </div>
 
                     {selectedProduct && formData.discount && (
-                      <div className="p-6 bg-[#F8F6F1] border border-[#E5E1D8] text-center mt-6">
-                         <p className="text-[9px] font-black uppercase tracking-widest text-[#6B665E] mb-2">New Sale Price</p>
-                         <p className="text-3xl font-serif italic tracking-tighter text-[#A34D15]">{calculatedPrice?.toLocaleString()} RWF</p>
+                      <div className="p-6 bg-[#fcf9f8] border border-[#e0e0e0] text-center mt-6">
+                         <p className="text-[9px] font-black uppercase tracking-widest text-[#414844] mb-2">New Sale Price</p>
+                         <p className="text-3xl font-sans tracking-normal text-[#1b4332]">{calculatedPrice?.toLocaleString()} RWF</p>
                       </div>
                     )}
 
-                    <button type="submit" disabled={isSubmitting} className="w-full bg-[#121212] text-white mt-8 py-5 text-[10px] font-black uppercase tracking-[0.4em] hover:bg-[#F59E0B] transition-all disabled:opacity-50">
+                    <button type="submit" disabled={isSubmitting} className="w-full bg-[#012d1d] text-white mt-8 py-3 text-[10px] font-black uppercase tracking-[0.18em] hover:bg-[#012d1d] transition-all disabled:opacity-50">
                        {isSubmitting ? 'Activating...' : 'Create Promotion'}
                     </button>
                  </form>
@@ -131,47 +132,53 @@ export default function SellerPromotionsPage() {
 
            {/* ── Right: Active Promotions List ── */}
            <div className="lg:col-span-2 space-y-8">
-              <div className="flex justify-between items-end border-b border-[#E5E1D8] pb-4">
-                 <h3 className="text-2xl font-serif italic text-[#121212]">Active Deals</h3>
-                 <span className="text-[10px] font-black uppercase tracking-widest text-[#6B665E]">{promotions?.length || 0} Running</span>
+              <div className="flex justify-between items-end border-b border-[#e0e0e0] pb-4">
+                 <h3 className="text-2xl font-sans text-[#1b1c1c]">Active Deals</h3>
+                 <span className="text-[10px] font-black uppercase tracking-widest text-[#414844]">{promotions?.length || 0} Running</span>
               </div>
 
               <div className="space-y-6">
                  {promoLoading ? (
-                    <div className="h-32 bg-[#F8F6F1] border border-[#E5E1D8] animate-pulse"></div>
+                    <div className="h-32 bg-[#fcf9f8] border border-[#e0e0e0] animate-pulse"></div>
                  ) : promotions?.length > 0 ? promotions.map((promo: any) => (
-                    <div key={promo._id} className="bg-white border border-[#E5E1D8] p-6 flex flex-col md:flex-row justify-between items-start md:items-center group hover:border-[#121212] transition-all shadow-sm">
+                    <div key={promo._id} className="bg-white border border-[#e0e0e0] p-6 flex flex-col md:flex-row justify-between items-start md:items-center group hover:border-[#1b4332] transition-all shadow-sm">
                        
                        <div className="flex items-center gap-6 mb-4 md:mb-0">
-                          <div className="w-20 h-20 bg-[#F8F6F1] border border-[#E5E1D8] overflow-hidden flex-shrink-0 p-1">
-                             <img src={promo.product?.images?.[0] || 'https://placehold.co/100'} className="w-full h-full object-cover group-hover:scale-110 transition-all duration-700" alt="" />
+                          <div className="w-20 h-20 bg-[#fcf9f8] border border-[#e0e0e0] overflow-hidden flex-shrink-0 p-1">
+                             {promo.product?.images?.[0] ? (
+                               <img src={promo.product.images[0]} className="w-full h-full object-cover group-hover:scale-110 transition-all duration-700" alt="" />
+                             ) : (
+                               <div className="flex h-full w-full items-center justify-center text-[9px] font-black uppercase tracking-widest text-[#414844]">
+                                 Deal
+                               </div>
+                             )}
                           </div>
                           <div>
-                             <h4 className="text-xl font-serif italic tracking-tighter text-[#121212] mb-2 line-clamp-1">{promo.product?.name || 'Product'}</h4>
+                             <h4 className="text-xl font-sans tracking-normal text-[#1b1c1c] mb-2 line-clamp-1">{promo.product?.name || 'Product'}</h4>
                              <div className="flex items-center gap-3">
-                                <span className="text-[9px] font-black bg-[#121212] text-white px-2 py-1 uppercase tracking-widest">
+                                <span className="text-[9px] font-black bg-[#012d1d] text-white px-2 py-1 uppercase tracking-widest">
                                    -{promo.type === 'percentage' ? `${promo.discount}%` : `${promo.discount} RWF`}
                                 </span>
-                                <span className="text-[9px] font-medium text-[#6B665E] uppercase tracking-widest">
+                                <span className="text-[9px] font-medium text-[#414844] uppercase tracking-widest">
                                    Ends: {new Date(promo.endDate).toLocaleDateString()}
                                 </span>
                              </div>
                           </div>
                        </div>
 
-                       <div className="flex md:flex-col items-center md:items-end justify-between w-full md:w-auto border-t md:border-t-0 border-[#E5E1D8] pt-4 md:pt-0 gap-4">
+                       <div className="flex md:flex-col items-center md:items-end justify-between w-full md:w-auto border-t md:border-t-0 border-[#e0e0e0] pt-4 md:pt-0 gap-4">
                           <div className="text-left md:text-right">
-                             <p className="text-[10px] text-[#6B665E] line-through uppercase tracking-widest opacity-60 mb-1">{promo.product?.price?.toLocaleString()} RWF</p>
-                             <p className="text-2xl font-serif italic tracking-tighter text-[#A34D15]">{promo.promotedPrice?.toLocaleString()} RWF</p>
+                             <p className="text-[10px] text-[#414844] line-through uppercase tracking-widest opacity-60 mb-1">{promo.product?.price?.toLocaleString()} RWF</p>
+                             <p className="text-2xl font-sans tracking-normal text-[#1b4332]">{promo.promotedPrice?.toLocaleString()} RWF</p>
                           </div>
-                          <button onClick={() => handleDelete(promo._id)} className="text-[9px] font-black uppercase tracking-widest text-red-500 hover:text-red-700 transition-colors border border-red-200 hover:border-red-500 px-4 py-2 bg-red-50">End Deal</button>
+                          <button onClick={() => handleDelete(promo._id)} className="text-[9px] font-black uppercase tracking-widest text-[#405046] hover:text-[#012d1d] transition-colors border border-[#dfe7e2] hover:border-[#1b4332] px-4 py-2 bg-[#f7faf8]">End Deal</button>
                        </div>
                     </div>
                  )) : (
-                    <div className="border-2 border-dashed border-[#E5E1D8] bg-[#F8F6F1] py-24 text-center">
+                    <div className="border-2 border-dashed border-[#e0e0e0] bg-[#fcf9f8] py-24 text-center">
                        <div className="text-4xl mb-4 opacity-50">🏷️</div>
-                       <p className="text-lg font-serif italic text-[#121212] mb-1">No active promotions</p>
-                       <p className="text-[10px] font-medium text-[#6B665E] uppercase tracking-widest">Create a deal to boost your sales</p>
+                       <p className="text-lg font-sans text-[#1b1c1c] mb-1">No active promotions</p>
+                       <p className="text-[10px] font-medium text-[#414844] uppercase tracking-widest">Create a deal to boost your sales</p>
                     </div>
                  )}
               </div>

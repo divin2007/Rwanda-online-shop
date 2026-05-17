@@ -36,6 +36,9 @@ services:
         fromEnv: JWT_SECRET
       - key: CORS_ORIGIN
         fromEnv: CORS_ORIGIN
+      # Required for market list caching (M3 fix — was missing)
+      - key: REDIS_URL
+        fromEnv: REDIS_URL
 
   - type: web
     name: rmf-product-service
@@ -106,6 +109,9 @@ services:
         value: "https://rmf-wallet-service.onrender.com"
       - key: MARKET_SERVICE_URL
         value: "https://rmf-market-service.onrender.com"
+      # Required for order notifications (M2 fix — was missing, caused silent failures)
+      - key: NOTIFICATION_SERVICE_URL
+        value: "https://rmf-notification-service.onrender.com"
       - key: MTN_MOMO_API_KEY
         fromEnv: MTN_MOMO_API_KEY
       - key: MTN_MOMO_USER_ID
@@ -120,6 +126,12 @@ services:
         fromEnv: AIRTEL_MONEY_SECRET
       - key: AIRTEL_MONEY_TARGET_ENV
         fromEnv: AIRTEL_MONEY_TARGET_ENV
+      # Configurable fraud threshold (MD4 fix)
+      - key: FRAUD_HIGH_VALUE_THRESHOLD
+        value: "2000000"
+      # Configurable delivery fee rate (M9 fix)
+      - key: DELIVERY_FEE_PER_5KM
+        value: "500"
 
   - type: web
     name: rmf-wallet-service
@@ -150,6 +162,14 @@ services:
         fromEnv: JWT_SECRET
       - key: CORS_ORIGIN
         fromEnv: CORS_ORIGIN
+      # WebSocket CORS — must list all frontend origins (M1 fix)
+      - key: ALLOWED_ORIGINS
+        value: "https://www.rwshop.org,https://rwshop.org"
+      # Needed for delivery→order status sync
+      - key: ORDER_SERVICE_URL
+        value: "https://rmf-order-service.onrender.com"
+      - key: NOTIFICATION_SERVICE_URL
+        value: "https://rmf-notification-service.onrender.com"
 
   - type: web
     name: rmf-notification-service
@@ -228,3 +248,6 @@ services:
         value: "https://rmf-review-service.onrender.com"
       - key: NEXT_PUBLIC_ADMIN_SERVICE_URL
         value: "https://rmf-admin-service.onrender.com"
+      # Max API retries on network errors (N1 fix — was falling back to hardcoded 2)
+      - key: NEXT_PUBLIC_API_MAX_RETRIES
+        value: "3"

@@ -2,74 +2,93 @@
 @tailwind components;
 @tailwind utilities;
 
-@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@200;300;400;500;600;700;800&family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,900;1,9..144,400;1,9..144,900&display=swap');
-
 :root {
-  /* RMF Institutional Palette */
-  --rmf-rust: #A34D15;
-  --rmf-rust-dark: #823D11;
-  --rmf-rust-light: #C25D1D;
-  --rmf-charcoal: #121212;
-  --rmf-charcoal-muted: #1A1A1A;
-  --rmf-cream: #F8F6F1;
-  --rmf-cream-dark: #F0EDE4;
-  --rmf-border: #E5E1D8;
-  --rmf-border-strong: #D1CDC2;
-  --rmf-text: #1A1A1A;
-  --rmf-text-muted: #6B665E;
+  /* RMF Operational Commerce palette - High-Fidelity Vibrant Actual Orange */
+  --rmf-green: #ff6b00;
+  --rmf-green-dark: #e05300;
+  --rmf-green-light: #ffedd5;
+  --rmf-gold: #ff9f1c;
+  --rmf-gold-dark: #cc7a00;
+  --rmf-charcoal: #1b1c1c;
+  --rmf-charcoal-muted: #414844;
+  --rmf-cream: #fdfaf7;
+  --rmf-cream-dark: #f7f1eb;
+  --rmf-border: #ebdcd0;
+  --rmf-border-strong: #d2bca8;
+  --rmf-text: #1b1c1c;
+  --rmf-text-muted: #574e47;
   --rmf-white: #FFFFFF;
   
-  --primary: var(--rmf-rust);
+  --primary: var(--rmf-green);
   --secondary: var(--rmf-charcoal);
   --background: var(--rmf-cream);
   --foreground: var(--rmf-text);
 }
 
+html {
+  font-size: 100%;
+}
+
 @layer base {
   body {
-    @apply bg-[var(--rmf-cream)] text-[var(--rmf-text)] font-sans antialiased selection:bg-[var(--rmf-rust)] selection:text-white;
+    @apply bg-[var(--rmf-cream)] text-[var(--rmf-text)] font-sans antialiased selection:bg-[var(--rmf-green)] selection:text-white;
   }
   
   h1, h2, h3, h4, h5, h6 {
-    @apply font-serif font-black text-[var(--rmf-charcoal)] tracking-tighter;
+    @apply font-sans font-bold text-[var(--rmf-charcoal)] tracking-normal;
   }
 
-  .font-sans { font-family: 'Outfit', sans-serif; }
-  .font-serif { font-family: 'Fraunces', serif; }
+  .font-sans { font-family: var(--font-inter), Inter, system-ui, sans-serif; }
+  .font-serif { font-family: var(--font-inter), Inter, system-ui, sans-serif; }
 }
 
 @layer components {
   .rmf-container {
-    @apply max-w-[1600px] mx-auto px-12 md:px-20;
+    @apply max-w-[80rem] mx-auto px-4 md:px-8;
   }
 
   .glass-header {
-    @apply bg-white/80 backdrop-blur-xl border-b border-[var(--rmf-border)] sticky top-0 z-50;
+    @apply bg-white/80 backdrop-blur-md border-b border-[var(--rmf-border)] sticky top-0 z-50;
   }
 
   .glass-card {
-    @apply bg-white border border-[var(--rmf-border)] transition-all duration-500 hover:border-[var(--rmf-rust)] hover:shadow-[0_20px_50px_-20px_rgba(163,77,21,0.15)];
+    @apply rounded-xl bg-white/70 backdrop-blur-sm border border-[var(--rmf-border)] transition-all duration-300 hover:border-[var(--rmf-green)]/30 hover:shadow-xl hover:-translate-y-1;
+  }
+
+  .cinematic-shadow {
+    @apply shadow-[0_16px_48px_rgba(255,107,0,0.08)];
+  }
+
+  .premium-gradient {
+    background: linear-gradient(135deg, #ff6b00 0%, #e05300 100%);
+  }
+
+  .premium-gradient-light {
+    background: linear-gradient(135deg, #f7f7f3 0%, #efefeb 100%);
+  }
+
+  .hover-lift {
+    @apply transition-all duration-300 hover:-translate-y-1 hover:shadow-lg;
   }
 
   .rmf-btn-primary {
-    @apply relative overflow-hidden bg-[var(--rmf-charcoal)] text-white px-10 py-5 text-[11px] font-extrabold uppercase tracking-[0.3em] transition-all duration-300 hover:bg-[var(--rmf-rust)] hover:shadow-2xl hover:-translate-y-0.5 active:translate-y-0 disabled:opacity-50 disabled:cursor-not-allowed;
+    @apply inline-flex items-center justify-center gap-2 rounded-lg bg-[var(--rmf-green)] text-white px-6 py-3.5 text-sm font-bold tracking-tight transition-all duration-300 hover:bg-[var(--rmf-green-dark)] hover:shadow-lg active:translate-y-px;
   }
 
   .rmf-btn-outline {
-    @apply border-2 border-[var(--rmf-charcoal)] text-[var(--rmf-charcoal)] px-10 py-5 text-[11px] font-extrabold uppercase tracking-[0.3em] transition-all duration-300 hover:bg-[var(--rmf-charcoal)] hover:text-white disabled:opacity-50;
+    @apply inline-flex items-center justify-center gap-2 rounded-lg border border-[var(--rmf-border)] bg-white/50 backdrop-blur-sm text-[var(--rmf-charcoal)] px-6 py-3.5 text-sm font-bold tracking-tight transition-all duration-300 hover:border-[var(--rmf-green)] hover:text-[var(--rmf-green)] hover:bg-white;
   }
 
-  /* ELITE FORM FIELDS */
   .rmf-form-group {
-    @apply flex flex-col gap-4 mb-8;
+    @apply flex flex-col gap-3 mb-6;
   }
 
   .rmf-label {
-    @apply text-[10px] font-black uppercase tracking-[0.4em] text-[var(--rmf-charcoal)] flex justify-between items-center;
+    @apply text-sm font-bold text-[var(--rmf-charcoal)] flex justify-between items-center;
   }
 
   .rmf-input {
-    @apply bg-white border-2 border-[var(--rmf-border)] px-8 py-5 text-[12px] font-bold uppercase tracking-widest outline-none transition-all duration-300 placeholder:opacity-20 placeholder:font-normal focus:border-[var(--rmf-charcoal)] focus:ring-4 focus:ring-[rgba(163,77,21,0.05)];
+    @apply rounded-lg bg-white border border-[var(--rmf-border)] px-4 py-3.5 text-base font-normal outline-none transition-all duration-300 focus:border-[var(--rmf-green)] focus:ring-4 focus:ring-[rgba(27,67,50,0.05)];
   }
 
   .rmf-input-error {
@@ -77,11 +96,11 @@
   }
 
   .rmf-error-text {
-    @apply text-[9px] font-bold text-red-600 uppercase tracking-widest mt-2 flex items-center gap-2;
+    @apply text-sm font-semibold text-red-600 mt-2 flex items-center gap-2;
   }
 
   .rmf-select {
-    @apply bg-white border-2 border-[var(--rmf-border)] px-8 py-5 text-[12px] font-bold uppercase tracking-widest outline-none appearance-none cursor-pointer focus:border-[var(--rmf-charcoal)];
+    @apply rounded-md bg-white border border-[var(--rmf-border)] px-4 py-4 text-base font-medium outline-none appearance-none cursor-pointer focus:border-[var(--rmf-green)];
   }
 
   .rmf-checkbox-group {
@@ -89,11 +108,23 @@
   }
 
   .rmf-checkbox {
-    @apply w-6 h-6 border-2 border-[var(--rmf-border)] transition-all duration-300 flex-shrink-0 flex items-center justify-center group-hover:border-[var(--rmf-rust)] checked:bg-[var(--rmf-rust)] checked:border-[var(--rmf-rust)];
+    @apply w-6 h-6 rounded border border-[var(--rmf-border)] transition-all duration-300 flex-shrink-0 flex items-center justify-center group-hover:border-[var(--rmf-green)] checked:bg-[var(--rmf-green)] checked:border-[var(--rmf-green)];
   }
 
   .rmf-label-sm {
-    @apply text-[9px] font-black uppercase tracking-[0.4em] text-[var(--rmf-rust)];
+    @apply text-xs font-bold uppercase tracking-[0.08em] text-[var(--rmf-green)];
+  }
+
+  .rmf-badge-verified {
+    @apply inline-flex items-center gap-1 rounded-sm bg-[var(--rmf-gold)] px-2 py-1 text-xs font-bold uppercase tracking-[0.08em] text-[#221b00];
+  }
+
+  .rmf-badge-origin {
+    @apply inline-flex items-center gap-1 rounded-sm border border-[var(--rmf-green-light)] bg-white px-2 py-1 text-xs font-bold uppercase tracking-[0.08em] text-[var(--rmf-green-light)];
+  }
+
+  .rmf-section {
+    @apply rounded-lg border border-[var(--rmf-border)] bg-white;
   }
 
   /* DARK CONTEXT UTILITY */
@@ -117,20 +148,30 @@
 
 /* Animations */
 @keyframes reveal {
-  from { opacity: 0; transform: translateY(20px); }
+  from { opacity: 0; transform: translateY(30px); }
   to { opacity: 1; transform: translateY(0); }
 }
 
 .animate-reveal {
-  animation: reveal 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  animation: reveal 1s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes float {
+  0% { transform: translateY(0px); }
+  50% { transform: translateY(-10px); }
+  100% { transform: translateY(0px); }
+}
+
+.animate-float {
+  animation: float 6s ease-in-out infinite;
 }
 
 /* Custom Scrollbar */
-::-webkit-scrollbar { width: 5px; }
-::-webkit-scrollbar-track { background: var(--rmf-cream); }
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { 
-  background: var(--rmf-border-strong); 
-  border-radius: 0;
+  background: #d1d5db; 
+  border-radius: 10px;
   transition: background 0.3s;
 }
-::-webkit-scrollbar-thumb:hover { background: var(--rmf-rust); }
+::-webkit-scrollbar-thumb:hover { background: var(--rmf-green); }

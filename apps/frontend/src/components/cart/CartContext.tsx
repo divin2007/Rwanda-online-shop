@@ -13,12 +13,41 @@ interface CartItem {
   stallId?: string;
   marketId?: string;
   unit?: string;
+  category?: string;
+  categoryId?: string;
+  attributes?: Record<string, unknown>;
+  variantId?: string;
+  variantTitle?: string;
+  sellerSku?: string;
   customization?: string;
 }
 
+type CartProductInput = {
+  id?: string;
+  _id?: string;
+  name?: string;
+  price?: number;
+  image?: string;
+  images?: string[];
+  promotion?: { promotedPrice?: number };
+  sellerId?: string | { _id?: string; userId?: string; stallId?: string; shopDetails?: { name?: string } };
+  sellerUserId?: string;
+  sellerName?: string;
+  seller?: { _id?: string; userId?: string; stallId?: string; shopDetails?: { name?: string } };
+  stallId?: string;
+  marketId?: string | { _id?: string };
+  unit?: string;
+  category?: string;
+  categoryId?: string;
+  attributes?: Record<string, unknown>;
+  variantId?: string;
+  variantTitle?: string;
+  sellerSku?: string;
+};
+
 interface CartContextType {
   items: CartItem[];
-  addToCart: (product: any, customization?: string) => void;
+  addToCart: (product: CartProductInput, customization?: string) => void;
   removeFromCart: (id: string) => void;
   updateQuantity: (id: string, quantity: number) => void;
   clearCart: () => void;
@@ -27,6 +56,8 @@ interface CartContextType {
 }
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
+
+const asStringId = (value: unknown) => typeof value === 'string' ? value : undefined;
 
 export const CartProvider = ({ children }: { children: ReactNode }) => {
   const [items, setItems] = useState<CartItem[]>([]);
@@ -48,7 +79,7 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
     localStorage.setItem('rwshop_cart', JSON.stringify(items));
   }, [items]);
 
-  const addToCart = (product: any, customization?: string) => {
+  const addToCart = (product: CartProductInput, customization?: string) => {
     setItems((prevItems) => {
       // If customized, always treat as a unique item so multiple different customizations can exist
       const existingItem = !customization ? prevItems.find((item) => item.id === (product.id || product._id) && !item.customization) : null;
@@ -60,22 +91,22 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
       }
 
       // Use promoted price if available
-      const price = product.promotion?.promotedPrice || product.price;
+      const price = product.promotion?.promotedPrice || product.price || 0;
 
       // Extract seller info from populated object if possible
       const seller = typeof product.sellerId === 'object' ? product.sellerId : null;
-      const sellerId = seller ? seller._id : (product.sellerId || product.seller?._id);
+      const sellerId = seller?._id || asStringId(product.sellerId) || product.seller?._id;
       const sellerUserId = seller ? seller.userId : (product.sellerUserId || product.seller?.userId);
       const sellerName = seller?.shopDetails?.name || product.sellerName || product.seller?.shopDetails?.name || 'Verified Seller';
       const stallId = seller?.stallId || product.stallId || product.seller?.stallId || 'N/A';
       
       // Extract market info from populated object
       const market = typeof product.marketId === 'object' ? product.marketId : null;
-      const marketId = market ? market._id : product.marketId;
+      const marketId = market?._id || asStringId(product.marketId);
 
       return [...prevItems, { 
-        id: product.id || product._id, 
-        name: product.name, 
+        id: product.id || product._id || `${Date.now()}`, 
+        name: product.name || 'Product', 
         price: price, 
         quantity: 1,
         image: product.image || (product.images && product.images[0]),
@@ -85,6 +116,12 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
         stallId,
         marketId,
         unit: product.unit,
+        category: product.category,
+        categoryId: product.categoryId,
+        attributes: product.attributes,
+        variantId: product.variantId,
+        variantTitle: product.variantTitle,
+        sellerSku: product.sellerSku,
         customization
       }];
     });

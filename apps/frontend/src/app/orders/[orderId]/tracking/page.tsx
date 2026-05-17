@@ -1,4 +1,5 @@
 'use client';
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import React, { useEffect, useState } from 'react';
 import { Layout } from '@/components/layout/Layout';
 import { Card } from '@/components/ui/Card';
@@ -10,13 +11,14 @@ import dynamic from 'next/dynamic';
 import toast from 'react-hot-toast';
 import { OrderStatusTimeline } from '@/components/ui/OrderStatusTimeline';
 import { OrderChat } from '@/components/ui/OrderChat';
+import { ImageUpload } from '@/components/ui/ImageUpload';
 import { useLanguage } from '@/context/LanguageContext';
 import { useAuth } from '@/context/AuthContext';
 
 const TrackingMap = dynamic(() => import('@/components/ui/TrackingMap').then(mod => mod.TrackingMap), { ssr: false });
 const RiderMap = dynamic(() => import('@/components/ui/RiderMap').then(mod => mod.RiderMap), { ssr: false });
 
-const ChatCard = ({ orderId, deliveryId, userName }: { orderId: string, deliveryId?: string, userName: string }) => {
+const ChatCard = ({ deliveryId, userName }: { deliveryId?: string, userName: string }) => {
   const { t } = useLanguage();
   const [message, setMessage] = useState('');
   const [chatHistory, setChatHistory] = useState<any[]>([]);
@@ -44,7 +46,7 @@ const ChatCard = ({ orderId, deliveryId, userName }: { orderId: string, delivery
       <h3 className="font-bold mb-4 border-b border-border pb-2">{t('nav_my_orders')}</h3>
       <div className="flex-1 overflow-y-auto space-y-3 mb-4 pr-2 scrollbar-thin">
         {chatHistory.length === 0 ? (
-          <div className="text-center py-10 text-text-secondary text-sm italic">
+          <div className="text-center py-10 text-text-secondary text-sm">
             {t('track_no_messages')}
           </div>
         ) : (
@@ -78,19 +80,32 @@ export default function OrderTrackingPage({ params }: { params: { orderId: strin
   const { user } = useAuth();
   const [isClient, setIsClient] = useState(false);
   const [deliveryData, setDeliveryData] = useState<any>(null);
+  const [pickupPhotoUrl, setPickupPhotoUrl] = useState('');
+  // MD9 fix: controlled textarea state instead of imperative document.getElementById
+  const [disputeReason, setDisputeReason] = useState('');
 
   const { data: order, loading, execute: fetchOrder } = useApi(orderApi, 'get', `/orders/${params.orderId}`, { refreshInterval: 5000 });
 
   useEffect(() => {
     if (order?.deliveryId) {
       deliveryApi.get(`/deliveries/${order.deliveryId}`)
-        .then(res => setDeliveryData(res.data?.data))
+        .then(res => {
+          const delivery = res.data?.data;
+          setDeliveryData(delivery);
+          setPickupPhotoUrl(delivery?.pickup?.pickupPhotoUrl || '');
+        })
         .catch(() => {});
     }
   }, [order?.deliveryId]);
 
   const { data: statusUpdate } = useSocket(process.env.NEXT_PUBLIC_DELIVERY_SERVICE_URL || 'http://localhost:3008', `order:${params.orderId}:status`);
   const { data: riderGps } = useSocket(process.env.NEXT_PUBLIC_DELIVERY_SERVICE_URL || 'http://localhost:3008', `delivery:${order?.deliveryId}:tracking`);
+
+  useEffect(() => {
+    if (statusUpdate) {
+      fetchOrder();
+    }
+  }, [statusUpdate, fetchOrder]);
 
   useEffect(() => {
     setIsClient(true);
@@ -101,7 +116,7 @@ export default function OrderTrackingPage({ params }: { params: { orderId: strin
   const showTrackingMap = currentStatus === 'in_transit' || currentStatus === 'picked_up' || 
     (deliveryData && ['assigned', 'en_route_to_pickup', 'pending_handover'].includes(deliveryData.status));
   const showBroadcastMap = !showTrackingMap && (currentStatus === 'placed' || currentStatus === 'confirmed' || currentStatus === 'preparing' || currentStatus === 'ready_for_pickup');
-  const showEscrowAction = currentStatus === 'awaiting_confirmation';
+  const showEscrowAction = currentStatus === 'awaiting_confirmation' && user?.role === 'BUYER' && user?.id === order.buyer?.userId;
   const isNegotiationPhase = currentStatus === 'awaiting_quote' || currentStatus === 'quote_sent' || 
     (currentStatus === 'placed' && order?.payment?.status !== 'paid');
 
@@ -117,6 +132,40 @@ export default function OrderTrackingPage({ params }: { params: { orderId: strin
         <Card className="mb-8">
           <OrderStatusTimeline currentStatus={currentStatus} />
         </Card>
+
+        <section className="mb-8 rounded-lg border border-[#dfe7e2] bg-white p-5 shadow-sm">
+          <div className="mb-4 flex flex-col justify-between gap-3 md:flex-row md:items-end">
+            <div>
+              <p className="text-[10px] font-black uppercase tracking-[0.18em] text-[#1b4332]">Escrow procedure</p>
+              <h2 className="mt-1 text-2xl font-black text-[#1b1c1c]">Payment held until delivery is confirmed</h2>
+            </div>
+            <span className="rounded-full bg-[#e8f5ed] px-3 py-1 text-xs font-black text-[#1b4332]">
+              {order.payment?.status === 'paid' ? 'Escrow funded' : 'Awaiting payment'}
+            </span>
+          </div>
+          <div className="grid gap-3 md:grid-cols-5">
+            {[
+              ['Quote accepted', ['placed', 'confirmed', 'preparing', 'ready_for_pickup', 'picked_up', 'in_transit', 'awaiting_confirmation', 'delivered'].includes(currentStatus)],
+              ['Buyer payment secured', order.payment?.status === 'paid'],
+              ['Seller prepares goods', ['preparing', 'ready_for_pickup', 'picked_up', 'in_transit', 'awaiting_confirmation', 'delivered'].includes(currentStatus)],
+              ['Rider photo and QR proof', Boolean(deliveryData?.pickup?.pickupPhotoUrl || pickupPhotoUrl || deliveryData?.pickup?.qrScannedAt)],
+              ['Buyer confirms receipt', currentStatus === 'delivered'],
+            ].map(([label, done]) => (
+              <div key={label as string} className={`rounded-md border p-3 ${done ? 'border-[#c1ecd4] bg-[#e8f5ed]' : 'border-[#e0e0e0] bg-[#fcf9f8]'}`}>
+                <div className={`mb-2 h-2 w-2 rounded-full ${done ? 'bg-[#1b4332]' : 'bg-[#a7b0aa]'}`} />
+                <p className="text-[11px] font-black leading-tight text-[#1b1c1c]">{label as string}</p>
+              </div>
+            ))}
+          </div>
+          {(deliveryData?.pickup?.pickupPhotoUrl || pickupPhotoUrl) && (
+            <div className="mt-4 overflow-hidden rounded-md border border-[#e0e0e0] bg-[#fcf9f8]">
+              <div className="border-b border-[#e0e0e0] px-4 py-2">
+                <p className="text-[10px] font-black uppercase tracking-[0.16em] text-[#1b4332]">Pickup evidence</p>
+              </div>
+              <img src={deliveryData?.pickup?.pickupPhotoUrl || pickupPhotoUrl} alt="Rider pickup proof" className="max-h-56 w-full object-cover" />
+            </div>
+          )}
+        </section>
 
         {isNegotiationPhase && (
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8">
@@ -311,42 +360,61 @@ export default function OrderTrackingPage({ params }: { params: { orderId: strin
             
             {currentStatus !== 'delivered' && (
               <ChatCard 
-                orderId={params.orderId} 
                 deliveryId={order.deliveryId} 
                 userName={user?.fullName || t('buyer')} 
               />
             )}
             
             {user?.role === 'RIDER' && deliveryData?.status !== 'delivered' && (
-              <Card className="border-2 border-amber-500 bg-amber-50">
-                <h3 className="font-bold mb-4 uppercase text-xs tracking-widest text-amber-600">Rider Tactical Controls</h3>
+              <Card className="border border-[#dfe7e2] bg-white">
+                <h3 className="font-bold mb-4 uppercase text-xs tracking-widest text-[#1b4332]">Rider escrow controls</h3>
                 <div className="space-y-4">
                   {deliveryData?.status === 'en_route_to_pickup' && (
-                    <Button 
-                      fullWidth 
-                      className="bg-amber-500 hover:bg-amber-600"
-                      onClick={async () => {
-                        try {
-                          await deliveryApi.post(`/deliveries/${deliveryData._id}/scan-qr`, { stallId: deliveryData.pickup?.stallId || 'STALL-001' });
-                          toast.success('Pickup Verified via QR');
-                          window.location.reload();
-                        } catch (e) {
-                          toast.error('Pickup Verification Failed');
-                        }
-                      }}
-                    >
-                      Verify Pickup (Scan QR)
-                    </Button>
+                    <div className="space-y-3">
+                      <p className="text-sm text-text-secondary">
+                        Photograph the packaged seller goods first, then verify the stall QR. This keeps escrow evidence attached to the delivery.
+                      </p>
+                      <ImageUpload
+                        service="delivery"
+                        endpoint={`/deliveries/${deliveryData._id}/pickup-photo`}
+                        label="Upload packaged goods photo"
+                        capture="environment"
+                        value={pickupPhotoUrl}
+                        onChange={setPickupPhotoUrl}
+                      />
+                      <Button
+                        fullWidth
+                        disabled={!pickupPhotoUrl}
+                        className="bg-[#1b4332] hover:bg-[#012d1d] disabled:opacity-40"
+                        onClick={async () => {
+                          try {
+                            await deliveryApi.post(`/deliveries/${deliveryData._id}/scan-qr`, {
+                              stallId: deliveryData.pickup?.stallId || 'STALL-001',
+                              photoUrl: pickupPhotoUrl,
+                            });
+                            toast.success('Pickup verified with photo and QR');
+                            // MD8 fix: use fetchOrder() instead of window.location.reload()
+                            // to avoid full-page jumps and state loss on mobile
+                            fetchOrder();
+                          } catch (e: any) {
+                            toast.error(e?.response?.data?.message || 'Pickup verification failed');
+                          }
+                        }}
+                      >
+                        Verify Pickup with QR
+                      </Button>
+                    </div>
                   )}
                   {deliveryData?.status === 'pending_handover' && (
                     <Button 
                       fullWidth 
-                      className="bg-blue-600 hover:bg-blue-700"
+                      className="bg-[#1b4332] hover:bg-[#012d1d]"
                       onClick={async () => {
                         try {
                           await deliveryApi.post(`/deliveries/${deliveryData._id}/handover`, { role: 'rider' });
                           toast.success('Handover Confirmed');
-                          window.location.reload();
+                          // MD8 fix: soft refresh via fetchOrder instead of hard page reload
+                          fetchOrder();
                         } catch (e) {
                           toast.error('Handover Failed');
                         }
@@ -363,7 +431,8 @@ export default function OrderTrackingPage({ params }: { params: { orderId: strin
                         try {
                           await deliveryApi.patch(`/deliveries/${deliveryData._id}/complete`);
                           toast.success('Delivery Completed!');
-                          window.location.reload();
+                          // MD8 fix: soft refresh via fetchOrder instead of hard page reload
+                          fetchOrder();
                         } catch (e) {
                           toast.error('Failed to complete delivery');
                         }
@@ -387,22 +456,24 @@ export default function OrderTrackingPage({ params }: { params: { orderId: strin
                    </div>
                  ) : (
                    <div className="space-y-4">
-                     <textarea 
+                     {/* MD9 fix: controlled textarea — no more document.getElementById */}
+                     <textarea
                        className="w-full bg-background-card border border-border rounded-lg p-3 text-sm focus:ring-1 focus:ring-primary outline-none"
                        placeholder={t('track_dispute_placeholder')}
                        rows={3}
-                       id="dispute-reason"
+                       value={disputeReason}
+                       onChange={(e) => setDisputeReason(e.target.value)}
                      ></textarea>
-                     <Button 
-                       variant="outline" 
-                       size="sm" 
+                     <Button
+                       variant="outline"
+                       size="sm"
                        fullWidth
                        onClick={async () => {
-                         const reason = (document.getElementById('dispute-reason') as HTMLTextAreaElement).value;
-                         if (!reason) return toast.error(t('track_dispute_error'));
+                         if (!disputeReason.trim()) return toast.error(t('track_dispute_error'));
                          try {
-                           await orderApi.post(`/orders/${params.orderId}/dispute`, { reason });
+                           await orderApi.post(`/orders/${params.orderId}/dispute`, { reason: disputeReason });
                            toast.success(t('track_dispute_success'));
+                           setDisputeReason('');
                            fetchOrder();
                          } catch (e) {
                            toast.error(t('track_dispute_failed'));

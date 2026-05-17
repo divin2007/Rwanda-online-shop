@@ -1,4 +1,4 @@
-import { IsString, IsNumber, IsObject, IsOptional, Min, ValidateNested, IsArray, IsNotEmpty } from 'class-validator';
+import { IsString, IsNumber, IsObject, IsOptional, Min, ValidateNested, IsArray, IsNotEmpty, IsIn } from 'class-validator';
 import { Type } from 'class-transformer';
 
 class FinancialsDto {
@@ -45,6 +45,10 @@ class BuyerDto {
   phone?: string;
 
   @IsOptional()
+  @IsString()
+  nationalId?: string;
+
+  @IsOptional()
   @IsObject()
   deliveryAddress?: Record<string, any>;
 }
@@ -73,6 +77,45 @@ class ProductDto {
   @IsOptional()
   @IsString()
   prototypeImage?: string;
+
+  @IsOptional()
+  @IsString()
+  unit?: string;
+
+  @IsOptional()
+  @IsString()
+  category?: string;
+
+  @IsOptional()
+  @IsString()
+  categoryId?: string;
+
+  @IsOptional()
+  @IsString()
+  imageUrl?: string;
+
+  @IsOptional()
+  @IsArray()
+  images?: string[];
+
+  @IsOptional()
+  @IsObject()
+  attributes?: Record<string, any>;
+
+  @IsOptional()
+  @IsString()
+  variantId?: string;
+
+  @IsOptional()
+  @IsString()
+  variantTitle?: string;
+
+  @IsOptional()
+  @IsString()
+  sellerSku?: string;
+
+  @IsOptional()
+  priceSnapshotAt?: any;
 }
 
 class SellerDto {
@@ -80,21 +123,21 @@ class SellerDto {
   @IsNotEmpty()
   sellerId!: string;
 
+  @IsOptional()
   @IsString()
-  @IsNotEmpty()
-  userId!: string;
+  userId?: string;
 
+  @IsOptional()
   @IsString()
-  @IsNotEmpty()
-  fullName!: string;
+  fullName?: string;
 
+  @IsOptional()
   @IsString()
-  @IsNotEmpty()
-  stallId!: string;
+  stallId?: string;
 
+  @IsOptional()
   @IsString()
-  @IsNotEmpty()
-  marketId!: string;
+  marketId?: string;
 }
 
 export class CreateOrderDto {
@@ -133,9 +176,13 @@ export class CreateOrderDto {
   @IsObject()
   attributes?: Record<string, any>;
 
+  // 5B fix: validate payment method against allowed providers
   @IsOptional()
   @IsObject()
-  payment?: Record<string, any>;
+  payment?: {
+    method?: 'MTN_MOMO' | 'AIRTEL_MONEY';
+    [key: string]: any;
+  };
 
   @IsOptional()
   @IsObject()

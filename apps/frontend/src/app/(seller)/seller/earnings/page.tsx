@@ -21,6 +21,74 @@ export default function SellerEarningsPage() {
   const [selectedReceipt, setSelectedReceipt] = useState<ReceiptOrder | null>(null);
   const [isFetchingReceipt, setIsFetchingReceipt] = useState(false);
 
+  // Search & Filter States
+  const [searchTerm, setSearchTerm] = useState('');
+  const [txType, setTxType] = useState<'all' | 'credit' | 'debit'>('all');
+  const [dateFilter, setDateFilter] = useState<'all' | 'today' | 'week' | 'month' | 'custom'>('all');
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
+  const [sortBy, setSortBy] = useState<'date-desc' | 'date-asc' | 'amount-desc' | 'amount-asc'>('date-desc');
+
+  // Filter & Sort Selector Logic
+  const filteredLedger = (ledger || []).filter((tx: any) => {
+    // 1. Text Search (ID, Description, Account)
+    const txId = `#PAY-${tx._id.substring(0,8).toUpperCase()}`;
+    const desc = (tx.description || '').toLowerCase();
+    const account = (tx.account || '').toLowerCase();
+    const query = searchTerm.toLowerCase();
+    const matchesSearch = desc.includes(query) || txId.toLowerCase().includes(query) || account.includes(query);
+
+    if (!matchesSearch) return false;
+
+    // 2. Type Filter
+    if (txType !== 'all') {
+      const isCredit = tx.type?.toLowerCase() === 'credit';
+      if (txType === 'credit' && !isCredit) return false;
+      if (txType === 'debit' && isCredit) return false;
+    }
+
+    // 3. Date Filter
+    if (dateFilter !== 'all') {
+      const txDate = new Date(tx.createdAt);
+      const startOfDay = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate());
+      const today = startOfDay(new Date());
+
+      if (dateFilter === 'today') {
+        if (startOfDay(txDate).getTime() !== today.getTime()) return false;
+      } else if (dateFilter === 'week') {
+        const sevenDaysAgo = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000);
+        if (txDate < sevenDaysAgo) return false;
+      } else if (dateFilter === 'month') {
+        const thirtyDaysAgo = new Date(today.getTime() - 30 * 24 * 60 * 60 * 1000);
+        if (txDate < thirtyDaysAgo) return false;
+      } else if (dateFilter === 'custom') {
+        if (startDate) {
+          const start = startOfDay(new Date(startDate));
+          if (txDate < start) return false;
+        }
+        if (endDate) {
+          const end = new Date(endDate);
+          end.setHours(23, 59, 59, 999); // end of selected day
+          if (txDate > end) return false;
+        }
+      }
+    }
+
+    return true;
+  }).sort((a: any, b: any) => {
+    // 4. Valuation Sorting
+    if (sortBy === 'date-desc') {
+      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+    } else if (sortBy === 'date-asc') {
+      return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+    } else if (sortBy === 'amount-desc') {
+      return b.amount - a.amount;
+    } else if (sortBy === 'amount-asc') {
+      return a.amount - b.amount;
+    }
+    return 0;
+  });
+
   const hasFetched = useRef(false);
   useEffect(() => {
     if (user?.id && !hasFetched.current) {
@@ -68,6 +136,51 @@ export default function SellerEarningsPage() {
     }
   };
 
+  const handleViewReceipt = async (tx: any) => {
+    if (tx.account && tx.account.startsWith('user_wallet')) {
+      const mockReceipt: ReceiptOrder = {
+        _id: tx.transactionId,
+        orderNumber: `PAY-${tx.transactionId.substring(0,8).toUpperCase()}`,
+        status: tx.account === 'user_wallet' ? 'delivered' : tx.account === 'user_wallet_failed' ? 'cancelled' : 'placed',
+        createdAt: tx.createdAt,
+        buyer: {
+          fullName: 'Mobile Money Gateway',
+          phone: tx.description.match(/07\d{8}/)?.[0] || 'MTN MoMo'
+        },
+        seller: {
+          fullName: profile?.stallName || user?.fullName || 'Verified Seller',
+          stallId: profile?.stallId || 'N/A'
+        },
+        products: [
+          {
+            productId: 'withdrawal',
+            name: 'Mobile Money Cash Out',
+            unitPrice: tx.amount,
+            quantity: 1
+          }
+        ],
+        financials: {
+          subtotal: tx.amount,
+          deliveryFee: 0,
+          platformCommission: 0,
+          gatewayFee: 0,
+          totalAmount: tx.amount,
+          sellerPayout: tx.amount,
+          riderPayout: 0
+        },
+        payment: {
+          method: 'MTN Mobile Money',
+          status: tx.account === 'user_wallet' ? 'paid' : 'pending',
+          transactionRef: tx.transactionId
+        },
+        notes: tx.description
+      };
+      setSelectedReceipt(mockReceipt);
+    } else {
+      await fetchAndOpenReceipt(tx.transactionId);
+    }
+  };
+
   return (
     <Layout>
       <div className="max-w-7xl mx-auto space-y-16 animate-reveal">
@@ -76,36 +189,36 @@ export default function SellerEarningsPage() {
         )}
         
         {/* Institutional Header */}
-        <div className="border-b-2 border-[#121212] pb-10 flex justify-between items-end">
+        <div className="border-b-2 border-[#e0e0e0] pb-10 flex justify-between items-end">
           <div>
-            <p className="text-[10px] font-black text-[#F59E0B] uppercase tracking-[0.5em] mb-4">Financial Core</p>
-            <h1 className="text-5xl font-serif text-[#121212] italic tracking-tighter">Earnings & Payouts</h1>
+            <p className="text-[10px] font-black text-[#1b4332] uppercase tracking-[0.5em] mb-4">Financial Core</p>
+            <h1 className="text-5xl font-sans text-[#1b1c1c] tracking-normal">Earnings & Payouts</h1>
           </div>
           <div className="text-right">
-             <p className="text-[10px] font-black text-[#121212] uppercase tracking-widest">Stall ID: {profile?.stallId || '---'}</p>
-             <p className="text-[8px] font-bold text-[#6B665E] uppercase tracking-widest opacity-40 mt-1">Ledger Sync Active</p>
+             <p className="text-[10px] font-black text-[#1b1c1c] uppercase tracking-widest">Stall ID: {profile?.stallId || '---'}</p>
+             <p className="text-[8px] font-bold text-[#414844] uppercase tracking-widest opacity-40 mt-1">Ledger Sync Active</p>
           </div>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-16">
           {/* Main Wallet Card */}
           <div className="lg:col-span-2 space-y-16">
-            <div className="bg-[#121212] text-white p-16 relative overflow-hidden group shadow-2xl border-2 border-[#121212]">
-               <div className="absolute top-0 right-0 w-64 h-64 bg-[#F59E0B]/5 rounded-full -mr-32 -mt-32 group-hover:scale-110 transition-transform duration-1000"></div>
+            <div className="bg-[#012d1d] text-white p-16 relative overflow-hidden group shadow-2xl border border-[#e0e0e0] rounded-lg">
+               <div className="absolute top-0 right-0 w-64 h-64 bg-[#ffd700]/5 rounded-full -mr-32 -mt-32 group-hover:scale-110 transition-transform duration-1000"></div>
                <div className="relative z-10">
-                  <p className="text-[11px] font-black uppercase tracking-[0.4em] text-[#F59E0B] mb-6">Available Liquidity</p>
-                  <h2 className="text-8xl font-serif italic tracking-tighter mb-16 text-white drop-shadow-2xl">
+                  <p className="text-[11px] font-black uppercase tracking-[0.4em] text-[#1b4332] mb-6">Available Liquidity</p>
+                  <h2 className="text-8xl font-sans tracking-normal mb-16 text-white drop-shadow-2xl">
                     {walletLoading ? '---' : (wallet?.balance?.toLocaleString() || 0)} <span className="text-3xl not-italic opacity-40 ml-4">RWF</span>
                   </h2>
                   <div className="flex gap-12 pt-12 border-t border-white/5">
                      <div>
                         <p className="text-[9px] font-bold uppercase tracking-widest opacity-40 mb-2">Total Settled</p>
-                        <p className="text-2xl font-serif italic text-white/90">{(wallet?.totalEarnings || 0).toLocaleString()} <span className="text-[10px] not-italic opacity-40">RWF</span></p>
+                        <p className="text-2xl font-sans text-white/90">{(wallet?.totalEarnings || 0).toLocaleString()} <span className="text-[10px] not-italic opacity-40">RWF</span></p>
                      </div>
                      <div className="w-px h-12 bg-white/10 mt-2"></div>
                      <div>
                         <p className="text-[9px] font-bold uppercase tracking-widest opacity-40 mb-2">Pending Escrow</p>
-                        <p className="text-2xl font-serif italic text-white/40">{(wallet?.pendingBalance || 0).toLocaleString()} <span className="text-[10px] not-italic opacity-40">RWF</span></p>
+                        <p className="text-2xl font-sans text-white/40">{(wallet?.pendingBalance || 0).toLocaleString()} <span className="text-[10px] not-italic opacity-40">RWF</span></p>
                      </div>
                   </div>
                </div>
@@ -113,37 +226,139 @@ export default function SellerEarningsPage() {
 
             {/* Transaction Table */}
             <div className="space-y-8">
-               <h3 className="text-[12px] font-black uppercase tracking-[0.4em] text-[#121212] border-b border-[#E5E1D8] pb-6 italic">Synchronization Log</h3>
-               <div className="bg-white border-2 border-[#121212] overflow-hidden shadow-sm">
+               <div className="border-b border-[#e0e0e0] pb-6 flex flex-col md:flex-row justify-between items-start md:items-end gap-6">
+                 <h3 className="text-[12px] font-black uppercase tracking-[0.4em] text-[#1b1c1c]">Synchronization Log</h3>
+                 <span className="text-[9px] font-black uppercase tracking-widest text-[#1b4332] bg-[#1b4332]/5 border border-[#1b4332]/10 px-3 py-1 rounded-full">
+                   {filteredLedger.length} / {ledger?.length || 0} Ledger Movements
+                 </span>
+               </div>
+
+               {/* Advanced Filter Control Center */}
+               <div className="bg-white border border-[#e0e0e0] p-8 shadow-sm space-y-8 rounded-lg">
+                 <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+                   
+                   {/* Description & ID Search */}
+                   <div className="space-y-3 col-span-1 md:col-span-2">
+                     <label className="text-[9px] font-black text-[#414844] uppercase tracking-widest opacity-60">Keyword Search</label>
+                     <div className="relative">
+                       <span className="absolute left-4 top-1/2 -translate-y-1/2 text-xs opacity-50">🔍</span>
+                       <input 
+                         type="text"
+                         placeholder="Search reference, description, account..."
+                         value={searchTerm}
+                         onChange={e => setSearchTerm(e.target.value)}
+                         className="w-full rounded-md border border-[#e0e0e0] bg-[#f0eded]/10 pl-10 pr-4 py-3 text-xs font-semibold text-[#1b1c1c] outline-none transition focus:border-[#1b4332] placeholder:text-[#9da7a0]"
+                       />
+                     </div>
+                   </div>
+
+                   {/* Type Filter */}
+                   <div className="space-y-3">
+                     <label className="text-[9px] font-black text-[#414844] uppercase tracking-widest opacity-60">Movement Type</label>
+                     <select
+                       value={txType}
+                       onChange={e => setTxType(e.target.value as any)}
+                       className="w-full rounded-md border border-[#e0e0e0] bg-white px-4 py-3 text-xs font-semibold text-[#1b1c1c] outline-none transition focus:border-[#1b4332]"
+                     >
+                       <option value="all">All Movements</option>
+                       <option value="credit">Earnings (+)</option>
+                       <option value="debit">Cash Outs (-)</option>
+                     </select>
+                   </div>
+
+                   {/* Sorting options */}
+                   <div className="space-y-3">
+                     <label className="text-[9px] font-black text-[#414844] uppercase tracking-widest opacity-60">Valuation Sorting</label>
+                     <select
+                       value={sortBy}
+                       onChange={e => setSortBy(e.target.value as any)}
+                       className="w-full rounded-md border border-[#e0e0e0] bg-white px-4 py-3 text-xs font-semibold text-[#1b1c1c] outline-none transition focus:border-[#1b4332]"
+                     >
+                       <option value="date-desc">Newest First</option>
+                       <option value="date-asc">Oldest First</option>
+                       <option value="amount-desc">Highest Amount</option>
+                       <option value="amount-asc">Lowest Amount</option>
+                     </select>
+                   </div>
+
+                 </div>
+
+                 <div className="grid grid-cols-1 md:grid-cols-4 gap-6 pt-6 border-t border-[#f0eded]">
+                   
+                   {/* Time Period Filter */}
+                   <div className="space-y-3">
+                     <label className="text-[9px] font-black text-[#414844] uppercase tracking-widest opacity-60">Time Period</label>
+                     <select
+                       value={dateFilter}
+                       onChange={e => setDateFilter(e.target.value as any)}
+                       className="w-full rounded-md border border-[#e0e0e0] bg-white px-4 py-3 text-xs font-semibold text-[#1b1c1c] outline-none transition focus:border-[#1b4332]"
+                     >
+                       <option value="all">All Time</option>
+                       <option value="today">Today</option>
+                       <option value="week">Last 7 Days</option>
+                       <option value="month">Last 30 Days</option>
+                       <option value="custom">Custom Date Range</option>
+                     </select>
+                   </div>
+
+                   {/* Custom Date Bounds */}
+                   {dateFilter === 'custom' && (
+                     <>
+                       <div className="space-y-3">
+                         <label className="text-[9px] font-black text-[#414844] uppercase tracking-widest opacity-60">Start Date</label>
+                         <input 
+                           type="date"
+                           value={startDate}
+                           onChange={e => setStartDate(e.target.value)}
+                           className="w-full rounded-md border border-[#e0e0e0] bg-white px-4 py-3 text-xs font-semibold text-[#1b1c1c] outline-none transition focus:border-[#1b4332]"
+                         />
+                       </div>
+                       <div className="space-y-3">
+                         <label className="text-[9px] font-black text-[#414844] uppercase tracking-widest opacity-60">End Date</label>
+                         <input 
+                           type="date"
+                           value={endDate}
+                           onChange={e => setEndDate(e.target.value)}
+                           className="w-full rounded-md border border-[#e0e0e0] bg-white px-4 py-3 text-xs font-semibold text-[#1b1c1c] outline-none transition focus:border-[#1b4332]"
+                         />
+                       </div>
+                     </>
+                   )}
+
+                 </div>
+               </div>
+
+               {/* Log Grid */}
+               <div className="bg-white border border-[#e0e0e0] rounded-lg overflow-hidden shadow-sm">
                   <table className="w-full text-left">
                     <thead>
-                      <tr className="bg-[#F2F0EB]/50 border-b-2 border-[#121212]">
-                        <th className="p-8 text-[9px] font-black uppercase tracking-widest text-[#6B665E]">{t('mandate_id')}</th>
-                        <th className="p-8 text-[9px] font-black uppercase tracking-widest text-[#6B665E]">Description</th>
-                        <th className="p-8 text-[9px] font-black uppercase tracking-widest text-[#6B665E]">Valuation</th>
-                        <th className="p-8 text-[9px] font-black uppercase tracking-widest text-[#6B665E]">Action</th>
+                      <tr className="bg-[#f0eded]/50 border-b-2 border-[#e0e0e0]">
+                        <th className="p-8 text-[9px] font-black uppercase tracking-widest text-[#414844]">{t('mandate_id')}</th>
+                        <th className="p-8 text-[9px] font-black uppercase tracking-widest text-[#414844]">Description</th>
+                        <th className="p-8 text-[9px] font-black uppercase tracking-widest text-[#414844]">Valuation</th>
+                        <th className="p-8 text-[9px] font-black uppercase tracking-widest text-[#414844]">Action</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-[#E5E1D8]">
-                      {ledger && ledger.length > 0 ? ledger.map((tx: any) => (
-                        <tr key={tx._id} className="hover:bg-[#F9F7F2] transition-colors group">
+                    <tbody className="divide-y divide-[#e0e0e0]">
+                      {filteredLedger && filteredLedger.length > 0 ? filteredLedger.map((tx: any) => (
+                        <tr key={tx._id} className="hover:bg-[#fcf9f8] transition-colors group">
                           <td className="p-8">
-                             <p className="text-[10px] font-black text-[#121212]">#{tx._id.substring(0,8).toUpperCase()}</p>
-                             <p className="text-[8px] text-[#6B665E] font-bold uppercase mt-1 opacity-60">{new Date(tx.createdAt).toLocaleDateString()}</p>
+                             <p className="text-[10px] font-black text-[#1b1c1c]">#{tx._id.substring(0,8).toUpperCase()}</p>
+                             <p className="text-[8px] text-[#414844] font-bold uppercase mt-1 opacity-60">{new Date(tx.createdAt).toLocaleDateString()}</p>
                           </td>
                           <td className="p-8">
-                             <p className="text-[11px] font-black text-[#121212] uppercase tracking-widest">{tx.description || 'System Entry'}</p>
+                             <p className="text-[11px] font-black text-[#1b1c1c] uppercase tracking-widest">{tx.description || 'System Entry'}</p>
                           </td>
                           <td className="p-8">
-                             <p className={`text-sm font-black ${tx.type === 'CREDIT' ? 'text-green-600' : 'text-[#121212]'}`}>
-                                {tx.type === 'CREDIT' ? '+' : '-'}{tx.amount?.toLocaleString()} RWF
+                             <p className={`text-sm font-black ${tx.type?.toLowerCase() === 'credit' ? 'text-green-600' : 'text-[#1b1c1c]'}`}>
+                                {tx.type?.toLowerCase() === 'credit' ? '+' : '-'}{tx.amount?.toLocaleString()} RWF
                              </p>
                           </td>
                           <td className="p-8">
                              {tx.transactionId && (
                                <button 
-                                 onClick={() => fetchAndOpenReceipt(tx.transactionId)}
-                                 className="text-[10px] font-black text-[#F59E0B] uppercase tracking-widest border-b border-[#F59E0B]/20 hover:border-[#F59E0B] pb-1 transition-all"
+                                 onClick={() => handleViewReceipt(tx)}
+                                 className="text-[10px] font-black text-[#1b4332] uppercase tracking-widest border-b border-[#ffd700]/20 hover:border-[#ffd700] pb-1 transition-all"
                                >
                                  View Artifact 
                                </button>
@@ -152,7 +367,7 @@ export default function SellerEarningsPage() {
                         </tr>
                       )) : (
                         <tr>
-                          <td colSpan={4} className="p-24 text-center text-[10px] font-black uppercase tracking-[0.4em] opacity-30 italic">
+                          <td colSpan={4} className="p-24 text-center text-[10px] font-black uppercase tracking-[0.4em] opacity-30">
                             No Financial Movements Recorded
                           </td>
                         </tr>
@@ -165,11 +380,11 @@ export default function SellerEarningsPage() {
 
           {/* Payout Action Sidebar */}
           <div className="space-y-12">
-            <div className="bg-white border-2 border-[#121212] p-10 shadow-2xl">
-              <h3 className="text-[11px] font-black uppercase tracking-[0.4em] text-[#121212] mb-12 italic">Tactical Liquidation</h3>
+            <div className="bg-white border border-[#e0e0e0] rounded-lg p-10 shadow-2xl">
+              <h3 className="text-[11px] font-black uppercase tracking-[0.4em] text-[#1b1c1c] mb-12">Tactical Liquidation</h3>
               <form onSubmit={requestPayout} className="space-y-8">
                 <div className="space-y-4">
-                  <label className="text-[9px] font-black text-[#6B665E] uppercase tracking-widest opacity-60">Liquidation Amount (RWF)</label>
+                  <label className="text-[9px] font-black text-[#414844] uppercase tracking-widest opacity-60">Liquidation Amount (RWF)</label>
                   <input 
                     type="number" 
                     required 
@@ -181,7 +396,7 @@ export default function SellerEarningsPage() {
                   />
                 </div>
                 <div className="space-y-4">
-                  <label className="text-[9px] font-black text-[#6B665E] uppercase tracking-widest opacity-60">MTN MoMo Gateway</label>
+                  <label className="text-[9px] font-black text-[#414844] uppercase tracking-widest opacity-60">MTN MoMo Gateway</label>
                   <input 
                     type="tel" 
                     required 
@@ -191,10 +406,10 @@ export default function SellerEarningsPage() {
                     className="rmf-input w-full px-6 py-5" 
                   />
                 </div>
-                <div className="p-8 bg-[#F2F0EB] space-y-6">
+                <div className="p-8 bg-[#f0eded] space-y-6">
                    <div className="flex justify-between items-center text-[9px] font-black uppercase tracking-widest">
                       <span className="opacity-60">Network Protocol</span>
-                      <span className="text-[#F59E0B]">SECURE-MOMO</span>
+                      <span className="text-[#1b4332]">SECURE-MOMO</span>
                    </div>
                    <div className="flex justify-between items-center text-[9px] font-black uppercase tracking-widest">
                       <span className="opacity-60">Fee Analysis</span>
@@ -204,21 +419,21 @@ export default function SellerEarningsPage() {
                 <button 
                   type="submit" 
                   disabled={!wallet || wallet.balance < 500}
-                  className="w-full rmf-btn-primary py-5 bg-[#121212] hover:bg-[#F59E0B]"
+                  className="w-full rmf-btn-primary py-5 bg-[#1b4332] hover:bg-[#012d1d]"
                 >
                   Initiate Payout →
                 </button>
               </form>
             </div>
 
-            <div className="p-10 border border-[#E5E1D8] space-y-8 bg-[#F2F0EB]/30 relative overflow-hidden group">
-               <div className="absolute top-0 right-0 w-2 h-full bg-[#F59E0B] opacity-20 group-hover:opacity-100 transition-opacity"></div>
-               <p className="text-[10px] font-black uppercase tracking-[0.4em] text-[#121212]">Ledger Integrity</p>
-               <p className="text-[10px] leading-relaxed italic text-[#6B665E]">
+            <div className="p-10 border border-[#e0e0e0] space-y-8 bg-[#f0eded]/30 relative overflow-hidden group">
+               <div className="absolute top-0 right-0 w-2 h-full bg-[#ffd700] opacity-20 group-hover:opacity-100 transition-opacity"></div>
+               <p className="text-[10px] font-black uppercase tracking-[0.4em] text-[#1b1c1c]">Ledger Integrity</p>
+               <p className="text-[10px] leading-relaxed text-[#414844]">
                  "All settled earnings are audited by the RMF Financial Gateway. Commission is automatically processed during the acquisition lifecycle."
                </p>
-               <div className="pt-8 border-t border-[#E5E1D8]">
-                  <Link href="/support" className="text-[9px] font-black uppercase tracking-widest text-[#F59E0B] hover:text-[#121212] transition-colors">Request Support Handshake →</Link>
+               <div className="pt-8 border-t border-[#e0e0e0]">
+                  <Link href="/support" className="text-[9px] font-black uppercase tracking-widest text-[#1b4332] hover:text-[#1b1c1c] transition-colors">Request Support Handshake →</Link>
                </div>
             </div>
           </div>

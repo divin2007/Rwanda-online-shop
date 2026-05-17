@@ -1,20 +1,73 @@
+import { existsSync, readFileSync } from 'fs';
+import { resolve, join } from 'path';
+
+// Pure-Node Bulletproof Env Loader to bypass Turbo env filtering
+function loadEnvFile(filePath: string) {
+  if (existsSync(filePath)) {
+    console.log(`[ENV_LOADER] Loading environment variables from: ${filePath}`);
+    const content = readFileSync(filePath, 'utf-8');
+    content.split(/\r?\n/).forEach(line => {
+      line = line.trim();
+      if (!line || line.startsWith('#')) return;
+      const eqIdx = line.indexOf('=');
+      if (eqIdx === -1) return;
+      const key = line.slice(0, eqIdx).trim();
+      let val = line.slice(eqIdx + 1).trim();
+      if ((val.startsWith('"') && val.endsWith('"')) || (val.startsWith("'") && val.endsWith("'"))) {
+        val = val.slice(1, -1);
+      }
+      if (process.env[key] === undefined || process.env[key] === '') {
+        process.env[key] = val;
+      } else {
+        // Allow overriding with .env.local values
+        if (filePath.endsWith('.env.local')) {
+          process.env[key] = val;
+        }
+      }
+    });
+  }
+}
+
+// Find workspace root by searching upwards for package.json & .env
+let searchDir = process.cwd();
+for (let i = 0; i < 5; i++) {
+  if (existsSync(join(searchDir, 'package.json')) && existsSync(join(searchDir, '.env'))) {
+    loadEnvFile(join(searchDir, '.env'));
+    loadEnvFile(join(searchDir, '.env.local'));
+    break;
+  }
+  searchDir = join(searchDir, '..');
+}
+
+console.log('[ENV_LOADER] AUTO_CONFIRM_PAYMENTS status:', process.env.AUTO_CONFIRM_PAYMENTS);
+
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
 import { AppModule } from './app.module';
 import * as express from 'express';
+import { mkdirSync } from 'fs';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   
   app.use(express.json({ limit: '50mb' }));
   app.use(express.urlencoded({ limit: '50mb', extended: true }));
+  const uploadRoot = join(process.cwd(), 'uploads');
+  if (!existsSync(uploadRoot)) mkdirSync(uploadRoot, { recursive: true });
+  app.use('/uploads', express.static(uploadRoot));
 
-    const corsOrigin = process.env.CORS_ORIGIN || 'http://localhost:3000,https://rwshop.org,https://www.rwshop.org';
+  const corsOrigin = process.env.CORS_ORIGIN || 'http://localhost:3000';
   const allowedOrigins = corsOrigin.split(',').map(s => s.trim());
   app.enableCors({
     origin(origin: any, callback: any) {
       if (!origin) return callback(null, true);
       const originHost = origin.replace(/^https?:\/\//, '').replace(/:\d+$/, '');
+      
+      // Allow local network and localhost in development
+      if (originHost === 'localhost' || originHost === '127.0.0.1' || originHost.startsWith('192.168.')) {
+        return callback(null, true);
+      }
+
       if (originHost === 'rwshop.org' || originHost.endsWith('.rwshop.org')) {
         return callback(null, true);
       }
@@ -24,7 +77,7 @@ async function bootstrap() {
           return callback(null, true);
         }
       }
-      callback(new Error(`Origin "${origin}" not allowed by CORS. Set CORS_ORIGIN env var to include it.`));
+      callback(new Error(`Origin "${origin}" not allowed by CORS.`));
     },
     credentials: true,
   });

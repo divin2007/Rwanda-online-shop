@@ -1,5 +1,29 @@
 import { Coordinates, Address, RouteDto } from './interfaces/location.interface';
 
+type NominatimSearchResult = {
+  lat?: string;
+  lon?: string;
+  display_name?: string;
+  address?: {
+    city?: string;
+    town?: string;
+    village?: string;
+    county?: string;
+    state?: string;
+  };
+};
+
+type NominatimReverseResult = {
+  display_name?: string;
+  address?: {
+    city?: string;
+    town?: string;
+    village?: string;
+    county?: string;
+    state?: string;
+  };
+};
+
 export class LocationService {
   /**
    * Validates if the given coordinates are valid GPS coordinates
@@ -22,20 +46,52 @@ export class LocationService {
     return true;
   }
 
-  /**
-   * Stub for geocoding
-   */
   public async geocode(address: string): Promise<Coordinates> {
-    // In a real app, this would call Google Maps API or OSRM
-    return { lat: -1.9441, lng: 30.0619 }; // Default to Kigali coordinates
+    const fallback = { lat: -1.9441, lng: 30.0619 };
+    if (!address?.trim()) {
+      return fallback;
+    }
+
+    try {
+      const params = new URLSearchParams({
+        q: address,
+        format: 'jsonv2',
+        limit: '1',
+      });
+      const results = await this.fetchJson<NominatimSearchResult[]>(`/search?${params.toString()}`);
+      const firstResult = results[0];
+      const lat = Number(firstResult?.lat);
+      const lng = Number(firstResult?.lon);
+      if (Number.isFinite(lat) && Number.isFinite(lng)) {
+        return { lat, lng };
+      }
+    } catch {
+      return fallback;
+    }
+
+    return fallback;
   }
 
-  /**
-   * Stub for reverse geocoding
-   */
   public async reverseGeocode(coords: Coordinates): Promise<Address> {
-    // In a real app, this would call Google Maps API
-    return { address: 'Unknown Location', city: 'Kigali' };
+    if (!this.validateCoordinates(coords)) {
+      return { address: 'Unknown Location', city: 'Kigali' };
+    }
+
+    try {
+      const params = new URLSearchParams({
+        lat: String(coords.lat),
+        lon: String(coords.lng),
+        format: 'jsonv2',
+      });
+      const result = await this.fetchJson<NominatimReverseResult>(`/reverse?${params.toString()}`);
+      const city = result.address?.city || result.address?.town || result.address?.village || result.address?.county || result.address?.state || 'Kigali';
+      return {
+        address: result.display_name || 'Unknown Location',
+        city,
+      };
+    } catch {
+      return { address: 'Unknown Location', city: 'Kigali' };
+    }
   }
 
   /**
@@ -59,5 +115,30 @@ export class LocationService {
 
   private deg2rad(deg: number): number {
     return deg * (Math.PI/180);
+  }
+
+  private async fetchJson<T>(path: string): Promise<T> {
+    const baseUrl = process.env.NOMINATIM_BASE_URL || 'https://nominatim.openstreetmap.org';
+    const timeoutMs = Number(process.env.GEOCODING_TIMEOUT_MS || 3000);
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), timeoutMs);
+
+    try {
+      const response = await fetch(`${baseUrl}${path}`, {
+        signal: controller.signal,
+        headers: {
+          'Accept': 'application/json',
+          'User-Agent': process.env.GEOCODING_USER_AGENT || 'rwshop-location-service/1.0',
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error(`Geocoding provider returned ${response.status}`);
+      }
+
+      return await response.json() as T;
+    } finally {
+      clearTimeout(timeout);
+    }
   }
 }

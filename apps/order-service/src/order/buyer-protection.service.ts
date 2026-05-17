@@ -1,26 +1,43 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
+import axios from 'axios';
 
 @Injectable()
 export class BuyerProtectionService {
   private readonly logger = new Logger(BuyerProtectionService.name);
 
-  // Note: In a complete microservice architecture, these would be HTTP calls 
-  // or message queue events to the Wallet and Notification services.
-  // We're stubbing the cross-service call structure.
-
   async executeInstantRefund(orderId: string, amount: number, buyerId: string) {
     this.logger.log(`Executing instant refund for order ${orderId} from Reserve Fund...`);
-    
-    // Simulate HTTP Call to Wallet Service
-    // POST /api/v1/wallets/transaction
-    // body: { account: 'reserve_fund', type: 'debit', amount }
-    // body: { account: 'user_wallet', userId: buyerId, type: 'credit', amount }
-    
-    // Simulate HTTP Call to Notification Service
-    // POST /api/v1/notifications/email
-    
+
+    const walletUrl = process.env.WALLET_SERVICE_URL || 'http://localhost:3007/api/v1';
+    const notificationUrl = process.env.NOTIFICATION_SERVICE_URL || 'http://localhost:3009/api/v1';
+
+    await axios.post(`${walletUrl}/wallets/transaction`, {
+      transactionId: orderId,
+      entries: [
+        {
+          type: 'debit',
+          account: 'buyer_protection_reserve',
+          amount,
+          description: `Reserve fund refund for order ${orderId}`
+        },
+        {
+          userId: buyerId,
+          type: 'credit',
+          account: 'buyer_refund',
+          amount,
+          description: `Buyer protection refund for order ${orderId}`
+        }
+      ]
+    });
+
+    await axios.post(`${notificationUrl}/notifications/in-app`, {
+      userId: buyerId,
+      type: 'refund.processed',
+      params: { orderId, amount, referenceType: 'Order' }
+    }).catch(error => {
+      this.logger.warn(`Refund notification failed for ${buyerId}: ${error.message}`);
+    });
+
     this.logger.log(`Refund of ${amount} RWF credited to buyer ${buyerId}.`);
     return { success: true, processedVia: 'reserve_fund', amount };
   }
@@ -28,9 +45,41 @@ export class BuyerProtectionService {
   async escalateForManualReview(orderId: string, amount: number) {
     this.logger.log(`Escalating dispute for order ${orderId} (${amount} RWF) for manual Admin review.`);
     
-    // Simulate HTTP Call to Notification Service to alert Admin
-    // POST /api/v1/notifications/email
-    
+    const notificationUrl = process.env.NOTIFICATION_SERVICE_URL || 'http://localhost:3009/api/v1';
+    await axios.post(`${notificationUrl}/notifications/in-app`, {
+      userId: process.env.ADMIN_USER_ID,
+      type: 'dispute.manual_review',
+      params: { orderId, amount, referenceType: 'Order' }
+    }).catch(error => {
+      this.logger.warn(`Manual review notification failed: ${error.message}`);
+    });
+
     return { success: true, escalated: true };
+  }
+
+  // 5C fix: seed the buyer protection reserve fund from commission on every successful payment.
+  // Called from processPaymentCallback when payment status is PAID.
+  // Contributes 1% of the platform commission to the reserve fund.
+  async seedReserveFromCommission(orderId: string, platformCommission: number) {
+    const contribution = Math.round(platformCommission * 0.01); // 1% of commission
+    if (contribution <= 0) return;
+
+    try {
+      const walletUrl = process.env.WALLET_SERVICE_URL || 'http://localhost:3007/api/v1';
+      await axios.post(`${walletUrl}/wallets/transaction`, {
+        transactionId: `reserve-seed-${orderId}`,
+        entries: [
+          {
+            type: 'credit',
+            account: 'buyer_protection_reserve',
+            amount: contribution,
+            description: `Reserve fund contribution (1% of ${platformCommission} RWF commission) from order ${orderId}`
+          }
+        ]
+      });
+      this.logger.log(`Reserve fund seeded with ${contribution} RWF from order ${orderId}`);
+    } catch (error: any) {
+      this.logger.warn(`Failed to seed reserve fund from order ${orderId}: ${error.message}`);
+    }
   }
 }

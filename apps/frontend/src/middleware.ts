@@ -15,6 +15,7 @@ const PLATFORM_ROUTES = [
   '/admin',
   '/markets',
   '/market',
+  '/settings',
   '/wallet',
   '/wishlist',
   '/privacy',
@@ -25,12 +26,31 @@ const PLATFORM_ROUTES = [
   '/favicon.ico',
 ];
 
+const isIpv4Host = (hostname: string) => /^(?:\d{1,3}\.){3}\d{1,3}$/.test(hostname);
+
 export function middleware(req: NextRequest) {
-  const url = req.nextUrl.clone();
-  
-  // Extract the hostname
-  const hostname = req.headers.get('host') || '';
-  const cleanHostname = hostname.replace(/:\d+$/, '');
+    const url = req.nextUrl.clone();
+    const hostname = req.headers.get('host') || '';
+    const cleanHostname = hostname.replace(/:\d+$/, '');
+    const isIpHost = isIpv4Host(cleanHostname);
+    
+    // REDIRECT: If someone visits /market/[slug] directly on the main domain, redirect to subdomain
+    if (url.pathname.startsWith('/market/')) {
+      const parts = url.pathname.split('/');
+      if (parts.length >= 3) {
+        const slug = parts[2];
+        const remainingPath = parts.slice(3).join('/');
+        
+        if (!hostname.includes(`${slug}.`) && !isIpHost) {
+          const newHost = hostname.includes('localhost')
+            ? `${slug}.localhost:3000` 
+            : `${slug}.rwshop.org`;
+          
+          return NextResponse.redirect(new URL(`/${remainingPath}`, `http://${newHost}`));
+        }
+      }
+    }
+    
   const hostParts = cleanHostname.split('.');
   
   // System reserved paths and root static files — skip middleware entirely
@@ -52,7 +72,7 @@ export function middleware(req: NextRequest) {
   
   let subdomain = '';
   
-  if (hostParts.length >= 3 && !cleanHostname.endsWith('.onrender.com')) {
+  if (hostParts.length >= 3 && !isIpHost && !cleanHostname.endsWith('.onrender.com')) {
     // e.g. kimironko.rwshop.org
     if (hostParts[0] !== 'www') {
       subdomain = hostParts[0];

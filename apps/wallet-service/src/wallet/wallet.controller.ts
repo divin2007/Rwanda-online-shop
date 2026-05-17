@@ -45,6 +45,33 @@ export class WalletController {
     return { success: true, data: wallet };
   }
 
+  @Post(':userId/deposit')
+  async deposit(
+    @Param('userId') userId: string,
+    @Body() data: { amount: number, method?: string, phone?: string }
+  ) {
+    const wallet = await this.walletService.deposit(userId, Number(data.amount), data.method || 'momo', data.phone);
+    return { success: true, data: wallet };
+  }
+
+  @Post('payout-request')
+  async requestPayoutLegacy(
+    @Body() data: { userId: string, amount: number, method?: string, recipientPhone?: string, momoNumber?: string }
+  ) {
+    const recipientPhone = data.recipientPhone || data.momoNumber;
+    if (!recipientPhone) {
+      return { success: false, message: 'Recipient phone is required' };
+    }
+
+    const request = await this.walletService.requestPayout(
+      data.userId,
+      Number(data.amount),
+      data.method || 'momo',
+      recipientPhone
+    );
+    return { success: true, data: request };
+  }
+
   @Post('transaction')
   @SetMetadata('isPublic', true)
   async processTransaction(@Body() data: any) {
@@ -71,5 +98,26 @@ export class WalletController {
     }
     const request = await this.walletService.requestPayout(userId, data.amount, data.method, data.recipientPhone);
     return { success: true, data: request };
+  }
+
+  @Post('payout/:payoutId/complete')
+  @Roles(UserRole.ADMIN)
+  async completePayout(@Param('payoutId') payoutId: string) {
+    const result = await this.walletService.completePayout(payoutId);
+    return { success: true, data: result };
+  }
+
+  @Post('payout/:payoutId/fail')
+  @Roles(UserRole.ADMIN)
+  async failPayout(@Param('payoutId') payoutId: string, @Body() data: { reason: string }) {
+    const result = await this.walletService.failPayout(payoutId, data.reason || 'Admin rejected payout');
+    return { success: true, data: result };
+  }
+
+  @Get('payouts/all')
+  @Public()
+  async getAllPayoutRequests() {
+    const payouts = await this.walletService.getAllPayoutRequests();
+    return { success: true, data: payouts };
   }
 }

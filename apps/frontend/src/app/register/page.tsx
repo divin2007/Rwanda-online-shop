@@ -5,9 +5,11 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { userApi } from '@/lib/api';
+import { Bike, ShieldCheck, ShoppingCart, Store, Truck } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { useLanguage } from '@/context/LanguageContext';
+import { userApi } from '@/lib/api';
+
+type ApiError = { response?: { data?: { error?: string; message?: string } } };
 
 const registerSchema = z.object({
   fullName: z.string().min(3, 'Full name must be at least 3 characters'),
@@ -23,43 +25,47 @@ const registerSchema = z.object({
 });
 
 type RegisterFormValues = z.infer<typeof registerSchema>;
+type Role = 'BUYER' | 'SELLER' | 'RIDER';
 
 const roles = [
   {
     key: 'BUYER' as const,
-    icon: '🛒',
+    icon: ShoppingCart,
     label: 'Buyer',
-    desc: 'Shop from local markets & get delivered to your door',
+    desc: 'Shop from local markets and get orders delivered to your door.',
   },
   {
     key: 'SELLER' as const,
-    icon: '🏪',
+    icon: Store,
     label: 'Seller',
-    desc: 'List your products and grow your local business online',
+    desc: 'List products, receive orders, and manage your verified stall.',
   },
   {
     key: 'RIDER' as const,
-    icon: '🛵',
+    icon: Bike,
     label: 'Rider',
-    desc: 'Earn money delivering orders across Kigali',
+    desc: 'Accept delivery jobs and track handovers across Kigali.',
   },
 ];
 
-export default function RegisterPage() {
-  const { t } = useLanguage();
+const getRoleFromQuery = (value: string | null): Role => (
+  value === 'SELLER' || value === 'RIDER' || value === 'BUYER' ? value : 'BUYER'
+);
+
+function RegisterContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const refCode = searchParams.get('ref') || '';
-  const preRole = (searchParams.get('role') as 'BUYER' | 'SELLER' | 'RIDER') || 'BUYER';
+  const preRole = getRoleFromQuery(searchParams.get('role'));
   const [isLoading, setIsLoading] = useState(false);
-  const [selectedRole, setSelectedRole] = useState<'BUYER' | 'SELLER' | 'RIDER'>(preRole);
+  const [selectedRole, setSelectedRole] = useState<Role>(preRole);
 
   const { register, handleSubmit, setValue, formState: { errors } } = useForm<RegisterFormValues>({
     resolver: zodResolver(registerSchema),
     defaultValues: { role: preRole, referredBy: refCode },
   });
 
-  const handleRoleSelect = (role: 'BUYER' | 'SELLER' | 'RIDER') => {
+  const handleRoleSelect = (role: Role) => {
     setSelectedRole(role);
     setValue('role', role);
   };
@@ -67,227 +73,205 @@ export default function RegisterPage() {
   const onSubmit = async (data: RegisterFormValues) => {
     setIsLoading(true);
     try {
-      const { confirmPassword, ...payload } = data;
+      const payload = {
+        fullName: data.fullName,
+        email: data.email,
+        phone: data.phone,
+        password: data.password,
+        role: data.role,
+        referredBy: data.referredBy,
+      };
       const res = await userApi.post('/users/register', payload);
       if (res.data?.success) {
-        toast.success('Account created! Please sign in.');
+        toast.success('Account created. Please sign in.');
         router.push('/login');
       } else {
         toast.error(res.data?.error || 'Registration failed');
       }
-    } catch (error: any) {
-      toast.error(error.response?.data?.error || 'Something went wrong');
+    } catch (error: unknown) {
+      const apiError = error as ApiError;
+      toast.error(apiError.response?.data?.error || apiError.response?.data?.message || 'Something went wrong');
     } finally {
       setIsLoading(false);
     }
   };
 
+  const inputClass = 'w-full rounded-md border bg-white px-5 py-4 text-sm outline-none transition-colors focus:border-[#ff6b00] focus:ring-2 focus:ring-[#ffedd5]';
+  const fieldClass = (hasError?: boolean) => `${inputClass} ${hasError ? 'border-[#9a6b5d]' : 'border-[#d9e0db]'}`;
+  const errorClass = 'text-[11px] font-bold text-[#7b3f3f]';
+
   return (
-    <div className="min-h-screen flex font-sans selection:bg-[#F59E0B] selection:text-white">
-
-      {/* ── Left: Form Panel ── */}
-      <div className="flex-1 bg-white flex items-center justify-center p-8 md:p-16 overflow-y-auto">
-        <div className="w-full max-w-lg space-y-8 animate-reveal py-8">
-
-          {/* Mobile logo */}
-          <div className="lg:hidden flex items-baseline gap-2">
-            <span className="text-3xl font-serif font-black tracking-tighter text-[#121212]">RMF</span>
-            <div className="w-1.5 h-1.5 bg-[#F59E0B] rounded-full" />
+    <div className="flex min-h-screen bg-[#fdfaf7] font-sans selection:bg-[#ff6b00] selection:text-white">
+      <div className="flex flex-1 items-center justify-center overflow-y-auto p-5 md:p-12">
+        <div className="w-full max-w-2xl space-y-8 py-8 animate-reveal">
+          <div className="flex items-baseline gap-2 lg:hidden">
+            <span className="text-3xl font-black tracking-normal text-[#1b1c1c]">RMF</span>
+            <div className="h-1.5 w-1.5 rounded-full bg-[#ffedd5]" />
           </div>
 
-          {/* Header */}
           <div>
-            <h1 className="text-4xl font-serif text-[#121212] italic tracking-tighter mb-2">Create Account</h1>
-            <p className="text-sm text-[#6B665E]">
+            <div className="mb-4 inline-flex items-center gap-2 rounded-full bg-[#ffedd5] px-3 py-1.5 text-xs font-black text-[#ff6b00]">
+              <ShieldCheck size={15} />
+              Verified marketplace onboarding
+            </div>
+            <h1 className="mb-2 text-4xl font-black tracking-normal text-[#1b1c1c]">Create Account</h1>
+            <p className="text-sm text-[#414844]">
               Already have an account?{' '}
-              <Link href="/login" className="text-[#A34D15] font-black hover:underline">Sign in →</Link>
+              <Link href="/login" className="font-black text-[#ff6b00] hover:underline">Sign in -&gt;</Link>
             </p>
           </div>
 
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-
-            {/* Role Selection */}
+          <form onSubmit={handleSubmit(onSubmit)} className="space-y-6 rounded-lg border border-[#d9e0db] bg-white p-5 shadow-sm md:p-6">
             <div className="space-y-3">
-              <p className="text-[10px] font-black text-[#121212] uppercase tracking-[0.4em]">I want to join as a...</p>
-              <div className="grid grid-cols-3 gap-3">
-                {roles.map(r => (
-                  <label key={r.key} className="cursor-pointer" onClick={() => handleRoleSelect(r.key)}>
-                    <input type="radio" value={r.key} {...register('role')} className="sr-only" />
-                    <div className={`p-4 border-2 text-center transition-all ${selectedRole === r.key ? 'border-[#121212] bg-[#121212] text-white' : 'border-[#E5E1D8] text-[#121212] hover:border-[#F59E0B]'}`}>
-                      <div className="text-2xl mb-2">{r.icon}</div>
-                      <p className="text-[10px] font-black uppercase tracking-wider">{r.label}</p>
-                    </div>
-                  </label>
-                ))}
+              <p className="text-[10px] font-black uppercase tracking-[0.28em] text-[#1b1c1c]">Join as</p>
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                {roles.map((role) => {
+                  const Icon = role.icon;
+                  const active = selectedRole === role.key;
+                  return (
+                    <label key={role.key} className="cursor-pointer" onClick={() => handleRoleSelect(role.key)}>
+                      <input type="radio" value={role.key} {...register('role')} className="sr-only" />
+                      <div className={`h-full rounded-md border p-4 transition-all ${active ? 'border-[#ff6b00] bg-[#ffedd5] text-[#ff6b00]' : 'border-[#d9e0db] bg-white text-[#1b1c1c] hover:border-[#ff6b00]'}`}>
+                        <Icon size={22} />
+                        <p className="mt-3 text-[11px] font-black uppercase tracking-wider">{role.label}</p>
+                        <p className="mt-2 text-xs font-semibold leading-5 text-[#574e47]">{role.desc}</p>
+                      </div>
+                    </label>
+                  );
+                })}
               </div>
-              {selectedRole && (
-                <p className="text-[10px] text-[#6B665E] italic pl-1">
-                  {roles.find(r => r.key === selectedRole)?.desc}
-                </p>
-              )}
             </div>
 
-            {/* Full Name */}
             <div className="space-y-2">
-              <label className="text-[10px] font-black text-[#121212] uppercase tracking-[0.4em] block" htmlFor="fullName">
+              <label className="block text-[10px] font-black uppercase tracking-[0.28em] text-[#1b1c1c]" htmlFor="fullName">
                 Full Name
               </label>
-              <input
-                id="fullName"
-                type="text"
-                {...register('fullName')}
-                placeholder="e.g. Amina Uwase"
-                className={`w-full bg-[#F8F6F1] border-2 px-5 py-4 text-sm outline-none rounded-none transition-colors ${errors.fullName ? 'border-red-400 focus:border-red-500' : 'border-[#E5E1D8] focus:border-[#121212]'}`}
-              />
-              {errors.fullName && <p className="text-[10px] text-red-500 font-bold">⚠ {errors.fullName.message}</p>}
+              <input id="fullName" type="text" {...register('fullName')} placeholder="e.g. Amina Uwase" className={fieldClass(Boolean(errors.fullName))} />
+              {errors.fullName && <p className={errorClass}>{errors.fullName.message}</p>}
             </div>
 
-            {/* Email + Phone */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div className="space-y-2">
-                <label className="text-[10px] font-black text-[#121212] uppercase tracking-[0.4em] block" htmlFor="email">
+                <label className="block text-[10px] font-black uppercase tracking-[0.28em] text-[#1b1c1c]" htmlFor="email">
                   Email
                 </label>
-                <input
-                  id="email"
-                  type="email"
-                  {...register('email')}
-                  placeholder="you@example.com"
-                  autoComplete="email"
-                  className={`w-full bg-[#F8F6F1] border-2 px-5 py-4 text-sm outline-none rounded-none transition-colors ${errors.email ? 'border-red-400' : 'border-[#E5E1D8] focus:border-[#121212]'}`}
-                />
-                {errors.email && <p className="text-[10px] text-red-500 font-bold">⚠ {errors.email.message}</p>}
+                <input id="email" type="email" {...register('email')} placeholder="you@example.com" autoComplete="email" className={fieldClass(Boolean(errors.email))} />
+                {errors.email && <p className={errorClass}>{errors.email.message}</p>}
               </div>
               <div className="space-y-2">
-                <label className="text-[10px] font-black text-[#121212] uppercase tracking-[0.4em] block" htmlFor="phone">
-                  Phone (MTN/Airtel)
+                <label className="block text-[10px] font-black uppercase tracking-[0.28em] text-[#1b1c1c]" htmlFor="phone">
+                  Phone
                 </label>
-                <input
-                  id="phone"
-                  type="tel"
-                  {...register('phone')}
-                  placeholder="07XXXXXXXX"
-                  className={`w-full bg-[#F8F6F1] border-2 px-5 py-4 text-sm outline-none rounded-none transition-colors ${errors.phone ? 'border-red-400' : 'border-[#E5E1D8] focus:border-[#121212]'}`}
-                />
-                {errors.phone && <p className="text-[10px] text-red-500 font-bold">⚠ {errors.phone.message}</p>}
+                <input id="phone" type="tel" {...register('phone')} placeholder="07XXXXXXXX" className={fieldClass(Boolean(errors.phone))} />
+                {errors.phone && <p className={errorClass}>{errors.phone.message}</p>}
               </div>
             </div>
 
-            {/* Password + Confirm */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div className="space-y-2">
-                <label className="text-[10px] font-black text-[#121212] uppercase tracking-[0.4em] block" htmlFor="password">
+                <label className="block text-[10px] font-black uppercase tracking-[0.28em] text-[#1b1c1c]" htmlFor="password">
                   Password
                 </label>
-                <input
-                  id="password"
-                  type="password"
-                  {...register('password')}
-                  placeholder="Min. 8 characters"
-                  autoComplete="new-password"
-                  className={`w-full bg-[#F8F6F1] border-2 px-5 py-4 text-sm outline-none rounded-none transition-colors ${errors.password ? 'border-red-400' : 'border-[#E5E1D8] focus:border-[#121212]'}`}
-                />
-                {errors.password && <p className="text-[10px] text-red-500 font-bold">⚠ {errors.password.message}</p>}
+                <input id="password" type="password" {...register('password')} placeholder="Min. 8 characters" autoComplete="new-password" className={fieldClass(Boolean(errors.password))} />
+                {errors.password && <p className={errorClass}>{errors.password.message}</p>}
               </div>
               <div className="space-y-2">
-                <label className="text-[10px] font-black text-[#121212] uppercase tracking-[0.4em] block" htmlFor="confirmPassword">
+                <label className="block text-[10px] font-black uppercase tracking-[0.28em] text-[#1b1c1c]" htmlFor="confirmPassword">
                   Confirm Password
                 </label>
-                <input
-                  id="confirmPassword"
-                  type="password"
-                  {...register('confirmPassword')}
-                  placeholder="Re-enter password"
-                  autoComplete="new-password"
-                  className={`w-full bg-[#F8F6F1] border-2 px-5 py-4 text-sm outline-none rounded-none transition-colors ${errors.confirmPassword ? 'border-red-400' : 'border-[#E5E1D8] focus:border-[#121212]'}`}
-                />
-                {errors.confirmPassword && <p className="text-[10px] text-red-500 font-bold">⚠ {errors.confirmPassword.message}</p>}
+                <input id="confirmPassword" type="password" {...register('confirmPassword')} placeholder="Re-enter password" autoComplete="new-password" className={fieldClass(Boolean(errors.confirmPassword))} />
+                {errors.confirmPassword && <p className={errorClass}>{errors.confirmPassword.message}</p>}
               </div>
             </div>
 
-            {/* Referral Code */}
             <div className="space-y-2">
-              <label className="text-[10px] font-black text-[#121212] uppercase tracking-[0.4em] block">
-                Referral Code <span className="font-normal opacity-50">(optional)</span>
+              <label className="block text-[10px] font-black uppercase tracking-[0.28em] text-[#1b1c1c]">
+                Referral Code <span className="font-semibold tracking-normal text-[#574e47]">(optional)</span>
               </label>
-              <input
-                type="text"
-                {...register('referredBy')}
-                placeholder="RMF-XXXX"
-                className="w-full bg-[#F8F6F1] border-2 border-dashed border-[#E5E1D8] focus:border-[#121212] px-5 py-4 text-sm outline-none rounded-none transition-colors"
-              />
+              <input type="text" {...register('referredBy')} placeholder="RMF-XXXX" className="w-full rounded-md border border-dashed border-[#d9e0db] bg-[#fdfaf7] px-5 py-4 text-sm outline-none transition-colors focus:border-[#ff6b00] focus:ring-2 focus:ring-[#ffedd5]" />
             </div>
 
-            {/* Submit */}
             <button
               type="submit"
               disabled={isLoading}
-              className="w-full bg-[#121212] text-white py-5 text-[11px] font-black uppercase tracking-[0.4em] hover:bg-[#A34D15] transition-all disabled:opacity-50 flex items-center justify-center gap-3"
+              className="flex w-full items-center justify-center gap-3 rounded-md bg-[#e05300] py-5 text-[11px] font-black uppercase tracking-[0.28em] text-white transition-all hover:bg-[#ff6b00] disabled:opacity-50"
             >
               {isLoading ? (
                 <>
-                  <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  <div className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
                   Creating account...
                 </>
-              ) : `Create ${selectedRole.charAt(0) + selectedRole.slice(1).toLowerCase()} Account →`}
+              ) : `Create ${selectedRole.charAt(0) + selectedRole.slice(1).toLowerCase()} Account ->`}
             </button>
 
-            <p className="text-[9px] text-center text-[#6B665E] opacity-60 leading-relaxed">
+            <p className="text-center text-[11px] leading-relaxed text-[#574e47]">
               By registering you agree to our{' '}
-              <Link href="/terms" className="underline hover:text-[#121212]">Terms of Service</Link>
+              <Link href="/terms" className="font-bold text-[#ff6b00] hover:underline">Terms of Service</Link>
               {' '}and{' '}
-              <Link href="/privacy" className="underline hover:text-[#121212]">Privacy Policy</Link>.
+              <Link href="/privacy" className="font-bold text-[#ff6b00] hover:underline">Privacy Policy</Link>.
             </p>
           </form>
         </div>
       </div>
 
-      {/* ── Right: Brand Panel ── */}
-      <div className="hidden lg:flex w-[38%] bg-[#121212] flex-col justify-between p-16 relative overflow-hidden">
-        <div className="absolute inset-0 pointer-events-none">
-          <div className="absolute bottom-0 left-0 w-full h-full bg-[radial-gradient(circle_at_20%_100%,rgba(245,158,11,0.08),transparent_60%)]" />
-          <div className="absolute -bottom-4 -left-4 text-[200px] font-serif italic leading-none select-none opacity-[0.04] text-white">RMF</div>
-        </div>
+      <div
+        className="relative hidden w-[38%] flex-col justify-between overflow-hidden bg-[#e05300] p-16 text-white lg:flex"
+        style={{
+          backgroundImage: 'linear-gradient(90deg, rgba(224,83,0,0.94), rgba(255,107,0,0.72)), url("https://images.unsplash.com/photo-1516594798947-e65505dbb29d?auto=format&fit=crop&q=80&w=1400")',
+          backgroundSize: 'cover',
+          backgroundPosition: 'center',
+        }}
+      >
+        <div className="absolute -bottom-4 -left-4 select-none text-[200px] font-black leading-none text-white/5">RMF</div>
 
-        {/* Logo */}
         <div className="relative z-10">
-          <Link href="/" className="inline-flex items-baseline gap-2 group">
-            <span className="text-4xl font-serif font-black tracking-tighter text-white group-hover:text-[#F59E0B] transition-colors">RMF</span>
-            <div className="w-2 h-2 bg-[#F59E0B] rounded-full" />
+          <Link href="/" className="group inline-flex items-baseline gap-2">
+            <span className="text-4xl font-black tracking-normal text-white transition-colors group-hover:text-[#ffedd5]">RMF</span>
+            <div className="h-2 w-2 rounded-full bg-[#ffedd5]" />
           </Link>
-          <p className="text-[9px] font-black text-white/30 uppercase tracking-[0.5em] mt-2">Rwanda Market Facilitator</p>
+          <p className="mt-2 text-[9px] font-black uppercase tracking-[0.5em] text-white/50">Rwanda Market Facilitator</p>
         </div>
 
-        {/* Copy */}
         <div className="relative z-10 space-y-8">
           <div className="flex items-center gap-4">
-            <div className="w-8 h-px bg-[#F59E0B]" />
-            <p className="text-[10px] font-black text-[#F59E0B] uppercase tracking-[0.5em]">Join the Community</p>
+            <div className="h-px w-8 bg-[#ffedd5]" />
+            <p className="text-[10px] font-black uppercase tracking-[0.5em] text-[#ffedd5]">Join the Community</p>
           </div>
-          <h2 className="text-5xl font-serif italic tracking-tighter leading-[0.95] text-white">
-            Rwanda's<br />
-            <span className="text-[#F59E0B]">marketplace</span><br />
-            is growing.
+          <h2 className="text-5xl font-black leading-[0.95] tracking-normal text-white">
+            Built for<br />
+            Rwanda&apos;s local<br />
+            commerce.
           </h2>
-          <p className="text-base text-white/50 font-light italic leading-relaxed border-l-2 border-white/10 pl-6">
-            Join 120+ verified sellers, thousands of buyers, and a growing network of riders delivering across Kigali.
+          <p className="border-l-2 border-white/15 pl-6 text-base leading-relaxed text-white/75">
+            Buyers, sellers, and riders all share one verified operating system for market orders, handovers, and delivery.
           </p>
         </div>
 
-        {/* Stats */}
-        <div className="relative z-10 grid grid-cols-3 gap-4 pt-10 border-t border-white/10">
+        <div className="relative z-10 grid grid-cols-3 gap-4 border-t border-white/15 pt-10">
           {[
-            { val: '120+', label: 'Sellers' },
-            { val: '10+', label: 'Markets' },
-            { val: '500+', label: 'Orders' },
-          ].map(s => (
-            <div key={s.label} className="text-center">
-              <p className="text-2xl font-serif italic text-white">{s.val}</p>
-              <p className="text-[8px] font-black text-[#F59E0B] uppercase tracking-widest mt-1">{s.label}</p>
+            { icon: Store, label: 'Markets' },
+            { icon: ShieldCheck, label: 'Verified' },
+            { icon: Truck, label: 'Delivery' },
+          ].map(({ icon: Icon, label }) => (
+            <div key={label} className="text-center">
+              <Icon className="mx-auto text-[#ffedd5]" size={22} />
+              <p className="mt-2 text-[8px] font-black uppercase tracking-widest text-white/65">{label}</p>
             </div>
           ))}
         </div>
       </div>
     </div>
+  );
+}
+
+export default function RegisterPage() {
+  return (
+    <React.Suspense fallback={
+      <div className="min-h-screen bg-[#fdfaf7] flex items-center justify-center">
+        <div className="animate-spin w-10 h-10 border-4 border-[#ff6b00] border-t-transparent rounded-full"></div>
+      </div>
+    }>
+      <RegisterContent />
+    </React.Suspense>
   );
 }

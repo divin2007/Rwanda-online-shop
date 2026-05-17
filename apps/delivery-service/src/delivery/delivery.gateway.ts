@@ -6,7 +6,16 @@ import * as crypto from 'crypto';
 
 @WebSocketGateway({
   cors: {
-    origin: (origin: any, cb: any) => cb(null, true),
+    origin: (origin: any, cb: any) => {
+      const allowed = (process.env.ALLOWED_ORIGINS || 'http://localhost:3000,http://localhost:3001')
+        .split(',')
+        .map(o => o.trim());
+      // Allow if no origin (server-to-server) or if explicitly listed
+      if (!origin || allowed.some(o => o === '*' || origin.startsWith(o))) {
+        return cb(null, true);
+      }
+      return cb(new Error(`CORS: origin ${origin} not allowed`), false);
+    },
     credentials: true,
   },
 })
@@ -97,15 +106,8 @@ export class DeliveryGateway implements OnGatewayConnection, OnGatewayDisconnect
       timestamp: new Date()
     };
 
-    // Emit to everyone listening to this delivery's chat channel
-    // Bypasses the need for clients to explicitly send a 'join:delivery' room request
-    this.server.emit(`delivery:${payload.deliveryId}:chat`, chatMsg);
-    
-    // Also emit a general notification for the rider if they are not in the room
-    this.server.emit(`user:${payload.deliveryId}:notification`, {
-      type: 'NEW_CHAT_MESSAGE',
-      ...chatMsg
-    });
+    // Emit ONLY to clients who joined this delivery's room — not to everyone
+    this.server.to(`delivery:${payload.deliveryId}`).emit(`delivery:${payload.deliveryId}:chat`, chatMsg);
 
     return { success: true };
   }

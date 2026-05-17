@@ -4,7 +4,9 @@ import {
   sellerProfileSchema,
   marketSchema,
   transactionSchema,
-  auditLogSchema
+  auditLogSchema,
+  deliverySchema,
+  reviewSchema
 } from '@rmf/database';
 import { AuthGuardModule } from '@rmf/auth';
 import { AdminService } from './admin.service';
@@ -16,7 +18,9 @@ import { AdminController } from './admin.controller';
       { name: 'SellerProfile', schema: sellerProfileSchema },
       { name: 'Market', schema: marketSchema },
       { name: 'Transaction', schema: transactionSchema },
-      { name: 'AuditLog', schema: auditLogSchema }
+      { name: 'AuditLog', schema: auditLogSchema },
+      { name: 'Delivery', schema: deliverySchema },
+      { name: 'Review', schema: reviewSchema }
     ]),
     AuthGuardModule.forRoot(),
   ],

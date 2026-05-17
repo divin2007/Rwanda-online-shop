@@ -1,20 +1,82 @@
 'use client';
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { Eye, EyeOff, LockKeyhole, ShieldCheck, Store, Truck } from 'lucide-react';
+import toast from 'react-hot-toast';
 import { useAuth } from '@/context/AuthContext';
 import { userApi } from '@/lib/api';
-import toast from 'react-hot-toast';
-import { useLanguage } from '@/context/LanguageContext';
+
+type ApiError = { response?: { data?: { error?: string; message?: string } } };
 
 export default function LoginPage() {
-  const { t } = useLanguage();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPw, setShowPw] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const { login } = useAuth();
+  const { login, user, isLoading: authLoading } = useAuth();
   const router = useRouter();
+
+  const routeForRole = React.useCallback((role?: string) => {
+    if (role === 'SELLER') return '/seller/dashboard';
+    if (role === 'RIDER') return '/rider/dashboard';
+    if (role === 'ADMIN') return '/admin';
+    return '/dashboard';
+  }, []);
+
+  useEffect(() => {
+    if (!authLoading && user) {
+      router.replace(routeForRole(user.role));
+    }
+  }, [authLoading, routeForRole, router, user]);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    // 2C fix: Google OAuth now sends a one-time code (base64url-encoded JSON blob)
+    // instead of raw tokens in URL params. This prevents token leakage.
+    const code = params.get('code');
+    // Legacy support: also accept direct token params for backward compatibility
+    const directToken = params.get('token');
+    const directRefresh = params.get('refreshToken');
+
+    let token: string | null = null;
+    let refreshToken: string | null = null;
+
+    if (code) {
+      try {
+        const decoded = JSON.parse(Buffer.from(code, 'base64url').toString());
+        // Reject codes older than 30 seconds to prevent replay attacks
+        if (Date.now() - decoded.ts > 30_000) {
+          toast.error('Sign-in link expired. Please try again.');
+          window.history.replaceState({}, '', '/login');
+          return;
+        }
+        token = decoded.accessToken;
+        refreshToken = decoded.refreshToken;
+      } catch {
+        toast.error('Invalid sign-in code. Please try again.');
+        window.history.replaceState({}, '', '/login');
+        return;
+      }
+    } else if (directToken) {
+      token = directToken;
+      refreshToken = directRefresh;
+    }
+
+    if (!token) return;
+
+    // Clear URL params immediately to prevent leakage via browser history
+    window.history.replaceState({}, '', '/login');
+
+    userApi.get('/auth/me', { headers: { Authorization: `Bearer ${token}` } })
+      .then((res) => {
+        if (res.data?.success) {
+          login(res.data.data, token!, refreshToken || undefined);
+          router.replace(routeForRole(res.data.data.role));
+        }
+      })
+      .catch(() => toast.error('Google sign-in failed. Please try again.'));
+  }, [login, routeForRole, router]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -22,117 +84,111 @@ export default function LoginPage() {
     try {
       const res = await userApi.post('/auth/login', { email, password });
       if (res.data?.success) {
-        const { accessToken, user } = res.data.data;
-        login(user, accessToken);
+        const { accessToken, refreshToken, user } = res.data.data;
+        login(user, accessToken, refreshToken);
         toast.success('Welcome back!');
-        if (user.role === 'SELLER') router.push('/seller/dashboard');
-        else if (user.role === 'RIDER') router.push('/rider/dashboard');
-        else if (user.role === 'ADMIN') router.push('/admin');
-        else router.push('/');
+        router.push(routeForRole(user.role));
       } else {
         toast.error(res.data?.error || 'Login failed');
       }
-    } catch (error: any) {
-      toast.error(error.response?.data?.error || 'Incorrect email or password');
+    } catch (error: unknown) {
+      const apiError = error as ApiError;
+      toast.error(apiError.response?.data?.error || apiError.response?.data?.message || 'Incorrect email or password');
     } finally {
       setIsLoading(false);
     }
   };
 
   const handleGoogleAuth = () => {
-    window.location.href = `${process.env.NEXT_PUBLIC_USER_SERVICE_URL}/auth/google`;
+    const baseUrl = process.env.NEXT_PUBLIC_USER_SERVICE_URL || 'http://localhost:3001';
+    window.location.href = `${baseUrl}/auth/google`;
   };
 
   return (
-    <div className="min-h-screen flex font-sans selection:bg-[#F59E0B] selection:text-white">
+    <div className="flex min-h-screen bg-[#fdfaf7] font-sans selection:bg-[#ff6b00] selection:text-white">
+      <div
+        className="relative hidden w-[46%] flex-col justify-between overflow-hidden bg-[#e05300] p-16 text-white lg:flex"
+        style={{
+          backgroundImage: 'linear-gradient(90deg, rgba(224,83,0,0.96), rgba(255,107,0,0.78)), url("https://images.unsplash.com/photo-1488459716781-31db52582fe9?auto=format&fit=crop&q=80&w=1400")',
+          backgroundSize: 'cover',
+          backgroundPosition: 'center',
+        }}
+      >
+        <div className="absolute -bottom-8 -right-8 select-none text-[220px] font-black leading-none text-white/5">RMF</div>
 
-      {/* ── Left: Brand Panel ── */}
-      <div className="hidden lg:flex w-[46%] bg-[#121212] flex-col justify-between p-16 relative overflow-hidden">
-        {/* Background decoration */}
-        <div className="absolute inset-0 pointer-events-none">
-          <div className="absolute top-0 left-0 w-full h-full bg-[radial-gradient(circle_at_30%_70%,rgba(163,77,21,0.15),transparent_60%)]" />
-          <div className="absolute -bottom-8 -right-8 text-[220px] font-serif italic leading-none select-none opacity-[0.04] text-white">RMF</div>
-        </div>
-
-        {/* Logo */}
         <div className="relative z-10">
-          <Link href="/" className="inline-flex items-baseline gap-2 group">
-            <span className="text-4xl font-serif font-black tracking-tighter text-white group-hover:text-[#F59E0B] transition-colors">RMF</span>
-            <div className="w-2 h-2 bg-[#F59E0B] rounded-full" />
+          <Link href="/" className="group inline-flex items-baseline gap-2">
+            <span className="text-4xl font-black tracking-normal text-white transition-colors group-hover:text-[#ffedd5]">RMF</span>
+            <div className="h-2 w-2 rounded-full bg-[#ffedd5]" />
           </Link>
-          <p className="text-[9px] font-black text-white/30 uppercase tracking-[0.5em] mt-2">Rwanda Market Facilitator</p>
+          <p className="mt-2 text-[9px] font-black uppercase tracking-[0.5em] text-white/50">Rwanda Market Facilitator</p>
         </div>
 
-        {/* Main copy */}
         <div className="relative z-10 space-y-8">
           <div className="flex items-center gap-4">
-            <div className="w-8 h-px bg-[#F59E0B]" />
-            <p className="text-[10px] font-black text-[#F59E0B] uppercase tracking-[0.5em]">Welcome Back</p>
+            <div className="h-px w-8 bg-[#ffedd5]" />
+            <p className="text-[10px] font-black uppercase tracking-[0.5em] text-[#ffedd5]">Welcome Back</p>
           </div>
-          <h2 className="text-6xl font-serif italic tracking-tighter leading-[0.95] text-white">
-            Your local<br />
-            <span className="text-[#F59E0B]">marketplace</span><br />
-            awaits.
+          <h2 className="text-6xl font-black leading-[0.95] tracking-normal text-white">
+            Trusted local<br />
+            markets,<br />
+            delivered.
           </h2>
-          <p className="text-base text-white/50 font-light italic leading-relaxed max-w-sm border-l-2 border-white/10 pl-6">
-            Shop from verified sellers across Kigali's best markets. Fast delivery, secure MoMo payments, real-time tracking.
+          <p className="max-w-sm border-l-2 border-white/15 pl-6 text-base leading-relaxed text-white/75">
+            Shop from verified sellers across Kigali&apos;s best markets. Fast delivery, secure payments, real-time tracking.
           </p>
         </div>
 
-        {/* Trust badges */}
-        <div className="relative z-10 grid grid-cols-3 gap-4 pt-10 border-t border-white/10">
+        <div className="relative z-10 grid grid-cols-3 gap-4 border-t border-white/15 pt-10">
           {[
-            { icon: '🛡️', label: 'Verified Sellers' },
-            { icon: '🔒', label: 'Secure MoMo' },
-            { icon: '🛵', label: 'Fast Delivery' },
-          ].map(b => (
-            <div key={b.label} className="text-center space-y-2">
-              <div className="text-2xl">{b.icon}</div>
-              <p className="text-[8px] font-black text-white/40 uppercase tracking-widest leading-tight">{b.label}</p>
+            { icon: ShieldCheck, label: 'Verified Sellers' },
+            { icon: LockKeyhole, label: 'Secure Checkout' },
+            { icon: Truck, label: 'Tracked Delivery' },
+          ].map(({ icon: Icon, label }) => (
+            <div key={label} className="space-y-2 text-center">
+              <Icon className="mx-auto text-[#ffedd5]" size={22} />
+              <p className="text-[8px] font-black uppercase leading-tight tracking-widest text-white/65">{label}</p>
             </div>
           ))}
         </div>
       </div>
 
-      {/* ── Right: Form Panel ── */}
-      <div className="flex-1 bg-white flex items-center justify-center p-8 md:p-16">
-        <div className="w-full max-w-md space-y-10 animate-reveal">
-
-          {/* Mobile logo */}
-          <div className="lg:hidden flex items-baseline gap-2 mb-4">
-            <span className="text-3xl font-serif font-black tracking-tighter text-[#121212]">RMF</span>
-            <div className="w-1.5 h-1.5 bg-[#F59E0B] rounded-full" />
+      <div className="flex flex-1 items-center justify-center p-5 md:p-12">
+        <div className="w-full max-w-md space-y-9 animate-reveal">
+          <div className="mb-4 flex items-baseline gap-2 lg:hidden">
+            <span className="text-3xl font-black tracking-normal text-[#1b1c1c]">RMF</span>
+            <div className="h-1.5 w-1.5 rounded-full bg-[#ffedd5]" />
           </div>
 
-          {/* Header */}
           <div>
-            <h1 className="text-4xl font-serif text-[#121212] italic tracking-tighter mb-2">Sign In</h1>
-            <p className="text-sm text-[#6B665E]">
+            <div className="mb-4 inline-flex items-center gap-2 rounded-full bg-[#ffedd5] px-3 py-1.5 text-xs font-black text-[#ff6b00]">
+              <Store size={15} />
+              Rwanda&apos;s verified local marketplace
+            </div>
+            <h1 className="mb-2 text-4xl font-black tracking-normal text-[#1b1c1c]">Sign In</h1>
+            <p className="text-sm text-[#414844]">
               New to RMF?{' '}
-              <Link href="/register" className="text-[#A34D15] font-black hover:underline">Create a free account →</Link>
+              <Link href="/register" className="font-black text-[#ff6b00] hover:underline">Create a free account -&gt;</Link>
             </p>
           </div>
 
-          {/* Google Button */}
           <button
             onClick={handleGoogleAuth}
-            className="w-full flex items-center justify-center gap-4 py-4 border-2 border-[#E5E1D8] hover:border-[#121212] transition-all text-sm font-bold text-[#121212] group"
+            className="flex w-full items-center justify-center gap-4 rounded-lg border border-[#d9e0db] bg-white py-4 text-sm font-bold text-[#1b1c1c] transition-all hover:border-[#ff6b00]"
           >
-            <img src="https://www.svgrepo.com/show/475656/google-color.svg" alt="Google" className="w-5 h-5" />
+            <img src="https://www.svgrepo.com/show/475656/google-color.svg" alt="Google" className="h-5 w-5" />
             Continue with Google
           </button>
 
           <div className="flex items-center gap-4">
-            <div className="h-px flex-1 bg-[#F0EDE4]" />
-            <span className="text-[10px] font-black text-[#6B665E] uppercase tracking-widest">or sign in with email</span>
-            <div className="h-px flex-1 bg-[#F0EDE4]" />
+            <div className="h-px flex-1 bg-[#e0e0e0]" />
+            <span className="text-[10px] font-black uppercase tracking-widest text-[#5f7569]">or sign in with email</span>
+            <div className="h-px flex-1 bg-[#e0e0e0]" />
           </div>
 
-          {/* Form */}
           <form onSubmit={handleLogin} className="space-y-6">
-            {/* Email */}
             <div className="space-y-2">
-              <label className="text-[10px] font-black text-[#121212] uppercase tracking-[0.4em] block" htmlFor="email">
+              <label className="block text-[10px] font-black uppercase tracking-[0.3em] text-[#1b1c1c]" htmlFor="email">
                 Email Address
               </label>
               <input
@@ -143,17 +199,16 @@ export default function LoginPage() {
                 placeholder="you@example.com"
                 value={email}
                 onChange={e => setEmail(e.target.value)}
-                className="w-full bg-[#F8F6F1] border-2 border-[#E5E1D8] focus:border-[#121212] px-5 py-4 text-sm outline-none transition-colors rounded-none font-medium"
+                className="w-full rounded-md border border-[#d9e0db] bg-white px-5 py-4 text-sm font-medium outline-none transition-colors focus:border-[#ff6b00] focus:ring-2 focus:ring-[#ffedd5]"
               />
             </div>
 
-            {/* Password */}
             <div className="space-y-2">
-              <div className="flex justify-between items-center">
-                <label className="text-[10px] font-black text-[#121212] uppercase tracking-[0.4em] block" htmlFor="password">
+              <div className="flex items-center justify-between">
+                <label className="block text-[10px] font-black uppercase tracking-[0.3em] text-[#1b1c1c]" htmlFor="password">
                   Password
                 </label>
-                <button type="button" className="text-[10px] font-black text-[#A34D15] uppercase tracking-widest hover:underline">
+                <button type="button" className="text-[10px] font-black uppercase tracking-widest text-[#ff6b00] hover:underline">
                   Forgot Password?
                 </button>
               </div>
@@ -163,46 +218,40 @@ export default function LoginPage() {
                   type={showPw ? 'text' : 'password'}
                   required
                   autoComplete="current-password"
-                  placeholder="••••••••••"
+                  placeholder="********"
                   value={password}
                   onChange={e => setPassword(e.target.value)}
-                  className="w-full bg-[#F8F6F1] border-2 border-[#E5E1D8] focus:border-[#121212] px-5 py-4 text-sm outline-none transition-colors rounded-none font-medium pr-14"
+                  className="w-full rounded-md border border-[#d9e0db] bg-white px-5 py-4 pr-14 text-sm font-medium outline-none transition-colors focus:border-[#ff6b00] focus:ring-2 focus:ring-[#ffedd5]"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPw(!showPw)}
-                  className="absolute right-4 top-1/2 -translate-y-1/2 text-[#6B665E] hover:text-[#121212] transition-colors"
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-[#414844] transition-colors hover:text-[#1b1c1c]"
+                  aria-label={showPw ? 'Hide password' : 'Show password'}
                 >
-                  {showPw ? (
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
-                  ) : (
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
-                  )}
+                  {showPw ? <EyeOff size={18} /> : <Eye size={18} />}
                 </button>
               </div>
             </div>
 
-            {/* Submit */}
             <button
               type="submit"
               disabled={isLoading}
-              className="w-full bg-[#121212] text-white py-5 text-[11px] font-black uppercase tracking-[0.4em] hover:bg-[#A34D15] transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-3"
+              className="flex w-full items-center justify-center gap-3 rounded-md bg-[#e05300] py-5 text-[11px] font-black uppercase tracking-[0.3em] text-white transition-all hover:bg-[#ff6b00] disabled:cursor-not-allowed disabled:opacity-50"
             >
               {isLoading ? (
                 <>
-                  <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  <div className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
                   Signing in...
                 </>
-              ) : 'Sign In →'}
+              ) : 'Sign In ->'}
             </button>
           </form>
 
-          {/* Register link */}
-          <p className="text-center text-[10px] font-bold text-[#6B665E] uppercase tracking-widest pt-4 border-t border-[#F0EDE4]">
+          <p className="border-t border-[#e0e0e0] pt-4 text-center text-[10px] font-bold uppercase tracking-widest text-[#414844]">
             Want to sell on RMF?{' '}
-            <Link href="/register?role=SELLER" className="text-[#A34D15] font-black hover:underline">Apply as Seller</Link>
+            <Link href="/register?role=SELLER" className="font-black text-[#ff6b00] hover:underline">Apply as Seller</Link>
           </p>
-
         </div>
       </div>
     </div>

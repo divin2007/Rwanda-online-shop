@@ -1,10 +1,11 @@
-import { Injectable, NotFoundException, BadRequestException, ConflictException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, ConflictException, Logger } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { LocationService, Coordinates } from '@rmf/location';
 
 @Injectable()
 export class RiderService {
+  private readonly logger = new Logger(RiderService.name);
   private locationService: LocationService;
 
   constructor(
@@ -59,6 +60,30 @@ export class RiderService {
       throw new NotFoundException('Rider profile not found');
     }
 
+    // 4C fix: create wallet with rider role on approval so deductWeeklyInsurance finds them
+    this.ensureWalletExists(updated.userId).catch(e => {
+      this.logger.warn(`Failed to create wallet for rider ${updated.userId}: ${e.message}`);
+    });
+    // 4A/3F: sync role to user-service
+    this.syncRoleToUserService(updated.userId, 'RIDER').catch(() => {});
+    // Notify rider of approval
+    this.triggerNotification(updated.userId, 'Congratulations! Your rider application has been approved. You can now accept deliveries.');
+    return updated;
+  }
+
+  // 4A fix: add reject endpoint for admin to decline rider applications
+  async reject(id: string, reason?: string): Promise<any> {
+    const updated = await this.riderModel.findByIdAndUpdate(
+      id,
+      { $set: { isApproved: false, rejectedAt: new Date(), rejectionReason: reason || 'Application declined' } },
+      { new: true }
+    ).exec();
+
+    if (!updated) {
+      throw new NotFoundException('Rider profile not found');
+    }
+
+    this.triggerNotification(updated.userId, reason || 'Your rider application has been declined. Contact support for details.');
     return updated;
   }
 
@@ -98,7 +123,7 @@ export class RiderService {
     }
 
     const updated = await this.riderModel.findOneAndUpdate(
-      { userId, deletedAt: null, isActive: true }, // Only update if active
+      { userId, deletedAt: null }, // Allow updating location even if offline
       { 
         $set: { 
           currentLocation: {
@@ -123,10 +148,17 @@ export class RiderService {
     const updates: any = {};
 
     if (data.ratingUpdate !== undefined) {
-      // Stub: Real system would do proper moving average
+      // 4D fix: don't use the default 5.0 rating as if it came from real reviews.
+      // If totalDeliveries is 0, the first rating should NOT average against 5.0.
+      const hasRealRating = rider.totalDeliveries > 0;
       const totalDeliveries = rider.totalDeliveries + 1;
-      const currentRatingTotal = rider.rating * rider.totalDeliveries;
-      updates.rating = (currentRatingTotal + data.ratingUpdate) / totalDeliveries;
+      if (hasRealRating) {
+        const currentRatingTotal = rider.rating * rider.totalDeliveries;
+        updates.rating = (currentRatingTotal + data.ratingUpdate) / totalDeliveries;
+      } else {
+        // First real review — just use it directly (not averaged against the 5.0 default)
+        updates.rating = data.ratingUpdate;
+      }
       updates.totalDeliveries = totalDeliveries;
     }
 
@@ -161,11 +193,54 @@ export class RiderService {
       }
     }
 
+    // 4B fix: fetch real earnings from wallet-service instead of returning 0
+    let earnings = 0;
+    try {
+      const axios = require('axios');
+      const walletUrl = process.env.WALLET_SERVICE_URL || 'http://localhost:3007/api/v1';
+      const res = await axios.get(`${walletUrl}/wallets/${userId}/balance`);
+      earnings = res.data?.data?.totalEarnings || 0;
+    } catch {
+      this.logger.warn(`Could not fetch wallet earnings for rider ${userId}`);
+    }
+
     return {
-      earnings: 0, // Should be fetched from wallet service for full accuracy
+      earnings,
       completion: Math.round((1 - (rider.rejectionRate || 0)) * 100),
       rating: rider.rating || 5.0,
       drops
     };
+  }
+
+  // Helper: create wallet with rider role on approval
+  private async ensureWalletExists(userId: string) {
+    const axios = require('axios');
+    const walletUrl = process.env.WALLET_SERVICE_URL || 'http://localhost:3007/api/v1';
+    await axios.post(`${walletUrl}/wallets/ensure`, { userId, role: 'rider' }).catch(() => {
+      // Try the generic balance endpoint which auto-creates
+      return axios.get(`${walletUrl}/wallets/${userId}/balance`);
+    });
+  }
+
+  private async syncRoleToUserService(userId: string, role: string) {
+    try {
+      const axios = require('axios');
+      const userUrl = process.env.USER_SERVICE_URL || 'http://localhost:3001/api/v1';
+      await axios.put(`${userUrl}/users/${userId}/role`, { role });
+    } catch (e: any) {
+      this.logger.warn(`Failed to sync rider role for ${userId}: ${e.message}`);
+    }
+  }
+
+  private triggerNotification(userId: string, message: string) {
+    try {
+      const axios = require('axios');
+      const notificationUrl = process.env.NOTIFICATION_SERVICE_URL || 'http://localhost:3009/api/v1';
+      axios.post(`${notificationUrl}/notifications/in-app`, {
+        userId,
+        type: 'rider.status_update',
+        params: { message }
+      }).catch(() => {});
+    } catch {}
   }
 }

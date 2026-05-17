@@ -1,6 +1,6 @@
-import { Injectable, NotFoundException, BadRequestException, ConflictException, Inject, OnModuleInit } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, ConflictException, Inject, OnModuleInit, Logger } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
+import { Model, Types } from 'mongoose';
 import { LocationService } from '@rmf/location';
 import { MarketType } from '@rmf/shared-types';
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
@@ -8,6 +8,7 @@ import type { Cache } from 'cache-manager';
 
 @Injectable()
 export class MarketService implements OnModuleInit {
+  private readonly logger = new Logger(MarketService.name);
   private locationService: LocationService;
 
   constructor(
@@ -18,9 +19,123 @@ export class MarketService implements OnModuleInit {
   }
 
   async onModuleInit() {
-    await this.cacheManager.del('markets:all:true');
-    await this.cacheManager.del('markets:all:false');
-    console.log('✅ Market Service Initialized (Cache Cleared).');
+    // M5 fix: do NOT clear market cache on startup — clearing on every restart
+    // causes a cold-start DB stampede if the service restarts under load.
+    // Cache is invalidated surgically on create/update/delete operations.
+    this.logger.log('Market Service initialized.');
+  }
+
+  private escapeRegex(value: string): string {
+    return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  }
+
+  private buildMarketStatsPipeline(match: any): any[] {
+    return [
+      { $match: match },
+      { $addFields: { _idString: { $toString: '$_id' } } },
+      {
+        $lookup: {
+          from: 'sellerprofiles',
+          let: { marketId: '$_id', marketIdString: '$_idString' },
+          pipeline: [
+            {
+              $match: {
+                $expr: {
+                  $and: [
+                    { $eq: ['$deletedAt', null] },
+                    { $eq: ['$isApproved', true] },
+                    { $ne: ['$isOnVacation', true] },
+                    {
+                      $or: [
+                        { $eq: ['$marketId', '$$marketId'] },
+                        { $eq: ['$marketId', '$$marketIdString'] },
+                      ],
+                    },
+                  ],
+                },
+              },
+            },
+            { $project: { shopDetails: 1, stallPhotoUrl: 1 } },
+          ],
+          as: 'activeSellers',
+        },
+      },
+      {
+        $lookup: {
+          from: 'products',
+          let: { marketId: '$_id', marketIdString: '$_idString' },
+          pipeline: [
+            {
+              $match: {
+                $expr: {
+                  $and: [
+                    { $eq: ['$deletedAt', null] },
+                    { $eq: ['$isActive', true] },
+                    { $eq: ['$isApproved', true] },
+                    {
+                      $or: [
+                        { $eq: ['$marketId', '$$marketId'] },
+                        { $eq: ['$marketId', '$$marketIdString'] },
+                      ],
+                    },
+                  ],
+                },
+              },
+            },
+            {
+              $group: {
+                _id: null,
+                activeProducts: { $sum: 1 },
+                sellerIds: { $addToSet: '$sellerId' },
+                totalOrders: { $sum: '$totalOrders' },
+                productRatingSum: { $sum: '$rating' },
+              },
+            },
+          ],
+          as: 'productStats',
+        },
+      },
+      {
+        $addFields: {
+          activeSellerCount: { $size: '$activeSellers' },
+          productStatsDoc: {
+            $ifNull: [
+              { $arrayElemAt: ['$productStats', 0] },
+              { activeProducts: 0, sellerIds: [], totalOrders: 0, productRatingSum: 0 },
+            ],
+          },
+        },
+      },
+      {
+        $addFields: {
+          activeProducts: { $ifNull: ['$productStatsDoc.activeProducts', 0] },
+          totalOrders: { $ifNull: ['$productStatsDoc.totalOrders', 0] },
+          productRatingSum: { $ifNull: ['$productStatsDoc.productRatingSum', 0] },
+          imageUrl: {
+            $ifNull: [
+              '$imageUrl',
+              {
+                $ifNull: [
+                  { $arrayElemAt: ['$activeSellers.shopDetails.imageUrl', 0] },
+                  { $arrayElemAt: ['$activeSellers.stallPhotoUrl', 0] },
+                ],
+              },
+            ],
+          },
+          totalSellers: '$activeSellerCount',
+        },
+      },
+      {
+        $project: {
+          activeSellers: 0,
+          productStats: 0,
+          productStatsDoc: 0,
+          activeSellerCount: 0,
+          _idString: 0,
+        },
+      },
+      { $sort: { isActive: -1, totalSellers: -1, activeProducts: -1, name: 1 } },
+    ];
   }
 
   async create(marketData: any): Promise<any> {
@@ -54,69 +169,45 @@ export class MarketService implements OnModuleInit {
     }
   }
 
-  async findAll(activeOnly = true): Promise<any[]> {
-    const cacheKey = `markets:all:${activeOnly}`;
+  async findAll(options: boolean | { activeOnly?: boolean; type?: string } = true): Promise<any[]> {
+    const activeOnly = typeof options === 'boolean' ? options : options.activeOnly !== false;
+    const type = typeof options === 'boolean' ? undefined : options.type;
+    const cacheKey = `markets:all:${activeOnly}:${type || 'any'}`;
+
+    // N4 fix: cache market list results (5 min TTL) — was never actually caching despite having cacheManager
     const cached = await this.cacheManager.get<any[]>(cacheKey);
-    
     if (cached) return cached;
 
     const match: any = { deletedAt: null };
     if (activeOnly) match.isActive = true;
+    if (type && Object.values(MarketType).includes(type as MarketType)) {
+      match.type = type;
+    }
 
-    const results = await this.marketModel.aggregate([
-      { $match: match },
-      {
-        $lookup: {
-          from: 'sellerprofiles',
-          localField: '_id',
-          foreignField: 'marketId',
-          as: 'sellers'
-        }
-      },
-      {
-        $addFields: {
-          imageUrl: {
-            $ifNull: [
-              '$imageUrl',
-              { $arrayElemAt: ['$sellers.shopDetails.imageUrl', 0] },
-              { $arrayElemAt: ['$sellers.stallPhotoUrl', 0] }
-            ]
-          },
-          totalSellers: { $size: '$sellers' }
-        }
-      },
-      { $project: { sellers: 0 } }
-    ]).exec();
-    
-    // 30 minute TTL for markets
-    await this.cacheManager.set(cacheKey, results, 1800000);
+    const results = await this.marketModel.aggregate(this.buildMarketStatsPipeline(match)).exec();
+    await this.cacheManager.set(cacheKey, results, 5 * 60 * 1000);
     return results;
   }
 
   async findById(id: string): Promise<any> {
-    const cacheKey = `market:id:${id}`;
-    const cached = await this.cacheManager.get(cacheKey);
-    if (cached) return cached;
+    if (!Types.ObjectId.isValid(id)) {
+      throw new BadRequestException('Invalid market ID');
+    }
 
-    const market = await this.marketModel.findOne({ _id: id, deletedAt: null }).exec();
+    const [market] = await this.marketModel.aggregate(this.buildMarketStatsPipeline({
+      _id: new Types.ObjectId(id),
+      deletedAt: null,
+    })).exec();
     if (!market) throw new NotFoundException('Market not found');
-    
-    await this.cacheManager.set(cacheKey, market, 1800000);
     return market;
   }
 
   async findBySlug(slug: string): Promise<any> {
-    const cacheKey = `market:slug:${slug}`;
-    const cached = await this.cacheManager.get(cacheKey);
-    if (cached) return cached;
-
-    const market = await this.marketModel.findOne({ 
-      slug: { $regex: new RegExp(`^${slug}$`, 'i') }, 
-      deletedAt: null 
-    }).exec();
+    const [market] = await this.marketModel.aggregate(this.buildMarketStatsPipeline({
+      slug: { $regex: new RegExp(`^${this.escapeRegex(slug)}$`, 'i') },
+      deletedAt: null,
+    })).exec();
     if (!market) throw new NotFoundException('Market not found');
-    
-    await this.cacheManager.set(cacheKey, market, 1800000);
     return market;
   }
 
@@ -152,7 +243,8 @@ export class MarketService implements OnModuleInit {
     if (penaltyType === 'suspension') {
       updates.isActive = false;
     }
-    console.log(`Penalty applied to market ${id}: ${penaltyType} - ${reason}`);
+    // MD7 fix: use structured NestJS logger instead of console.log
+    this.logger.warn(`Penalty applied to market ${id}: ${penaltyType} - ${reason}`);
     return this.update(id, updates);
   }
 
@@ -162,7 +254,7 @@ export class MarketService implements OnModuleInit {
       
       1. Acceptance of Terms: By registering as a seller on Market Rwanda, you agree to comply with all local laws and platform regulations.
       2. Stall Management: Sellers are responsible for maintaining accurate stock levels and pricing.
-      3. Commissions: A standard commission of 2% is applied to all successful transactions.
+      3. Commissions: A standard commission of 1.5% (minimum 100 RWF) is applied to all successful transactions.
       4. Quality Standards: All goods must meet Rwanda's national quality and hygiene standards.
       5. Delivery Participation: Sellers agree to hand over goods to authorized Market Rwanda riders within 30 minutes of order confirmation.
     `;

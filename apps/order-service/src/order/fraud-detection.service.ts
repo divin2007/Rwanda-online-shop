@@ -73,8 +73,11 @@ export class FraudDetectionService {
       }
 
       // F006: Abnormally high transaction value
-      if (orderData.financials.subtotal > 500000) {
-        return { isFlagged: true, shouldBlock: true, reason: 'F006: Abnormally high transaction value' };
+      // MD4 fix: threshold is now configurable via FRAUD_HIGH_VALUE_THRESHOLD env var.
+      // Default raised to 2,000,000 RWF (~$1,400) to avoid blocking legitimate B2B orders.
+      const highValueThreshold = Number(process.env.FRAUD_HIGH_VALUE_THRESHOLD) || 2_000_000;
+      if (orderData.financials.subtotal > highValueThreshold) {
+        return { isFlagged: true, shouldBlock: true, reason: `F006: Abnormally high transaction value (>${highValueThreshold.toLocaleString()} RWF)` };
       }
 
       return { isFlagged: false, shouldBlock: false };

@@ -1,5 +1,8 @@
 import { Controller, Get, Post, Put, Patch, Body, Param, Request, Query, UseInterceptors, UploadedFile, BadRequestException } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
+import { randomUUID } from 'crypto';
+import { existsSync, mkdirSync, writeFileSync } from 'fs';
+import { extname, join } from 'path';
 import { DeliveryService } from './delivery.service';
 import type { Coordinates } from '@rmf/location';
 import { DeliveryStatus } from '@rmf/shared-types';
@@ -86,9 +89,23 @@ export class DeliveryController {
     if (!file) {
       throw new BadRequestException('No photo file uploaded');
     }
-    const base64 = file.buffer.toString('base64');
-    const dataUri = `data:${file.mimetype};base64,${base64}`;
-    return { success: true, data: { url: dataUri } };
+    const uploadDir = join(process.cwd(), 'uploads', 'pickup-photos');
+    if (!existsSync(uploadDir)) mkdirSync(uploadDir, { recursive: true });
+    const extension = extname(file.originalname || '') || this.extensionFromMime(file.mimetype);
+    const fileName = `${randomUUID()}${extension}`;
+    writeFileSync(join(uploadDir, fileName), file.buffer);
+    const publicBaseUrl = process.env.DELIVERY_SERVICE_PUBLIC_URL || `http://localhost:${process.env.PORT || 3008}`;
+    return { success: true, data: { url: `${publicBaseUrl}/uploads/pickup-photos/${fileName}` } };
+  }
+
+  private extensionFromMime(mimeType: string): string {
+    const extensions: Record<string, string> = {
+      'image/jpeg': '.jpg',
+      'image/png': '.png',
+      'image/webp': '.webp',
+      'image/gif': '.gif',
+    };
+    return extensions[mimeType] || '.bin';
   }
 
   @Put(':id/status')

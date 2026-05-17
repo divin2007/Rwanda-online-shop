@@ -8,7 +8,7 @@
   ],
   "scripts": {
     "build": "turbo run build",
-    "dev": "turbo run dev --concurrency=20",
+    "dev": "npm run build --workspace @rmf/database && turbo run dev --concurrency=20",
     "wait-for-services": "node scripts/wait-for-services.js",
     "lint": "turbo run lint",
     "test": "turbo run test"

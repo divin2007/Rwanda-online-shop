@@ -1,11 +1,12 @@
 'use client';
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import React from 'react';
 import { 
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   BarChart, Bar, PieChart, Pie, Cell, Legend 
 } from 'recharts';
 
-const COLORS = ['#121212', '#F59E0B', '#A34D15', '#6B665E', '#1A1A1A'];
+const CHART_COLORS = ['#1b4332', '#116c4a', '#405046', '#8ca197', '#c1ecd4'];
 
 interface AnalyticsChartsProps {
   orders?: any[];
@@ -19,6 +20,13 @@ interface AnalyticsChartsProps {
 }
 
 export const AnalyticsCharts = ({ orders = [], data, type, hidePerformance = false }: AnalyticsChartsProps) => {
+  const [isMounted, setIsMounted] = React.useState(false);
+
+  React.useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
+  if (!isMounted) return <div className="h-[320px] w-full animate-pulse rounded-lg border border-[#e0e0e0] bg-[#f7faf8]" />;
   // 1. Process data for Revenue Trend (Last 7 days)
   let revenueData = [];
   if (data?.trends) {
@@ -91,44 +99,44 @@ export const AnalyticsCharts = ({ orders = [], data, type, hidePerformance = fal
   }
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 mb-8">
+    <div className="mb-8 grid grid-cols-1 gap-5 lg:grid-cols-2">
       {/* Revenue Trend */}
-      <div className="bg-white p-10 border border-[#E5E1D8] shadow-sm relative group">
-        <h3 className="text-[10px] font-black uppercase tracking-[0.4em] mb-10 flex items-center gap-4 text-[#121212]">
-          <span className="w-2 h-2 bg-[#F59E0B] rounded-full animate-pulse"></span>
+      <div className="group relative rounded-lg border border-[#dfe7e2] bg-white p-5 shadow-sm">
+        <h3 className="mb-5 flex items-center gap-3 text-[11px] font-black uppercase tracking-[0.16em] text-[#1b1c1c]">
+          <span className="h-2 w-2 rounded-full bg-[#116c4a]"></span>
           Revenue Trend (Last 7 Days)
         </h3>
-        <div className="h-[350px] w-full">
+        <div className="h-[280px] w-full">
           <ResponsiveContainer width="100%" height="100%">
             <AreaChart data={revenueData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
               <defs>
                 <linearGradient id="colorRev" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#F59E0B" stopOpacity={0.1}/>
-                  <stop offset="95%" stopColor="#F59E0B" stopOpacity={0}/>
+                  <stop offset="5%" stopColor="#116c4a" stopOpacity={0.18}/>
+                  <stop offset="95%" stopColor="#116c4a" stopOpacity={0}/>
                 </linearGradient>
               </defs>
               <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-              <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{ fontSize: 9, fontWeight: '900', fill: '#121212' }} minTickGap={15} />
+              <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{ fontSize: 9, fontWeight: '900', fill: '#1b1c1c' }} minTickGap={15} />
               <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 9, fontWeight: '900', fill: '#64748b' }} tickFormatter={(value) => `${value / 1000}k`} />
               <Tooltip 
-                contentStyle={{ background: '#121212', border: '1px solid #F59E0B', borderRadius: '0px', padding: '12px' }}
-                itemStyle={{ color: '#F59E0B', fontSize: '10px', fontWeight: '900', textTransform: 'uppercase', letterSpacing: '0.1em' }}
+                contentStyle={{ background: '#1b1c1c', border: '1px solid #c1ecd4', borderRadius: '8px', padding: '12px' }}
+                itemStyle={{ color: '#c1ecd4', fontSize: '10px', fontWeight: '900', textTransform: 'uppercase', letterSpacing: '0.1em' }}
                 labelStyle={{ color: '#fff', fontSize: '8px', marginBottom: '4px', fontWeight: 'bold' }}
                 formatter={(value: any) => [`${value.toLocaleString()} RWF`, 'Revenue']}
               />
-              <Area type="monotone" dataKey="revenue" stroke="#F59E0B" strokeWidth={3} fillOpacity={1} fill="url(#colorRev)" />
+              <Area type="monotone" dataKey="revenue" stroke="#116c4a" strokeWidth={3} fillOpacity={1} fill="url(#colorRev)" />
             </AreaChart>
           </ResponsiveContainer>
         </div>
       </div>
 
       {/* Distribution */}
-      <div className="bg-white p-10 border border-[#E5E1D8] shadow-sm relative group">
-        <h3 className="text-[10px] font-black uppercase tracking-[0.4em] mb-10 flex items-center gap-4 text-[#121212]">
-          <span className="w-2 h-2 bg-[#121212] rounded-full"></span>
+      <div className="group relative rounded-lg border border-[#dfe7e2] bg-white p-5 shadow-sm">
+        <h3 className="mb-5 flex items-center gap-3 text-[11px] font-black uppercase tracking-[0.16em] text-[#1b1c1c]">
+          <span className="h-2 w-2 rounded-full bg-[#012d1d]"></span>
           Order Status Distribution
         </h3>
-        <div className="h-[350px] w-full flex items-center">
+        <div className="flex h-[280px] w-full items-center">
           <ResponsiveContainer width="100%" height="100%">
             <PieChart>
               <Pie
@@ -142,14 +150,14 @@ export const AnalyticsCharts = ({ orders = [], data, type, hidePerformance = fal
                 stroke="none"
               >
                 {statusData.map((entry, index) => (
-                  <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                  <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
                 ))}
               </Pie>
               <Tooltip 
-                 contentStyle={{ background: '#121212', border: '1px solid #F59E0B', borderRadius: '0px' }}
-                 itemStyle={{ color: '#F59E0B', fontSize: '10px', fontWeight: '900' }}
+                 contentStyle={{ background: '#1b1c1c', border: '1px solid #c1ecd4', borderRadius: '8px' }}
+                 itemStyle={{ color: '#c1ecd4', fontSize: '10px', fontWeight: '900' }}
               />
-              <Legend verticalAlign="bottom" wrapperStyle={{ paddingTop: '20px' }} iconType="rect" formatter={(value) => <span className="text-[8px] font-black uppercase tracking-widest text-[#6B665E] leading-relaxed">{value}</span>}/>
+              <Legend verticalAlign="bottom" wrapperStyle={{ paddingTop: '20px' }} iconType="rect" formatter={(value) => <span className="text-[8px] font-black uppercase tracking-widest text-[#414844] leading-relaxed">{value}</span>}/>
             </PieChart>
           </ResponsiveContainer>
         </div>
@@ -157,27 +165,27 @@ export const AnalyticsCharts = ({ orders = [], data, type, hidePerformance = fal
 
       {/* Performance Bar Chart */}
       {!hidePerformance && (
-        <div className="bg-white p-10 border-2 border-[#121212] shadow-[8px_8px_0_0_#121212] lg:col-span-2 mt-6">
-          <h3 className="text-[10px] font-black uppercase tracking-[0.4em] mb-10 flex items-center gap-4 text-[#121212]">
-            <span className="w-2 h-2 bg-[#A34D15] rounded-full"></span>
+        <div className="mt-1 rounded-lg border border-[#dfe7e2] bg-white p-5 shadow-sm lg:col-span-2">
+          <h3 className="mb-5 flex items-center gap-3 text-[11px] font-black uppercase tracking-[0.16em] text-[#1b1c1c]">
+            <span className="h-2 w-2 rounded-full bg-[#1b4332]"></span>
             {type === 'admin' ? 'Top Selling Vendors' : 'Top Selling Products'}
           </h3>
-          <div className="h-[350px] w-full">
+          <div className="h-[280px] w-full">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={performanceData} layout="vertical" margin={{ left: 40, right: 40 }}>
                 <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#f1f5f9" />
                 <XAxis type="number" axisLine={false} tickLine={false} tick={{ fontSize: 9, fontWeight: '900', fill: '#64748b' }} />
-                <YAxis dataKey="name" type="category" axisLine={false} tickLine={false} tick={{ fontSize: 9, fontWeight: '900', fill: '#121212' }} width={120} />
+                <YAxis dataKey="name" type="category" axisLine={false} tickLine={false} tick={{ fontSize: 9, fontWeight: '900', fill: '#1b1c1c' }} width={120} />
                 <Tooltip 
-                  cursor={{ fill: '#F8F6F1' }}
-                  contentStyle={{ background: '#121212', border: '1px solid #F59E0B', borderRadius: '0px' }}
-                  itemStyle={{ color: '#F59E0B', fontSize: '10px', fontWeight: '900' }}
+                  cursor={{ fill: '#fcf9f8' }}
+                  contentStyle={{ background: '#1b1c1c', border: '1px solid #c1ecd4', borderRadius: '8px' }}
+                  itemStyle={{ color: '#c1ecd4', fontSize: '10px', fontWeight: '900' }}
                   labelStyle={{ color: '#fff', fontSize: '8px', marginBottom: '4px' }}
                 />
                 <Bar 
                   dataKey={type === 'admin' ? 'revenue' : 'sales'} 
-                  fill="#121212" 
-                  radius={[0, 0, 0, 0]} 
+                  fill="#116c4a" 
+                  radius={[4, 4, 4, 4]} 
                   barSize={24}
                 />
               </BarChart>

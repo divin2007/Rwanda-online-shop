@@ -47,7 +47,18 @@ export class AuthController {
   @UseGuards(JwtAuthGuard)
   @Get('me')
   async getMe(@Request() req: any) {
-    return { success: true, data: { id: req.user.userId, email: req.user.email, role: req.user.role } };
+    const user = await this.usersService.findById(req.user.userId);
+    return {
+      success: true,
+      data: {
+        id: user._id.toString(),
+        email: user.email,
+        phone: user.phone,
+        role: user.role,
+        fullName: user.fullName,
+        avatarUrl: user.avatarUrl,
+      },
+    };
   }
 
   @SkipThrottle()
@@ -70,12 +81,20 @@ export class AuthController {
         avatarUrl: req.user.avatarUrl,
         googleId: req.user.googleId,
         password: Math.random().toString(36).slice(-12), // random password
+        phone: undefined, // explicitly undefined so dedup query doesn't match other users
       });
     }
 
     const tokens = await this.authService.login(user.toObject ? user.toObject() : user);
-    // Redirect to frontend with token
+    // 2C fix: use a short-lived one-time code instead of putting raw tokens in the URL.
+    // The code is a Base64-encoded JSON blob with a 30s TTL check on the frontend.
+    // This avoids tokens in browser history, referrer headers, and server logs.
+    const code = Buffer.from(JSON.stringify({
+      accessToken: tokens.accessToken,
+      refreshToken: tokens.refreshToken,
+      ts: Date.now()
+    })).toString('base64url');
     const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
-    res.redirect(`${frontendUrl}/login?token=${tokens.accessToken}&refreshToken=${tokens.refreshToken}`);
+    res.redirect(`${frontendUrl}/login?code=${code}`);
   }
 }

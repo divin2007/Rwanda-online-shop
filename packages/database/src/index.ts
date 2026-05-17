@@ -6,6 +6,7 @@ export * from './schemas/seller-profile.schema';
 export * from './schemas/rider-profile.schema';
 export * from './schemas/market.schema';
 export * from './schemas/product.schema';
+export * from './schemas/taxonomy-category.schema';
 export * from './schemas/promotion.schema';
 export * from './schemas/transaction.schema';
 export * from './schemas/delivery.schema';
@@ -16,6 +17,7 @@ export * from './schemas/payout-request.schema';
 export * from './schemas/ledger-entry.schema';
 export * from './schemas/review.schema';
 export * from './schemas/rider-rejection.schema';
+export * from './schemas/contract.schema';
 
 // Connection manager
 export const connectDatabase = async (uri: string) => {

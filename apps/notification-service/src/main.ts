@@ -4,12 +4,18 @@ import { AppModule } from './app.module';
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
-    const corsOrigin = process.env.CORS_ORIGIN || 'http://localhost:3000,https://rwshop.org,https://www.rwshop.org';
+  const corsOrigin = process.env.CORS_ORIGIN || 'http://localhost:3000';
   const allowedOrigins = corsOrigin.split(',').map(s => s.trim());
   app.enableCors({
     origin(origin: any, callback: any) {
       if (!origin) return callback(null, true);
       const originHost = origin.replace(/^https?:\/\//, '').replace(/:\d+$/, '');
+      
+      // Allow local network and localhost in development
+      if (originHost === 'localhost' || originHost === '127.0.0.1' || originHost.startsWith('192.168.')) {
+        return callback(null, true);
+      }
+
       if (originHost === 'rwshop.org' || originHost.endsWith('.rwshop.org')) {
         return callback(null, true);
       }
@@ -19,7 +25,7 @@ async function bootstrap() {
           return callback(null, true);
         }
       }
-      callback(new Error(`Origin "${origin}" not allowed by CORS. Set CORS_ORIGIN env var to include it.`));
+      callback(new Error(`Origin "${origin}" not allowed by CORS.`));
     },
     credentials: true,
   });

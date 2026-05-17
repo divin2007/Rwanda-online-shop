@@ -1,10 +1,20 @@
 import { Controller, Get, Post, Put, Body, Param, Request, Query, BadRequestException, UseInterceptors, UploadedFile } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
+import { randomUUID } from 'crypto';
+import { existsSync, mkdirSync, writeFileSync } from 'fs';
+import { join } from 'path';
 import { SellerService } from './seller.service';
 
 @Controller('sellers')
 export class SellerController {
   constructor(private readonly sellerService: SellerService) {}
+
+  private readonly documentExtensions: Record<string, string> = {
+    'application/pdf': '.pdf',
+    'image/jpeg': '.jpg',
+    'image/png': '.png',
+    'image/webp': '.webp',
+  };
 
   @Get()
   async findAll(@Query('isApproved') isApproved?: string) {
@@ -28,14 +38,26 @@ export class SellerController {
   }
 
   @Post('upload-document')
-  @UseInterceptors(FileInterceptor('file'))
+  @UseInterceptors(FileInterceptor('file', { limits: { fileSize: 8 * 1024 * 1024 } }))
   async uploadDocument(@UploadedFile() file: any) {
     if (!file) {
       throw new BadRequestException('No document file uploaded');
     }
-    const base64 = file.buffer.toString('base64');
-    const dataUri = `data:${file.mimetype};base64,${base64}`;
-    return { success: true, data: { url: dataUri } };
+    const extension = this.extensionFromMime(file.mimetype);
+    const uploadDir = join(process.cwd(), 'uploads', 'seller-documents');
+    if (!existsSync(uploadDir)) mkdirSync(uploadDir, { recursive: true });
+    const fileName = `${randomUUID()}${extension}`;
+    writeFileSync(join(uploadDir, fileName), file.buffer);
+    const publicBaseUrl = process.env.SELLER_SERVICE_PUBLIC_URL || `http://localhost:${process.env.PORT || 3004}`;
+    return { success: true, data: { url: `${publicBaseUrl}/uploads/seller-documents/${fileName}` } };
+  }
+
+  private extensionFromMime(mimeType: string): string {
+    const extension = this.documentExtensions[mimeType];
+    if (!extension) {
+      throw new BadRequestException('Unsupported document type. Upload PDF, JPG, PNG, or WebP.');
+    }
+    return extension;
   }
 
   @Get('me')

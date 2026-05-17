@@ -282,7 +282,13 @@ export class DeliveryService {
   }
 
   async acceptDelivery(id: string, riderId: string): Promise<any> {
-    // Frontend sends user?.id, so we need to find the RiderProfile by userId OR _id
+    // 1. Check if rider already has an active delivery
+    const activeDelivery = await this.getActiveDelivery(riderId);
+    if (activeDelivery) {
+      throw new ConflictException('You already have an active delivery. Please complete it before accepting a new one.');
+    }
+
+    // 2. Resolve rider profile
     let riderProfile = await this.riderModel.findById(riderId).exec().catch(() => null);
     if (!riderProfile) {
       riderProfile = await this.riderModel.findOne({ userId: riderId }).exec();
@@ -341,12 +347,13 @@ export class DeliveryService {
         orderId: updatedDelivery.orderId,
         riderName: 'You' 
       });
-    }
 
-    // Notify the frontend tracking page that a rider is coming
-    if (updatedDelivery?.orderId) {
-      // Move delivery status to EN_ROUTE_TO_PICKUP via internal update (triggers gateway)
-      await this.updateStatus(id, DeliveryStatus.EN_ROUTE_TO_PICKUP);
+      // Notify the order-service and frontend tracking page that a rider is en route.
+      // We do NOT call updateStatus() here because the atomic findOneAndUpdate above
+      // already transitioned the status to EN_ROUTE_TO_PICKUP.
+      if (updatedDelivery.orderId) {
+        this.deliveryGateway.server.emit(`order:${updatedDelivery.orderId}:status`, { status: 'confirmed' });
+      }
     }
 
     return updatedDelivery;

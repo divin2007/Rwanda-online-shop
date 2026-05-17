@@ -1,5 +1,5 @@
 'use client';
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 
 interface StarRatingProps {
   rating: number;
@@ -10,6 +10,11 @@ interface StarRatingProps {
 export const StarRating = ({ rating, onRatingChange, readonly = false }: StarRatingProps) => {
   const [hover, setHover] = useState(0);
 
+  // MD5 fix: reset hover highlight when the component becomes read-only
+  // (e.g. after a user submits a rating and the prop flips from false → true)
+  useEffect(() => {
+    if (readonly) setHover(0);
+  }, [readonly]);
   return (
     <div className="flex items-center gap-1">
       {[1, 2, 3, 4, 5].map((star) => (

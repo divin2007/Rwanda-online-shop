@@ -1,6 +1,6 @@
 'use client';
 import React, { useEffect, useState } from 'react';
-import { MapContainer, TileLayer, Marker, Popup, Tooltip, Polyline } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Popup, Tooltip, Polyline, useMap } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
 import { useSocket } from '@/hooks/useSocket';
@@ -46,6 +46,14 @@ interface MarketLocation {
     coordinates: [number, number]; // [lng, lat]
   };
 }
+
+const MapViewUpdater = ({ centerLat, centerLng }: { centerLat: number; centerLng: number }) => {
+  const map = useMap();
+  useEffect(() => {
+    map.setView([centerLat, centerLng], map.getZoom());
+  }, [centerLat, centerLng, map]);
+  return null;
+};
 
 export const RiderMap = ({ marketId, centerLat = -1.9441, centerLng = 30.0619, marketName }: { marketId: string, centerLat?: number, centerLng?: number, marketName?: string }) => {
   const { data } = useSocket<RiderLocation>(process.env.NEXT_PUBLIC_DELIVERY_SERVICE_URL || 'http://localhost:3008', 'rider:public:locations');
@@ -107,11 +115,12 @@ export const RiderMap = ({ marketId, centerLat = -1.9441, centerLng = 30.0619, m
   return (
     <div className="w-full h-full relative z-0">
       <MapContainer 
-        key={`rider-map-${marketId}-${centerLat}-${centerLng}`}
+        key={`rider-map-${marketId}`}
         center={[centerLat, centerLng]} 
         zoom={isAdmin ? 12 : 15} 
         style={{ height: '100%', width: '100%' }}
       >
+        <MapViewUpdater centerLat={centerLat} centerLng={centerLng} />
         {mapMode === 'standard' ? (
           <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
         ) : (
@@ -123,13 +132,15 @@ export const RiderMap = ({ marketId, centerLat = -1.9441, centerLng = 30.0619, m
         
         {/* Market Locations */}
         {isAdmin ? (
-          markets.map(m => (
-            <Marker key={m._id} position={[m.location.coordinates[1], m.location.coordinates[0]]} icon={shopIcon}>
-              <Tooltip permanent direction="bottom">
-                <div className="font-bold text-xs">{m.name}</div>
-              </Tooltip>
-            </Marker>
-          ))
+          markets
+            .filter(m => m.location && Array.isArray(m.location.coordinates) && m.location.coordinates.length >= 2)
+            .map(m => (
+              <Marker key={m._id} position={[m.location.coordinates[1], m.location.coordinates[0]]} icon={shopIcon}>
+                <Tooltip permanent direction="bottom">
+                  <div className="font-bold text-xs">{m.name}</div>
+                </Tooltip>
+              </Marker>
+            ))
         ) : (
           <Marker position={[centerLat, centerLng]} icon={shopIcon}>
             {marketName && (

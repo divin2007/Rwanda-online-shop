@@ -1,11 +1,21 @@
 import { Controller, Get, Post, Put, Patch, Body, Param, Request, Query, UseInterceptors, UploadedFile, BadRequestException } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
+import { randomUUID } from 'crypto';
+import { existsSync, mkdirSync, writeFileSync } from 'fs';
+import { join } from 'path';
 import { RiderService } from './rider.service';
 import type { Coordinates } from '@rmf/location';
 
 @Controller('riders')
 export class RiderController {
   constructor(private readonly riderService: RiderService) {}
+
+  private readonly documentExtensions: Record<string, string> = {
+    'application/pdf': '.pdf',
+    'image/jpeg': '.jpg',
+    'image/png': '.png',
+    'image/webp': '.webp',
+  };
 
   @Post('register')
   async create(@Body() riderData: any) {
@@ -81,17 +91,36 @@ export class RiderController {
     return { success: true, data: rider };
   }
 
+  // 4A fix: reject endpoint for admin to decline rider applications
+  @Post(':id/reject')
+  async reject(@Param('id') id: string, @Body() body?: { reason?: string }) {
+    const rider = await this.riderService.reject(id, body?.reason);
+    return { success: true, data: rider };
+  }
+
   @Post('upload-document')
-  @UseInterceptors(FileInterceptor('file'))
+  @UseInterceptors(FileInterceptor('file', { limits: { fileSize: 8 * 1024 * 1024 } }))
   async uploadDocument(@UploadedFile() file: any) {
     if (!file) {
       throw new BadRequestException('No file uploaded');
     }
-    const base64 = file.buffer.toString('base64');
-    const dataUri = `data:${file.mimetype};base64,${base64}`;
+    const extension = this.extensionFromMime(file.mimetype);
+    const uploadDir = join(process.cwd(), 'uploads', 'rider-documents');
+    if (!existsSync(uploadDir)) mkdirSync(uploadDir, { recursive: true });
+    const fileName = `${randomUUID()}${extension}`;
+    writeFileSync(join(uploadDir, fileName), file.buffer);
+    const publicBaseUrl = process.env.RIDER_SERVICE_PUBLIC_URL || `http://localhost:${process.env.PORT || 3005}`;
     return { 
       success: true, 
-      data: { url: dataUri } 
+      data: { url: `${publicBaseUrl}/uploads/rider-documents/${fileName}` } 
     };
+  }
+
+  private extensionFromMime(mimeType: string): string {
+    const extension = this.documentExtensions[mimeType];
+    if (!extension) {
+      throw new BadRequestException('Unsupported document type. Upload PDF, JPG, PNG, or WebP.');
+    }
+    return extension;
   }
 }

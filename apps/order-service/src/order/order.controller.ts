@@ -32,7 +32,24 @@ export class OrderController {
   @Public()
   @Put(':id/status')
   async updateStatus(@Param('id') id: string, @Body() body: { status: OrderStatus, userId?: string }, @Req() req: any) {
-    const userId = req.user?.userId || body.userId || 'system';
+    let userId = 'system';
+    const authHeader = req.headers?.authorization;
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      try {
+        const token = authHeader.substring(7);
+        const jwt = require('jsonwebtoken');
+        const jwtSecret = process.env.JWT_SECRET || 'dev-secret-change-in-prod';
+        const decoded = jwt.verify(token, jwtSecret);
+        if (decoded && decoded.sub) {
+          userId = decoded.sub;
+        }
+      } catch (err: any) {
+        console.warn('Failed to verify JWT token in public status transition endpoint:', err.message);
+      }
+    } else if (body.userId) {
+      userId = body.userId;
+    }
+
     const order = await this.orderService.updateOrderStatus(id, body.status, userId);
     return { success: true, data: order };
   }

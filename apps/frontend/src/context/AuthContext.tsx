@@ -13,7 +13,7 @@ interface User {
 interface AuthContextType {
   user: User | null;
   isLoading: boolean;
-  login: (userData: User, token: string) => void;
+  login: (userData: User, token: string, refreshToken?: string) => void;
   logout: () => void;
   isAuthenticated: boolean;
 }
@@ -51,8 +51,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     fetchUser();
   }, []);
 
-  const login = (userData: User, token: string) => {
+  const login = (userData: User, token: string, refreshToken?: string) => {
     localStorage.setItem('accessToken', token);
+    if (refreshToken) {
+      localStorage.setItem('refreshToken', refreshToken);
+    }
     setUser(userData);
   };
 
@@ -63,8 +66,16 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       // Ignore
     } finally {
       localStorage.removeItem('accessToken');
+      localStorage.removeItem('refreshToken');
       setUser(null);
-      window.location.href = '/login';
+      // 2E fix: use soft navigation instead of hard redirect.
+      // window.location.href kills all WebSocket connections and React state.
+      // Setting user to null triggers the auth check in protected routes,
+      // which will redirect to /login via Next.js router.
+      // Only use hard redirect as last resort for public pages.
+      if (typeof window !== 'undefined') {
+        window.location.replace('/login');
+      }
     }
   };
 

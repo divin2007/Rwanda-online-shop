@@ -20,6 +20,24 @@ if (Test-Path ".env") {
     }
 }
 
+# 1.1 Load and merge Environment Variables from root .env.local (takes precedence)
+if (Test-Path ".env.local") {
+    Write-Host "Loading environment variables from .env.local..." -ForegroundColor Gray
+    Get-Content .env.local | Where-Object { $_ -match '=' -and $_ -notmatch '^#' } | ForEach-Object {
+        $line = $_.Trim()
+        if ($line) {
+            $name, $value = $line.Split('=', 2)
+            $name = $name.Trim()
+            $value = $value.Trim()
+            # Remove quotes if present
+            if ($value.StartsWith('"') -and $value.EndsWith('"')) { $value = $value.Substring(1, $value.Length - 2) }
+            if ($value.StartsWith("'") -and $value.EndsWith("'")) { $value = $value.Substring(1, $value.Length - 2) }
+            [System.Environment]::SetEnvironmentVariable($name, $value, [System.EnvironmentVariableTarget]::Process)
+        }
+    }
+}
+
+
 # 2. Check for Docker
 if (!(Get-Command docker -ErrorAction SilentlyContinue)) {
     Write-Error "Docker is not installed or not in PATH. Please install Docker Desktop to run local MongoDB/Redis."

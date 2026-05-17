@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Outfit, Fraunces } from "next/font/google";
+import { Inter } from "next/font/google";
 import "./globals.css";
 import { CartProvider } from "@/components/cart/CartContext";
 import { AuthProvider } from "@/context/AuthContext";
@@ -7,16 +7,9 @@ import { LanguageProvider } from "@/context/LanguageContext";
 import { WishlistProvider } from "@/context/WishlistContext";
 import { TacticalToaster } from "@/components/ui/TacticalToaster";
 
-const outfit = Outfit({
+const inter = Inter({
   subsets: ["latin"],
-  variable: "--font-outfit",
-  display: "swap",
-});
-
-const fraunces = Fraunces({
-  subsets: ["latin"],
-  variable: "--font-fraunces",
-  style: ["normal", "italic"],
+  variable: "--font-inter",
   display: "swap",
 });
 
@@ -32,7 +25,7 @@ export const metadata: Metadata = {
 };
 
 export const viewport = {
-  themeColor: "#A34D15",
+  themeColor: "#1b4332",
 };
 
 export default function RootLayout({
@@ -41,7 +34,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={`${outfit.variable} ${fraunces.variable}`}>
+    <html lang="en" className={inter.variable}>
       <head>
         <link rel="apple-touch-icon" href="/icon-192.png" />
         <meta name="mobile-web-app-capable" content="yes" />

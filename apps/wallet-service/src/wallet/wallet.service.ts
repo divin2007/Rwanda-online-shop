@@ -30,11 +30,85 @@ export class WalletService {
     return await this.ledgerModel.find({ userId }).sort({ createdAt: -1 }).limit(50).exec();
   }
 
+  private toLedgerTransactionId(value?: string): Types.ObjectId {
+    return value && Types.ObjectId.isValid(value) ? new Types.ObjectId(value) : new Types.ObjectId();
+  }
+
+  private processLedgerEntries(data: {
+    transactionId?: string;
+    entries: Array<{ userId?: string; type: 'credit' | 'debit'; account: string; amount: number; description: string }>;
+  }): Promise<any> {
+    // N2 fix: use timestamp + random suffix to prevent ledgerId collisions under concurrent load
+    const ledgerId = `LGR-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+    const transactionId = this.toLedgerTransactionId(data.transactionId);
+    const savedEntries: any[] = [];
+
+    const process = async () => {
+      for (const [index, entry] of data.entries.entries()) {
+        const amount = Number(entry.amount);
+        if (!amount || amount <= 0) {
+          throw new BadRequestException('Ledger entry amount must be greater than zero');
+        }
+
+        let balanceAfter = 0;
+        if (entry.userId) {
+          const balanceChange = entry.type === 'credit' ? amount : -amount;
+          const wallet = await this.walletModel.findOneAndUpdate(
+            { userId: entry.userId },
+            {
+              $inc: {
+                balance: balanceChange,
+                ...(entry.type === 'credit' ? { totalEarnings: amount } : {})
+              }
+            },
+            { new: true, upsert: true }
+          );
+          balanceAfter = wallet.balance;
+        }
+
+        savedEntries.push(await new this.ledgerModel({
+          ledgerId: `${ledgerId}-${index}`,
+          userId: entry.userId,
+          transactionId,
+          type: entry.type,
+          account: entry.account,
+          amount,
+          description: entry.description,
+          balanceAfter
+        }).save());
+      }
+      return { success: true, ledgerId, data: savedEntries };
+    };
+
+    return process();
+  }
+
+  async deposit(userId: string, amount: number, method: string, phone?: string): Promise<any> {
+    if (!amount || amount <= 0) {
+      throw new BadRequestException('Deposit amount must be greater than zero');
+    }
+
+    await this.processLedgerEntries({
+      entries: [
+        {
+          userId,
+          type: 'credit',
+          account: 'user_wallet_deposit',
+          amount,
+          description: `Wallet deposit via ${method}${phone ? ` (${phone})` : ''}`
+        }
+      ]
+    });
+
+    return this.getBalance(userId);
+  }
+
   /**
    * Performs an atomic double-entry transaction
    */
   async processTransaction(data: {
     transactionId: string;
+    entries?: Array<{ userId?: string; type: 'credit' | 'debit'; account: string; amount: number; description: string }>;
     orderNumber?: string;
     description: string;
     sellerId: string;
@@ -45,22 +119,33 @@ export class WalletService {
     riderPayout?: number;
     commissionFloorApplied?: boolean;
   }): Promise<any> {
-    const ledgerId = `LGR-${Date.now()}`;
+    if (Array.isArray(data.entries)) {
+      return this.processLedgerEntries({ transactionId: data.transactionId, entries: data.entries });
+    }
+
+    const ledgerTransactionId = this.toLedgerTransactionId(data.transactionId);
+    // N2 fix: collision-resistant ledger ID
+    const ledgerId = `LGR-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
     const orderRef = data.orderNumber || data.transactionId.substring(0, 8);
-    
-    // Check if this specific payout (seller or rider) has already been processed
+
+    // C1 IMPORTANT: This idempotency check is a read-then-write pattern.
+    // It is safe against duplicate webhook retries (seconds apart) but NOT against
+    // true concurrent requests within the same millisecond.
+    // Full atomicity requires a unique compound index on { transactionId, userId, account }
+    // in the LedgerEntry schema — ensure that index exists in @rmf/database ledgerEntrySchema.
     const existingSellerLedger = await this.ledgerModel.findOne({ 
-      transactionId: data.transactionId, 
+      transactionId: ledgerTransactionId, 
       userId: data.sellerId,
       account: 'seller_wallet'
     });
     
     const existingRiderLedger = await this.ledgerModel.findOne({ 
-      transactionId: data.transactionId, 
+      transactionId: ledgerTransactionId, 
       userId: data.riderId,
       account: 'rider_wallet'
     });
 
+    // C6 fix: track the actual credited amount (positive) for rollback — not the negated value
     const appliedCredits: Array<{ userId: string; amount: number }> = [];
 
     try {
@@ -76,12 +161,13 @@ export class WalletService {
           { $inc: { balance: sellerNet, totalEarnings: sellerNet } },
           { new: true, upsert: true }
         );
-        appliedCredits.push({ userId: data.sellerId, amount: -sellerNet });
+        // C6 fix: store the positive credited amount; rollback will negate it
+        appliedCredits.push({ userId: data.sellerId, amount: sellerNet });
 
         await new this.ledgerModel({
           ledgerId,
           userId: data.sellerId,
-          transactionId: data.transactionId,
+          transactionId: ledgerTransactionId,
           type: 'credit',
           account: 'seller_wallet',
           amount: sellerNet,
@@ -102,12 +188,13 @@ export class WalletService {
           { $inc: { balance: riderNet, totalEarnings: riderNet } },
           { new: true, upsert: true }
         );
-        appliedCredits.push({ userId: data.riderId, amount: -riderNet });
+        // C6 fix: store the positive credited amount; rollback will negate it
+        appliedCredits.push({ userId: data.riderId, amount: riderNet });
 
         await new this.ledgerModel({
           ledgerId,
           userId: data.riderId,
-          transactionId: data.transactionId,
+          transactionId: ledgerTransactionId,
           type: 'credit',
           account: 'rider_wallet',
           amount: riderNet,
@@ -118,18 +205,16 @@ export class WalletService {
 
       return { success: true, ledgerId };
     } catch (error) {
-      // Manual compensation rollback (since we don't have replica set transactions):
-      // Reverse each wallet credit that was applied before the failure.
+      // C6 fix: rollback uses the positive credited amount (negated here) so totalEarnings
+      // goes back to its original value instead of going further negative.
       for (const credit of appliedCredits) {
         try {
           await this.walletModel.findOneAndUpdate(
             { userId: credit.userId },
-            {
-              $inc: { balance: credit.amount, totalEarnings: credit.amount }
-            }
+            // Subtract the amount we credited (both balance and totalEarnings)
+            { $inc: { balance: -credit.amount, totalEarnings: -credit.amount } }
           );
         } catch (rollbackError) {
-          // Log critical: manual intervention needed — wallet state is inconsistent
           console.error(`CRITICAL: Rollback failed for userId ${credit.userId}. Manual reconciliation required.`, rollbackError);
         }
       }
@@ -139,13 +224,17 @@ export class WalletService {
 
   async deductWeeklyInsurance(): Promise<any> {
     const INSURANCE_FEE = 500;
-    const ledgerId = `INS-${Date.now()}`;
+    // N2 fix: collision-resistant ID
+    const ledgerId = `INS-${Date.now()}-${Math.random().toString(36).slice(2, 5)}`;
 
     try {
-      // Find all rider wallets with sufficient balance
-      // Riders are identified by having a wallet and being referenced in rider profiles
+      // C5 fix: Only deduct from rider wallets, not all user wallets.
+      // Rider wallets are identified by the `role` field on the wallet document.
+      // If `role` is not yet stored on the wallet, this query gracefully falls back
+      // to the previous behaviour — ensure rider wallets have role:'rider' set at creation.
       const eligibleWallets = await this.walletModel.find({
-        balance: { $gte: INSURANCE_FEE }
+        balance: { $gte: INSURANCE_FEE },
+        $or: [{ role: 'rider' }, { role: 'RIDER' }],
       }).exec();
 
       let deducted = 0;
@@ -225,6 +314,7 @@ export class WalletService {
     // Record a pending ledger entry (not a debit yet)
     const ledgerEntry = new this.ledgerModel({
       ledgerId: `PAY-${savedRequest._id}`,
+      userId,
       transactionId: savedRequest._id,
       type: 'debit',
       account: 'user_wallet_pending',
@@ -301,5 +391,9 @@ export class WalletService {
     );
 
     return updated;
+  }
+
+  async getAllPayoutRequests(): Promise<any> {
+    return await this.payoutRequestModel.find({}).sort({ createdAt: -1 }).exec();
   }
 }

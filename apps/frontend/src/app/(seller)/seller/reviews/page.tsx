@@ -68,7 +68,7 @@ export default function SellerReviewsPage() {
                         ))}
                       </div>
                     </div>
-                    <p className="text-text-secondary leading-relaxed bg-background-surface p-4 rounded-xl italic">
+                    <p className="text-text-secondary leading-relaxed bg-background-surface p-4 rounded-xl">
                       "{review.comment || 'The buyer didn\'t leave a comment but gave a high rating!'}"
                     </p>
                   </Card>

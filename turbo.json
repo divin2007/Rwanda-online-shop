@@ -1,5 +1,33 @@
 {
   "$schema": "https://turbo.build/schema.json",
+  "globalEnv": [
+    "CORS_ORIGIN",
+    "NODE_ENV",
+    "AUTO_CONFIRM_PAYMENTS",
+    "MONGODB_URI",
+    "REDIS_URL",
+    "JWT_SECRET",
+    "ALLOWED_ORIGINS",
+    "FRAUD_HIGH_VALUE_THRESHOLD",
+    "DELIVERY_FEE_PER_5KM",
+    "NOTIFICATION_SERVICE_URL",
+    "MTN_MOMO_TARGET_ENV",
+    "MTN_MOMO_API_KEY",
+    "MTN_MOMO_USER_ID",
+    "MTN_MOMO_API_SECRET",
+    "AIRTEL_MONEY_API_KEY",
+    "AIRTEL_MONEY_SECRET",
+    "AIRTEL_MONEY_TARGET_ENV",
+    "SMTP_HOST",
+    "SMTP_PORT",
+    "SENDGRID_API_KEY",
+    "PRODUCT_SERVICE_URL",
+    "DELIVERY_SERVICE_URL",
+    "WALLET_SERVICE_URL",
+    "MARKET_SERVICE_URL",
+    "ORDER_SERVICE_PUBLIC_URL",
+    "ADMIN_USER_ID"
+  ],
   "tasks": {
     "build": {
       "dependsOn": ["^build"],

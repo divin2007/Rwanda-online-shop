@@ -75,34 +75,34 @@ export default function WalletPage() {
   return (
     <Layout>
       <div className="max-w-6xl mx-auto space-y-12 animate-reveal">
-        <div className="border-b border-[#E5E1D8] pb-10">
-          <p className="text-[10px] font-black text-[#F59E0B] uppercase tracking-[0.5em] mb-4">My Account</p>
-          <h1 className="text-5xl font-serif text-[#121212] italic tracking-tighter">Wallet</h1>
+        <div className="border-b border-[#e0e0e0] pb-10">
+          <p className="text-[10px] font-black text-[#1b4332] uppercase tracking-[0.5em] mb-4">My Account</p>
+          <h1 className="text-5xl font-sans text-[#1b1c1c] tracking-normal">Wallet</h1>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-12">
           {/* Main Wallet Card */}
           <div className="lg:col-span-2 space-y-12">
-            <div className="bg-[#121212] text-white p-12 relative overflow-hidden group shadow-2xl">
-               <div className="absolute top-0 right-0 w-64 h-64 bg-[#F59E0B]/10 rounded-full -mr-32 -mt-32 group-hover:scale-110 transition-transform duration-1000"></div>
+            <div className="bg-[#012d1d] text-white p-12 relative overflow-hidden group shadow-2xl">
+               <div className="absolute top-0 right-0 w-64 h-64 bg-[#ffd700]/10 rounded-full -mr-32 -mt-32 group-hover:scale-110 transition-transform duration-1000"></div>
                <div className="relative z-10">
                   <div className="flex justify-between items-start mb-20">
                     <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 bg-[#F59E0B] flex items-center justify-center font-black">RMF</div>
+                      <div className="w-10 h-10 bg-[#ffd700] flex items-center justify-center font-black">RMF</div>
                       <span className="text-[10px] font-bold uppercase tracking-[0.4em]">My Wallet</span>
                     </div>
-                    <span className="text-[9px] font-bold uppercase tracking-widest opacity-40 italic">Verified Account</span>
+                    <span className="text-[9px] font-bold uppercase tracking-widest opacity-40">Verified Account</span>
                   </div>
                   
-                  <p className="text-[11px] font-black uppercase tracking-[0.4em] text-[#F59E0B] mb-4">Available Balance</p>
-                  <h2 className="text-7xl font-serif italic tracking-tighter mb-12">
+                  <p className="text-[11px] font-black uppercase tracking-[0.4em] text-[#1b4332] mb-4">Available Balance</p>
+                  <h2 className="text-7xl font-sans tracking-normal mb-12">
                     {loading ? '---' : (wallet?.balance?.toLocaleString() || 0)} <span className="text-3xl not-italic opacity-40 ml-4">RWF</span>
                   </h2>
                   
                   <div className="flex justify-between items-end">
                     <div>
                        <p className="text-[9px] font-bold uppercase tracking-widest opacity-40 mb-2">Account Holder</p>
-                       <p className="text-sm font-serif italic">{user?.fullName || 'Account'}</p>
+                       <p className="text-sm font-sans">{user?.fullName || 'Account'}</p>
                     </div>
                     <div className="text-right">
                        <p className="text-[9px] font-bold uppercase tracking-widest opacity-40 mb-2">Account ID</p>
@@ -114,28 +114,28 @@ export default function WalletPage() {
 
             {/* Transaction History */}
             <div className="space-y-8">
-              <h3 className="text-[11px] font-black uppercase tracking-[0.4em] text-[#121212] border-b border-[#E5E1D8] pb-6 italic">Transaction History</h3>
-              <div className="bg-white border border-[#E5E1D8] divide-y divide-[#E5E1D8]">
+              <h3 className="text-[11px] font-black uppercase tracking-[0.4em] text-[#1b1c1c] border-b border-[#e0e0e0] pb-6">Transaction History</h3>
+              <div className="bg-white border border-[#e0e0e0] divide-y divide-[#e0e0e0]">
                 {transactions && transactions.length > 0 ? transactions.map((tx: any) => (
-                  <div key={tx._id} className="p-8 flex justify-between items-center hover:bg-[#F9F7F2] transition-colors">
+                  <div key={tx._id} className="p-8 flex justify-between items-center hover:bg-[#fcf9f8] transition-colors">
                     <div className="flex items-center gap-6">
                       <div className={`w-10 h-10 rounded-full flex items-center justify-center text-sm ${tx.type === 'DEPOSIT' || tx.type === 'credit' ? 'bg-green-50 text-green-600' : 'bg-red-50 text-red-600'}`}>
                         {tx.type === 'DEPOSIT' || tx.type === 'credit' ? '↓' : '↑'}
                       </div>
                       <div>
-                        <p className="text-[11px] font-black text-[#121212] uppercase tracking-widest">{tx.description || tx.type}</p>
-                        <p className="text-[9px] text-[#6B665E] font-bold uppercase tracking-widest opacity-60 mt-1">{new Date(tx.createdAt).toLocaleDateString()}</p>
+                        <p className="text-[11px] font-black text-[#1b1c1c] uppercase tracking-widest">{tx.description || tx.type}</p>
+                        <p className="text-[9px] text-[#414844] font-bold uppercase tracking-widest opacity-60 mt-1">{new Date(tx.createdAt).toLocaleDateString()}</p>
                       </div>
                     </div>
                     <div className="text-right">
-                      <p className={`text-sm font-black ${tx.type === 'DEPOSIT' || tx.type === 'credit' ? 'text-green-600' : 'text-[#121212]'}`}>
+                      <p className={`text-sm font-black ${tx.type === 'DEPOSIT' || tx.type === 'credit' ? 'text-green-600' : 'text-[#1b1c1c]'}`}>
                         {tx.type === 'DEPOSIT' || tx.type === 'credit' ? '+' : '-'}{tx.amount?.toLocaleString()} RWF
                       </p>
-                      <p className="text-[8px] font-bold uppercase tracking-tighter opacity-40 mt-1">{tx.status}</p>
+                      <p className="text-[8px] font-bold uppercase tracking-normal opacity-40 mt-1">{tx.status}</p>
                     </div>
                   </div>
                 )) : (
-                  <div className="p-20 text-center text-[10px] font-black uppercase tracking-[0.4em] opacity-30 italic">
+                  <div className="p-20 text-center text-[10px] font-black uppercase tracking-[0.4em] opacity-30">
                     No transactions yet
                   </div>
                 )}
@@ -146,11 +146,11 @@ export default function WalletPage() {
           {/* Actions Sidebar */}
           <div className="space-y-10">
             {/* Tab Selector */}
-            <div className="flex border-2 border-[#121212]">
+            <div className="flex border border-[#e0e0e0] rounded-lg">
               <button
                 onClick={() => setActiveTab('deposit')}
                 className={`flex-1 py-4 text-[10px] font-black uppercase tracking-widest transition-all ${
-                  activeTab === 'deposit' ? 'bg-[#121212] text-white' : 'bg-white text-[#121212] hover:bg-[#F2F0EB]'
+                  activeTab === 'deposit' ? 'bg-[#012d1d] text-white' : 'bg-white text-[#1b1c1c] hover:bg-[#f0eded]'
                 }`}
               >
                 Deposit
@@ -158,7 +158,7 @@ export default function WalletPage() {
               <button
                 onClick={() => setActiveTab('withdraw')}
                 className={`flex-1 py-4 text-[10px] font-black uppercase tracking-widest transition-all ${
-                  activeTab === 'withdraw' ? 'bg-[#121212] text-white' : 'bg-white text-[#121212] hover:bg-[#F2F0EB]'
+                  activeTab === 'withdraw' ? 'bg-[#012d1d] text-white' : 'bg-white text-[#1b1c1c] hover:bg-[#f0eded]'
                 }`}
               >
                 Withdraw
@@ -166,11 +166,11 @@ export default function WalletPage() {
             </div>
 
             {activeTab === 'deposit' ? (
-              <div className="bg-white border-2 border-[#121212] p-10 shadow-xl">
-                <h3 className="text-[11px] font-black uppercase tracking-[0.4em] text-[#121212] mb-10 italic">Add Money</h3>
+              <div className="bg-white border border-[#e0e0e0] rounded-lg p-10 shadow-xl">
+                <h3 className="text-[11px] font-black uppercase tracking-[0.4em] text-[#1b1c1c] mb-10">Add Money</h3>
                 <form onSubmit={handleTopUp} className="space-y-8">
                   <div className="space-y-3">
-                    <label className="text-[9px] font-black text-[#6B665E] uppercase tracking-widest opacity-60">Amount (RWF)</label>
+                    <label className="text-[9px] font-black text-[#414844] uppercase tracking-widest opacity-60">Amount (RWF)</label>
                     <input 
                       type="number" 
                       value={topUpAmount}
@@ -186,13 +186,13 @@ export default function WalletPage() {
                         key={amt}
                         type="button"
                         onClick={() => setTopUpAmount(String(amt))}
-                        className="py-3 border border-[#E5E1D8] text-[9px] font-black uppercase tracking-widest hover:border-[#121212] transition-all"
+                        className="py-3 border border-[#e0e0e0] text-[9px] font-black uppercase tracking-widest hover:border-[#1b4332] transition-all"
                       >
                         {amt.toLocaleString()}
                       </button>
                     ))}
                   </div>
-                  <div className="p-6 bg-[#F2F0EB] space-y-4">
+                  <div className="p-6 bg-[#f0eded] space-y-4">
                      <div className="flex justify-between items-center text-[9px] font-black uppercase tracking-widest">
                         <span className="opacity-60">Payment Method</span>
                         <span>MTN Mobile Money</span>
@@ -213,11 +213,11 @@ export default function WalletPage() {
                 </form>
               </div>
             ) : (
-              <div className="bg-white border-2 border-[#121212] p-10 shadow-xl">
-                <h3 className="text-[11px] font-black uppercase tracking-[0.4em] text-[#121212] mb-10 italic">Withdraw Money</h3>
+              <div className="bg-white border border-[#e0e0e0] rounded-lg p-10 shadow-xl">
+                <h3 className="text-[11px] font-black uppercase tracking-[0.4em] text-[#1b1c1c] mb-10">Withdraw Money</h3>
                 <form onSubmit={handleWithdraw} className="space-y-8">
                   <div className="space-y-3">
-                    <label className="text-[9px] font-black text-[#6B665E] uppercase tracking-widest opacity-60">Amount (RWF)</label>
+                    <label className="text-[9px] font-black text-[#414844] uppercase tracking-widest opacity-60">Amount (RWF)</label>
                     <input 
                       type="number" 
                       value={withdrawAmount}
@@ -225,12 +225,12 @@ export default function WalletPage() {
                       placeholder="E.g. 5000"
                       className="rmf-input w-full px-6 py-4"
                     />
-                    <p className="text-[8px] font-bold text-[#6B665E] opacity-50">
+                    <p className="text-[8px] font-bold text-[#414844] opacity-50">
                       Available: {wallet?.balance?.toLocaleString() || 0} RWF
                     </p>
                   </div>
                   <div className="space-y-3">
-                    <label className="text-[9px] font-black text-[#6B665E] uppercase tracking-widest opacity-60">MoMo Phone Number</label>
+                    <label className="text-[9px] font-black text-[#414844] uppercase tracking-widest opacity-60">MoMo Phone Number</label>
                     <input 
                       type="tel" 
                       value={withdrawPhone}
@@ -239,7 +239,7 @@ export default function WalletPage() {
                       className="rmf-input w-full px-6 py-4"
                     />
                   </div>
-                  <div className="p-6 bg-[#F2F0EB] space-y-4">
+                  <div className="p-6 bg-[#f0eded] space-y-4">
                      <div className="flex justify-between items-center text-[9px] font-black uppercase tracking-widest">
                         <span className="opacity-60">Method</span>
                         <span>MTN Mobile Money</span>
@@ -261,13 +261,13 @@ export default function WalletPage() {
               </div>
             )}
 
-            <div className="p-10 border border-[#E5E1D8] space-y-6 bg-[#F2F0EB]/30">
-               <p className="text-[10px] font-black uppercase tracking-[0.4em] text-[#F59E0B]">Wallet Security</p>
-               <p className="text-[10px] leading-relaxed italic text-[#6B665E]">
+            <div className="p-10 border border-[#e0e0e0] space-y-6 bg-[#f0eded]/30">
+               <p className="text-[10px] font-black uppercase tracking-[0.4em] text-[#1b4332]">Wallet Security</p>
+               <p className="text-[10px] leading-relaxed text-[#414844]">
                  All transactions are secured with end-to-end encryption. Your wallet is protected by our escrow system — funds are only released upon successful delivery.
                </p>
-               <div className="pt-6 border-t border-[#E5E1D8]">
-                  <Link href="/orders" className="text-[9px] font-black uppercase tracking-widest text-[#121212] hover:text-[#F59E0B] transition-colors">Need help? Contact Support →</Link>
+               <div className="pt-6 border-t border-[#e0e0e0]">
+                  <Link href="/orders" className="text-[9px] font-black uppercase tracking-widest text-[#1b1c1c] hover:text-[#1b4332] transition-colors">Need help? Contact Support →</Link>
                </div>
             </div>
           </div>

@@ -9,11 +9,19 @@ const getAccessToken = () => {
 };
 
 const refreshAccessToken = async () => {
-  // In a real app, this should call the refresh token endpoint and store the new token
-  // Since refresh tokens are typically HTTP-only cookies, the browser sends them automatically.
-  // Example: await axios.post(`${process.env.NEXT_PUBLIC_USER_SERVICE_URL}/auth/refresh`, {}, { withCredentials: true });
-  // and then extract the new access token.
-  return null;
+  if (typeof window === 'undefined') return null;
+  const refreshToken = localStorage.getItem('refreshToken');
+  if (!refreshToken) return null;
+
+  const res = await axios.post(`${process.env.NEXT_PUBLIC_USER_SERVICE_URL || 'http://localhost:3001'}/api/v1/auth/refresh`, { refreshToken });
+  const tokens = res.data?.data;
+  if (tokens?.accessToken) {
+    localStorage.setItem('accessToken', tokens.accessToken);
+    if (tokens.refreshToken) {
+      localStorage.setItem('refreshToken', tokens.refreshToken);
+    }
+  }
+  return tokens?.accessToken || null;
 };
 
 const createClient = (baseURL: string) => {
@@ -38,16 +46,25 @@ const createClient = (baseURL: string) => {
       if (response?.status === 401 && !config._retry) {
         config._retry = true;
         try {
-          const res = await axios.post(`${process.env.NEXT_PUBLIC_USER_SERVICE_URL}/api/v1/auth/refresh`, {}, { withCredentials: true });
-          if (res.data?.data?.accessToken) {
-            localStorage.setItem('accessToken', res.data.data.accessToken);
-            config.headers.Authorization = `Bearer ${res.data.data.accessToken}`;
+          const accessToken = await refreshAccessToken();
+          if (accessToken) {
+            config.headers.Authorization = `Bearer ${accessToken}`;
             return client(config);
           }
         } catch (refreshError) {
           localStorage.removeItem('accessToken');
+          localStorage.removeItem('refreshToken');
           if (typeof window !== 'undefined') {
-             window.location.href = '/login';
+             // Avoid redirect loops and allow public pages (Home, Markets) to fail gracefully
+             const publicRoutes = ['/', '/login', '/register', '/markets', '/market', '/privacy', '/terms'];
+             const isPublic = publicRoutes.some(path => 
+               window.location.pathname === path || 
+               window.location.pathname.startsWith(path + '/')
+             );
+             
+             if (!isPublic) {
+                window.location.href = '/login';
+             }
           }
           return Promise.reject(refreshError);
         }
@@ -58,7 +75,8 @@ const createClient = (baseURL: string) => {
       // because it means the request never reached the server (safe to retry)
       const isNetworkError = !response;
       const retryCount = config._retryCount || 0;
-      const maxRetries = 8; // Increased retries for slow cold starts
+      const configuredRetries = Number(process.env.NEXT_PUBLIC_API_MAX_RETRIES);
+      const maxRetries = Number.isFinite(configuredRetries) ? configuredRetries : 2;
 
       if (isNetworkError && retryCount < maxRetries) {
         config._retryCount = retryCount + 1;

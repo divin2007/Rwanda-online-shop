@@ -12,8 +12,6 @@ export class ScheduledOrdersService {
     @InjectModel('Transaction') private orderModel: Model<any>
   ) {}
 
-  // In a real nest app we'd use @nestjs/schedule and @Cron('0 6 * * *')
-  // We're stubbing the execution handler that cron would call.
   @Cron('0 6 * * *')
   async executeScheduledOrders() {
     this.logger.log('Executing 06:00 scheduled orders check...');
@@ -27,16 +25,52 @@ export class ScheduledOrdersService {
 
     for (const order of dueOrders) {
       try {
-        // Transition to placed so it enters normal fulfillment flow
+        const nextRun = this.calculateNextRun(order.schedule?.nextRun || now, order.schedule?.frequency);
+
+        if (nextRun) {
+          const nextOrder = order.toObject();
+          delete nextOrder._id;
+          delete nextOrder.createdAt;
+          delete nextOrder.updatedAt;
+          nextOrder.orderNumber = `${order.orderNumber}-R${Date.now()}`;
+          nextOrder.status = OrderStatus.SCHEDULED;
+          nextOrder.schedule = { ...nextOrder.schedule, nextRun };
+          nextOrder.statusHistory = [{
+            status: OrderStatus.SCHEDULED,
+            changedAt: new Date(),
+            note: `Next scheduled occurrence created from ${order.orderNumber}`
+          }];
+          await new this.orderModel(nextOrder).save();
+        }
+
         await this.orderModel.findByIdAndUpdate(order._id, {
-          $set: { status: OrderStatus.PLACED },
-          // Advance the next run by 7 days
-          $inc: { 'schedule.nextRun': 7 * 24 * 60 * 60 * 1000 }
+          $set: {
+            status: OrderStatus.PLACED
+          }
         });
         this.logger.log(`Triggered scheduled order: ${order.orderNumber}`);
       } catch (err) {
         this.logger.error(`Failed to process scheduled order ${order.orderNumber}`, err);
       }
     }
+  }
+
+  private calculateNextRun(current: Date, frequency?: string): Date | null {
+    if (!frequency || frequency === 'once') return null;
+
+    const next = new Date(current);
+    switch (frequency) {
+      case 'daily':
+        next.setDate(next.getDate() + 1);
+        break;
+      case 'monthly':
+        next.setMonth(next.getMonth() + 1);
+        break;
+      case 'weekly':
+      default:
+        next.setDate(next.getDate() + 7);
+        break;
+    }
+    return next;
   }
 }

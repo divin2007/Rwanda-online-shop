@@ -1,3 +1,30 @@
+import { existsSync, readFileSync } from 'fs';
+import { join } from 'path';
+
+// Load environment variables from workspace root
+function loadEnvFile(filePath: string) {
+  if (existsSync(filePath)) {
+    const content = readFileSync(filePath, 'utf-8');
+    content.split(/\r?\n/).forEach(line => {
+      line = line.trim();
+      if (!line || line.startsWith('#')) return;
+      const eqIdx = line.indexOf('=');
+      if (eqIdx === -1) return;
+      const key = line.slice(0, eqIdx).trim();
+      let val = line.slice(eqIdx + 1).trim();
+      if ((val.startsWith('"') && val.endsWith('"')) || (val.startsWith("'") && val.endsWith("'"))) {
+        val = val.slice(1, -1);
+      }
+      process.env[key] = val;
+    });
+  }
+}
+
+// Find workspace root and load environments
+const searchDir = process.cwd();
+loadEnvFile(join(searchDir, '.env'));
+loadEnvFile(join(searchDir, '.env.local'));
+
 import mongoose from 'mongoose';
 import * as bcrypt from 'bcrypt';
 import { 
@@ -8,9 +35,11 @@ import {
 } from '../packages/database/src'; // Path adjusted for execution from root
 
 async function seed() {
-  const uri = process.env.MONGODB_URI || 'mongodb://localhost:27017/rmf_seed';
+  const uri = process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/market_rwanda';
+  console.log(`[SEED] Connecting to database: ${uri}`);
   await mongoose.connect(uri);
   console.log('Connected to DB for seeding...');
+
 
   try {
     // 1. Create Admin User

@@ -53,13 +53,13 @@ export default function RiderSetupPage() {
   return (
     <Layout>
       <div className="max-w-4xl mx-auto py-20 animate-reveal">
-        <div className="border-b-2 border-[#121212] pb-10 mb-16">
+        <div className="border-b-2 border-[#e0e0e0] pb-10 mb-16">
           <div className="flex items-center gap-6 mb-6">
-             <div className="w-12 h-px bg-[#A34D15]"></div>
-             <p className="text-[11px] font-black text-[#A34D15] uppercase tracking-[0.5em]">Network Onboarding</p>
+             <div className="w-12 h-px bg-[#1b4332]"></div>
+             <p className="text-[11px] font-black text-[#1b4332] uppercase tracking-[0.5em]">Network Onboarding</p>
           </div>
-          <h1 className="text-7xl font-serif tracking-tighter italic">Activate Station</h1>
-          <p className="text-[10px] font-bold text-[#6B665E] uppercase tracking-[0.3em] mt-6 opacity-60">
+          <h1 className="text-7xl font-sans tracking-normal">Activate Station</h1>
+          <p className="text-[10px] font-bold text-[#414844] uppercase tracking-[0.3em] mt-6 opacity-60">
             Logistics Facilitator Registry: REG-{user?.id?.substring(0,6).toUpperCase()}
           </p>
         </div>
@@ -67,20 +67,20 @@ export default function RiderSetupPage() {
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-16">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
             <div className="space-y-4">
-              <label className="text-[10px] font-black uppercase tracking-widest text-[#121212]">Vehicle Plate ID</label>
+              <label className="text-[10px] font-black uppercase tracking-widest text-[#1b1c1c]">Vehicle Plate ID</label>
               <input 
                 {...register('plateNumber')}
-                className="w-full bg-[#F2F0EB] border-b-2 border-[#121212] p-6 text-xl font-serif italic outline-none focus:bg-white transition-colors"
+                className="w-full bg-[#f0eded] border-b-2 border-[#e0e0e0] p-6 text-xl font-sans outline-none focus:bg-white transition-colors"
                 placeholder="RAE 123A"
               />
               {errors.plateNumber && <p className="text-[10px] text-red-500 font-bold uppercase">{errors.plateNumber.message}</p>}
             </div>
 
             <div className="space-y-4">
-              <label className="text-[10px] font-black uppercase tracking-widest text-[#121212]">Facilitation Type</label>
+              <label className="text-[10px] font-black uppercase tracking-widest text-[#1b1c1c]">Facilitation Type</label>
               <select 
                 {...register('vehicleType')}
-                className="w-full bg-[#F2F0EB] border-b-2 border-[#121212] p-6 text-xl font-serif italic outline-none focus:bg-white transition-colors appearance-none"
+                className="w-full bg-[#f0eded] border-b-2 border-[#e0e0e0] p-6 text-xl font-sans outline-none focus:bg-white transition-colors appearance-none"
               >
                 <option value="MOTORCYCLE">Motorcycle (Express)</option>
                 <option value="CAR">Car (Standard)</option>
@@ -91,10 +91,10 @@ export default function RiderSetupPage() {
           </div>
 
           <div className="space-y-4">
-            <label className="text-[10px] font-black uppercase tracking-widest text-[#121212]">Operator License Number</label>
+            <label className="text-[10px] font-black uppercase tracking-widest text-[#1b1c1c]">Operator License Number</label>
             <input 
               {...register('licenseNumber')}
-              className="w-full bg-[#F2F0EB] border-b-2 border-[#121212] p-6 text-xl font-serif italic outline-none focus:bg-white transition-colors"
+              className="w-full bg-[#f0eded] border-b-2 border-[#e0e0e0] p-6 text-xl font-sans outline-none focus:bg-white transition-colors"
               placeholder="RWA-XXXX-XXXX-XXXX"
             />
             {errors.licenseNumber && <p className="text-[10px] text-red-500 font-bold uppercase">{errors.licenseNumber.message}</p>}
@@ -107,9 +107,9 @@ export default function RiderSetupPage() {
               className="rmf-btn-primary w-full py-8 text-lg group relative overflow-hidden"
             >
               <span className="relative z-10">{isLoading ? 'Synchronizing Network...' : 'Confirm Activation →'}</span>
-              <div className="absolute inset-0 bg-[#A34D15] group-hover:bg-[#C25D1D] transition-colors"></div>
+              <div className="absolute inset-0 bg-[#1b4332] group-hover:bg-[#116c4a] transition-colors"></div>
             </button>
-            <p className="text-[9px] text-center mt-6 text-[#6B665E] uppercase tracking-widest opacity-40 italic">
+            <p className="text-[9px] text-center mt-6 text-[#414844] uppercase tracking-widest opacity-40">
               By activating, you agree to the RMF Logistics Facilitation Protocol and Audit Standards.
             </p>
           </div>

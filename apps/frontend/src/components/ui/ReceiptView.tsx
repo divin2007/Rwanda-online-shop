@@ -1,11 +1,8 @@
 'use client';
 import React from 'react';
-import { Card } from './Card';
-import { Button } from './Button';
 import { OrderChat } from './OrderChat';
 import { orderApi } from '@/lib/api';
 import { toast } from 'react-hot-toast';
-import { OrderStatus } from '@rmf/shared-types';
 
 export interface ReceiptOrder {
   _id: string;
@@ -16,67 +13,26 @@ export interface ReceiptOrder {
     userId?: string;
     fullName: string;
     phone: string;
-    deliveryAddress?: {
-      address?: string;
-      coordinates?: { lat: number; lng: number };
-    };
+    deliveryAddress?: { address?: string; coordinates?: { lat: number; lng: number } };
   };
-  seller: {
-    sellerId?: string;
-    userId?: string;
-    fullName: string;
-    stallId: string;
-    marketId?: string;
-  };
-  products?: Array<{
-    productId: string;
-    name: string;
-    unitPrice: number;
-    quantity: number;
-    weight?: number;
-  }>;
-  attributes?: {
-    isQuoteRequest?: string;
-    prototypeImage?: string;
-    isCustomizable?: string;
-  };
-  product?: {
-    productId: string;
-    name: string;
-    unitPrice: number;
-    quantity: number;
-    weight?: number;
-  };
-  financials: {
-    subtotal: number;
-    deliveryFee: number;
-    platformCommission: number;
-    gatewayFee: number;
-    totalAmount: number;
-    sellerPayout: number;
-    riderPayout: number;
-  };
-  payment?: {
-    method?: string;
-    status?: string;
-    transactionRef?: string;
-    paidAt?: string;
-  };
+  seller: { sellerId?: string; userId?: string; fullName: string; stallId: string; marketId?: string };
+  products?: Array<{ productId: string; name: string; unitPrice: number; quantity: number; weight?: number }>;
+  attributes?: { isQuoteRequest?: string; prototypeImage?: string; isCustomizable?: string };
+  product?: { productId: string; name: string; unitPrice: number; quantity: number; weight?: number };
+  financials: { subtotal: number; deliveryFee: number; platformCommission: number; gatewayFee: number; totalAmount: number; sellerPayout: number; riderPayout: number };
+  payment?: { method?: string; status?: string; transactionRef?: string; paidAt?: string };
   deliveryId?: string;
-  delivery?: {
-    rider?: {
-      fullName?: string;
-      phone?: string;
-      plateNumber?: string;
-    };
-    status?: string;
-    route?: {
-      distanceKm?: number;
-      estimatedMinutes?: number;
-      actualMinutes?: number;
-    };
-  };
+  delivery?: { rider?: { fullName?: string; phone?: string; plateNumber?: string }; status?: string; route?: { distanceKm?: number; estimatedMinutes?: number } };
   notes?: string;
+  messages?: Array<{
+    senderId: string;
+    senderRole: 'BUYER' | 'SELLER';
+    content: string;
+    imageUrl?: string;
+    type?: 'TEXT' | 'QUOTE' | 'COUNTER_QUOTE';
+    quoteAmount?: number;
+    timestamp: string;
+  }>;
 }
 
 interface ReceiptViewProps {
@@ -85,504 +41,480 @@ interface ReceiptViewProps {
   onClose?: () => void;
 }
 
-const statusBadge = (status: string) => {
-  const colors: Record<string, string> = {
-    awaiting_quote: 'bg-amber-500/10 text-amber-600 border border-amber-200',
-    quote_sent: 'bg-brand-primary/10 text-brand-primary border border-brand-primary/20 animate-pulse',
-    placed: 'bg-status-warning/10 text-status-warning',
-    confirmed: 'bg-status-info/10 text-status-info',
-    preparing: 'bg-status-info/10 text-status-info',
-    ready_for_pickup: 'bg-primary/10 text-primary',
-    picked_up: 'bg-primary/10 text-primary',
-    in_transit: 'bg-primary/10 text-primary',
-    awaiting_confirmation: 'bg-status-warning/10 text-status-warning',
-    delivered: 'bg-status-success/10 text-status-success',
-    cancelled: 'bg-status-error/10 text-status-error',
-    disputed: 'bg-status-error/10 text-status-error',
-    resolved: 'bg-status-success/10 text-status-success',
-  };
-  return (
-    <span className={`px-3 py-1 rounded-full text-xs font-bold ${colors[status] || 'bg-background-surface text-text-secondary'}`}>
-      {status.replace(/_/g, ' ').toUpperCase()}
-    </span>
-  );
+const STATUS_LABELS: Record<string, { label: string; color: string }> = {
+  awaiting_quote:       { label: 'AWAITING QUOTE',    color: '#ffd700' },
+  quote_sent:           { label: 'QUOTE SENT',         color: '#ffd700' },
+  placed:               { label: 'PLACED',             color: '#6B7280' },
+  confirmed:            { label: 'CONFIRMED',          color: '#3B82F6' },
+  preparing:            { label: 'PREPARING',          color: '#3B82F6' },
+  ready_for_pickup:     { label: 'READY',              color: '#10B981' },
+  picked_up:            { label: 'PICKED UP',          color: '#10B981' },
+  in_transit:           { label: 'IN TRANSIT',         color: '#10B981' },
+  awaiting_confirmation:{ label: 'AWAITING CONFIRM',  color: '#ffd700' },
+  delivered:            { label: 'DELIVERED',          color: '#10B981' },
+  cancelled:            { label: 'CANCELLED',          color: '#EF4444' },
+  disputed:             { label: 'DISPUTED',           color: '#EF4444' },
+  resolved:             { label: 'RESOLVED',           color: '#10B981' },
 };
-
-const paymentMethodIcon = (method?: string) => {
-  if (!method) return '💳';
-  const m = method.toLowerCase();
-  if (m.includes('mtn') || m.includes('momo')) return '📱';
-  if (m.includes('airtel')) return '📱';
-  return '💳';
-};
-
-import { useLanguage } from '@/context/LanguageContext';
 
 export function ReceiptView({ order, role, onClose }: ReceiptViewProps) {
-  const { t } = useLanguage();
-  const [buyerName, setBuyerName] = React.useState(order.buyer.fullName);
+  const buyer = order.buyer || { fullName: 'Anonymous Buyer', phone: 'Hidden' };
+  const seller = order.seller || { fullName: 'Verified Seller', stallId: 'N/A' };
+  const sourceFinancials = order.financials || {};
+  const financials = {
+    subtotal: sourceFinancials.subtotal || 0,
+    deliveryFee: sourceFinancials.deliveryFee || 0,
+    platformCommission: sourceFinancials.platformCommission || 0,
+    gatewayFee: sourceFinancials.gatewayFee || 0,
+    totalAmount: sourceFinancials.totalAmount || 0,
+    sellerPayout: sourceFinancials.sellerPayout || 0,
+    riderPayout: sourceFinancials.riderPayout || 0,
+  };
+  const orderId = order._id || 'unknown-order';
+  const orderStatus = order.status || 'placed';
+  const [buyerName, setBuyerName] = React.useState(buyer.fullName || 'Anonymous Buyer');
 
   React.useEffect(() => {
-    // If name is anonymous but we have a ID, try to fetch the REAL name from registration
-    if ((buyerName === 'Anonymous Buyer' || !buyerName) && order.buyer.userId) {
+    if ((buyerName === 'Anonymous Buyer' || !buyerName) && buyer.userId) {
       import('@/lib/api').then(({ userApi }) => {
-        userApi.get(`/users/${order.buyer.userId}`)
-          .then(res => {
-            const profile = res.data?.data;
-            if (profile?.fullName) {
-              setBuyerName(profile.fullName);
-            }
-          })
-          .catch(err => console.error('Failed to fetch real buyer name', err));
+        userApi.get(`/users/${buyer.userId}`)
+          .then(res => { if (res.data?.data?.fullName) setBuyerName(res.data.data.fullName); })
+          .catch(() => {});
       });
     }
-  }, [order.buyer.userId, buyerName]);
+  }, [buyer.userId, buyerName]);
 
-  const productsList = order.products && order.products.length > 0
-    ? order.products
-    : order.product
-      ? [order.product]
-      : [];
+  const productsList = order.products?.length ? order.products : order.product ? [order.product] : [];
+  const receiptNumber = order.orderNumber || `ORD-${orderId.slice(0, 8).toUpperCase()}`;
+  const orderDate = order.createdAt ? new Date(order.createdAt).toLocaleDateString('en-RW', { year: 'numeric', month: 'long', day: 'numeric' }) : 'N/A';
+  const statusInfo = STATUS_LABELS[orderStatus] || { label: orderStatus.toUpperCase(), color: '#6B7280' };
+  const isNegotiation = orderStatus === 'awaiting_quote' || orderStatus === 'quote_sent' || order.attributes?.isQuoteRequest === 'true';
+  const isPaid = order.payment?.status === 'paid';
 
-  const receiptNumber = order.orderNumber || `ORD-${order._id.substring(0, 8).toUpperCase()}`;
-  const orderDate = order.createdAt ? new Date(order.createdAt).toLocaleDateString('en-RW', {
-    year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit'
-  }) : 'N/A';
+  const isPayout = order.products?.[0]?.productId === 'withdrawal';
 
-  const statusBadge = (status: string) => {
-    const colors: Record<string, string> = {
-      awaiting_quote: 'bg-amber-500/10 text-amber-600 border border-amber-200',
-      quote_sent: 'bg-brand-primary/10 text-brand-primary border border-brand-primary/20 animate-pulse',
-      placed: 'bg-status-warning/10 text-status-warning',
-      confirmed: 'bg-status-info/10 text-status-info',
-      preparing: 'bg-status-info/10 text-status-info',
-      ready_for_pickup: 'bg-primary/10 text-primary',
-      picked_up: 'bg-primary/10 text-primary',
-      in_transit: 'bg-primary/10 text-primary',
-      awaiting_confirmation: 'bg-status-warning/10 text-status-warning',
-      delivered: 'bg-status-success/10 text-status-success',
-      cancelled: 'bg-status-error/10 text-status-error',
-      disputed: 'bg-status-error/10 text-status-error',
-      resolved: 'bg-status-success/10 text-status-success',
-    };
+  if (isPayout) {
+    const isCompleted = order.status === 'delivered';
+    const isCancelled = order.status === 'cancelled';
+    const displayStatus = isCompleted ? 'SUCCESSFUL' : isCancelled ? 'FAILED' : 'PENDING';
+    const statusColor = isCompleted ? '#10B981' : isCancelled ? '#EF4444' : '#F59E0B';
+    const amount = financials.totalAmount || financials.subtotal || 0;
+
     return (
-      <span className={`px-3 py-1 rounded-full text-xs font-bold ${colors[status] || 'bg-background-surface text-text-secondary'}`}>
-        {status.replace(/_/g, ' ').toUpperCase()}
-      </span>
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-2 sm:p-4 overflow-hidden" style={{ backdropFilter: 'blur(4px)' }}>
+        <div className="w-full max-w-md bg-[#fcf9f8] border border-[#e0e0e0] shadow-2xl rounded-2xl overflow-hidden flex flex-col animate-reveal">
+          
+          {/* Slip Header */}
+          <div className="bg-[#012d1d] text-white p-8 text-center relative border-b-2 border-[#ffd700]/20">
+            <p className="text-[10px] font-black text-[#1b4332] uppercase tracking-[0.4em] mb-2">Liquidation Slip</p>
+            <h2 className="text-2xl font-sans tracking-normal text-white">{receiptNumber}</h2>
+            <p className="text-xs text-white/50 mt-1 uppercase tracking-widest">{orderDate}</p>
+            
+            {onClose && (
+              <button onClick={onClose} className="absolute top-4 right-4 text-white/60 hover:text-white transition-all text-xl font-light">
+                &times;
+              </button>
+            )}
+          </div>
+
+          {/* Slip Body */}
+          <div className="p-8 flex-grow overflow-y-auto space-y-8">
+            
+            {/* Massive Amount Display */}
+            <div className="text-center bg-[#012d1d]/5 p-6 border border-[#e0e0e0] rounded-xl space-y-2">
+              <p className="text-[9px] font-black text-[#1b4332] uppercase tracking-widest">Disbursed Amount</p>
+              <h1 className="text-4xl font-sans text-[#1b1c1c] tracking-tight font-black">
+                {amount.toLocaleString()} <span className="text-lg font-sans font-light text-[#414844]">RWF</span>
+              </h1>
+              
+              {/* Custom Bank-style Status Pill */}
+              <div className="pt-2 flex justify-center">
+                <span 
+                  className="px-4 py-1.5 text-[9px] font-black uppercase tracking-widest text-white rounded-full flex items-center gap-2"
+                  style={{ backgroundColor: statusColor }}
+                >
+                  <span className="w-1.5 h-1.5 bg-white rounded-full animate-ping" />
+                  {displayStatus}
+                </span>
+              </div>
+            </div>
+
+            {/* Audit Details */}
+            <div className="space-y-4">
+              <p className="text-[9px] font-black text-[#1b4332] uppercase tracking-widest border-b border-[#e0e0e0] pb-2">Transaction Details</p>
+              
+              <div className="space-y-3">
+                {[
+                  { label: 'Beneficiary Name', value: seller.fullName || 'Verified Member' },
+                  { label: 'Beneficiary Phone', value: buyer.phone || 'N/A' },
+                  { label: 'Network Provider', value: order.payment?.method || 'MTN Mobile Money Gateway' },
+                  { label: 'Transaction Type', value: 'Mobile Money Cash Out' },
+                  { label: 'System Reference', value: order.payment?.transactionRef || orderId },
+                ].map(({ label, value }) => (
+                  <div key={label} className="flex justify-between items-start text-xs">
+                    <span className="text-[#414844] font-medium uppercase text-[9px] tracking-wider">{label}</span>
+                    <span className="text-[#1b1c1c] font-black text-right max-w-[200px] break-all">{value}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Additional Ledger Notes */}
+            {order.notes && (
+              <div className="p-4 bg-[#f0eded]/40 border border-[#e0e0e0] text-[10px] leading-relaxed text-[#414844] rounded-lg">
+                <p className="font-black uppercase tracking-widest text-[#1b4332] mb-1">Ledger Memo</p>
+                {order.notes}
+              </div>
+            )}
+
+            {/* Safety Disclaimer */}
+            <div className="text-[9px] text-[#414844] text-center opacity-60 leading-relaxed border-t border-[#e0e0e0] pt-6">
+              This payout request is processed securely via the RMF Wallet Gateway. Please check your Mobile Money wallet for network validation SMS.
+            </div>
+          </div>
+
+          {/* Close Action */}
+          {onClose && (
+            <div className="border-t border-[#e0e0e0] bg-[#fcf9f8]">
+              <button
+                onClick={onClose}
+                className="w-full py-4 text-[10px] font-black uppercase tracking-[0.4em] text-[#1b1c1c] bg-white hover:bg-[#012d1d] hover:text-white transition-all"
+              >
+                Dismiss Voucher
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
     );
-  };
+  }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-2 sm:p-4 overflow-hidden">
-      <div className="bg-white w-full max-w-6xl rounded-3xl shadow-2xl overflow-hidden animate-scale-in max-h-[95vh] flex flex-col md:flex-row">
-        
-        {/* Left Side: Messaging & Negotiation (Only for Bespoke/Quotes) */}
-        {(order.status === 'awaiting_quote' || order.status === 'quote_sent' || order.attributes?.isQuoteRequest === 'true' || order.financials.totalAmount === 0) && (
-          <div className="w-full md:w-[400px] border-r border-gray-100 bg-gray-50/50 flex flex-col p-4 md:p-6 border-b md:border-b-0 overflow-y-auto">
-            <h3 className="text-lg font-bold text-text-primary mb-4 flex items-center gap-2">
-              <span className="text-brand-primary">💬</span> {t('receipt_negotiation_hub')}
-            </h3>
-            
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-2 sm:p-4 overflow-hidden" style={{ backdropFilter: 'blur(4px)' }}>
+      <div className="w-full max-w-6xl max-h-[95vh] flex flex-col md:flex-row shadow-2xl border border-[#e0e0e0] rounded-lg bg-[#fcf9f8] overflow-hidden">
+
+        {/* ── Left: Negotiation Panel ── */}
+        {isNegotiation && (
+          <div className="w-full md:w-[420px] bg-[#012d1d] flex flex-col border-r-0 md:border-r-2 border-b-2 md:border-b-0 border-[#ffd700]/20 overflow-y-auto">
+            {/* Panel Header */}
+            <div className="px-8 py-6 border-b border-[#ffd700]/20">
+              <p className="text-[9px] font-black text-[#1b4332] uppercase tracking-[0.5em] mb-1">Negotiation Hub</p>
+              <h3 className="text-xl font-sans text-white leading-none">{receiptNumber}</h3>
+            </div>
+
+            {/* OrderChat */}
             <div className="flex-1 min-h-[300px]">
-              <OrderChat 
-                orderId={order._id}
-                initialMessages={(order as any).messages || []}
-                recipientName={role === 'buyer' ? order.seller.fullName : buyerName}
+              <OrderChat
+                orderId={orderId}
+                initialMessages={order.messages || []}
+                recipientName={role === 'buyer' ? seller.fullName : buyerName}
                 userRole={role.toUpperCase() as 'BUYER' | 'SELLER'}
-                orderStatus={order.status}
+                orderStatus={orderStatus}
               />
             </div>
 
-            <div className="mt-6 p-4 bg-white rounded-2xl border border-gray-100 shadow-sm">
-              <p className="text-xs font-bold text-text-secondary uppercase mb-2 tracking-wider">Project Quick Actions</p>
-              
-              {role === 'seller' && order.status === 'awaiting_quote' && (
-                <div className="space-y-3">
-                  <p className="text-[11px] text-text-secondary leading-tight mb-2">Review the brief and prototype, then propose a final price to the buyer.</p>
-                  <Button fullWidth size="sm" onClick={() => {
+            {/* Quick Actions */}
+            <div className="px-8 py-6 border-t border-[#ffd700]/20">
+              <p className="text-[9px] font-black text-[#1b4332] uppercase tracking-[0.4em] mb-4">Quick Actions</p>
+
+              {role === 'seller' && orderStatus === 'awaiting_quote' && (
+                <button
+                  onClick={() => {
                     const priceStr = prompt('Enter your final quote price (RWF):');
                     if (!priceStr) return;
                     const price = Number(priceStr);
                     if (isNaN(price) || price < 100) return toast.error('Invalid price');
-
                     toast.promise(
-                      orderApi.post(`/orders/${order._id}/quote`, {
-                        financials: {
-                          subtotal: price,
-                          deliveryFee: 1000,
-                          gatewayFee: Math.ceil(price * 0.02),
-                          totalAmount: price + 1000 + Math.ceil(price * 0.02),
-                          sellerPayout: price * 0.985,
-                          riderPayout: 900
-                        }
-                      }),
-                      {
-                        loading: 'Sending quote...',
-                        success: 'Quote sent! Awaiting buyer acceptance.',
-                        error: 'Failed to send quote'
-                      }
+                      orderApi.post(`/orders/${orderId}/quote`, { financials: { subtotal: price, deliveryFee: 1000 } }),
+                      { loading: 'Sending quote...', success: 'Quote sent!', error: 'Failed to send quote' }
                     ).then(() => { if (onClose) onClose(); });
-                  }}>
-                    Propose Final Price
-                  </Button>
-                </div>
+                  }}
+                  className="w-full py-4 bg-[#ffd700] text-[#1b1c1c] text-[10px] font-black uppercase tracking-[0.4em] hover:bg-white transition-all"
+                >
+                  Propose Final Price
+                </button>
               )}
 
-              {role === 'buyer' && order.status === 'quote_sent' && (
+              {role === 'buyer' && orderStatus === 'quote_sent' && (
                 <div className="space-y-3">
-                  <p className="text-[11px] text-text-secondary leading-tight mb-2">The artisan has proposed a price of <span className="font-bold text-brand-primary">{order.financials.subtotal.toLocaleString()} RWF</span>. Accept to proceed to payment.</p>
-                  <Button fullWidth size="sm" onClick={async () => {
-                    toast.promise(
-                      orderApi.put(`/orders/${order._id}/status`, {
-                        status: 'placed',
-                        userId: (order.buyer as any).userId || (order as any).buyerId
-                      }),
-                      {
-                        loading: 'Accepting quote...',
-                        success: 'Quote accepted! Redirecting to payment...',
-                        error: 'Failed to accept quote'
-                      }
-                    ).then(() => {
-                       // Trigger payment retry/initiation logic
-                       orderApi.post(`/orders/${order._id}/retry-payment`)
-                         .then(() => { if (onClose) onClose(); })
-                         .catch(() => toast.error('Could not initiate payment. Please try from your dashboard.'));
-                    });
-                  }}>
+                  <p className="text-[10px] text-white/60 leading-relaxed">
+                    Seller proposed <span className="text-[#1b4332] font-black">{financials.subtotal.toLocaleString()} RWF</span>
+                  </p>
+                  <button
+                    onClick={() => {
+                      toast.promise(
+                        orderApi.put(`/orders/${orderId}/status`, { status: 'placed', userId: buyer.userId })
+                          .then(() => orderApi.post(`/orders/${orderId}/retry-payment`)),
+                        { loading: 'Accepting...', success: 'Quote accepted! Processing payment...', error: 'Failed to accept quote' }
+                      ).then(() => { if (onClose) onClose(); });
+                    }}
+                    className="w-full py-4 bg-[#ffd700] text-[#1b1c1c] text-[10px] font-black uppercase tracking-[0.4em] hover:bg-white transition-all"
+                  >
                     Accept Quote & Pay
-                  </Button>
-                  <div className="flex gap-2">
-                    <Button fullWidth size="sm" variant="outline" onClick={() => {
-                      const priceStr = prompt('Enter your counter-offer price (RWF):');
-                      if (!priceStr) return;
-                      const price = Number(priceStr);
-                      if (isNaN(price) || price < 100) return toast.error('Invalid price');
-                      const note = prompt('Reason for counter-offer (optional):');
-                      toast.promise(
-                        orderApi.post(`/orders/${order._id}/counter-offer`, {
-                          subtotal: price,
-                          note: note || undefined
-                        }),
-                        {
-                          loading: 'Sending counter-offer...',
-                          success: 'Counter-offer sent!',
-                          error: 'Failed to send counter-offer'
-                        }
-                      ).then(() => { if (onClose) onClose(); });
-                    }}>
-                      Counter Offer
-                    </Button>
-                    <Button fullWidth size="sm" variant="outline" className="!border-status-error !text-status-error hover:!bg-status-error/5" onClick={async () => {
-                      const reason = prompt('Reason for declining (optional):');
-                      toast.promise(
-                        orderApi.post(`/orders/${order._id}/reject-quote`, { reason: reason || undefined }),
-                        {
-                          loading: 'Declining quote...',
-                          success: 'Quote declined',
-                          error: 'Failed to decline quote'
-                        }
-                      ).then(() => { if (onClose) onClose(); });
-                    }}>
-                      Decline
-                    </Button>
+                  </button>
+                  <div className="grid grid-cols-2 gap-3">
+                    <button
+                      onClick={() => {
+                        const priceStr = prompt('Your counter-offer price (RWF):');
+                        if (!priceStr) return;
+                        const price = Number(priceStr);
+                        if (isNaN(price) || price < 100) return toast.error('Invalid price');
+                        toast.promise(
+                          orderApi.post(`/orders/${orderId}/counter-offer`, { subtotal: price }),
+                          { loading: 'Sending...', success: 'Counter-offer sent!', error: 'Failed' }
+                        ).then(() => { if (onClose) onClose(); });
+                      }}
+                      className="py-3 border border-white/30 text-white text-[9px] font-black uppercase tracking-widest hover:border-white transition-all"
+                    >Counter Offer</button>
+                    <button
+                      onClick={() => {
+                        const reason = prompt('Reason for declining (optional):');
+                        toast.promise(
+                          orderApi.post(`/orders/${orderId}/reject-quote`, { reason: reason || undefined }),
+                          { loading: 'Declining...', success: 'Quote declined', error: 'Failed' }
+                        ).then(() => { if (onClose) onClose(); });
+                      }}
+                      className="py-3 border border-red-500/50 text-red-400 text-[9px] font-black uppercase tracking-widest hover:border-red-400 transition-all"
+                    >Decline</button>
                   </div>
                 </div>
               )}
 
-              {role === 'seller' && order.status === 'placed' && order.payment?.status !== 'paid' && (
-                <div className="space-y-3">
-                  <p className="text-[11px] text-text-secondary leading-tight mb-2">The buyer attempted to pay but the transaction did not complete. You can revise your quote.</p>
-                  <Button fullWidth size="sm" variant="outline" onClick={() => {
-                    const priceStr = prompt('Enter revised quote price (RWF):');
-                    if (!priceStr) return;
-                    const price = Number(priceStr);
-                    if (isNaN(price) || price < 100) return toast.error('Invalid price');
-                    toast.promise(
-                      orderApi.post(`/orders/${order._id}/quote`, {
-                        financials: { subtotal: price, deliveryFee: 1000 }
-                      }),
-                      {
-                        loading: 'Sending revised quote...',
-                        success: 'Revised quote sent!',
-                        error: 'Failed to send revised quote'
-                      }
-                    ).then(() => { if (onClose) onClose(); });
-                  }}>
-                    Revise Quote
-                  </Button>
-                </div>
-              )}
-
-              {order.status === 'placed' && order.payment?.status === 'paid' && (
-                <div className="flex items-center gap-2 text-status-success bg-status-success/5 p-2 rounded-lg">
-                  <span className="text-sm">✓</span>
-                  <span className="text-[11px] font-medium">Agreement reached. Order in fulfillment.</span>
-                </div>
-              )}
-
-              {(order.status === 'cancelled') && (
-                <div className="flex items-center gap-2 text-status-error bg-status-error/5 p-2 rounded-lg">
-                  <span className="text-sm">✕</span>
-                  <span className="text-[11px] font-medium">This negotiation has been ended.</span>
-                </div>
+              {orderStatus === 'cancelled' && (
+                <p className="text-[10px] text-red-400 font-black uppercase tracking-widest">This negotiation has ended.</p>
               )}
             </div>
           </div>
         )}
 
-        <div className="flex-1 flex flex-col min-w-0">
-        {/* Header */}
-        <div className="p-5 sm:p-6 border-b border-gray-200 bg-gradient-to-r from-primary to-primary/90 text-white">
-          <div className="flex justify-between items-start">
-            <div>
-              <p className="text-xs font-medium uppercase tracking-widest text-white/70 mb-1">{t('receipt_title')}</p>
-              <h2 className="text-xl sm:text-2xl font-bold">{receiptNumber}</h2>
-              <p className="text-sm text-white/80 mt-1">{orderDate}</p>
-            </div>
-            <div className="flex items-center gap-2">
-              {statusBadge(order.status)}
-              {onClose && (
-                <button onClick={onClose} className="ml-2 w-8 h-8 rounded-full bg-white/20 flex items-center justify-center text-white hover:bg-white/30 transition-colors text-lg">&times;</button>
-              )}
-            </div>
-          </div>
-        </div>
+        {/* ── Right: Receipt Panel ── */}
+        <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
 
-        {/* Body */}
-        <div className="flex-1 overflow-y-auto p-5 sm:p-6 space-y-6">
-          {/* Parties Section */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div className="bg-blue-50 rounded-xl p-4 border border-blue-100">
-              <p className="text-xs font-bold uppercase tracking-wider text-blue-600 mb-2">{t('receipt_buyer')}</p>
-              <p className="font-bold text-gray-900">{buyerName}</p>
-              <p className="text-sm text-gray-600">{order.buyer.phone}</p>
-              {order.buyer.deliveryAddress?.address && (
-                <p className="text-xs text-gray-500 mt-1">📍 {order.buyer.deliveryAddress.address}</p>
-              )}
-              {order.buyer.userId && (
-                <p className="text-xs text-gray-400 mt-1 font-mono">ID: {order.buyer.userId.substring(0, 10)}...</p>
-              )}
+          {/* Receipt Header */}
+          <div className="bg-[#012d1d] px-8 py-6 flex items-start justify-between border-b-2 border-[#ffd700]/20">
+            <div>
+              <p className="text-[9px] font-black text-[#1b4332] uppercase tracking-[0.5em] mb-1">Official Receipt</p>
+              <h2 className="text-3xl font-sans text-white leading-none tracking-normal">{receiptNumber}</h2>
+              <p className="text-[10px] text-white/50 font-bold uppercase tracking-widest mt-2">{orderDate}</p>
             </div>
-            <div className="bg-purple-50 rounded-xl p-4 border border-purple-100">
-              <p className="text-xs font-bold uppercase tracking-wider text-purple-600 mb-2">{t('receipt_seller')}</p>
-              <p className="font-bold text-gray-900">{order.seller.fullName}</p>
-              <p className="text-sm text-gray-600">Stall: {order.seller.stallId}</p>
-              {role === 'buyer' && order.delivery?.rider && (
-                <div className="mt-2 pt-2 border-t border-purple-200">
-                  <p className="text-xs font-bold text-purple-600">Rider</p>
-                  <p className="text-sm font-medium">{order.delivery.rider.fullName || 'Assigned'}</p>
-                  {order.delivery.rider.plateNumber && (
-                    <p className="text-xs text-gray-500">🛵 {order.delivery.rider.plateNumber}</p>
-                  )}
-                </div>
+            <div className="flex items-center gap-4">
+              <div className="text-right">
+                <p className="text-[8px] font-black uppercase tracking-[0.4em] mb-1" style={{ color: statusInfo.color }}>Status</p>
+                <p className="text-[10px] font-black uppercase tracking-wider text-white">{statusInfo.label}</p>
+                <div className="w-2 h-2 rounded-full mt-1 ml-auto animate-pulse" style={{ backgroundColor: statusInfo.color }} />
+              </div>
+              {onClose && (
+                <button onClick={onClose} className="w-10 h-10 border border-white/20 text-white/60 hover:border-white hover:text-white transition-all text-lg flex items-center justify-center font-light">
+                  ×
+                </button>
               )}
             </div>
           </div>
-          
-          {/* Prototype / Reference Photo Section */}
-          {(order.attributes?.isQuoteRequest === 'true' || order.notes) && (
-            <div className={`rounded-xl p-4 border ${order.status === 'quote_sent' ? 'bg-brand-primary/5 border-brand-primary/20' : 'bg-amber-50 border-amber-200'}`}>
-              <div className="flex flex-col sm:flex-row gap-4">
-                {order.attributes?.prototypeImage && (
-                  <div className="w-full sm:w-32 h-32 rounded-lg border border-amber-300 overflow-hidden bg-white flex-shrink-0 shadow-sm">
-                    <img 
-                      src={order.attributes.prototypeImage} 
-                      alt="Prototype" 
-                      className="w-full h-full object-cover cursor-zoom-in"
-                      onClick={() => window.open(order.attributes?.prototypeImage, '_blank')}
-                    />
+
+          {/* Receipt Body */}
+          <div className="flex-1 overflow-y-auto">
+
+            {/* Parties */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 border-b-2 border-[#e0e0e0]">
+              <div className="p-8 border-b sm:border-b-0 sm:border-r border-[#e0e0e0]">
+                <p className="text-[9px] font-black text-[#1b4332] uppercase tracking-[0.4em] mb-4">Buyer</p>
+                <p className="text-xl font-sans text-[#1b1c1c] leading-none mb-2">{buyerName}</p>
+                <p className="text-[11px] text-[#414844] font-bold uppercase tracking-widest">{buyer.phone || 'Hidden'}</p>
+                {buyer.deliveryAddress?.address && (
+                  <p className="text-[10px] text-[#414844] mt-2 leading-relaxed">Address: {buyer.deliveryAddress.address}</p>
+                )}
+              </div>
+              <div className="p-8">
+                <p className="text-[9px] font-black text-[#1b4332] uppercase tracking-[0.4em] mb-4">Seller</p>
+                <p className="text-xl font-sans text-[#1b1c1c] leading-none mb-2">{seller.fullName || 'Verified Seller'}</p>
+                <p className="text-[11px] text-[#414844] font-bold uppercase tracking-widest">Stall: {seller.stallId || 'N/A'}</p>
+                {order.delivery?.rider && (
+                  <div className="mt-4 pt-4 border-t border-[#e0e0e0]">
+                    <p className="text-[9px] font-black text-[#1b4332] uppercase tracking-[0.4em] mb-1">Rider</p>
+                    <p className="text-[12px] font-bold text-[#1b1c1c]">{order.delivery.rider.fullName || 'Assigned'}</p>
+                    {order.delivery.rider.plateNumber && <p className="text-[10px] text-[#414844]">Plate: {order.delivery.rider.plateNumber}</p>}
                   </div>
                 )}
-                <div className="flex-1">
-                  <p className={`text-xs font-bold uppercase tracking-wider mb-1 ${order.status === 'quote_sent' ? 'text-brand-primary' : 'text-amber-700'}`}>
-                    {order.attributes?.isQuoteRequest === 'true' ? '📋 Project Brief & Reference Photo' : 'Customer Instructions'}
-                  </p>
-                  <p className="text-sm italic text-gray-700">"{order.notes || 'No specific instructions provided.'}"</p>
-                  
-                  {order.status === 'awaiting_quote' && (
-                    <div className="mt-3 flex items-center gap-2 text-[10px] font-bold text-amber-600 bg-amber-100/50 px-2 py-1 rounded w-fit">
-                      <span className="animate-pulse">●</span> AWAITING ARTISAN QUOTE
-                    </div>
-                  )}
-                  {order.status === 'quote_sent' && (
-                    <div className="mt-3 flex items-center gap-2 text-[10px] font-bold text-brand-primary bg-brand-primary/10 px-2 py-1 rounded w-fit">
-                      <span className="animate-bounce">●</span> QUOTE RECEIVED: {order.financials.subtotal.toLocaleString()} RWF
-                    </div>
-                  )}
-                </div>
               </div>
             </div>
-          )}
 
-          {/* Products Table */}
-          <div>
-            <p className="text-xs font-bold uppercase tracking-wider text-gray-500 mb-3">{t('receipt_products_ordered')}</p>
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
+            {/* Project Brief */}
+            {(isNegotiation || order.notes) && (
+              <div className="px-8 py-6 border-b-2 border-[#e0e0e0] bg-[#012d1d]/5">
+                <p className="text-[9px] font-black text-[#1b4332] uppercase tracking-[0.4em] mb-3">
+                  {isNegotiation ? 'Project Brief' : 'Order Notes'}
+                </p>
+                <p className="text-sm text-[#1b1c1c]/80 leading-relaxed">{order.notes || 'No brief provided.'}</p>
+                {orderStatus === 'quote_sent' && (
+                  <div className="mt-3 inline-flex items-center gap-2">
+                    <div className="w-1.5 h-1.5 bg-[#ffd700] rounded-full animate-pulse" />
+                    <span className="text-[9px] font-black text-[#1b4332] uppercase tracking-widest">Quote Received: {financials.subtotal.toLocaleString()} RWF</span>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Products Table */}
+            <div className="border-b-2 border-[#e0e0e0]">
+              <div className="px-8 py-4 bg-[#012d1d]">
+                <p className="text-[9px] font-black text-[#1b4332] uppercase tracking-[0.4em]">Items Ordered</p>
+              </div>
+              <table className="w-full">
                 <thead>
-                  <tr className="border-b-2 border-gray-200">
-                    <th className="text-left py-2 px-2 font-semibold text-gray-600">#</th>
-                    <th className="text-left py-2 px-2 font-semibold text-gray-600">Item</th>
-                    <th className="text-right py-2 px-2 font-semibold text-gray-600">Unit Price</th>
-                    <th className="text-center py-2 px-2 font-semibold text-gray-600">Qty</th>
-                    <th className="text-right py-2 px-2 font-semibold text-gray-600">Total</th>
+                  <tr className="border-b border-[#e0e0e0]">
+                    {['#', 'Item', 'Unit Price', 'Qty', 'Total'].map((h, i) => (
+                      <th key={h} className={`py-3 px-4 text-[8px] font-black uppercase tracking-[0.3em] text-[#414844] ${i > 1 ? 'text-right' : i === 0 ? 'text-center' : 'text-left'}`}>{h}</th>
+                    ))}
                   </tr>
                 </thead>
                 <tbody>
                   {productsList.length === 0 ? (
                     <tr>
-                      <td colSpan={5} className="py-6 text-center text-gray-400 italic">No product details available</td>
+                      <td colSpan={5} className="py-10 text-center text-[11px] font-bold text-[#414844] uppercase tracking-widest">No product details</td>
                     </tr>
                   ) : (
                     productsList.map((item, idx) => (
-                      <tr key={item.productId || idx} className="border-b border-gray-100 hover:bg-gray-50">
-                        <td className="py-3 px-2 text-gray-400 font-mono">{idx + 1}</td>
-                        <td className="py-3 px-2 font-medium text-gray-800">
-                          {item.name}
-                          {item.weight && <span className="text-xs text-gray-400 ml-1">({item.weight} kg)</span>}
+                      <tr key={item.productId || idx} className="border-b border-[#e0e0e0] hover:bg-[#012d1d]/3 transition-colors">
+                        <td className="py-4 px-4 text-center text-[10px] font-black text-[#414844]">{idx + 1}</td>
+                        <td className="py-4 px-4">
+                          <p className="text-[13px] font-bold text-[#1b1c1c]">{item.name}</p>
+                          {item.weight && <p className="text-[9px] text-[#414844] uppercase tracking-widest">{item.weight} kg</p>}
                         </td>
-                        <td className="py-3 px-2 text-right text-gray-600">{item.unitPrice.toLocaleString()} RWF</td>
-                        <td className="py-3 px-2 text-center">
-                          <span className="inline-flex items-center justify-center bg-gray-100 rounded-lg px-3 py-0.5 font-bold text-gray-800">
-                            {item.quantity}
-                          </span>
+                        <td className="py-4 px-4 text-right text-[12px] text-[#414844] font-bold">{item.unitPrice.toLocaleString()} RWF</td>
+                        <td className="py-4 px-4 text-right">
+                          <span className="inline-block bg-[#012d1d] text-white text-[9px] font-black px-3 py-1">{item.quantity}</span>
                         </td>
-                        <td className="py-3 px-2 text-right font-semibold text-gray-800">{(item.unitPrice * (item.quantity || 0)).toLocaleString()} RWF</td>
+                        <td className="py-4 px-4 text-right text-[13px] font-black text-[#1b1c1c]">{(item.unitPrice * (item.quantity || 0)).toLocaleString()} <span className="text-[9px] text-[#414844]">RWF</span></td>
                       </tr>
                     ))
                   )}
                 </tbody>
               </table>
             </div>
-          </div>
 
-          {/* Financial Breakdown */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div className="bg-gray-50 rounded-xl p-4 border border-gray-200">
-              <p className="text-xs font-bold uppercase tracking-wider text-gray-500 mb-3">{t('receipt_payment_summary')}</p>
-              <div className="space-y-2 text-sm">
-                <div className="flex justify-between">
-                  <span className="text-gray-600">{t('cart_subtotal')}</span>
-                  <span className="font-medium">{(order.financials.subtotal || 0).toLocaleString()} RWF</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-600">{t('cart_delivery')}</span>
-                  <span className="font-medium">{(order.financials.deliveryFee || 0).toLocaleString()} RWF</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Platform Commission</span>
-                  <span className="font-medium text-orange-600">-{(order.financials.platformCommission || 0).toLocaleString()} RWF</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Gateway Fee</span>
-                  <span className="font-medium text-orange-600">-{(order.financials.gatewayFee || 0).toLocaleString()} RWF</span>
-                </div>
-                <div className="border-t-2 border-gray-300 pt-2 flex justify-between font-bold text-base">
-                  <span>{t('receipt_total_paid')}</span>
-                  <span className="text-primary">{(order.financials.totalAmount || 0).toLocaleString()} RWF</span>
+            {/* Financials */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 border-b-2 border-[#e0e0e0]">
+              {/* Payment Summary */}
+              <div className="p-8 border-b sm:border-b-0 sm:border-r border-[#e0e0e0]">
+                <p className="text-[9px] font-black text-[#1b4332] uppercase tracking-[0.4em] mb-6">Payment Summary</p>
+                <div className="space-y-3">
+                  {[
+                    { label: 'Subtotal',       val: financials.subtotal,          dim: false },
+                    { label: 'Delivery Fee',   val: financials.deliveryFee,        dim: false },
+                    { label: 'Service Fee',    val: financials.gatewayFee,         dim: true  },
+                    { label: 'Commission',     val: financials.platformCommission, dim: true  },
+                  ].map(({ label, val, dim }) => (
+                    <div key={label} className="flex justify-between items-end">
+                      <span className="text-[10px] font-bold uppercase tracking-widest text-[#414844]">{label}</span>
+                      <span className={`text-[12px] font-bold ${dim ? 'text-[#414844]' : 'text-[#1b1c1c]'}`}>{(val || 0).toLocaleString()} RWF</span>
+                    </div>
+                  ))}
+                  <div className="border-t-2 border-[#e0e0e0] pt-4 flex justify-between items-end">
+                    <span className="text-[10px] font-black uppercase tracking-[0.3em] text-[#1b1c1c]">Total Paid</span>
+                    <div className="text-right">
+                      <span className="text-3xl font-sans tracking-normal text-[#1b1c1c]">{(financials.totalAmount || 0).toLocaleString()}</span>
+                      <span className="text-[9px] font-black text-[#1b4332] ml-1 uppercase">RWF</span>
+                    </div>
+                  </div>
                 </div>
               </div>
-            </div>
 
-            <div className="space-y-4">
-              {/* Payment Info */}
-              <div className="bg-green-50 rounded-xl p-4 border border-green-100">
-                <p className="text-xs font-bold uppercase tracking-wider text-green-600 mb-2">Payment</p>
-                <div className="flex items-center gap-2 mb-1">
-                  <span className="text-lg">{paymentMethodIcon(order.payment?.method)}</span>
-                  <span className="font-bold text-gray-900">{order.payment?.method || 'N/A'}</span>
-                  {order.payment?.status && (
-                    <span className={`ml-auto text-xs font-bold px-2 py-0.5 rounded-full ${
-                      order.payment.status === 'paid' ? 'bg-green-200 text-green-800' :
-                      order.payment.status === 'pending' ? 'bg-yellow-200 text-yellow-800' :
-                      'bg-red-200 text-red-800'
-                    }`}>{order.payment.status.toUpperCase()}</span>
+              {/* Payment & Payout Info */}
+              <div className="p-8 space-y-6">
+                {/* Payment Method */}
+                <div>
+                  <p className="text-[9px] font-black text-[#1b4332] uppercase tracking-[0.4em] mb-4">Payment</p>
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-[12px] font-bold text-[#1b1c1c]">{order.payment?.method || 'N/A'}</span>
+                    <span className={`text-[9px] font-black uppercase tracking-widest px-3 py-1 ${
+                      isPaid ? 'bg-[#012d1d] text-white' :
+                      order.payment?.status === 'pending' ? 'bg-[#ffd700] text-[#1b1c1c]' :
+                      'bg-red-500 text-white'
+                    }`}>
+                      {order.payment?.status?.toUpperCase() || 'N/A'}
+                    </span>
+                  </div>
+                  {order.payment?.transactionRef && (
+                    <p className="text-[9px] font-mono text-[#414844] break-all">{order.payment.transactionRef}</p>
+                  )}
+                  {order.payment?.paidAt && (
+                    <p className="text-[9px] text-[#414844] mt-1">{new Date(order.payment.paidAt).toLocaleString()}</p>
                   )}
                 </div>
-                {order.payment?.transactionRef && (
-                  <p className="text-xs text-gray-500 font-mono mt-1">Ref: {order.payment.transactionRef}</p>
-                )}
-                {order.payment?.paidAt && (
-                  <p className="text-xs text-gray-500">Paid: {new Date(order.payment.paidAt).toLocaleString()}</p>
-                )}
-              </div>
 
-              {/* Payout Info (seller/rider/admin views) */}
-              {(role === 'seller' || role === 'rider' || role === 'admin') && (
-                <div className="bg-amber-50 rounded-xl p-4 border border-amber-100">
-                  <p className="text-xs font-bold uppercase tracking-wider text-amber-600 mb-2">Payout Breakdown</p>
-                  <div className="space-y-1 text-sm">
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">Seller Payout (98.5%)</span>
-                      <span className="font-bold text-green-700">+{(order.financials.sellerPayout || 0).toLocaleString()} RWF</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">Rider Payout (90% of fee)</span>
-                      <span className="font-bold text-green-700">+{(order.financials.riderPayout || 0).toLocaleString()} RWF</span>
-                    </div>
-                    <div className="flex justify-between border-t border-amber-200 pt-1 mt-1">
-                      <span className="text-gray-600">Platform Revenue</span>
-                      <span className="font-bold text-blue-700">+{((order.financials.platformCommission || 0) + (order.financials.gatewayFee || 0)).toLocaleString()} RWF</span>
+                {/* Payout (seller/admin only) */}
+                {(role === 'seller' || role === 'admin') && (
+                  <div>
+                    <p className="text-[9px] font-black text-[#1b4332] uppercase tracking-[0.4em] mb-4">Payout Breakdown</p>
+                    <div className="space-y-2">
+                      <div className="flex justify-between">
+                        <span className="text-[10px] font-bold text-[#414844] uppercase tracking-widest">Seller</span>
+                        <span className="text-[12px] font-black text-[#1b1c1c]">+{(financials.sellerPayout || 0).toLocaleString()} RWF</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-[10px] font-bold text-[#414844] uppercase tracking-widest">Rider</span>
+                        <span className="text-[12px] font-black text-[#1b1c1c]">+{(financials.riderPayout || 0).toLocaleString()} RWF</span>
+                      </div>
                     </div>
                   </div>
-                </div>
-              )}
+                )}
 
-              {/* Delivery Info */}
-              {order.delivery && (
-                <div className="bg-cyan-50 rounded-xl p-4 border border-cyan-100">
-                  <p className="text-xs font-bold uppercase tracking-wider text-cyan-600 mb-2">Delivery</p>
-                  <div className="text-sm space-y-1">
-                    <p className="flex justify-between"><span className="text-gray-600">Distance</span><span className="font-medium">{order.delivery.route?.distanceKm?.toFixed(1) || '?'} km</span></p>
-                    <p className="flex justify-between"><span className="text-gray-600">Est. Time</span><span className="font-medium">{order.delivery.route?.estimatedMinutes || '?'} min</span></p>
-                    <p className="flex justify-between"><span className="text-gray-600">Status</span><span className="font-medium">{order.delivery.status?.replace(/_/g, ' ') || 'N/A'}</span></p>
+                {/* Delivery */}
+                {order.delivery && (
+                  <div>
+                    <p className="text-[9px] font-black text-[#1b4332] uppercase tracking-[0.4em] mb-3">Delivery</p>
+                    <div className="space-y-1">
+                      {order.delivery.route?.distanceKm && (
+                        <div className="flex justify-between">
+                          <span className="text-[10px] text-[#414844] font-bold uppercase tracking-widest">Distance</span>
+                          <span className="text-[11px] font-black text-[#1b1c1c]">{order.delivery.route.distanceKm.toFixed(1)} km</span>
+                        </div>
+                      )}
+                      {order.delivery.route?.estimatedMinutes && (
+                        <div className="flex justify-between">
+                          <span className="text-[10px] text-[#414844] font-bold uppercase tracking-widest">ETA</span>
+                          <span className="text-[11px] font-black text-[#1b1c1c]">{order.delivery.route.estimatedMinutes} min</span>
+                        </div>
+                      )}
+                    </div>
                   </div>
+                )}
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className="px-8 py-6 bg-[#012d1d] flex flex-col sm:flex-row items-center justify-between gap-4">
+              <div className="flex items-center gap-6">
+                <div className="border border-[#ffd700]/40 px-4 py-2">
+                  <p className="text-[8px] font-black text-[#1b4332] uppercase tracking-[0.4em] mb-0.5">Payment Status</p>
+                  <p className="text-[11px] font-black uppercase tracking-widest" style={{ color: isPaid || orderStatus === 'delivered' ? '#10B981' : orderStatus === 'cancelled' ? '#9A6B5D' : '#c1ecd4' }}>
+                    {isPaid || orderStatus === 'delivered' ? 'SETTLED' : orderStatus === 'cancelled' ? 'CANCELLED' : 'PENDING'}
+                  </p>
                 </div>
-              )}
+                <div className="border border-white/10 px-4 py-2">
+                  <p className="text-[8px] font-black text-white/40 uppercase tracking-[0.4em] mb-0.5">Verified</p>
+                  <p className="text-[11px] font-black text-white uppercase tracking-widest">{new Date().toLocaleDateString()}</p>
+                </div>
+              </div>
+              <div className="text-right">
+                <p className="text-[8px] font-mono text-white/30 uppercase tracking-widest">Rwanda Marketplace</p>
+                <p className="text-[8px] font-mono text-white/20">{receiptNumber} - Secure & Verified</p>
+              </div>
             </div>
           </div>
 
-          {/* Accounting Footer */}
-          <div className="border-t-2 border-gray-200 pt-6 text-center">
-            <div className="flex flex-col sm:flex-row justify-center items-center gap-4 sm:gap-8 mb-6">
-              <div className="bg-gray-100 rounded-lg px-6 py-3 border border-gray-200 w-full sm:w-auto">
-                <p className="text-xs text-gray-500 uppercase tracking-wider font-medium">Payment Status</p>
-                <p className={`text-lg font-bold mt-0.5 ${
-                  order.payment?.status === 'paid' || order.status === 'delivered' || order.status === 'resolved'
-                    ? 'text-status-success' : order.status === 'cancelled' || order.status === 'disputed'
-                      ? 'text-status-error' : 'text-status-warning'
-                }`}>
-                  {order.payment?.status === 'paid' || order.status === 'delivered' ? 'SETTLED' :
-                   order.status === 'cancelled' ? 'CANCELLED' :
-                   order.status === 'disputed' ? 'DISPUTED' : 'PENDING'}
-                </p>
-              </div>
-              <div className="bg-gray-100 rounded-lg px-6 py-3 border border-gray-200 w-full sm:w-auto">
-                <p className="text-xs text-gray-500 uppercase tracking-wider font-medium">Payee Name</p>
-                <p className="text-lg font-bold mt-0.5 text-gray-800">{buyerName}</p>
-              </div>
+          {/* Close */}
+          {onClose && (
+            <div className="border-t-2 border-[#e0e0e0] bg-[#fcf9f8]">
+              <button
+                onClick={onClose}
+                className="w-full py-4 text-[10px] font-black uppercase tracking-[0.4em] text-[#1b1c1c] hover:bg-[#012d1d] hover:text-white transition-all"
+              >
+                Close Receipt
+              </button>
             </div>
-            
-            <div className="flex justify-center mb-6">
-              <div className="border-2 border-primary/30 rounded-full px-6 py-2 transform -rotate-12 opacity-80">
-                <p className="text-primary font-bold tracking-widest text-sm uppercase">{t('receipt_official_digital')}</p>
-                <p className="text-[10px] text-primary/70">{new Date().toLocaleDateString()}</p>
-              </div>
-            </div>
-
-            <p className="text-xs text-gray-400 font-mono">
-              Receipt #{receiptNumber} • RMF Accounting System • Verified & Secure
-            </p>
-          </div>
+          )}
         </div>
-        </div>
-
-        {/* Close Button */}
-        {onClose && (
-          <div className="p-4 border-t border-gray-200 bg-gray-50">
-            <Button onClick={onClose} fullWidth variant="outline">{t('receipt_close')}</Button>
-          </div>
-        )}
       </div>
     </div>
   );

@@ -8,10 +8,21 @@ export const sellerProfileSchema = new Schema({
   description: { type: String },
   shopDetails: {
     name: { type: String },
+    slug: { type: String },
+    code: { type: String },
     logoUrl: { type: String },
     bannerUrl: { type: String },
     imageUrl: { type: String }, // Added to support onboarding imagery
+    hubImageUrl: { type: String },
     tagline: { type: String },
+    description: { type: String },
+    daysOpen: [{ type: String }],
+    operatingHours: {
+      open: { type: String },
+      close: { type: String },
+      daysOpen: [{ type: String }]
+    },
+    categories: [{ type: String }],
   },
   isApproved: { type: Boolean, default: false },
   isOnVacation: { type: Boolean, default: false },
@@ -20,8 +31,17 @@ export const sellerProfileSchema = new Schema({
   totalSales: { type: Number, default: 0 },
   totalOrders: { type: Number, default: 0 },
   businessPermitUrl: { type: String },
+  rraCertificateUrl: { type: String },
   idCardUrl: { type: String },
   stallPhotoUrl: { type: String },
+  capabilities: {
+    delivery: { type: Boolean, default: true },
+    bulk: { type: Boolean, default: false },
+    custom: { type: Boolean, default: false },
+    returns: { type: Boolean, default: true },
+  },
+  contractVersion: { type: String },
+  agreedToTermsAt: { type: Date },
   deletedAt: { type: Date, default: null }
 }, { timestamps: true });
 

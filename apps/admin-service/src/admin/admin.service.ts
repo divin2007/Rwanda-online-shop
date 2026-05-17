@@ -9,8 +9,35 @@ export class AdminService {
     @InjectModel('SellerProfile') private sellerModel: Model<any>,
     @InjectModel('Market') private marketModel: Model<any>,
     @InjectModel('Transaction') private orderModel: Model<any>,
-    @InjectModel('AuditLog') private auditModel: Model<any>
+    @InjectModel('AuditLog') private auditModel: Model<any>,
+    @InjectModel('Delivery') private deliveryModel: Model<any>,
+    @InjectModel('Review') private reviewModel: Model<any>
   ) {}
+
+  private async resolveSellerProfile(sellerId: string): Promise<any | null> {
+    if (!sellerId || !mongoose.Types.ObjectId.isValid(sellerId)) {
+      return null;
+    }
+
+    const objectId = new mongoose.Types.ObjectId(sellerId);
+    return this.sellerModel.findOne({
+      deletedAt: null,
+      $or: [
+        { _id: objectId },
+        { userId: objectId },
+      ],
+    }).lean().exec();
+  }
+
+  private sellerOrderMatch(profile: any): any {
+    const clauses: any[] = [];
+    if (profile?._id) clauses.push({ 'seller.sellerId': profile._id });
+    if (profile?.userId) clauses.push({ 'seller.userId': profile.userId });
+
+    return clauses.length > 0
+      ? { deletedAt: null, $or: clauses }
+      : { deletedAt: null, _id: { $exists: false } };
+  }
 
   async getPendingApprovals(): Promise<any> {
     const pendingSellers = await this.sellerModel.find({ isApproved: false, deletedAt: null }).exec();
@@ -83,13 +110,103 @@ export class AdminService {
   }
 
   async getFraudAlerts(): Promise<any> {
-    return this.orderModel.find({ 
+    const explicitFlags = await this.orderModel.find({ 
       'security.isFlagged': true,
       'security.reviewedBy': { $exists: false },
       status: { $nin: ['delivered', 'cancelled', 'resolved'] }
     })
     .sort({ createdAt: -1 })
+    .limit(50)
     .exec();
+
+    // 1. Detect Rider Stagnation (Incomplete tasks)
+    const threeHoursAgo = new Date();
+    threeHoursAgo.setHours(threeHoursAgo.getHours() - 3);
+
+    const stagnantRiders = await this.deliveryModel.aggregate([
+      { 
+        $match: { 
+          status: { $in: ['assigned', 'en_route_to_pickup', 'picked_up', 'pending_handover'] },
+          updatedAt: { $lt: threeHoursAgo },
+          deletedAt: null
+        } 
+      },
+      {
+        $group: {
+          _id: '$rider.riderId',
+          riderName: { $first: '$rider.fullName' },
+          incompleteCount: { $sum: 1 },
+          orderIds: { $push: '$orderId' },
+          lastUpdate: { $min: '$updatedAt' }
+        }
+      },
+      { $match: { incompleteCount: { $gte: 2 } } }, // Many = 2 or more for RMF scale
+      { $sort: { incompleteCount: -1 } }
+    ]);
+
+    // 2. Detect Seller Stagnation (Ghosting)
+    const sixHoursAgo = new Date();
+    sixHoursAgo.setHours(sixHoursAgo.getHours() - 6);
+
+    const stagnantSellers = await this.orderModel.aggregate([
+      {
+        $match: {
+          status: { $in: ['confirmed', 'preparing'] },
+          updatedAt: { $lt: sixHoursAgo },
+          deletedAt: null
+        }
+      },
+      {
+        $group: {
+          _id: '$seller.sellerId',
+          sellerName: { $first: '$seller.fullName' },
+          stagnantCount: { $sum: 1 },
+          orderNumbers: { $push: '$orderNumber' },
+          stallId: { $first: '$seller.stallId' }
+        }
+      },
+      { $match: { stagnantCount: { $gte: 3 } } }, // Many = 3 or more for sellers
+      { $sort: { stagnantCount: -1 } }
+    ]);
+
+    // Map to a unified "Alert" format
+    const behavioralAlerts = [
+      ...stagnantRiders.map(r => ({
+        _id: `rider-${r._id}`,
+        type: 'RIDER_STAGNATION',
+        severity: r.incompleteCount > 5 ? 'CRITICAL' : 'HIGH',
+        actor: r.riderName,
+        actorId: r._id,
+        count: r.incompleteCount,
+        reason: `Rider has ${r.incompleteCount} accepted tasks stagnant for > 3 hours.`,
+        relatedOrders: r.orderIds,
+        createdAt: r.lastUpdate
+      })),
+      ...stagnantSellers.map(s => ({
+        _id: `seller-${s._id}`,
+        type: 'SELLER_GHOSTING',
+        severity: s.stagnantCount > 8 ? 'CRITICAL' : 'HIGH',
+        actor: s.sellerName,
+        actorId: s._id,
+        count: s.stagnantCount,
+        reason: `Seller has ${s.stagnantCount} confirmed orders unfulfilled for > 6 hours.`,
+        relatedOrders: s.orderNumbers,
+        createdAt: new Date()
+      }))
+    ];
+
+    return [
+      ...explicitFlags.map(f => ({
+        _id: f._id,
+        type: 'SECURITY_FLAG',
+        severity: 'MEDIUM',
+        actor: f.buyer.fullName,
+        reason: f.security.flagReason || 'System flagged transaction anomaly',
+        relatedOrders: [f.orderNumber],
+        createdAt: f.createdAt
+      })),
+      ...behavioralAlerts
+    ].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
   }
 
   async getAccountingSummary(startDate?: string, endDate?: string): Promise<any> {
@@ -160,27 +277,37 @@ export class AdminService {
   }
 
   async getSellerAnalytics(sellerId: string): Promise<any> {
+    const sellerProfile = await this.resolveSellerProfile(sellerId);
+    if (!sellerProfile) {
+      throw new NotFoundException('Seller profile not found');
+    }
+
+    const match = this.sellerOrderMatch(sellerProfile);
+
     const stats = await this.orderModel.aggregate([
-      { $match: { 'seller.userId': new mongoose.Types.ObjectId(sellerId), deletedAt: null } },
+      { $match: match },
       {
         $group: {
           _id: null,
-          totalSales: { $sum: '$financials.totalAmount' },
+          totalRevenue: { $sum: '$financials.totalAmount' },
           totalOrders: { $sum: 1 },
           completedOrders: {
             $sum: { $cond: [{ $in: ['$status', ['delivered', 'resolved']] }, 1, 0] }
+          },
+          cancelledOrders: {
+            $sum: { $cond: [{ $eq: ['$status', 'cancelled'] }, 1, 0] }
           }
         }
       }
     ]);
 
-    // Calculate real avg prep time from statusHistory
-    const prepStats = await this.orderModel.aggregate([
-      { 
-        $match: { 
-          'seller.userId': new mongoose.Types.ObjectId(sellerId),
+    const [prepStats, buyerStats, ratingStats] = await Promise.all([
+      this.orderModel.aggregate([
+      {
+        $match: {
+          ...match,
           'statusHistory.status': { $all: ['confirmed', 'ready_for_pickup'] }
-        } 
+        }
       },
       {
         $project: {
@@ -208,16 +335,61 @@ export class AdminService {
           avgPrepTimeMs: { $avg: "$prepTimeMs" }
         }
       }
+      ]),
+      this.orderModel.aggregate([
+        { $match: match },
+        {
+          $group: {
+            _id: '$buyer.userId',
+            orders: { $sum: 1 }
+          }
+        },
+        {
+          $group: {
+            _id: null,
+            uniqueBuyers: { $sum: 1 },
+            repeatBuyers: { $sum: { $cond: [{ $gt: ['$orders', 1] }, 1, 0] } }
+          }
+        }
+      ]),
+      this.reviewModel.aggregate([
+        {
+          $match: {
+            targetType: 'seller',
+            targetId: sellerProfile._id,
+            deletedAt: null
+          }
+        },
+        {
+          $group: {
+            _id: null,
+            avgRating: { $avg: '$rating' },
+            totalReviews: { $sum: 1 }
+          }
+        }
+      ])
     ]);
 
     const avgPrepTimeMin = prepStats[0]?.avgPrepTimeMs 
       ? Math.round(prepStats[0].avgPrepTimeMs / 60000) 
-      : 15; // Fallback to 15 if no data
+      : null;
+
+    const totalOrders = stats[0]?.totalOrders || 0;
+    const completedOrders = stats[0]?.completedOrders || 0;
+    const uniqueBuyers = buyerStats[0]?.uniqueBuyers || 0;
+    const repeatBuyers = buyerStats[0]?.repeatBuyers || 0;
+    const avgRating = ratingStats[0]?.avgRating ?? sellerProfile.rating ?? 0;
 
     return {
-      salesToday: stats[0]?.totalSales || 0,
-      totalOrders: stats[0]?.totalOrders || 0,
-      completedOrders: stats[0]?.completedOrders || 0,
+      salesToday: stats[0]?.totalRevenue || 0,
+      totalRevenue: stats[0]?.totalRevenue || 0,
+      totalOrders,
+      completedOrders,
+      cancelledOrders: stats[0]?.cancelledOrders || 0,
+      fulfillmentRate: totalOrders > 0 ? Math.round((completedOrders / totalOrders) * 100) : 0,
+      repeatBuyerRate: uniqueBuyers > 0 ? Math.round((repeatBuyers / uniqueBuyers) * 100) : 0,
+      avgRating: Math.round(avgRating * 10) / 10,
+      totalReviews: ratingStats[0]?.totalReviews || 0,
       avgPrepTime: avgPrepTimeMin,
     };
   }
@@ -225,7 +397,11 @@ export class AdminService {
   async getAnalyticsDashboard(sellerId?: string): Promise<any> {
     const match: any = { deletedAt: null };
     if (sellerId) {
-      match['seller.userId'] = new mongoose.Types.ObjectId(sellerId);
+      const sellerProfile = await this.resolveSellerProfile(sellerId);
+      if (!sellerProfile) {
+        return { trends: [], statusDistribution: [], performance: [] };
+      }
+      Object.assign(match, this.sellerOrderMatch(sellerProfile));
     }
 
     const thirtyDaysAgo = new Date();

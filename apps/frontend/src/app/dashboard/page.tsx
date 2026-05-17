@@ -34,170 +34,171 @@ export default function DashboardPage() {
 
   return (
     <Layout>
-      <div className="space-y-32 pb-20 animate-reveal">
+      <div className="rmf-container space-y-24 pb-40 pt-10 animate-reveal">
         {/* Welcome & Overview */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-16 items-start">
-          <div className="lg:col-span-2 bg-white border-2 border-[#121212] p-20 relative overflow-hidden group">
-            <div className="absolute top-0 right-0 p-10 opacity-5">
-               <div className="text-[120px] font-serif leading-none italic select-none">RMF</div>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-10 items-start">
+          <div className="lg:col-span-2 bg-background-surface border border-border-light rounded-2xl p-10 md:p-16 relative overflow-hidden group shadow-sm">
+            <div className="absolute top-0 right-0 p-8 opacity-5">
+               <div className="text-[100px] font-bold leading-none select-none tracking-tighter">RMF</div>
             </div>
             
             <div className="relative z-10 max-w-2xl">
-              <div className="flex items-center gap-6 mb-12">
-                 <div className="w-12 h-px bg-[#F59E0B]"></div>
-                 <p className="text-[11px] font-black text-[#F59E0B] uppercase tracking-[0.5em]">Welcome Back</p>
+              <div className="flex items-center gap-4 mb-8">
+                 <div className="w-10 h-1 bg-accent-premium rounded-full"></div>
+                 <p className="text-[11px] font-bold text-primary uppercase tracking-widest">Welcome Back</p>
               </div>
               
-              <h1 className="text-8xl font-serif mb-10 leading-[0.9] text-[#121212] tracking-tighter italic">
+              <h1 className="text-5xl md:text-6xl font-bold mb-8 leading-[1.1] text-text-primary tracking-tight">
                 Hello, <br />
-                <span className="text-[#F59E0B] not-italic">{user?.fullName?.split(' ')[0] || 'Shopper'}.</span>
+                <span className="text-primary not-italic">{user?.fullName?.split(' ')[0] || 'Shopper'}.</span>
               </h1>
               
-              <p className="text-xl text-[#6B665E] font-light italic leading-relaxed mb-16 border-l-2 border-[#F0EDE4] pl-10 max-w-xl">
+              <p className="text-lg text-text-muted font-medium leading-relaxed mb-12 border-l-[3px] border-border-light pl-6 max-w-xl">
                 You have {orders.length} active order{orders.length !== 1 ? 's' : ''} and {wishlist.length} saved item{wishlist.length !== 1 ? 's' : ''} in your wishlist.
               </p>
               
-              <div className="flex flex-wrap gap-8">
-                <Link href="/orders" className="rmf-btn-primary bg-[#121212] hover:bg-[#F59E0B]">Track Orders</Link>
-                <Link href="/markets" className="rmf-btn-outline border-[#121212]/10 hover:border-[#121212]">Browse Markets</Link>
+              <div className="flex flex-wrap gap-4">
+                <Link href="/orders" className="rmf-btn-primary rounded-xl px-8 py-3">Track Orders</Link>
+                <Link href="/markets" className="rmf-btn-outline rounded-xl px-8 py-3 bg-white hover:bg-background-surface">Browse Markets</Link>
               </div>
             </div>
           </div>
           
           {/* Wallet Card */}
-          <div className="bg-[#121212] text-white p-12 relative overflow-hidden group shadow-[50px_50px_100px_-50px_rgba(0,0,0,0.5)]">
-            <div className="relative z-10 flex flex-col h-full justify-between gap-20">
+          <div className="bg-primary-cinematic text-white p-10 rounded-2xl relative overflow-hidden group shadow-xl cinematic-shadow h-full border border-white/5">
+            <div className="relative z-10 flex flex-col h-full justify-between gap-16">
               <div className="flex justify-between items-start">
                 <div>
-                  <p className="text-[10px] font-black uppercase tracking-[0.4em] text-[#F59E0B] mb-6">My Wallet</p>
-                  <div className="flex items-baseline gap-4">
-                    <h2 className="text-7xl font-serif tracking-tighter italic">{wallet.balance?.toLocaleString() || 0}</h2>
-                    <span className="text-2xl font-serif text-[#F59E0B] opacity-60">RWF</span>
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-accent-premium mb-4">My Wallet</p>
+                  <div className="flex items-baseline gap-3">
+                    <h2 className="text-4xl lg:text-5xl font-bold tracking-tight drop-shadow-md">{wallet.balance?.toLocaleString() || 0}</h2>
+                    <span className="text-lg font-bold text-accent-premium uppercase tracking-widest">RWF</span>
                   </div>
                 </div>
-                <div className="w-16 h-16 bg-[#F59E0B] flex items-center justify-center text-2xl shadow-2xl">💳</div>
+                <div className="w-14 h-14 bg-accent-premium rounded-full flex items-center justify-center text-2xl shadow-[0_0_15px_rgba(255,215,0,0.4)]">💳</div>
               </div>
               
-              <div className="space-y-8 pt-10 border-t border-white/10">
+              <div className="space-y-6 pt-8 border-t border-white/10">
                 <div className="flex justify-between items-center">
-                  <div className="text-[9px] font-black text-white/30 uppercase tracking-widest">
+                  <div className="text-[10px] font-bold text-white/50 uppercase tracking-widest">
                     Account Status
                   </div>
-                  <div className="flex items-center gap-2">
-                     <div className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse"></div>
-                     <span className="text-[9px] font-black text-white uppercase tracking-widest">Active</span>
+                  <div className="flex items-center gap-2 bg-white/5 px-3 py-1.5 rounded-full border border-white/10">
+                     <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse shadow-[0_0_8px_rgba(34,197,94,0.6)]"></div>
+                     <span className="text-[10px] font-bold text-white uppercase tracking-widest">Active</span>
                   </div>
                 </div>
-                <Link href="/wallet" className="w-full rmf-btn-primary py-4 text-[9px] bg-white text-[#121212] hover:bg-[#F59E0B] hover:text-white border-none">Manage Wallet</Link>
+                <Link href="/wallet" className="flex min-h-[3.5rem] w-full items-center justify-center gap-2 rounded-xl bg-white px-6 text-xs font-bold uppercase tracking-widest text-primary shadow-md transition-all duration-300 hover:-translate-y-1 hover:bg-white/90">Manage Wallet</Link>
               </div>
             </div>
             {/* Visual Decoration */}
-            <div className="absolute -bottom-20 -right-20 text-[200px] font-serif opacity-5 italic select-none">MOMO</div>
+            <div className="absolute -bottom-10 -right-10 text-[150px] font-bold opacity-5 select-none tracking-tighter">MOMO</div>
           </div>
         </div>
 
         {/* Active Orders */}
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-20">
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-10 lg:gap-16">
            <div className="lg:col-span-3">
-              <div className="flex justify-between items-end mb-16 border-b-2 border-[#121212] pb-10">
+              <div className="flex justify-between items-end mb-10 border-b border-border-light pb-6">
                 <div>
-                  <p className="rmf-label-sm mb-4">In Progress</p>
-                  <h2 className="text-5xl font-serif text-[#121212] italic tracking-tighter">My Orders</h2>
+                  <p className="text-[11px] font-bold text-primary uppercase tracking-widest mb-2">In Progress</p>
+                  <h2 className="text-3xl font-bold text-text-primary tracking-tight">My Orders</h2>
                 </div>
-                <Link href="/orders" className="text-[11px] font-black uppercase tracking-[0.4em] text-[#121212] hover:text-[#F59E0B] transition-colors border-b-2 border-[#121212]/10 hover:border-[#F59E0B] pb-2">View All →</Link>
+                <Link href="/orders" className="text-[10px] font-bold uppercase tracking-widest text-primary hover:text-primary/70 transition-colors border-b-2 border-transparent hover:border-accent-premium pb-1">View All →</Link>
               </div>
               
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {ordersLoading ? (
-                   [1,2].map(i => <div key={i} className="aspect-video bg-[#F2F0EB] animate-pulse border border-[#E5E1D8]"></div>)
+                   [1,2].map(i => <div key={i} className="aspect-video bg-background-surface rounded-2xl animate-pulse border border-border-light"></div>)
                 ) : orders.length > 0 ? orders.map((order: any) => (
-                  <div key={order._id} className="bg-white border border-[#E5E1D8] p-10 group relative hover:border-[#121212] transition-all">
-                    <div className="absolute top-0 right-0">
-                       <div className="bg-[#121212] text-white text-[8px] font-black uppercase tracking-widest py-3 px-5">
+                  <div key={order._id} className="bg-white border border-border-light rounded-2xl p-6 group relative hover:border-primary/30 hover:shadow-md transition-all shadow-sm">
+                    <div className="absolute top-4 right-4">
+                       <div className="bg-primary/5 text-primary border border-primary/10 text-[9px] font-bold uppercase tracking-widest py-1.5 px-3 rounded-full">
                           {order.status.replace(/_/g, ' ')}
                        </div>
                     </div>
                     
-                    <div className="flex gap-10 mb-10">
-                       <div className="w-32 h-32 bg-[#F8F6F1] overflow-hidden border border-[#E5E1D8]">
-                          <img src={order.products?.[0]?.images?.[0] || 'https://images.unsplash.com/photo-1590073844006-33379778ae09'} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-1000" alt={order.products?.[0]?.name} />
+                    <div className="flex gap-6 mb-6">
+                       <div className="w-24 h-24 bg-background-surface rounded-xl overflow-hidden border border-border-light">
+                          <img src={order.products?.[0]?.images?.[0] || 'https://images.unsplash.com/photo-1590073844006-33379778ae09'} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" alt={order.products?.[0]?.name} />
                        </div>
-                       <div className="flex-grow pt-4">
-                          <p className="text-[9px] font-black text-[#F59E0B] uppercase tracking-[0.3em] mb-3">Order #{order._id.substring(0,8).toUpperCase()}</p>
-                          <h4 className="text-3xl font-serif text-[#121212] leading-none tracking-tighter line-clamp-2">{order.products?.[0]?.name || 'Order Item'}</h4>
+                       <div className="flex-grow pt-2">
+                          <p className="text-[9px] font-bold text-accent-premium uppercase tracking-widest mb-1">Order #{order._id.substring(0,8).toUpperCase()}</p>
+                          <h4 className="text-xl font-bold text-text-primary leading-tight tracking-tight line-clamp-2 transition-colors group-hover:text-primary">{order.products?.[0]?.name || 'Order Item'}</h4>
                        </div>
                     </div>
                     
-                    <div className="flex justify-between items-end pt-8 border-t border-[#F0EDE4]">
+                    <div className="flex justify-between items-end pt-5 border-t border-border-light">
                       <div>
-                        <p className="text-[10px] font-black text-[#121212] uppercase tracking-widest">{order.seller?.marketName || 'Market'}</p>
-                        <p className="text-[9px] text-[#6B665E] uppercase tracking-widest mt-2 opacity-50">Placed: {new Date(order.createdAt).toLocaleDateString()}</p>
+                        <p className="text-[10px] font-bold text-text-primary uppercase tracking-widest">{order.seller?.marketName || 'Market'}</p>
+                        <p className="text-[9px] text-text-muted font-medium tracking-widest mt-1">Placed: {new Date(order.createdAt).toLocaleDateString()}</p>
                       </div>
-                      <Link href={`/orders/${order._id}/tracking`} className="text-sm font-black text-[#F59E0B] uppercase tracking-[0.2em] group-hover:underline transition-all">Track →</Link>
+                      <Link href={`/orders/${order._id}/tracking`} className="text-xs font-bold text-primary uppercase tracking-widest group-hover:underline transition-all">Track →</Link>
                     </div>
                   </div>
                 )) : (
-                  <div className="md:col-span-2 border-4 border-dashed border-[#F0EDE4] bg-white py-32 text-center">
-                    <p className="text-[12px] font-black text-[#6B665E] uppercase tracking-[0.6em] italic opacity-40">No active orders</p>
-                    <Link href="/markets" className="mt-10 inline-block text-[11px] font-black text-[#F59E0B] uppercase tracking-widest hover:underline">+ Start Shopping</Link>
+                  <div className="md:col-span-2 border border-dashed border-border-light rounded-2xl bg-white py-24 text-center shadow-sm">
+                    <p className="text-xs font-bold text-text-muted uppercase tracking-widest">No active orders</p>
+                    <Link href="/markets" className="mt-6 inline-flex min-h-[2.5rem] items-center justify-center rounded-xl bg-primary/5 px-6 text-xs font-bold uppercase tracking-widest text-primary hover:bg-primary/10 transition-all">+ Start Shopping</Link>
                   </div>
                 )}
               </div>
            </div>
 
            {/* Activity Sidebar */}
-           <div className="bg-white border-2 border-[#121212] p-12">
-              <div className="flex justify-between items-center mb-12 border-b border-[#F0EDE4] pb-6">
-                <h3 className="text-2xl font-serif text-[#121212] italic tracking-tighter">Recent Activity</h3>
-                <span className="text-xl opacity-20">🕒</span>
+           <div className="bg-white border border-border-light rounded-2xl p-8 shadow-sm">
+              <div className="flex justify-between items-center mb-8 border-b border-border-light pb-4">
+                <h3 className="text-xl font-bold text-text-primary tracking-tight">Recent Activity</h3>
+                <span className="text-xl opacity-40 text-primary">🕒</span>
               </div>
-              <div className="space-y-10">
+              <div className="space-y-6">
                 {transactions.length > 0 ? transactions.map((act: any, i: number) => (
-                  <div key={i} className="flex items-start gap-6 group">
-                    <div className="w-12 h-12 bg-[#F8F6F1] border border-[#E5E1D8] flex items-center justify-center text-xl group-hover:bg-[#121212] group-hover:text-white transition-all">
+                  <div key={i} className="flex items-start gap-4 group">
+                    <div className="w-10 h-10 rounded-full bg-background-surface border border-border-light flex items-center justify-center text-lg group-hover:bg-primary group-hover:text-white transition-all shadow-sm">
                       {act.type === 'deposit' ? '📈' : '🛍️'}
                     </div>
-                    <div className="flex-grow">
-                      <p className="text-[10px] font-black uppercase tracking-widest text-[#121212] truncate max-w-[150px]">{act.description || 'Transaction'}</p>
-                      <p className="text-[9px] text-[#6B665E] uppercase tracking-widest mt-1 opacity-50">{new Date(act.createdAt).toLocaleDateString()}</p>
-                      <p className={`text-[11px] font-black mt-2 ${act.type === 'deposit' ? 'text-green-600' : 'text-[#F59E0B]'}`}>
+                    <div className="flex-grow pt-0.5">
+                      <p className="text-[10px] font-bold uppercase tracking-widest text-text-primary truncate max-w-[150px]">{act.description || 'Transaction'}</p>
+                      <p className="text-[9px] text-text-muted font-medium tracking-widest mt-0.5">{new Date(act.createdAt).toLocaleDateString()}</p>
+                      <p className={`text-xs font-bold mt-1.5 ${act.type === 'deposit' ? 'text-green-600' : 'text-primary'}`}>
                         {act.type === 'deposit' ? '+' : '-'} {act.amount?.toLocaleString()} RWF
                       </p>
                     </div>
                   </div>
                 )) : (
-                  <p className="text-[10px] font-black text-[#6B665E] uppercase tracking-widest opacity-30 py-20 text-center">No activity yet</p>
+                  <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest py-10 text-center bg-background-surface rounded-xl border border-dashed border-border-light">No activity yet</p>
                 )}
               </div>
-              <Link href="/wallet" className="block w-full text-center mt-12 text-[10px] font-black uppercase tracking-[0.3em] text-[#F59E0B] hover:text-[#121212] transition-colors pt-10 border-t border-[#F0EDE4]">
+              <Link href="/wallet" className="block w-full text-center mt-8 text-[10px] font-bold uppercase tracking-widest text-primary hover:text-primary/70 transition-colors pt-6 border-t border-border-light">
                 View All Transactions
               </Link>
            </div>
         </div>
 
         {/* Wishlist */}
-        <section className="rmf-container-full bg-[#F8F6F1] py-32 border-y border-[#E5E1D8]">
-           <div className="rmf-container">
-              <div className="flex justify-between items-end mb-20">
+        <section className="bg-background-surface py-20 border-y border-border-light rounded-3xl">
+           <div className="px-4 md:px-8">
+              <div className="flex justify-between items-end mb-12">
                 <div>
-                  <p className="rmf-label-sm mb-4">Saved Items</p>
-                  <h2 className="text-6xl font-serif text-[#121212] tracking-tighter leading-none italic">My Wishlist</h2>
+                  <p className="text-[11px] font-bold text-primary uppercase tracking-widest mb-2">Saved Items</p>
+                  <h2 className="text-3xl font-bold text-text-primary tracking-tight">My Wishlist</h2>
                 </div>
-                <Link href="/wishlist" className="text-[11px] font-black uppercase tracking-[0.4em] text-[#121212] hover:text-[#F59E0B] transition-colors border-b-2 border-[#121212]/10 hover:border-[#F59E0B] pb-2">View All →</Link>
+                <Link href="/wishlist" className="text-[10px] font-bold uppercase tracking-widest text-primary hover:text-primary/70 transition-colors border-b-2 border-transparent hover:border-accent-premium pb-1">View All →</Link>
               </div>
               
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-12">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
                 {wishlist.length > 0 ? wishlist.slice(0, 4).map((item: any) => (
-                  <Link key={item._id} href={`/product/${item._id}`} className="group relative">
-                    <div className="aspect-[3/4] bg-white overflow-hidden mb-6 border border-[#E5E1D8] group-hover:border-[#121212] transition-all p-4 shadow-sm">
-                      <img src={item.images?.[0]} className="w-full h-full object-cover grayscale group-hover:grayscale-0 transition-all duration-1000" alt={item.name} />
+                  <Link key={item._id} href={`/product/${item._id}`} className="group relative bg-white border border-border-light rounded-2xl p-3 shadow-sm hover:shadow-md transition-all">
+                    <div className="aspect-[3/4] bg-background-surface overflow-hidden rounded-xl mb-4 relative">
+                      <img src={item.images?.[0]} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" alt={item.name} />
+                      <div className="absolute inset-0 bg-primary/0 group-hover:bg-primary/5 transition-colors"></div>
                     </div>
-                    <p className="text-[9px] font-black text-[#F59E0B] uppercase tracking-[0.3em] mb-3">{item.category || 'Product'}</p>
-                    <h5 className="text-xl font-serif text-[#121212] tracking-tighter leading-none line-clamp-1 group-hover:italic transition-all">{item.name}</h5>
+                    <p className="text-[9px] font-bold text-accent-premium uppercase tracking-widest mb-1.5 px-1">{item.category || 'Product'}</p>
+                    <h5 className="text-base font-bold text-text-primary tracking-tight line-clamp-1 px-1 transition-colors group-hover:text-primary">{item.name}</h5>
                   </Link>
                 )) : (
-                  <div className="col-span-4 py-24 border-4 border-dashed border-[#F0EDE4] bg-white text-center">
-                     <p className="text-[11px] font-black text-[#6B665E] uppercase tracking-[0.6em] italic opacity-40">Your wishlist is empty</p>
+                  <div className="col-span-4 py-16 border border-dashed border-border-light rounded-2xl bg-white text-center shadow-sm">
+                     <p className="text-xs font-bold text-text-muted uppercase tracking-widest">Your wishlist is empty</p>
                   </div>
                 )}
               </div>
@@ -205,24 +206,24 @@ export default function DashboardPage() {
         </section>
 
         {/* Recommended Products */}
-        <section className="text-center">
-           <div className="max-w-4xl mx-auto mb-24">
-              <p className="rmf-label-sm mb-6">You Might Like</p>
-              <h2 className="text-7xl font-serif text-[#121212] tracking-tighter leading-none italic">Recommended for You</h2>
-              <p className="text-xl text-[#6B665E] font-light italic mt-8">Products picked based on what's popular in your area.</p>
+        <section className="text-center pt-8">
+           <div className="max-w-2xl mx-auto mb-16">
+              <p className="text-[11px] font-bold text-primary uppercase tracking-widest mb-3">You Might Like</p>
+              <h2 className="text-4xl font-bold text-text-primary tracking-tight">Recommended for You</h2>
+              <p className="text-base text-text-muted font-medium mt-4">Products picked based on what's popular in your area.</p>
            </div>
-           <div className="grid grid-cols-1 md:grid-cols-4 gap-12 text-left">
+           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6 text-left">
              {recommended.map((prod: any) => (
-               <Link href={`/product/${prod._id}`} key={prod._id} className="space-y-8 group relative">
-                 <div className="aspect-[4/5] bg-white overflow-hidden relative border border-[#E5E1D8] group-hover:border-[#121212] transition-all p-2 shadow-xl">
-                   <img src={prod.images?.[0]} className="w-full h-full object-cover transition-transform duration-[4000ms] group-hover:scale-110" alt={prod.name} />
-                   <div className="absolute inset-0 bg-[#121212]/0 group-hover:bg-[#121212]/5 transition-all"></div>
+               <Link href={`/product/${prod._id}`} key={prod._id} className="group relative bg-white border border-border-light rounded-2xl p-3 shadow-sm hover:shadow-md transition-all flex flex-col">
+                 <div className="aspect-[4/5] bg-background-surface overflow-hidden rounded-xl mb-4 relative">
+                   <img src={prod.images?.[0]} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" alt={prod.name} />
+                   <div className="absolute inset-0 bg-primary/0 group-hover:bg-primary/5 transition-colors"></div>
                  </div>
-                 <div>
-                   <h4 className="text-3xl font-serif text-[#121212] mb-3 leading-none tracking-tighter group-hover:text-[#F59E0B] transition-colors">{prod.name}</h4>
-                   <div className="flex justify-between items-center">
-                      <p className="text-[10px] font-black text-[#6B665E] uppercase tracking-widest opacity-40 group-hover:opacity-100 transition-opacity">{prod.category || 'Product'}</p>
-                      <p className="text-lg font-serif italic text-[#121212]">{prod.price?.toLocaleString()} <span className="text-[10px] uppercase not-italic opacity-40 ml-1">RWF</span></p>
+                 <div className="flex-grow flex flex-col justify-between px-1">
+                   <h4 className="text-lg font-bold text-text-primary mb-2 leading-tight tracking-tight line-clamp-2 group-hover:text-primary transition-colors">{prod.name}</h4>
+                   <div className="flex justify-between items-center mt-2 pt-2 border-t border-border-light/50">
+                      <p className="text-[9px] font-bold text-text-muted uppercase tracking-widest truncate max-w-[50%]">{prod.category || 'Product'}</p>
+                      <p className="text-sm font-bold text-text-primary">{prod.price?.toLocaleString()} <span className="text-[9px] uppercase font-bold text-primary tracking-widest ml-1">RWF</span></p>
                    </div>
                  </div>
                </Link>

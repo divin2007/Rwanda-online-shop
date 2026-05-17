@@ -69,11 +69,14 @@ const SwipeableToast = ({ t }: { t: Toast }) => {
           cursor: isDragging ? 'grabbing' : 'grab',
           touchAction: 'none',
         }}
-        className={`relative z-[9999] bg-[#121212] text-white border-2 border-[#F59E0B] p-6 shadow-[10px_10px_0px_0px_#121212] flex items-center gap-4 min-w-[300px] pointer-events-auto`}
+        className="relative z-[9999] flex min-w-[300px] items-center gap-4 rounded-lg border border-[#d9e0db] bg-white p-4 text-[#1b1c1c] shadow-xl pointer-events-auto"
       >
-        <div className={`w-2 h-2 rounded-full animate-pulse ${t.type === 'error' ? 'bg-red-500' : 'bg-[#F59E0B]'}`}></div>
+        <div className={`h-9 w-1.5 rounded-full ${t.type === 'error' ? 'bg-[#574e47]' : 'bg-[#d9560b]'}`}></div>
         <div className="flex-grow">
-          <p className="text-[10px] font-black uppercase tracking-[0.2em] leading-tight">
+          <p className="mb-1 text-[10px] font-black uppercase tracking-[0.16em] text-[#d9560b]">
+            {t.type === 'error' ? 'Needs attention' : 'RMF update'}
+          </p>
+          <p className="text-sm font-bold leading-snug text-[#1b1c1c]">
             {t.message as React.ReactNode}
           </p>
         </div>
@@ -82,7 +85,7 @@ const SwipeableToast = ({ t }: { t: Toast }) => {
             setIsExiting(true);
             setTimeout(() => toast.dismiss(t.id), 300);
           }}
-          className="text-[8px] font-black uppercase tracking-widest opacity-30 hover:opacity-100 transition-opacity"
+          className="rounded-md border border-[#d9e0db] px-2 py-1 text-[10px] font-black uppercase tracking-widest text-[#574e47] transition hover:border-[#d9560b] hover:text-[#d9560b]"
         >
           Dismiss
         </button>
@@ -92,10 +95,10 @@ const SwipeableToast = ({ t }: { t: Toast }) => {
 };
 
 export const TacticalToaster = () => {
-  const { toasts, handlers } = useToaster();
+  const { toasts } = useToaster();
 
   return (
-    <div className="fixed top-24 right-10 z-[9999] pointer-events-none flex flex-col items-end max-w-md w-full">
+    <div className="fixed right-4 top-20 z-[9999] pointer-events-none flex w-[calc(100%-2rem)] max-w-md flex-col items-end sm:right-6">
       {toasts.map((t) => (
         <SwipeableToast key={t.id} t={t} />
       ))}

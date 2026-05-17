@@ -1,44 +1,77 @@
 'use client';
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { Bell } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useSocket } from '@/hooks/useSocket';
 import { notificationApi } from '@/lib/api';
 import { useLanguage } from '@/context/LanguageContext';
 import toast from 'react-hot-toast';
 
-export const NotificationBell = () => {
+interface NotificationItem {
+  _id: string;
+  content: string;
+  channel?: string;
+  isRead?: boolean;
+  createdAt?: string;
+}
+
+const readInAppPreference = () => {
+  if (typeof window === 'undefined') return true;
+  try {
+    const stored = localStorage.getItem('rmf_preferences');
+    if (!stored) return true;
+    const parsed = JSON.parse(stored);
+    return parsed?.notifications?.inApp !== false;
+  } catch {
+    return true;
+  }
+};
+
+export const NotificationBell = ({ compact = false }: { compact?: boolean }) => {
   const { user } = useAuth();
   const { t } = useLanguage();
   const [isOpen, setIsOpen] = useState(false);
-  const [notifications, setNotifications] = useState<any[]>([]);
+  const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [inAppEnabled, setInAppEnabled] = useState(true);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  const { data: socketData } = useSocket(
-    process.env.NEXT_PUBLIC_NOTIFICATION_SERVICE_URL || 'http://localhost:3009',
-    'notification:new',
-    undefined,
-    user?.id ? { query: { userId: user.id } } : undefined
+  const notificationSocketUrl = user?.id && inAppEnabled
+    ? process.env.NEXT_PUBLIC_NOTIFICATION_SERVICE_URL || 'http://localhost:3009'
+    : '';
+
+  // 2D fix: pass auth token to WebSocket for server-side validation
+  const accessToken = typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null;
+
+  const { data: socketData } = useSocket<NotificationItem>(
+    notificationSocketUrl,
+    user?.id && inAppEnabled ? 'notification:new' : '',
+    accessToken || undefined,
+    user?.id && inAppEnabled ? { query: { userId: user.id } } : undefined
   );
 
-  const requestPermission = async () => {
-    if (typeof window !== 'undefined' && 'Notification' in window) {
-      if (Notification.permission === 'default') {
-        await Notification.requestPermission();
-      }
-    }
-  };
-
   useEffect(() => {
-    requestPermission();
+    setInAppEnabled(readInAppPreference());
+    const handlePreferenceUpdate = () => setInAppEnabled(readInAppPreference());
+    window.addEventListener('rmf:preferences-updated', handlePreferenceUpdate);
+    window.addEventListener('storage', handlePreferenceUpdate);
+    return () => {
+      window.removeEventListener('rmf:preferences-updated', handlePreferenceUpdate);
+      window.removeEventListener('storage', handlePreferenceUpdate);
+    };
   }, []);
 
   useEffect(() => {
-    if (socketData) {
+    if (inAppEnabled && typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'default') {
+      Notification.requestPermission();
+    }
+  }, [inAppEnabled]);
+
+  useEffect(() => {
+    if (socketData && inAppEnabled) {
       setNotifications(prev => [socketData, ...prev]);
       setUnreadCount(prev => prev + 1);
-      
-      // Browser Native Notification
+
       if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted') {
         new Notification('Rwanda Marketplace', {
           body: socketData.content,
@@ -46,32 +79,35 @@ export const NotificationBell = () => {
         });
       }
 
-      // Mobile Vibration
       if (typeof navigator !== 'undefined' && 'vibrate' in navigator) {
         navigator.vibrate([200, 100, 200]);
       }
 
       toast(t('notif_new'), { icon: '🔔' });
     }
-  }, [socketData, t]);
+  }, [inAppEnabled, socketData, t]);
 
-  const fetchNotifications = async () => {
-    if (!user?.id) return;
+  const fetchNotifications = useCallback(async () => {
+    if (!user?.id || !inAppEnabled) {
+      setNotifications([]);
+      setUnreadCount(0);
+      return;
+    }
     try {
       const res = await notificationApi.get(`/notifications/user/${user.id}`);
       if (res.data?.success) {
-        const logs = res.data.data;
-        setNotifications(logs.filter((l: any) => l.channel === 'IN_APP'));
-        setUnreadCount(logs.filter((l: any) => l.channel === 'IN_APP' && !l.isRead).length);
+        const logs = (Array.isArray(res.data.data) ? res.data.data : []) as NotificationItem[];
+        setNotifications(logs.filter(log => log.channel === 'IN_APP'));
+        setUnreadCount(logs.filter(log => log.channel === 'IN_APP' && !log.isRead).length);
       }
     } catch (e) {
       console.error('Failed to fetch notifications', e);
     }
-  };
+  }, [inAppEnabled, user?.id]);
 
   useEffect(() => {
     fetchNotifications();
-  }, [user?.id]);
+  }, [fetchNotifications]);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -101,77 +137,72 @@ export const NotificationBell = () => {
 
   return (
     <div className="relative" ref={dropdownRef}>
-      <button 
+      <button
         onClick={() => setIsOpen(!isOpen)}
-        className="relative w-12 h-12 border-2 border-[#121212] flex flex-col items-center justify-center text-[#121212] hover:bg-[#121212] hover:text-white transition-all bg-white shadow-sm group"
+        className={`relative inline-flex items-center gap-2 rounded-md border border-[#e0e0e0] bg-white text-sm font-bold text-[#1b1c1c] transition hover:border-[#1b4332] hover:text-[#1b4332] ${
+          compact ? 'h-9 w-9 justify-center px-0' : 'h-11 px-3'
+        }`}
+        aria-label="Notifications"
       >
-        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mb-0.5">
-          <path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"></path>
-          <path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"></path>
-        </svg>
-        <span className="text-[7px] font-black tracking-tighter uppercase">Alerts</span>
+        <Bell size={18} />
+        <span className={compact ? 'sr-only' : 'hidden sm:inline'}>Alerts</span>
         {unreadCount > 0 && (
-          <span className="absolute -top-2 -right-2 bg-[#F59E0B] text-white text-[9px] font-black px-2 py-0.5 border-2 border-white shadow-lg">
+          <span className="absolute -right-2 -top-2 rounded-full bg-[#ffd700] px-2 py-0.5 text-xs font-black text-[#1b1c1c] shadow-sm">
             {unreadCount}
           </span>
         )}
       </button>
 
       {isOpen && (
-        <div className="absolute right-0 mt-4 w-96 bg-white border border-[#E5E1D8] shadow-2xl z-[100] animate-fade-in">
-          <div className="p-6 border-b border-[#E5E1D8] flex justify-between items-center bg-[#F9F7F2]">
+        <div className="absolute right-0 z-[100] mt-3 w-[22rem] overflow-hidden rounded-lg border border-[#e0e0e0] bg-white shadow-2xl animate-fade-in">
+          <div className="flex items-center justify-between border-b border-[#e0e0e0] bg-[#fcf9f8] p-5">
             <div>
-              <h3 className="text-[10px] font-bold text-[#1A1A1A] uppercase tracking-[0.3em]">{t('notif_title')}</h3>
-              <p className="text-[8px] font-bold text-[#6B665E] uppercase tracking-widest mt-1 italic">{unreadCount} Pending Briefs</p>
+              <h3 className="text-sm font-black text-[#1b1c1c]">{t('notif_title')}</h3>
+              <p className="mt-1 text-xs font-semibold text-[#414844]">{unreadCount} unread updates</p>
             </div>
             {unreadCount > 0 && (
-              <button 
-                onClick={handleMarkAllRead}
-                className="text-[9px] text-[#F59E0B] font-bold uppercase tracking-widest hover:border-b border-[#F59E0B]/20"
-              >
+              <button onClick={handleMarkAllRead} className="text-xs font-black text-[#1b4332] hover:text-[#012d1d]">
                 {t('notif_mark_all_read')}
               </button>
             )}
           </div>
-          <div className="max-h-[450px] overflow-y-auto">
+
+          <div className="max-h-[28rem] overflow-y-auto">
             {notifications.length === 0 ? (
-              <div className="p-20 text-center text-[#6B665E] text-[10px] uppercase tracking-widest italic opacity-40">
-                {t('notif_empty')}
+              <div className="p-12 text-center text-sm text-[#414844]">
+                {inAppEnabled ? t('notif_empty') : 'In-app alerts are off in Settings.'}
               </div>
             ) : (
               notifications.map((notif) => (
-                <div 
-                  key={notif._id} 
-                  className={`p-6 border-b border-[#E5E1D8] flex gap-4 hover:bg-[#F9F7F2] transition-colors cursor-pointer relative ${!notif.isRead ? 'bg-[#F59E0B]/5' : ''}`}
+                <div
+                  key={notif._id}
+                  className={`relative flex cursor-pointer gap-4 border-b border-[#f0eded] p-5 transition-colors hover:bg-[#fcf9f8] ${!notif.isRead ? 'bg-[#c1ecd4]/50' : ''}`}
                   onClick={() => !notif.isRead && handleMarkRead(notif._id)}
                 >
-                  <div className="w-8 h-8 border border-[#E5E1D8] flex items-center justify-center text-sm bg-white flex-shrink-0">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <circle cx="12" cy="12" r="10"></circle>
-                      <line x1="12" y1="8" x2="12" y2="12"></line>
-                      <line x1="12" y1="16" x2="12.01" y2="16"></line>
-                    </svg>
+                  <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-md bg-[#1b4332] text-white">
+                    <Bell size={16} />
                   </div>
                   <div className="flex-1">
-                    <p className={`text-xs leading-relaxed italic ${!notif.isRead ? 'font-bold text-[#1A1A1A]' : 'text-[#6B665E]'}`}>
+                    <p className={`text-sm leading-6 ${!notif.isRead ? 'font-bold text-[#1b1c1c]' : 'text-[#414844]'}`}>
                       {notif.content}
                     </p>
-                    <div className="flex justify-between items-center mt-3">
-                      <p className="text-[8px] font-bold text-[#F59E0B] uppercase tracking-widest">
-                        {new Date(notif.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} • FACILITATION
+                    <div className="mt-3 flex items-center justify-between">
+                      <p className="text-xs font-semibold text-[#717973]">
+                        {new Date(notif.createdAt || Date.now()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} - marketplace update
                       </p>
-                      {!notif.isRead && (
-                        <div className="w-1 h-1 bg-[#F59E0B]"></div>
-                      )}
+                      {!notif.isRead && <div className="h-2 w-2 rounded-full bg-[#ffd700]" />}
                     </div>
                   </div>
                 </div>
               ))
             )}
           </div>
+
           {notifications.length > 0 && (
-            <div className="p-4 bg-[#F9F7F2] text-center">
-               <button className="text-[9px] font-bold text-[#1A1A1A] uppercase tracking-widest hover:text-[#F59E0B] transition-colors">{t('notif_view_all')} →</button>
+            <div className="bg-[#fcf9f8] p-4 text-center">
+              <button className="text-xs font-black text-[#1b4332] transition hover:text-[#012d1d]">
+                {t('notif_view_all')} -&gt;
+              </button>
             </div>
           )}
         </div>

@@ -1,20 +1,42 @@
 import { Controller, Get, Post, Put, Body, Param, Query, UseInterceptors, UploadedFile, BadRequestException } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
+import { randomUUID } from 'crypto';
+import { existsSync, mkdirSync, writeFileSync } from 'fs';
+import { join } from 'path';
 import { MarketService } from './market.service';
 
 @Controller('markets')
 export class MarketController {
   constructor(private readonly marketService: MarketService) {}
 
+  private readonly imageExtensions: Record<string, string> = {
+    'image/jpeg': '.jpg',
+    'image/png': '.png',
+    'image/webp': '.webp',
+    'image/gif': '.gif'
+  };
+
   @Post('upload-image')
-  @UseInterceptors(FileInterceptor('file'))
+  @UseInterceptors(FileInterceptor('file', { limits: { fileSize: 5 * 1024 * 1024 } }))
   async uploadImage(@UploadedFile() file: any) {
     if (!file) {
       throw new BadRequestException('No image file provided');
     }
-    const base64 = file.buffer.toString('base64');
-    const dataUri = `data:${file.mimetype};base64,${base64}`;
-    return { success: true, data: { url: dataUri } };
+    const extension = this.extensionFromMime(file.mimetype);
+    const uploadDir = join(process.cwd(), 'uploads', 'markets');
+    if (!existsSync(uploadDir)) mkdirSync(uploadDir, { recursive: true });
+    const fileName = `${randomUUID()}${extension}`;
+    writeFileSync(join(uploadDir, fileName), file.buffer);
+    const publicBaseUrl = process.env.MARKET_SERVICE_PUBLIC_URL || `http://localhost:${process.env.PORT || 3002}`;
+    return { success: true, data: { url: `${publicBaseUrl}/uploads/markets/${fileName}` } };
+  }
+
+  private extensionFromMime(mimeType: string): string {
+    const extension = this.imageExtensions[mimeType];
+    if (!extension) {
+      throw new BadRequestException('Unsupported image type. Upload JPG, PNG, WebP, or GIF.');
+    }
+    return extension;
   }
 
   @Post()
@@ -30,8 +52,8 @@ export class MarketController {
   }
 
   @Get()
-  async findAll(@Query('activeOnly') activeOnly: string) {
-    const markets = await this.marketService.findAll(activeOnly !== 'false');
+  async findAll(@Query('activeOnly') activeOnly: string, @Query('type') type?: string) {
+    const markets = await this.marketService.findAll({ activeOnly: activeOnly !== 'false', type });
     return { success: true, data: markets };
   }
 

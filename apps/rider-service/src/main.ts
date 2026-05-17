@@ -1,8 +1,14 @@
 import { NestFactory } from '@nestjs/core';
+import { static as serveStatic } from 'express';
+import { existsSync, mkdirSync } from 'fs';
+import { join } from 'path';
 import { AppModule } from './app.module';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
+  const uploadRoot = join(process.cwd(), 'uploads');
+  if (!existsSync(uploadRoot)) mkdirSync(uploadRoot, { recursive: true });
+  app.use('/uploads', serveStatic(uploadRoot));
 
     const corsOrigin = process.env.CORS_ORIGIN || 'http://localhost:3000,https://rwshop.org,https://www.rwshop.org';
   const allowedOrigins = corsOrigin.split(',').map(s => s.trim());

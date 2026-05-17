@@ -1,5 +1,6 @@
 'use client';
-import React, { useEffect, useState } from 'react';
+/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars, react-hooks/exhaustive-deps */
+import React, { useEffect, useRef, useState } from 'react';
 import { Layout } from '@/components/layout/Layout';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
@@ -10,14 +11,44 @@ import dynamic from 'next/dynamic';
 import toast from 'react-hot-toast';
 import { AnalyticsCharts } from '@/components/ui/AnalyticsCharts';
 import { ImageUpload } from '@/components/ui/ImageUpload';
+import { useSearchParams } from 'next/navigation';
 
 const RiderMap = dynamic(
   () => import('@/components/ui/RiderMap').then((mod) => mod.RiderMap),
-  { ssr: false, loading: () => <div className="w-full h-full bg-[#F8F6F1] animate-pulse flex items-center justify-center text-[#6B665E]">Loading Map...</div> }
+  { ssr: false, loading: () => <div className="w-full h-full bg-[#fcf9f8] animate-pulse flex items-center justify-center text-[#414844]">Loading Map...</div> }
 );
 
-export default function AdminDashboardPage() {
-  const [activeTab, setActiveTab] = useState('analytics');
+const isPdfUrl = (url?: string) => Boolean(url && /\.pdf($|\?)/i.test(url));
+
+const VerificationDocumentPanel = ({ title, url }: { title: string; url?: string }) => (
+  <div className="space-y-2">
+    <p className="text-[10px] font-black text-[#1b1c1c] uppercase tracking-widest">{title}</p>
+    <div className="flex min-h-48 items-center justify-center overflow-hidden border border-[#e0e0e0] bg-[#fcf9f8] p-3">
+      {!url ? (
+        <div className="text-center">
+          <p className="text-sm font-black text-[#1b1c1c]">Not uploaded</p>
+          <p className="mt-1 text-[10px] font-bold uppercase tracking-widest text-[#414844]">Document missing</p>
+        </div>
+      ) : isPdfUrl(url) ? (
+        <a href={url} target="_blank" rel="noreferrer" className="rounded-md border border-[#e0e0e0] bg-white px-5 py-3 text-[10px] font-black uppercase tracking-widest text-[#1b4332] transition hover:border-[#1b4332]">
+          Open PDF
+        </a>
+      ) : (
+        <img src={url} className="h-full max-h-72 w-full object-contain" alt={title} />
+      )}
+    </div>
+  </div>
+);
+
+function AdminDashboardContent() {
+  const searchParams = useSearchParams();
+  const [activeTab, setActiveTab] = useState(searchParams.get('tab') || 'analytics');
+  
+  useEffect(() => {
+    const tab = searchParams.get('tab');
+    if (tab) setActiveTab(tab);
+  }, [searchParams]);
+
   const [selectedSeller, setSelectedSeller] = useState<any>(null);
   const [selectedReceipt, setSelectedReceipt] = useState<ReceiptOrder | null>(null);
   const [allOrders, setAllOrders] = useState<any[]>([]);
@@ -29,6 +60,13 @@ export default function AdminDashboardPage() {
   const [pageSize, setPageSize] = useState(20);
   const [fetchError, setFetchError] = useState<string | null>(null);
   const [isAddingMarket, setIsAddingMarket] = useState(false);
+  const [selectedBulkSellerId, setSelectedBulkSellerId] = useState('');
+  const [visibleMarketsCount, setVisibleMarketsCount] = useState(20);
+  const [visibleProductsCount, setVisibleProductsCount] = useState(20);
+  const [loadingMoreMarkets, setLoadingMoreMarkets] = useState(false);
+  const [loadingMoreProducts, setLoadingMoreProducts] = useState(false);
+  const marketLoadRef = useRef<HTMLDivElement | null>(null);
+  const productLoadRef = useRef<HTMLDivElement | null>(null);
   const [newMarket, setNewMarket] = useState({
     name: '',
     code: '',
@@ -39,16 +77,72 @@ export default function AdminDashboardPage() {
     lng: 30.0619,
     address: ''
   });
+  const [taxonomyCategories, setTaxonomyCategories] = useState<any[]>([]);
+  const [governanceReport, setGovernanceReport] = useState<any>(null);
+  const [taxonomyForm, setTaxonomyForm] = useState<any>({
+    id: '',
+    label: '',
+    productType: '',
+    defaultUnit: 'pcs',
+    aliases: '',
+    synonyms: '',
+    attributesJson: '[]',
+    variantAxesJson: '[]',
+  });
+
+  const [payoutRequests, setPayoutRequests] = useState<any[]>([]);
+  const [payoutsLoading, setPayoutsLoading] = useState(false);
+
+  const fetchPayoutRequests = async () => {
+    setPayoutsLoading(true);
+    try {
+      const res = await walletApi.get('/wallets/payouts/all');
+      if (res.data?.data) {
+        setPayoutRequests(res.data.data);
+      }
+    } catch (e) {
+      toast.error('Failed to load payout requests');
+    } finally {
+      setPayoutsLoading(false);
+    }
+  };
+
+  const handleApprovePayout = async (payoutId: string) => {
+    try {
+      await walletApi.post(`/wallets/payout/${payoutId}/complete`);
+      toast.success('Payout approved and settled successfully.');
+      fetchPayoutRequests();
+    } catch (e) {
+      toast.error('Failed to complete payout');
+    }
+  };
+
+  const handleRejectPayout = async (payoutId: string) => {
+    const reason = prompt('Please enter a rejection reason:');
+    if (reason === null) return;
+    try {
+      await walletApi.post(`/wallets/payout/${payoutId}/fail`, { reason: reason || 'Admin rejected request' });
+      toast.success('Payout request declined and updated.');
+      fetchPayoutRequests();
+    } catch (e) {
+      toast.error('Failed to reject payout');
+    }
+  };
 
   const { data: analytics, execute: fetchAnalytics } = useApi(adminApi, 'get', '/admin/analytics');
   const { data: dashboardAnalytics, execute: fetchDashboardAnalytics } = useApi(adminApi, 'get', '/admin/dashboard/analytics');
   const { data: fraudAlerts, execute: fetchFraud } = useApi(adminApi, 'get', '/admin/fraud-alerts');
   const { data: pendingSellers, execute: fetchSellers } = useApi(sellerApi, 'get', '/sellers?isApproved=false');
+  const { data: approvedSellers, execute: fetchApprovedSellers } = useApi(sellerApi, 'get', '/sellers?isApproved=true');
   const { data: pendingProducts, execute: fetchPendingProducts } = useApi(productApi, 'get', '/products?isApproved=false');
   const { data: pendingRiders, execute: fetchRiders } = useApi(riderApi, 'get', '/riders?isApproved=false');
   const { data: disputes, execute: fetchDisputes } = useApi(orderApi, 'get', '/orders?isDisputed=true&dispute.resolvedAt=null');
   const { data: ordersData, execute: fetchOrders } = useApi(orderApi, 'get', `/orders?sellerId=all`, { refreshInterval: 30000 });
   const { data: markets, execute: fetchMarkets } = useApi(marketApi, 'get', '/markets');
+  const marketList = Array.isArray(markets) ? markets : [];
+  const pendingProductList = Array.isArray(pendingProducts) ? pendingProducts : [];
+  const visibleMarkets = marketList.slice(0, visibleMarketsCount);
+  const visiblePendingProducts = pendingProductList.slice(0, visibleProductsCount);
 
   useEffect(() => {
     if (activeTab === 'analytics') {
@@ -57,18 +151,64 @@ export default function AdminDashboardPage() {
     }
     if (activeTab === 'fraud') fetchFraud();
     if (activeTab === 'sellers') fetchSellers();
-    if (activeTab === 'products') fetchPendingProducts();
+    if (activeTab === 'products') {
+      fetchPendingProducts();
+      fetchApprovedSellers();
+    }
     if (activeTab === 'riders') fetchRiders();
     if (activeTab === 'disputes') fetchDisputes();
     if (activeTab === 'markets') fetchMarkets();
+    if (activeTab === 'payouts') fetchPayoutRequests();
+    if (activeTab === 'taxonomy') {
+      fetchTaxonomy();
+      fetchGovernance();
+    }
     if (activeTab === 'accounting') {
       setFetchError(null);
       fetchOrders().catch(() => setFetchError('Failed to load orders. Please try again.'));
       fetchAnalytics();
     }
-  }, [activeTab, fetchAnalytics, fetchDashboardAnalytics, fetchFraud, fetchSellers, fetchPendingProducts, fetchRiders, fetchDisputes, fetchOrders]);
+  }, [activeTab, fetchAnalytics, fetchDashboardAnalytics, fetchFraud, fetchSellers, fetchApprovedSellers, fetchPendingProducts, fetchRiders, fetchDisputes, fetchOrders]);
+
+  useEffect(() => {
+    if (!selectedBulkSellerId && Array.isArray(approvedSellers) && approvedSellers.length > 0) {
+      setSelectedBulkSellerId(approvedSellers[0]._id);
+    }
+  }, [approvedSellers, selectedBulkSellerId]);
 
   useEffect(() => { setPage(1); }, [dateRange, customStartDate, customEndDate]);
+  useEffect(() => { setVisibleMarketsCount(20); }, [marketList.length]);
+  useEffect(() => { setVisibleProductsCount(20); }, [pendingProductList.length]);
+
+  useEffect(() => {
+    const target = marketLoadRef.current;
+    if (activeTab !== 'markets' || !target || visibleMarketsCount >= marketList.length || loadingMoreMarkets) return;
+    const observer = new IntersectionObserver((entries) => {
+      if (!entries[0]?.isIntersecting) return;
+      setLoadingMoreMarkets(true);
+      window.setTimeout(() => {
+        setVisibleMarketsCount(count => Math.min(count + 20, marketList.length));
+        setLoadingMoreMarkets(false);
+      }, 250);
+    }, { rootMargin: '260px' });
+    observer.observe(target);
+    return () => observer.disconnect();
+  }, [activeTab, loadingMoreMarkets, marketList.length, visibleMarketsCount]);
+
+  useEffect(() => {
+    const target = productLoadRef.current;
+    if (activeTab !== 'products' || !target || visibleProductsCount >= pendingProductList.length || loadingMoreProducts) return;
+    const observer = new IntersectionObserver((entries) => {
+      if (!entries[0]?.isIntersecting) return;
+      setLoadingMoreProducts(true);
+      window.setTimeout(() => {
+        setVisibleProductsCount(count => Math.min(count + 20, pendingProductList.length));
+        setLoadingMoreProducts(false);
+      }, 250);
+    }, { rootMargin: '260px' });
+    observer.observe(target);
+    return () => observer.disconnect();
+  }, [activeTab, loadingMoreProducts, pendingProductList.length, visibleProductsCount]);
 
   useEffect(() => {
     if (ordersData && Array.isArray(ordersData)) {
@@ -108,6 +248,9 @@ export default function AdminDashboardPage() {
   const totalRiderPayout = filteredOrders.reduce((s: number, o: any) => s + (o.financials?.riderPayout || 0), 0);
   const platformRevenue = totalCommission + totalGateway;
   const deliveredOrders = filteredOrders.filter((o: any) => o.status === 'delivered' || o.status === 'resolved');
+  const openDisputeExposure = Array.isArray(disputes)
+    ? disputes.reduce((sum: number, dispute: any) => sum + Number(dispute.financials?.totalAmount || dispute.total || 0), 0)
+    : 0;
 
   const totalPages = Math.max(1, Math.ceil(filteredOrders.length / pageSize));
   const paginatedOrders = filteredOrders.slice((page - 1) * pageSize, page * pageSize);
@@ -157,7 +300,7 @@ export default function AdminDashboardPage() {
 
   const approveProduct = async (id: string) => {
     try {
-      await productApi.patch(`/products/${id}`, { isApproved: true });
+      await productApi.post(`/products/${id}/approve`);
       toast.success('Product approved and is now live');
       fetchPendingProducts();
     } catch (e) {
@@ -187,13 +330,22 @@ export default function AdminDashboardPage() {
     }
   };
 
-  const resolveDispute = async (id: string, amount: number) => {
-    if (amount > 10000) {
-      return toast.error('Disputes over 10,000 RWF require manual resolution via external portal.');
-    }
+  // 7C fix: resolveDispute now supports all 3 resolution types
+  const resolveDispute = async (id: string, resolution: string) => {
+    const confirmMsg = resolution === 'REFUND' 
+      ? 'Issue a full refund to the buyer?' 
+      : resolution === 'PARTIAL' 
+        ? 'Issue a 50% partial refund?' 
+        : 'Deny this dispute with no refund?';
+    if (!window.confirm(confirmMsg)) return;
     try {
-      await orderApi.post(`/orders/${id}/dispute/resolve`, { resolution: 'REFUND' });
-      toast.success('Dispute resolved. Instant refund issued.');
+      await orderApi.post(`/orders/${id}/dispute/resolve`, { resolution });
+      const messages: Record<string, string> = {
+        REFUND: 'Dispute resolved — full refund issued.',
+        PARTIAL: 'Dispute resolved — 50% partial refund issued.',
+        NO_REFUND: 'Dispute denied — no refund issued.'
+      };
+      toast.success(messages[resolution] || 'Dispute resolved.');
       fetchDisputes();
     } catch (e) {
       toast.error('Failed to resolve dispute');
@@ -268,108 +420,220 @@ export default function AdminDashboardPage() {
     }
   };
 
+  const handleBulkUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!selectedBulkSellerId) {
+      toast.error('Select an approved seller before uploading products.');
+      e.target.value = '';
+      return;
+    }
+
+    const toastId = toast.loading(`Uploading ${file.name}...`);
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('sellerId', selectedBulkSellerId);
+
+    try {
+      const res = await productApi.post('/products/bulk-upload', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
+      
+      const { total, success, failed, errors } = res.data.data;
+      toast.success(`Processed ${total} items: ${success} successful, ${failed} failed.`, { id: toastId, duration: 5000 });
+      
+      if (failed > 0) {
+        console.error('Bulk Upload Errors:', errors);
+        toast.error(`Check console for ${failed} error(s).`, { duration: 5000 });
+      }
+      
+      fetchPendingProducts();
+      fetchMarkets();
+    } catch (err: any) {
+      toast.error('Bulk upload failed: ' + (err.response?.data?.message || err.message), { id: toastId });
+    } finally {
+      e.target.value = ''; // Reset input
+    }
+  };
+
+  const downloadSample = () => {
+    const headers = ['Name', 'Description', 'Category', 'Price', 'Unit', 'Stock', 'StockType', 'MadeInRwanda', 'Images'];
+    const sample = ['Rwandan Specialty Coffee', 'High-altitude Arabica beans from Gisenyi.', 'Beverages', '12000', 'kg', '100', 'infinite', 'yes', 'https://images.unsplash.com/photo-1559056199-641a0ac8b55e'];
+    const csvContent = "data:text/csv;charset=utf-8," + [headers.join(','), sample.join(',')].join('\n');
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", "rmf_product_template.csv");
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const fetchTaxonomy = async () => {
+    const res = await productApi.get('/products/catalog/categories?includeInactive=true');
+    setTaxonomyCategories(res.data?.data || []);
+  };
+
+  const fetchGovernance = async () => {
+    const res = await productApi.get('/products/catalog/governance');
+    setGovernanceReport(res.data?.data || null);
+  };
+
+  const editTaxonomyCategory = (category: any) => {
+    setTaxonomyForm({
+      id: category.id || '',
+      label: category.label || '',
+      productType: category.productType || '',
+      defaultUnit: category.defaultUnit || 'pcs',
+      aliases: (category.aliases || []).join(', '),
+      synonyms: (category.synonyms || []).join(', '),
+      attributesJson: JSON.stringify(category.attributes || [], null, 2),
+      variantAxesJson: JSON.stringify(category.variantAxes || [], null, 2),
+    });
+  };
+
+  const saveTaxonomyCategory = async () => {
+    try {
+      const payload = {
+        id: taxonomyForm.id,
+        label: taxonomyForm.label,
+        productType: taxonomyForm.productType,
+        defaultUnit: taxonomyForm.defaultUnit,
+        aliases: taxonomyForm.aliases.split(',').map((item: string) => item.trim()).filter(Boolean),
+        synonyms: taxonomyForm.synonyms.split(',').map((item: string) => item.trim()).filter(Boolean),
+        attributes: JSON.parse(taxonomyForm.attributesJson || '[]'),
+        variantAxes: JSON.parse(taxonomyForm.variantAxesJson || '[]'),
+      };
+      await productApi.post('/products/catalog/categories', payload);
+      toast.success('Taxonomy category saved');
+      setTaxonomyForm({ id: '', label: '', productType: '', defaultUnit: 'pcs', aliases: '', synonyms: '', attributesJson: '[]', variantAxesJson: '[]' });
+      fetchTaxonomy();
+      fetchGovernance();
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || err.message || 'Failed to save taxonomy');
+    }
+  };
+
+  const retireTaxonomyCategory = async (categoryId: string) => {
+    if (!confirm(`Retire ${categoryId}? Categories already used by products cannot be deleted.`)) return;
+    try {
+      await productApi.delete(`/products/catalog/categories/${categoryId}`);
+      toast.success('Category retired');
+      fetchTaxonomy();
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || 'Category could not be retired');
+    }
+  };
+
+  const runBackfill = async (dryRun: boolean) => {
+    const res = await productApi.post('/products/catalog/migrate-backfill', { dryRun, limit: 5000 });
+    toast.success(dryRun ? `Dry run scanned ${res.data?.data?.scanned || 0}` : `Backfilled ${res.data?.data?.updated || 0} products`);
+    fetchGovernance();
+  };
+
   return (
     <Layout>
       {selectedReceipt && (
         <ReceiptView order={selectedReceipt} role="admin" onClose={() => setSelectedReceipt(null)} />
       )}
 
-      <div className="flex flex-col md:flex-row min-h-screen bg-[#F8F6F1]">
-        {/* Verification Document Modal */}
-        {selectedSeller && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#121212]/80 backdrop-blur-sm p-4 animate-reveal">
-             <div className="bg-white w-full max-w-4xl border border-[#E5E1D8] shadow-2xl overflow-hidden">
-                <div className="p-6 border-b border-[#E5E1D8] flex justify-between items-center bg-[#F8F6F1]">
-                   <h2 className="text-xl font-serif italic text-[#121212]">Verification Documents: {selectedSeller.shopDetails?.name || selectedSeller.stallName || selectedSeller.plateNumber}</h2>
-                   <button onClick={() => setSelectedSeller(null)} className="text-2xl text-[#121212] hover:text-[#F59E0B]">&times;</button>
-                </div>
-                <div className="p-8 grid grid-cols-1 md:grid-cols-2 gap-8 overflow-y-auto max-h-[70vh]">
-                   <div className="space-y-2">
-                      <p className="text-[10px] font-black text-[#121212] uppercase tracking-widest">{selectedSeller.plateNumber ? 'Driving License' : 'Business Permit'}</p>
-                      <div className="border border-[#E5E1D8] bg-[#F8F6F1] p-2">
-                        <img src={selectedSeller.licenseUrl || selectedSeller.businessPermitUrl || 'https://placehold.co/400x300/F8F6F1/121212/png?text=No+Document'} className="w-full object-cover" />
-                      </div>
-                   </div>
-                   <div className="space-y-2">
-                      <p className="text-[10px] font-black text-[#121212] uppercase tracking-widest">National ID</p>
-                      <div className="border border-[#E5E1D8] bg-[#F8F6F1] p-2">
-                        <img src={selectedSeller.idCardUrl || 'https://placehold.co/400x300/F8F6F1/121212/png?text=No+ID'} className="w-full object-cover" />
-                      </div>
-                   </div>
-                   <div className="md:col-span-2 space-y-2">
-                      <p className="text-[10px] font-black text-[#121212] uppercase tracking-widest">{selectedSeller.plateNumber ? 'Vehicle Photo' : 'Stall / Shop Photo'}</p>
-                      <div className="border border-[#E5E1D8] bg-[#F8F6F1] p-2">
-                        <img src={selectedSeller.vehiclePhotoUrl || selectedSeller.stallPhotoUrl || 'https://placehold.co/800x400/F8F6F1/121212/png?text=No+Photo'} className="w-full h-64 object-cover" />
-                      </div>
-                   </div>
-                </div>
-                <div className="p-6 border-t border-[#E5E1D8] flex justify-end gap-4 bg-[#F8F6F1]">
-                   <button onClick={() => setSelectedSeller(null)} className="px-6 py-3 border border-[#121212] text-[#121212] text-[10px] font-black uppercase tracking-widest hover:bg-[#121212] hover:text-white transition-all">Cancel</button>
-                   <button onClick={() => {
-                      if (selectedSeller.plateNumber) {
-                        approveRider(selectedSeller._id);
-                      } else {
-                        approveSeller(selectedSeller._id);
-                      }
-                      setSelectedSeller(null);
-                   }} className="px-6 py-3 bg-[#121212] text-white text-[10px] font-black uppercase tracking-widest hover:bg-[#F59E0B] transition-all">Approve Application</button>
-                </div>
-             </div>
-          </div>
-        )}
+      {/* Verification Document Modal */}
+      {selectedSeller && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#012d1d]/80 backdrop-blur-sm p-4 animate-reveal">
+           <div className="bg-white w-full max-w-4xl border border-[#e0e0e0] shadow-2xl overflow-hidden">
+              <div className="p-6 border-b border-[#e0e0e0] flex justify-between items-center bg-[#fcf9f8]">
+                 <h2 className="text-xl font-sans text-[#1b1c1c]">Verification Documents: {selectedSeller.shopDetails?.name || selectedSeller.stallName || selectedSeller.plateNumber}</h2>
+                 <button onClick={() => setSelectedSeller(null)} className="text-2xl text-[#1b1c1c] hover:text-[#1b4332]">&times;</button>
+              </div>
+              <div className="p-8 grid grid-cols-1 md:grid-cols-2 gap-8 overflow-y-auto max-h-[70vh]">
+                 <VerificationDocumentPanel
+                   title={selectedSeller.plateNumber ? 'Driving License' : 'Business Permit'}
+                   url={selectedSeller.licenseUrl || selectedSeller.businessPermitUrl}
+                 />
+                 {!selectedSeller.plateNumber && (
+                   <VerificationDocumentPanel title="RRA Certificate" url={selectedSeller.rraCertificateUrl} />
+                 )}
+                 <VerificationDocumentPanel title="National ID" url={selectedSeller.idCardUrl} />
+                 <div className={!selectedSeller.plateNumber ? '' : 'md:col-span-2'}>
+                   <VerificationDocumentPanel
+                     title={selectedSeller.plateNumber ? 'Vehicle Photo' : 'Stall / Shop Photo'}
+                     url={selectedSeller.vehiclePhotoUrl || selectedSeller.stallPhotoUrl}
+                   />
+                 </div>
+              </div>
+              <div className="p-6 border-t border-[#e0e0e0] flex justify-end gap-4 bg-[#fcf9f8]">
+                 <button onClick={() => setSelectedSeller(null)} className="px-6 py-3 border border-[#e0e0e0] text-[#1b1c1c] text-[10px] font-black uppercase tracking-widest hover:bg-[#012d1d] hover:text-white transition-all">Cancel</button>
+                 <button onClick={() => {
+                    if (selectedSeller.plateNumber) {
+                      approveRider(selectedSeller._id);
+                    } else {
+                      approveSeller(selectedSeller._id);
+                    }
+                    setSelectedSeller(null);
+                 }} className="px-6 py-3 bg-[#012d1d] text-white text-[10px] font-black uppercase tracking-widest hover:bg-[#012d1d] transition-all">Approve Application</button>
+              </div>
+           </div>
+        </div>
+      )}
 
-        {/* ── Sidebar ── */}
-        <aside className="w-full md:w-64 bg-[#121212] p-8 hidden md:block">
-          <div className="mb-12">
-            <h2 className="text-[12px] font-black text-white uppercase tracking-[0.4em] flex items-center gap-3">
-              <span className="w-2 h-2 bg-[#F59E0B] rounded-full" />
-              Admin Portal
-            </h2>
-          </div>
-          <nav className="space-y-2">
-            {[
-              { id: 'analytics', label: 'Platform Analytics' },
-              { id: 'accounting', label: 'Accounting' },
-              { id: 'live-map', label: 'Live Operations' },
-              { id: 'sellers', label: 'Seller Approvals' },
-              { id: 'markets', label: 'Markets Directory' },
-              { id: 'products', label: 'Product Approvals' },
-              { id: 'riders', label: 'Rider Approvals' },
-              { id: 'disputes', label: 'Disputes & Refunds' },
-              { id: 'fraud', label: 'Fraud Alerts' }
-            ].map(tab => (
-              <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
-                className={`w-full text-left px-4 py-3 text-[10px] font-black uppercase tracking-[0.2em] transition-all border-l-4 ${activeTab === tab.id ? 'bg-white/10 text-white border-[#F59E0B]' : 'text-white/60 border-transparent hover:bg-white/5 hover:text-white'}`}
-              >
-                {tab.label}
-              </button>
-            ))}
-          </nav>
-        </aside>
-
-        {/* ── Main Content ── */}
-        <main className="flex-1 p-6 md:p-12">
-          <div className="border-b border-[#E5E1D8] pb-6 mb-10 flex justify-between items-end">
-            <h1 className="text-4xl font-serif italic text-[#121212] capitalize tracking-tighter">
-               {activeTab.replace('-', ' ')}
-            </h1>
-          </div>
+      {/* ── Main Content ── */}
+      <main className="flex-1 p-4 md:p-12">
+        <div className="border-b border-[#e0e0e0] pb-6 mb-8 md:mb-10 flex flex-col md:flex-row justify-between items-start md:items-end gap-6 md:gap-0">
+          <h1 className="text-2xl md:text-4xl font-sans text-[#1b1c1c] capitalize tracking-normal">
+             {activeTab.replace('-', ' ')}
+          </h1>
+          
+          {activeTab === 'products' && (
+            <div className="flex w-full flex-col gap-3 md:w-auto md:flex-row">
+               <select
+                  value={selectedBulkSellerId}
+                  onChange={(event) => setSelectedBulkSellerId(event.target.value)}
+                  className="min-w-[15rem] rounded-md border border-[#e0e0e0] bg-white px-4 py-3 text-sm font-bold text-[#1b1c1c] outline-none transition focus:border-[#1b4332] focus:ring-4 focus:ring-[#1b4332]/10"
+               >
+                  <option value="">Choose approved seller</option>
+                  {Array.isArray(approvedSellers) && approvedSellers.map((seller: any) => (
+                    <option key={seller._id} value={seller._id}>
+                      {seller.shopDetails?.name || seller.stallName || seller.stallId || seller._id}
+                    </option>
+                  ))}
+               </select>
+               <button
+                  onClick={downloadSample}
+                  className="rounded-md border border-[#e0e0e0] bg-white px-4 py-3 text-[9px] font-black uppercase tracking-widest text-[#414844] transition hover:bg-[#fcf9f8]"
+               >
+                  Template
+               </button>
+               <input
+                  type="file"
+                  id="bulk-upload-input"
+                  className="hidden"
+                  accept=".csv, .xlsx, .xls"
+                  onChange={handleBulkUpload}
+               />
+               <label
+                  htmlFor="bulk-upload-input"
+                  className="inline-flex cursor-pointer items-center justify-center gap-2 rounded-md bg-[#1b4332] px-6 py-3 text-[10px] font-black uppercase tracking-widest text-white transition hover:bg-[#012d1d]"
+               >
+                  <span className="h-2 w-2 rounded-full bg-[#c1ecd4]"></span>
+                  Bulk upload
+               </label>
+            </div>
+          )}
+        </div>
 
           {activeTab === 'live-map' && (
             <div className="space-y-6 animate-reveal h-[calc(100vh-200px)]">
-               <div className="h-full border border-[#E5E1D8] bg-white flex flex-col shadow-sm relative overflow-hidden group">
-                  <div className="p-6 border-b border-[#E5E1D8] bg-[#F8F6F1] flex justify-between items-center z-10">
+               <div className="h-full border border-[#e0e0e0] bg-white flex flex-col shadow-sm relative overflow-hidden group">
+                  <div className="p-6 border-b border-[#e0e0e0] bg-[#fcf9f8] flex justify-between items-center z-10">
                      <div>
-                        <h3 className="text-xl font-serif italic text-[#121212] flex items-center gap-3">
+                        <h3 className="text-xl font-sans text-[#1b1c1c] flex items-center gap-3">
                            <div className="relative flex h-3 w-3">
                               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-500 opacity-75"></span>
                               <span className="relative inline-flex rounded-full h-3 w-3 bg-green-500"></span>
                            </div>
                            Live Map
                         </h3>
-                        <p className="text-[10px] font-medium text-[#6B665E] uppercase tracking-widest mt-1">Real-time rider locations across Rwanda</p>
+                        <p className="text-[10px] font-medium text-[#414844] uppercase tracking-widest mt-1">Real-time rider locations across Rwanda</p>
                      </div>
                   </div>
                   <div className="flex-grow relative z-0">
@@ -382,26 +646,26 @@ export default function AdminDashboardPage() {
           {activeTab === 'analytics' && (
             <div className="space-y-10 animate-reveal">
               <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
-                <div className="bg-white border border-[#E5E1D8] p-8 shadow-sm">
-                  <p className="text-[10px] font-black uppercase tracking-[0.2em] text-[#6B665E] mb-2">Monthly GMV</p>
-                  <p className="text-3xl font-serif italic text-[#121212]">{analytics?.monthlyGMV?.toLocaleString() || 0}</p>
+                <div className="bg-white border border-[#e0e0e0] p-8 shadow-sm">
+                  <p className="text-[10px] font-black uppercase tracking-[0.2em] text-[#414844] mb-2">Monthly GMV</p>
+                  <p className="text-3xl font-sans text-[#1b1c1c]">{analytics?.monthlyGMV?.toLocaleString() || 0}</p>
                 </div>
-                <div className="bg-white border border-[#E5E1D8] p-8 shadow-sm border-l-4 border-l-[#F59E0B]">
-                  <p className="text-[10px] font-black uppercase tracking-[0.2em] text-[#6B665E] mb-2">Platform Revenue</p>
-                  <p className="text-3xl font-serif italic text-[#121212]">{analytics?.monthlyCommission?.toLocaleString() || 0}</p>
+                <div className="bg-white border border-[#e0e0e0] p-8 shadow-sm border-l-4 border-l-[#116c4a]">
+                  <p className="text-[10px] font-black uppercase tracking-[0.2em] text-[#414844] mb-2">Platform Revenue</p>
+                  <p className="text-3xl font-sans text-[#1b1c1c]">{analytics?.monthlyCommission?.toLocaleString() || 0}</p>
                 </div>
-                <div className="bg-white border border-[#E5E1D8] p-8 shadow-sm">
-                  <p className="text-[10px] font-black uppercase tracking-[0.2em] text-[#6B665E] mb-2">Active Sellers</p>
-                  <p className="text-3xl font-serif italic text-[#121212]">{analytics?.activeSellers || 0}</p>
+                <div className="bg-white border border-[#e0e0e0] p-8 shadow-sm">
+                  <p className="text-[10px] font-black uppercase tracking-[0.2em] text-[#414844] mb-2">Active Sellers</p>
+                  <p className="text-3xl font-sans text-[#1b1c1c]">{analytics?.activeSellers || 0}</p>
                 </div>
-                <div className="bg-white border border-[#E5E1D8] p-8 shadow-sm">
-                  <p className="text-[10px] font-black uppercase tracking-[0.2em] text-[#6B665E] mb-2">Active Riders</p>
-                  <p className="text-3xl font-serif italic text-[#121212]">{analytics?.activeRiders || 0}</p>
+                <div className="bg-white border border-[#e0e0e0] p-8 shadow-sm">
+                  <p className="text-[10px] font-black uppercase tracking-[0.2em] text-[#414844] mb-2">Active Riders</p>
+                  <p className="text-3xl font-sans text-[#1b1c1c]">{analytics?.activeRiders || 0}</p>
                 </div>
               </div>
 
               {/* Growth Charts */}
-              <div className="bg-white border border-[#E5E1D8] p-8 shadow-sm">
+              <div className="bg-white border border-[#e0e0e0] p-8 shadow-sm">
                  <AnalyticsCharts orders={allOrders} data={dashboardAnalytics} type="admin" />
               </div>
             </div>
@@ -416,7 +680,7 @@ export default function AdminDashboardPage() {
                     key={range}
                     onClick={() => setDateRange(range)}
                     className={`px-6 py-3 text-[9px] font-black uppercase tracking-[0.2em] transition-all border ${
-                      dateRange === range ? 'bg-[#121212] text-white border-[#121212]' : 'bg-white text-[#121212] border-[#E5E1D8] hover:border-[#121212]'
+                      dateRange === range ? 'bg-[#012d1d] text-white border-[#e0e0e0]' : 'bg-white text-[#1b1c1c] border-[#e0e0e0] hover:border-[#1b4332]'
                     }`}
                   >
                     {range === 'today' ? 'Today' : range === 'week' ? 'This Week' : range === 'month' ? 'This Month' : 'All Time'}
@@ -426,37 +690,37 @@ export default function AdminDashboardPage() {
 
               {/* Revenue Summary Cards */}
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-                <div className="bg-[#121212] text-white p-8 shadow-lg">
+                <div className="bg-[#012d1d] text-white p-8 shadow-lg">
                   <p className="text-[10px] font-black uppercase tracking-[0.2em] text-white/50 mb-2">Total GMV</p>
-                  <p className="text-3xl font-serif italic">{totalGMV.toLocaleString()}</p>
+                  <p className="text-3xl font-sans">{totalGMV.toLocaleString()}</p>
                   <p className="text-[9px] text-white/40 mt-2 uppercase tracking-widest">{filteredOrders.length} orders</p>
                 </div>
-                <div className="bg-white border border-[#E5E1D8] p-8 shadow-sm">
-                  <p className="text-[10px] font-black uppercase tracking-[0.2em] text-[#6B665E] mb-2">Platform Revenue</p>
-                  <p className="text-3xl font-serif italic text-[#F59E0B]">{platformRevenue.toLocaleString()}</p>
-                  <p className="text-[9px] text-[#6B665E] mt-2 uppercase tracking-widest opacity-60">Comm: {totalCommission.toLocaleString()} | Gate: {totalGateway.toLocaleString()}</p>
+                <div className="bg-white border border-[#e0e0e0] p-8 shadow-sm">
+                  <p className="text-[10px] font-black uppercase tracking-[0.2em] text-[#414844] mb-2">Platform Revenue</p>
+                  <p className="text-3xl font-sans text-[#1b4332]">{platformRevenue.toLocaleString()}</p>
+                  <p className="text-[9px] text-[#414844] mt-2 uppercase tracking-widest opacity-60">Comm: {totalCommission.toLocaleString()} | Gate: {totalGateway.toLocaleString()}</p>
                 </div>
-                <div className="bg-white border border-[#E5E1D8] p-8 shadow-sm">
-                  <p className="text-[10px] font-black uppercase tracking-[0.2em] text-[#6B665E] mb-2">Seller Payouts</p>
-                  <p className="text-3xl font-serif italic text-green-600">{totalSellerPayout.toLocaleString()}</p>
-                  <p className="text-[9px] text-[#6B665E] mt-2 uppercase tracking-widest opacity-60">{(totalGMV > 0 ? (totalSellerPayout / totalGMV * 100) : 0).toFixed(1)}% of GMV</p>
+                <div className="bg-white border border-[#e0e0e0] p-8 shadow-sm">
+                  <p className="text-[10px] font-black uppercase tracking-[0.2em] text-[#414844] mb-2">Seller Payouts</p>
+                  <p className="text-3xl font-sans text-green-600">{totalSellerPayout.toLocaleString()}</p>
+                  <p className="text-[9px] text-[#414844] mt-2 uppercase tracking-widest opacity-60">{(totalGMV > 0 ? (totalSellerPayout / totalGMV * 100) : 0).toFixed(1)}% of GMV</p>
                 </div>
-                <div className="bg-white border border-[#E5E1D8] p-8 shadow-sm">
-                  <p className="text-[10px] font-black uppercase tracking-[0.2em] text-[#6B665E] mb-2">Rider Payouts</p>
-                  <p className="text-3xl font-serif italic text-[#121212]">{totalRiderPayout.toLocaleString()}</p>
-                  <p className="text-[9px] text-[#6B665E] mt-2 uppercase tracking-widest opacity-60">{deliveredOrders.length} delivered</p>
+                <div className="bg-white border border-[#e0e0e0] p-8 shadow-sm">
+                  <p className="text-[10px] font-black uppercase tracking-[0.2em] text-[#414844] mb-2">Rider Payouts</p>
+                  <p className="text-3xl font-sans text-[#1b1c1c]">{totalRiderPayout.toLocaleString()}</p>
+                  <p className="text-[9px] text-[#414844] mt-2 uppercase tracking-widest opacity-60">{deliveredOrders.length} delivered</p>
                 </div>
               </div>
 
               {/* Settlement Summary */}
-              <div className="bg-white border border-[#E5E1D8] shadow-sm overflow-hidden">
-                <div className="p-6 border-b border-[#E5E1D8] bg-[#F8F6F1] flex justify-between items-center">
-                  <h2 className="text-lg font-serif italic text-[#121212]">Settlement Report</h2>
-                  <span className="text-[10px] font-black uppercase tracking-widest text-[#6B665E]">{filteredOrders.length} records</span>
+              <div className="bg-white border border-[#e0e0e0] shadow-sm overflow-hidden">
+                <div className="p-6 border-b border-[#e0e0e0] bg-[#fcf9f8] flex justify-between items-center">
+                  <h2 className="text-lg font-sans text-[#1b1c1c]">Settlement Report</h2>
+                  <span className="text-[10px] font-black uppercase tracking-widest text-[#414844]">{filteredOrders.length} records</span>
                 </div>
                 <div className="overflow-x-auto">
                   <table className="w-full text-left">
-                    <thead className="bg-white text-[#6B665E] text-[9px] font-black uppercase tracking-[0.2em] border-b border-[#E5E1D8]">
+                    <thead className="bg-white text-[#414844] text-[9px] font-black uppercase tracking-[0.2em] border-b border-[#e0e0e0]">
                       <tr>
                         <th className="p-4">Order #</th>
                         <th className="p-4">Date</th>
@@ -470,27 +734,27 @@ export default function AdminDashboardPage() {
                         <th className="p-4 text-center">Receipt</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-[#E5E1D8] text-sm bg-[#F8F6F1]/30">
+                    <tbody className="divide-y divide-[#e0e0e0] text-sm bg-[#fcf9f8]/30">
                       {filteredOrders.length === 0 ? (
-                        <tr><td colSpan={10} className="p-12 text-center text-[#6B665E] italic">No transactions in this period.</td></tr>
+                        <tr><td colSpan={10} className="p-12 text-center text-[#414844]">No transactions in this period.</td></tr>
                       ) : (
                         paginatedOrders.map((order: any) => (
                           <tr key={order._id} className="hover:bg-white transition-colors">
                             <td className="p-4 font-mono text-[10px] font-bold">#{order._id.substring(0, 6).toUpperCase()}</td>
-                            <td className="p-4 text-[11px] text-[#6B665E]">{new Date(order.createdAt).toLocaleDateString()}</td>
+                            <td className="p-4 text-[11px] text-[#414844]">{new Date(order.createdAt).toLocaleDateString()}</td>
                             <td className="p-4 text-xs font-medium">{order.buyer?.fullName || 'N/A'}</td>
                             <td className="p-4 text-xs font-medium">{order.seller?.fullName || 'N/A'}</td>
                             <td className="p-4 text-right text-xs font-bold">{(order.financials?.totalAmount || 0).toLocaleString()}</td>
-                            <td className="p-4 text-right text-xs font-bold text-[#F59E0B]">{(order.financials?.platformCommission || 0).toLocaleString()}</td>
+                            <td className="p-4 text-right text-xs font-bold text-[#1b4332]">{(order.financials?.platformCommission || 0).toLocaleString()}</td>
                             <td className="p-4 text-right text-xs font-bold text-green-700">+{(order.financials?.sellerPayout || 0).toLocaleString()}</td>
-                            <td className="p-4 text-right text-xs font-bold text-[#121212]">+{(order.financials?.riderPayout || 0).toLocaleString()}</td>
+                            <td className="p-4 text-right text-xs font-bold text-[#1b1c1c]">+{(order.financials?.riderPayout || 0).toLocaleString()}</td>
                             <td className="p-4 text-center">
                               <span className={`px-2 py-1 border text-[8px] font-black uppercase tracking-widest ${
                                 order.status === 'delivered' || order.status === 'resolved'
                                   ? 'bg-green-50 border-green-200 text-green-700'
                                   : order.status === 'cancelled'
                                     ? 'bg-red-50 border-red-200 text-red-700'
-                                    : 'bg-white border-[#E5E1D8] text-[#6B665E]'
+                                    : 'bg-white border-[#e0e0e0] text-[#414844]'
                               }`}>
                                 {order.status === 'delivered' ? 'SETTLED' :
                                  order.status === 'resolved' ? 'RESOLVED' :
@@ -499,7 +763,7 @@ export default function AdminDashboardPage() {
                               </span>
                             </td>
                             <td className="p-4 text-center">
-                              <button onClick={() => openReceipt(order)} className="text-[10px] border border-[#E5E1D8] px-3 py-1 hover:border-[#121212]">View</button>
+                              <button onClick={() => openReceipt(order)} className="text-[10px] border border-[#e0e0e0] px-3 py-1 hover:border-[#1b4332]">View</button>
                             </td>
                           </tr>
                         ))
@@ -509,17 +773,17 @@ export default function AdminDashboardPage() {
                 </div>
                 {/* Pagination */}
                 {totalPages > 1 && (
-                   <div className="p-4 border-t border-[#E5E1D8] flex justify-between items-center bg-white">
+                   <div className="p-4 border-t border-[#e0e0e0] flex justify-between items-center bg-white">
                       <button 
                          disabled={page === 1} 
                          onClick={() => setPage(p => p - 1)}
-                         className="px-4 py-2 border border-[#E5E1D8] text-[9px] font-black uppercase tracking-widest disabled:opacity-30"
+                         className="px-4 py-2 border border-[#e0e0e0] text-[9px] font-black uppercase tracking-widest disabled:opacity-30"
                       >Prev</button>
-                      <span className="text-[10px] font-bold text-[#6B665E]">Page {page} of {totalPages}</span>
+                      <span className="text-[10px] font-bold text-[#414844]">Page {page} of {totalPages}</span>
                       <button 
                          disabled={page === totalPages} 
                          onClick={() => setPage(p => p + 1)}
-                         className="px-4 py-2 border border-[#E5E1D8] text-[9px] font-black uppercase tracking-widest disabled:opacity-30"
+                         className="px-4 py-2 border border-[#e0e0e0] text-[9px] font-black uppercase tracking-widest disabled:opacity-30"
                       >Next</button>
                    </div>
                 )}
@@ -527,25 +791,25 @@ export default function AdminDashboardPage() {
 
               {/* Platform P&L Summary */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div className="bg-white border-2 border-[#121212] p-8">
-                  <p className="text-[10px] font-black uppercase tracking-[0.2em] text-[#121212] mb-4 border-b border-[#E5E1D8] pb-2">Platform Revenue</p>
-                  <p className="text-3xl font-serif italic text-[#121212]">{platformRevenue.toLocaleString()}</p>
-                  <div className="text-[10px] font-bold text-[#6B665E] mt-4 space-y-1">
+                <div className="bg-white border border-[#e0e0e0] rounded-lg p-8">
+                  <p className="text-[10px] font-black uppercase tracking-[0.2em] text-[#1b1c1c] mb-4 border-b border-[#e0e0e0] pb-2">Platform Revenue</p>
+                  <p className="text-3xl font-sans text-[#1b1c1c]">{platformRevenue.toLocaleString()}</p>
+                  <div className="text-[10px] font-bold text-[#414844] mt-4 space-y-1">
                     <p>Commission: +{totalCommission.toLocaleString()}</p>
                     <p>Gateway: +{totalGateway.toLocaleString()}</p>
                   </div>
                 </div>
-                <div className="bg-white border border-[#E5E1D8] p-8">
-                  <p className="text-[10px] font-black uppercase tracking-[0.2em] text-[#6B665E] mb-4 border-b border-[#E5E1D8] pb-2">Total Payouts</p>
-                  <p className="text-3xl font-serif italic text-[#6B665E]">{(totalSellerPayout + totalRiderPayout).toLocaleString()}</p>
-                  <div className="text-[10px] font-bold text-[#6B665E] mt-4 space-y-1">
+                <div className="bg-white border border-[#e0e0e0] p-8">
+                  <p className="text-[10px] font-black uppercase tracking-[0.2em] text-[#414844] mb-4 border-b border-[#e0e0e0] pb-2">Total Payouts</p>
+                  <p className="text-3xl font-sans text-[#414844]">{(totalSellerPayout + totalRiderPayout).toLocaleString()}</p>
+                  <div className="text-[10px] font-bold text-[#414844] mt-4 space-y-1">
                     <p>Sellers: {totalSellerPayout.toLocaleString()}</p>
                     <p>Riders: {totalRiderPayout.toLocaleString()}</p>
                   </div>
                 </div>
-                <div className="bg-[#121212] text-white border-2 border-[#121212] p-8">
+                <div className="bg-[#012d1d] text-white border border-[#e0e0e0] rounded-lg p-8">
                   <p className="text-[10px] font-black uppercase tracking-[0.2em] text-white/50 mb-4 border-b border-white/20 pb-2">Net Position</p>
-                  <p className="text-3xl font-serif italic text-[#F59E0B]">{(platformRevenue - (totalSellerPayout + totalRiderPayout)).toLocaleString()}</p>
+                  <p className="text-3xl font-sans text-[#1b4332]">{(platformRevenue - (totalSellerPayout + totalRiderPayout)).toLocaleString()}</p>
                   <div className="text-[10px] font-bold text-white/40 mt-4 space-y-1">
                     <p>Revenue: {platformRevenue.toLocaleString()}</p>
                     <p>Payouts: {(totalSellerPayout + totalRiderPayout).toLocaleString()}</p>
@@ -556,9 +820,9 @@ export default function AdminDashboardPage() {
           )}
 
           {activeTab === 'sellers' && (
-            <div className="bg-white border border-[#E5E1D8] shadow-sm animate-reveal overflow-hidden">
+            <div className="bg-white border border-[#e0e0e0] shadow-sm animate-reveal overflow-hidden">
               <table className="w-full text-left">
-                <thead className="bg-[#F8F6F1] text-[#6B665E] text-[9px] font-black uppercase tracking-[0.2em] border-b border-[#E5E1D8]">
+                <thead className="bg-[#fcf9f8] text-[#414844] text-[9px] font-black uppercase tracking-[0.2em] border-b border-[#e0e0e0]">
                   <tr>
                     <th className="p-6">Seller Details</th>
                     <th className="p-6">Category</th>
@@ -566,22 +830,22 @@ export default function AdminDashboardPage() {
                     <th className="p-6 text-right">Actions</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-[#E5E1D8]">
+                <tbody className="divide-y divide-[#e0e0e0]">
                   {!pendingSellers || pendingSellers.length === 0 ? (
-                    <tr><td colSpan={4} className="p-12 text-center text-[#6B665E] italic">No pending seller applications.</td></tr>
+                    <tr><td colSpan={4} className="p-12 text-center text-[#414844]">No pending seller applications.</td></tr>
                   ) : (
                     pendingSellers.map((s: any) => (
-                      <tr key={s._id} className="hover:bg-[#F8F6F1]/50 transition-colors">
+                      <tr key={s._id} className="hover:bg-[#fcf9f8]/50 transition-colors">
                         <td className="p-6">
-                          <p className="font-serif italic text-lg text-[#121212]">{s.shopDetails?.name || s.stallName || s.marketId}</p>
-                          <p className="text-[10px] font-black text-[#6B665E] uppercase tracking-widest mt-1">{s.sellerName || 'Pending'}</p>
+                          <p className="font-sans text-lg text-[#1b1c1c]">{s.shopDetails?.name || s.stallName || s.marketId}</p>
+                          <p className="text-[10px] font-black text-[#414844] uppercase tracking-widest mt-1">{s.sellerName || 'Pending'}</p>
                         </td>
-                        <td className="p-6 text-xs font-medium text-[#121212]">{s.marketId && s.marketId.length > 5 ? 'Market Vendor' : 'Independent'}</td>
-                        <td className="p-6 text-xs text-[#6B665E]">{new Date(s.createdAt).toLocaleDateString()}</td>
+                        <td className="p-6 text-xs font-medium text-[#1b1c1c]">{s.marketId && s.marketId.length > 5 ? 'Market Vendor' : 'Independent'}</td>
+                        <td className="p-6 text-xs text-[#414844]">{new Date(s.createdAt).toLocaleDateString()}</td>
                         <td className="p-6 text-right flex justify-end gap-3">
-                          <button className="px-4 py-2 border border-[#E5E1D8] text-[9px] font-black uppercase tracking-widest text-[#121212] hover:border-[#121212]" onClick={() => setSelectedSeller(s)}>View Docs</button>
+                          <button className="px-4 py-2 border border-[#e0e0e0] text-[9px] font-black uppercase tracking-widest text-[#1b1c1c] hover:border-[#1b4332]" onClick={() => setSelectedSeller(s)}>View Docs</button>
                           <button className="px-4 py-2 border border-red-200 bg-red-50 text-[9px] font-black uppercase tracking-widest text-red-600 hover:border-red-500" onClick={() => declineSeller(s._id)}>Decline</button>
-                          <button className="px-4 py-2 bg-[#121212] text-white text-[9px] font-black uppercase tracking-widest hover:bg-[#F59E0B]" onClick={() => approveSeller(s._id)}>Approve</button>
+                          <button className="px-4 py-2 bg-[#012d1d] text-white text-[9px] font-black uppercase tracking-widest hover:bg-[#012d1d]" onClick={() => approveSeller(s._id)}>Approve</button>
                         </td>
                       </tr>
                     ))
@@ -592,9 +856,9 @@ export default function AdminDashboardPage() {
           )}
 
           {activeTab === 'riders' && (
-            <div className="bg-white border border-[#E5E1D8] shadow-sm animate-reveal overflow-hidden">
+            <div className="bg-white border border-[#e0e0e0] shadow-sm animate-reveal overflow-hidden">
               <table className="w-full text-left">
-                <thead className="bg-[#F8F6F1] text-[#6B665E] text-[9px] font-black uppercase tracking-[0.2em] border-b border-[#E5E1D8]">
+                <thead className="bg-[#fcf9f8] text-[#414844] text-[9px] font-black uppercase tracking-[0.2em] border-b border-[#e0e0e0]">
                   <tr>
                     <th className="p-6">Rider ID</th>
                     <th className="p-6">Plate Number</th>
@@ -602,20 +866,20 @@ export default function AdminDashboardPage() {
                     <th className="p-6 text-right">Actions</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-[#E5E1D8]">
+                <tbody className="divide-y divide-[#e0e0e0]">
                   {!pendingRiders || pendingRiders.length === 0 ? (
-                    <tr><td colSpan={4} className="p-12 text-center text-[#6B665E] italic">No pending rider applications.</td></tr>
+                    <tr><td colSpan={4} className="p-12 text-center text-[#414844]">No pending rider applications.</td></tr>
                   ) : (
                     pendingRiders.map((r: any) => (
-                      <tr key={r._id} className="hover:bg-[#F8F6F1]/50 transition-colors">
+                      <tr key={r._id} className="hover:bg-[#fcf9f8]/50 transition-colors">
                         <td className="p-6">
-                          <p className="font-mono text-sm font-bold text-[#121212]">{r.userId.substring(0,8)}</p>
+                          <p className="font-mono text-sm font-bold text-[#1b1c1c]">{r.userId.substring(0,8)}</p>
                         </td>
                         <td className="p-6 font-mono text-sm font-medium">{r.plateNumber}</td>
-                        <td className="p-6 text-xs text-[#6B665E]">{new Date(r.createdAt).toLocaleDateString()}</td>
+                        <td className="p-6 text-xs text-[#414844]">{new Date(r.createdAt).toLocaleDateString()}</td>
                         <td className="p-6 text-right flex justify-end gap-3">
-                          <button className="px-4 py-2 border border-[#E5E1D8] text-[9px] font-black uppercase tracking-widest text-[#121212] hover:border-[#121212]" onClick={() => setSelectedSeller(r)}>View Docs</button>
-                          <button className="px-4 py-2 bg-[#121212] text-white text-[9px] font-black uppercase tracking-widest hover:bg-[#F59E0B]" onClick={() => approveRider(r._id)}>Approve</button>
+                          <button className="px-4 py-2 border border-[#e0e0e0] text-[9px] font-black uppercase tracking-widest text-[#1b1c1c] hover:border-[#1b4332]" onClick={() => setSelectedSeller(r)}>View Docs</button>
+                          <button className="px-4 py-2 bg-[#012d1d] text-white text-[9px] font-black uppercase tracking-widest hover:bg-[#012d1d]" onClick={() => approveRider(r._id)}>Approve</button>
                         </td>
                       </tr>
                     ))
@@ -626,9 +890,9 @@ export default function AdminDashboardPage() {
           )}
 
           {activeTab === 'products' && (
-            <div className="bg-white border border-[#E5E1D8] shadow-sm animate-reveal overflow-hidden">
+            <div className="bg-white border border-[#e0e0e0] shadow-sm animate-reveal overflow-hidden">
               <table className="w-full text-left">
-                <thead className="bg-[#F8F6F1] text-[#6B665E] text-[9px] font-black uppercase tracking-[0.2em] border-b border-[#E5E1D8]">
+                <thead className="bg-[#fcf9f8] text-[#414844] text-[9px] font-black uppercase tracking-[0.2em] border-b border-[#e0e0e0]">
                   <tr>
                     <th className="p-6">Product Item</th>
                     <th className="p-6">Price & Stock</th>
@@ -636,71 +900,226 @@ export default function AdminDashboardPage() {
                     <th className="p-6 text-right">Actions</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-[#E5E1D8]">
+                <tbody className="divide-y divide-[#e0e0e0]">
                   {!pendingProducts || pendingProducts.length === 0 ? (
-                    <tr><td colSpan={4} className="p-12 text-center text-[#6B665E] italic">No pending product approvals.</td></tr>
+                    <tr><td colSpan={4} className="p-12 text-center text-[#414844]">No pending product approvals.</td></tr>
                   ) : (
-                    pendingProducts.map((p: any) => (
-                      <tr key={p._id} className="hover:bg-[#F8F6F1]/50 transition-colors">
+                    visiblePendingProducts.map((p: any) => (
+                      <tr key={p._id} className="hover:bg-[#fcf9f8]/50 transition-colors">
                         <td className="p-6 flex items-center gap-4">
-                          <div className="w-16 h-16 border border-[#E5E1D8] bg-[#F8F6F1] overflow-hidden p-1">
+                          <div className="w-16 h-16 border border-[#e0e0e0] bg-[#fcf9f8] overflow-hidden p-1">
                             {p.images?.[0] && <img src={p.images[0]} alt={p.name} loading="lazy" className="w-full h-full object-cover" />}
                           </div>
                           <div>
-                            <p className="font-serif italic text-lg text-[#121212]">{p.name}</p>
-                            <p className="text-[9px] font-black text-[#6B665E] uppercase tracking-widest mt-1">Cat: {p.category}</p>
+                            <p className="font-sans text-lg text-[#1b1c1c]">{p.name}</p>
+                            <p className="text-[9px] font-black text-[#414844] uppercase tracking-widest mt-1">Cat: {p.category}</p>
                           </div>
                         </td>
                         <td className="p-6">
-                          <p className="text-lg font-serif italic text-[#A34D15]">{p.price.toLocaleString()} RWF</p>
-                          <p className="text-[10px] font-black text-[#6B665E] uppercase tracking-widest mt-1">{p.stockType === 'finite' ? `${p.stockQuantity} ${p.unit}` : p.stockType === 'infinite' ? 'Unlimited' : 'Made to Order'}</p>
+                          <p className="text-lg font-sans text-[#1b4332]">{p.price.toLocaleString()} RWF</p>
+                          <p className="text-[10px] font-black text-[#414844] uppercase tracking-widest mt-1">{p.stockType === 'finite' ? `${p.stockQuantity} ${p.unit}` : p.stockType === 'infinite' ? 'Unlimited' : 'Made to Order'}</p>
                         </td>
-                        <td className="p-6 text-xs text-[#6B665E]">{new Date(p.createdAt).toLocaleDateString()}</td>
+                        <td className="p-6 text-xs text-[#414844]">{new Date(p.createdAt).toLocaleDateString()}</td>
                         <td className="p-6 text-right flex justify-end gap-3">
                           <button className="px-4 py-2 border border-red-200 bg-red-50 text-[9px] font-black uppercase tracking-widest text-red-600 hover:border-red-500" onClick={() => declineProduct(p._id)}>Reject</button>
-                          <button className="px-4 py-2 bg-[#121212] text-white text-[9px] font-black uppercase tracking-widest hover:bg-[#F59E0B]" onClick={() => approveProduct(p._id)}>Approve</button>
+                          <button className="px-4 py-2 bg-[#012d1d] text-white text-[9px] font-black uppercase tracking-widest hover:bg-[#012d1d]" onClick={() => approveProduct(p._id)}>Approve</button>
                         </td>
                       </tr>
                     ))
                   )}
                 </tbody>
               </table>
+              <div ref={productLoadRef} className="min-h-1" />
+              {loadingMoreProducts && (
+                <div className="border-t border-[#e0e0e0] p-4">
+                  {[1, 2, 3].map(i => <div key={i} className="mb-3 h-16 animate-pulse rounded-md bg-[#f0eded]" />)}
+                </div>
+              )}
+              {!loadingMoreProducts && visibleProductsCount < pendingProductList.length && (
+                <div className="border-t border-[#e0e0e0] p-4 text-center text-[10px] font-black uppercase tracking-[0.2em] text-[#414844]">
+                  Scroll to load more product approvals
+                </div>
+              )}
+            </div>
+          )}
+
+          {activeTab === 'taxonomy' && (
+            <div className="space-y-6 animate-reveal">
+              <div className="grid gap-4 md:grid-cols-4">
+                {[
+                  { label: 'Categories', value: taxonomyCategories.length },
+                  { label: 'Products audited', value: governanceReport?.totals?.products || 0 },
+                  { label: 'Missing required', value: governanceReport?.totals?.missingRequired || 0 },
+                  { label: 'Uncategorized', value: governanceReport?.totals?.uncategorized || 0 },
+                ].map(card => (
+                  <div key={card.label} className="rounded-lg border border-[#dfe7e2] bg-white p-5 shadow-sm">
+                    <p className="text-[10px] font-black uppercase tracking-[0.18em] text-[#5f7569]">{card.label}</p>
+                    <p className="mt-2 text-3xl font-sans text-[#1b4332]">{card.value}</p>
+                  </div>
+                ))}
+              </div>
+
+              <div className="grid gap-6 xl:grid-cols-[0.95fr_1.05fr]">
+                <section className="rounded-lg border border-[#dfe7e2] bg-white p-6 shadow-sm">
+                  <div className="mb-5 flex items-start justify-between gap-3">
+                    <div>
+                      <p className="text-[10px] font-black uppercase tracking-[0.18em] text-[#1b4332]">Taxonomy editor</p>
+                      <h3 className="mt-2 text-2xl font-sans text-[#1b1c1c]">Category intelligence</h3>
+                    </div>
+                    <button onClick={() => setTaxonomyForm({ id: '', label: '', productType: '', defaultUnit: 'pcs', aliases: '', synonyms: '', attributesJson: '[]', variantAxesJson: '[]' })} className="rounded-md border border-[#dfe7e2] px-3 py-2 text-[10px] font-black uppercase tracking-widest text-[#1b4332]">
+                      New
+                    </button>
+                  </div>
+
+                  <div className="grid gap-3 md:grid-cols-2">
+                    {[
+                      ['id', 'Category ID'],
+                      ['label', 'Display label'],
+                      ['productType', 'Product type'],
+                      ['defaultUnit', 'Default unit'],
+                      ['aliases', 'Aliases'],
+                      ['synonyms', 'Search synonyms'],
+                    ].map(([key, label]) => (
+                      <label key={key} className="block">
+                        <span className="mb-1 block text-[10px] font-black uppercase tracking-[0.14em] text-[#405046]">{label}</span>
+                        <input value={taxonomyForm[key]} onChange={e => setTaxonomyForm((prev: any) => ({ ...prev, [key]: e.target.value }))} className="h-10 w-full rounded-md border border-[#dfe7e2] px-3 text-sm font-semibold outline-none focus:border-[#1b4332]" />
+                      </label>
+                    ))}
+                  </div>
+
+                  <label className="mt-4 block">
+                    <span className="mb-1 block text-[10px] font-black uppercase tracking-[0.14em] text-[#405046]">Attributes JSON</span>
+                    <textarea value={taxonomyForm.attributesJson} onChange={e => setTaxonomyForm((prev: any) => ({ ...prev, attributesJson: e.target.value }))} className="min-h-40 w-full rounded-md border border-[#dfe7e2] bg-[#fcf9f8] p-3 font-mono text-xs outline-none focus:border-[#1b4332]" />
+                  </label>
+
+                  <label className="mt-4 block">
+                    <span className="mb-1 block text-[10px] font-black uppercase tracking-[0.14em] text-[#405046]">Variant axes JSON</span>
+                    <textarea value={taxonomyForm.variantAxesJson} onChange={e => setTaxonomyForm((prev: any) => ({ ...prev, variantAxesJson: e.target.value }))} className="min-h-28 w-full rounded-md border border-[#dfe7e2] bg-[#fcf9f8] p-3 font-mono text-xs outline-none focus:border-[#1b4332]" />
+                  </label>
+
+                  <div className="mt-5 flex flex-wrap gap-3">
+                    <button onClick={saveTaxonomyCategory} className="rounded-md bg-[#1b4332] px-5 py-3 text-[10px] font-black uppercase tracking-widest text-white">Save category</button>
+                    <button onClick={() => runBackfill(true)} className="rounded-md border border-[#dfe7e2] px-5 py-3 text-[10px] font-black uppercase tracking-widest text-[#1b4332]">Dry-run backfill</button>
+                    <button onClick={() => runBackfill(false)} className="rounded-md border border-[#1b4332] bg-[#e8f5ed] px-5 py-3 text-[10px] font-black uppercase tracking-widest text-[#1b4332]">Run backfill</button>
+                  </div>
+                </section>
+
+                <section className="rounded-lg border border-[#dfe7e2] bg-white shadow-sm">
+                  <div className="border-b border-[#dfe7e2] p-5">
+                    <p className="text-[10px] font-black uppercase tracking-[0.18em] text-[#1b4332]">Live taxonomy</p>
+                    <h3 className="mt-2 text-2xl font-sans text-[#1b1c1c]">Managed product categories</h3>
+                  </div>
+                  <div className="divide-y divide-[#edf1ee]">
+                    {taxonomyCategories.map(category => (
+                      <div key={category.id} className="grid gap-4 p-5 md:grid-cols-[1fr_auto] md:items-center">
+                        <div>
+                          <p className="text-lg font-black text-[#1b1c1c]">{category.label}</p>
+                          <p className="mt-1 text-xs font-bold uppercase tracking-[0.12em] text-[#5f7569]">{category.id} · {category.productType} · {category.defaultUnit}</p>
+                          <p className="mt-2 text-sm font-semibold text-[#405046]">{category.attributes?.length || 0} attributes · {category.variantAxes?.length || 0} variant axes · v{category.version || 1}</p>
+                        </div>
+                        <div className="flex gap-2">
+                          <button onClick={() => editTaxonomyCategory(category)} className="rounded-md border border-[#dfe7e2] px-3 py-2 text-[10px] font-black uppercase tracking-widest text-[#1b4332]">Edit</button>
+                          <button onClick={() => retireTaxonomyCategory(category.id)} className="rounded-md border border-[#ead2d2] px-3 py-2 text-[10px] font-black uppercase tracking-widest text-[#8a3c3c]">Retire</button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </section>
+              </div>
+
+              <section className="rounded-lg border border-[#dfe7e2] bg-white p-6 shadow-sm">
+                <div className="mb-5">
+                  <p className="text-[10px] font-black uppercase tracking-[0.18em] text-[#1b4332]">Attribute governance</p>
+                  <h3 className="mt-2 text-2xl font-sans text-[#1b1c1c]">Data cleanup queue</h3>
+                </div>
+                <div className="grid gap-4 lg:grid-cols-3">
+                  {[
+                    ['Missing required fields', governanceReport?.missingRequired || []],
+                    ['Unknown attributes', governanceReport?.unknownAttributes || []],
+                    ['Needs category backfill', governanceReport?.uncategorized || []],
+                  ].map(([title, rows]: any) => (
+                    <div key={title} className="rounded-lg border border-[#edf1ee] bg-[#fcf9f8] p-4">
+                      <p className="text-sm font-black text-[#1b1c1c]">{title}</p>
+                      <div className="mt-3 max-h-72 space-y-2 overflow-y-auto">
+                        {rows.length === 0 ? (
+                          <p className="text-sm font-semibold text-[#5f7569]">No issues found.</p>
+                        ) : rows.slice(0, 20).map((row: any, index: number) => (
+                          <div key={`${row.productId}-${row.field || index}`} className="rounded-md bg-white p-3 text-xs font-semibold text-[#405046]">
+                            <p className="font-black text-[#1b1c1c]">{row.name}</p>
+                            <p>{row.field || row.category} {row.suggestedCategoryId ? `→ ${row.suggestedCategoryId}` : ''}</p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </section>
             </div>
           )}
 
           {activeTab === 'disputes' && (
             <div className="space-y-6 animate-reveal">
-              <div className="bg-[#121212] text-white p-8 flex justify-between items-center border-l-4 border-l-[#F59E0B]">
+              <div className="rounded-lg border border-[#dfe7e2] bg-white p-6 shadow-sm">
                 <div>
-                  <h3 className="text-xl font-serif italic text-white mb-2">Buyer Protection Reserve</h3>
-                  <p className="text-[10px] font-black uppercase tracking-[0.2em] text-white/50">Funds for instant dispute resolutions</p>
+                  <p className="text-[10px] font-black uppercase tracking-[0.18em] text-[#1b4332]">Buyer protection queue</p>
+                  <h3 className="mt-2 text-2xl font-sans text-[#1b1c1c]">Open Dispute Exposure</h3>
+                  <p className="mt-2 text-sm font-semibold text-[#5f7569]">Refunds under 10,000 RWF can be resolved instantly. Larger cases stay in manual review with the order, seller, rider, and payment evidence visible.</p>
                 </div>
-                <p className="text-4xl font-serif italic text-[#F59E0B]">1,250,000 RWF</p>
+                <p className="mt-4 text-3xl font-sans text-[#1b4332]">{openDisputeExposure.toLocaleString()} RWF</p>
               </div>
 
-              <div className="bg-white border border-[#E5E1D8] shadow-sm overflow-hidden">
+              <div className="grid gap-4 md:grid-cols-3">
+                {[
+                  { label: 'Evidence', value: 'Receipt, delivery route, chat, payment ledger', tone: 'bg-[#e8f5ed]' },
+                  { label: 'Decision', value: 'Instant refund, seller rebuttal, rider investigation', tone: 'bg-white' },
+                  { label: 'Audit', value: 'Every admin action is retained with order history', tone: 'bg-white' },
+                ].map(card => (
+                  <div key={card.label} className={`rounded-lg border border-[#dfe7e2] ${card.tone} p-5`}>
+                    <p className="text-[10px] font-black uppercase tracking-[0.18em] text-[#1b4332]">{card.label}</p>
+                    <p className="mt-3 text-sm font-semibold leading-6 text-[#405046]">{card.value}</p>
+                  </div>
+                ))}
+              </div>
+
+              <div className="bg-white border border-[#e0e0e0] shadow-sm overflow-hidden">
                 <table className="w-full text-left">
-                  <thead className="bg-[#F8F6F1] text-[#6B665E] text-[9px] font-black uppercase tracking-[0.2em] border-b border-[#E5E1D8]">
+                  <thead className="bg-[#fcf9f8] text-[#414844] text-[9px] font-black uppercase tracking-[0.2em] border-b border-[#e0e0e0]">
                     <tr>
                       <th className="p-6">Order ID</th>
                       <th className="p-6">Amount</th>
                       <th className="p-6">Reason</th>
+                      <th className="p-6">Investigation Basis</th>
                       <th className="p-6 text-right">Resolution</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-[#E5E1D8]">
+                  <tbody className="divide-y divide-[#e0e0e0]">
                     {!disputes || disputes.length === 0 ? (
-                      <tr><td colSpan={4} className="p-12 text-center text-[#6B665E] italic">No open disputes.</td></tr>
+                      <tr><td colSpan={5} className="p-12 text-center text-[#414844]">No open disputes.</td></tr>
                     ) : (
                       disputes.map((d: any) => (
-                        <tr key={d._id} className="hover:bg-[#F8F6F1]/50">
-                          <td className="p-6 font-mono text-[10px] font-bold text-[#121212]">#{d._id.substring(0,8).toUpperCase()}</td>
-                          <td className="p-6 text-lg font-serif italic text-[#A34D15]">{d.financials?.totalAmount || d.total} RWF</td>
-                          <td className="p-6 text-xs text-[#6B665E]">{d.dispute?.reason || 'Undelivered'}</td>
+                        <tr key={d._id} className="hover:bg-[#fcf9f8]/50">
+                          <td className="p-6 font-mono text-[10px] font-bold text-[#1b1c1c]">#{d._id.substring(0,8).toUpperCase()}</td>
+                          <td className="p-6 text-lg font-sans text-[#1b4332]">{d.financials?.totalAmount || d.total} RWF</td>
+                          <td className="p-6 text-xs text-[#414844]">{d.dispute?.reason || 'Undelivered'}</td>
+                          <td className="p-6">
+                            <div className="flex flex-wrap gap-2">
+                              {['receipt', 'payment', d.deliveryId ? 'route' : 'no route', d.messages?.length ? 'chat' : 'no chat'].map(item => (
+                                <span key={item} className="rounded border border-[#dfe7e2] bg-[#f7faf8] px-2 py-1 text-[8px] font-black uppercase tracking-widest text-[#405046]">{item}</span>
+                              ))}
+                            </div>
+                          </td>
                           <td className="p-6 text-right">
-                            <button className="px-4 py-2 bg-[#121212] text-white text-[9px] font-black uppercase tracking-widest hover:bg-[#F59E0B]" onClick={() => resolveDispute(d._id, d.financials?.totalAmount || d.total)}>
-                              {(d.financials?.totalAmount || d.total) <= 10000 ? 'Instant Refund' : 'Manual Review'}
-                            </button>
+                            <div className="flex gap-2 justify-end flex-wrap">
+                              <button className="px-3 py-2 bg-[#012d1d] text-white text-[9px] font-black uppercase tracking-widest hover:bg-[#1b4332] transition-colors" onClick={() => resolveDispute(d._id, 'REFUND')}>
+                                Full Refund
+                              </button>
+                              <button className="px-3 py-2 border border-[#e0e0e0] text-[#1b1c1c] text-[9px] font-black uppercase tracking-widest hover:bg-[#f7faf8] transition-colors" onClick={() => resolveDispute(d._id, 'PARTIAL')}>
+                                50% Refund
+                              </button>
+                              <button className="px-3 py-2 border border-[#e0e0e0] text-[#7b3f3f] text-[9px] font-black uppercase tracking-widest hover:bg-[#fff5f3] transition-colors" onClick={() => resolveDispute(d._id, 'NO_REFUND')}>
+                                Deny
+                              </button>
+                            </div>
                           </td>
                         </tr>
                       ))
@@ -713,71 +1132,71 @@ export default function AdminDashboardPage() {
 
           {activeTab === 'markets' && (
             <div className="space-y-8 animate-reveal">
-              <div className="flex justify-between items-center border-b border-[#E5E1D8] pb-6">
+              <div className="flex justify-between items-center border-b border-[#e0e0e0] pb-6">
                  <div>
-                   <h2 className="text-3xl font-serif italic text-[#121212]">Markets Directory</h2>
-                   <p className="text-[10px] font-black text-[#6B665E] uppercase tracking-[0.2em] mt-2">Manage physical market locations</p>
+                   <h2 className="text-3xl font-sans text-[#1b1c1c]">Markets Directory</h2>
+                   <p className="text-[10px] font-black text-[#414844] uppercase tracking-[0.2em] mt-2">Manage physical market locations</p>
                  </div>
                  <div className="flex gap-4">
-                   <button className="px-6 py-3 border border-[#121212] text-[#121212] text-[10px] font-black uppercase tracking-widest hover:bg-[#121212] hover:text-white transition-all" onClick={handleSyncImagery}>Sync Images</button>
-                   <button className="px-6 py-3 bg-[#121212] text-white text-[10px] font-black uppercase tracking-widest hover:bg-[#F59E0B] transition-all" onClick={() => setIsAddingMarket(true)}>Create Market</button>
+                   <button className="px-6 py-3 border border-[#e0e0e0] text-[#1b1c1c] text-[10px] font-black uppercase tracking-widest hover:bg-[#012d1d] hover:text-white transition-all" onClick={handleSyncImagery}>Sync Images</button>
+                   <button className="px-6 py-3 bg-[#012d1d] text-white text-[10px] font-black uppercase tracking-widest hover:bg-[#012d1d] transition-all" onClick={() => setIsAddingMarket(true)}>Create Market</button>
                  </div>
               </div>
 
               {isAddingMarket && (
-                <div className="bg-white border-2 border-[#121212] p-8 shadow-xl">
+                <div className="bg-white border border-[#e0e0e0] rounded-lg p-8 shadow-xl">
                   <form onSubmit={handleCreateMarket} className="space-y-6">
-                    <h3 className="text-xl font-serif italic border-b border-[#E5E1D8] pb-4 mb-6">New Market Details</h3>
+                    <h3 className="text-xl font-sans border-b border-[#e0e0e0] pb-4 mb-6">New Market Details</h3>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       <div className="space-y-2">
-                        <label className="text-[9px] font-black uppercase tracking-widest text-[#121212]">Market Name</label>
-                        <input required className="w-full bg-[#F8F6F1] border border-[#E5E1D8] p-4 text-sm outline-none focus:border-[#121212]" value={newMarket.name} onChange={e => setNewMarket(prev => ({ ...prev, name: e.target.value }))} placeholder="e.g. Kimironko Market" />
+                        <label className="text-[9px] font-black uppercase tracking-widest text-[#1b1c1c]">Market Name</label>
+                        <input required className="w-full bg-[#fcf9f8] border border-[#e0e0e0] p-4 text-sm outline-none focus:border-[#1b4332]" value={newMarket.name} onChange={e => setNewMarket(prev => ({ ...prev, name: e.target.value }))} placeholder="e.g. Kimironko Market" />
                       </div>
                       <div className="space-y-2">
-                        <label className="text-[9px] font-black uppercase tracking-widest text-[#121212]">Market Code</label>
-                        <input required className="w-full bg-[#F8F6F1] border border-[#E5E1D8] p-4 text-sm outline-none focus:border-[#121212]" value={newMarket.code} onChange={e => setNewMarket(prev => ({ ...prev, code: e.target.value.toUpperCase() }))} placeholder="e.g. KIM" />
+                        <label className="text-[9px] font-black uppercase tracking-widest text-[#1b1c1c]">Market Code</label>
+                        <input required className="w-full bg-[#fcf9f8] border border-[#e0e0e0] p-4 text-sm outline-none focus:border-[#1b4332]" value={newMarket.code} onChange={e => setNewMarket(prev => ({ ...prev, code: e.target.value.toUpperCase() }))} placeholder="e.g. KIM" />
                       </div>
                     </div>
                     
                     <div className="space-y-2">
-                      <label className="text-[9px] font-black uppercase tracking-widest text-[#121212]">Market Cover Photo</label>
+                      <label className="text-[9px] font-black uppercase tracking-widest text-[#1b1c1c]">Market Cover Photo</label>
                       <ImageUpload service="market" endpoint="/markets/upload-image" value={newMarket.imageUrl} onChange={(url) => setNewMarket(prev => ({ ...prev, imageUrl: url }))} />
                     </div>
 
                     <div className="space-y-2">
-                      <label className="text-[9px] font-black uppercase tracking-widest text-[#121212]">Description</label>
-                      <textarea className="w-full bg-[#F8F6F1] border border-[#E5E1D8] p-4 text-sm outline-none focus:border-[#121212] h-24" value={newMarket.description} onChange={e => setNewMarket(prev => ({ ...prev, description: e.target.value }))} placeholder="Market overview..." />
+                      <label className="text-[9px] font-black uppercase tracking-widest text-[#1b1c1c]">Description</label>
+                      <textarea className="w-full bg-[#fcf9f8] border border-[#e0e0e0] p-4 text-sm outline-none focus:border-[#1b4332] h-24" value={newMarket.description} onChange={e => setNewMarket(prev => ({ ...prev, description: e.target.value }))} placeholder="Market overview..." />
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                        <div className="space-y-2">
-                          <label className="text-[9px] font-black uppercase tracking-widest text-[#121212]">Latitude</label>
-                          <input type="number" step="any" className="w-full bg-[#F8F6F1] border border-[#E5E1D8] p-4 text-sm outline-none focus:border-[#121212]" value={newMarket.lat} onChange={e => setNewMarket(prev => ({ ...prev, lat: parseFloat(e.target.value) }))} />
+                          <label className="text-[9px] font-black uppercase tracking-widest text-[#1b1c1c]">Latitude</label>
+                          <input type="number" step="any" className="w-full bg-[#fcf9f8] border border-[#e0e0e0] p-4 text-sm outline-none focus:border-[#1b4332]" value={newMarket.lat} onChange={e => setNewMarket(prev => ({ ...prev, lat: parseFloat(e.target.value) }))} />
                        </div>
                        <div className="space-y-2">
-                          <label className="text-[9px] font-black uppercase tracking-widest text-[#121212]">Longitude</label>
-                          <input type="number" step="any" className="w-full bg-[#F8F6F1] border border-[#E5E1D8] p-4 text-sm outline-none focus:border-[#121212]" value={newMarket.lng} onChange={e => setNewMarket(prev => ({ ...prev, lng: parseFloat(e.target.value) }))} />
+                          <label className="text-[9px] font-black uppercase tracking-widest text-[#1b1c1c]">Longitude</label>
+                          <input type="number" step="any" className="w-full bg-[#fcf9f8] border border-[#e0e0e0] p-4 text-sm outline-none focus:border-[#1b4332]" value={newMarket.lng} onChange={e => setNewMarket(prev => ({ ...prev, lng: parseFloat(e.target.value) }))} />
                        </div>
                        <div className="space-y-2">
-                          <label className="text-[9px] font-black uppercase tracking-widest text-[#121212]">Type</label>
-                          <select className="w-full bg-[#F8F6F1] border border-[#E5E1D8] p-4 text-sm outline-none focus:border-[#121212]" value={newMarket.type} onChange={e => setNewMarket(prev => ({ ...prev, type: e.target.value }))}>
+                          <label className="text-[9px] font-black uppercase tracking-widest text-[#1b1c1c]">Type</label>
+                          <select className="w-full bg-[#fcf9f8] border border-[#e0e0e0] p-4 text-sm outline-none focus:border-[#1b4332]" value={newMarket.type} onChange={e => setNewMarket(prev => ({ ...prev, type: e.target.value }))}>
                              <option value="public">Public Market</option>
                              <option value="individual">Independent Area</option>
                           </select>
                        </div>
                     </div>
 
-                    <div className="flex justify-end gap-4 pt-6 border-t border-[#E5E1D8]">
-                       <button type="button" className="px-6 py-3 border border-[#E5E1D8] text-[#121212] text-[10px] font-black uppercase tracking-widest hover:border-[#121212]" onClick={() => setIsAddingMarket(false)}>Cancel</button>
-                       <button type="submit" className="px-6 py-3 bg-[#121212] text-white text-[10px] font-black uppercase tracking-widest hover:bg-[#F59E0B]">Create Market</button>
+                    <div className="flex justify-end gap-4 pt-6 border-t border-[#e0e0e0]">
+                       <button type="button" className="px-6 py-3 border border-[#e0e0e0] text-[#1b1c1c] text-[10px] font-black uppercase tracking-widest hover:border-[#1b4332]" onClick={() => setIsAddingMarket(false)}>Cancel</button>
+                       <button type="submit" className="px-6 py-3 bg-[#012d1d] text-white text-[10px] font-black uppercase tracking-widest hover:bg-[#012d1d]">Create Market</button>
                     </div>
                   </form>
                 </div>
               )}
 
-              <div className="bg-white border border-[#E5E1D8] shadow-sm overflow-hidden">
+              <div className="bg-white border border-[#e0e0e0] shadow-sm overflow-hidden">
                 <table className="w-full text-left">
-                  <thead className="bg-[#F8F6F1] text-[#6B665E] text-[9px] font-black uppercase tracking-[0.2em] border-b border-[#E5E1D8]">
+                  <thead className="bg-[#fcf9f8] text-[#414844] text-[9px] font-black uppercase tracking-[0.2em] border-b border-[#e0e0e0]">
                     <tr>
                       <th className="p-6">Market Info</th>
                       <th className="p-6">Code</th>
@@ -785,34 +1204,34 @@ export default function AdminDashboardPage() {
                       <th className="p-6 text-right">Metrics</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-[#E5E1D8]">
+                  <tbody className="divide-y divide-[#e0e0e0]">
                     {!markets || markets.length === 0 ? (
-                      <tr><td colSpan={4} className="p-12 text-center text-[#6B665E] italic">No markets created yet.</td></tr>
+                      <tr><td colSpan={4} className="p-12 text-center text-[#414844]">No markets created yet.</td></tr>
                     ) : (
-                      markets.map((m: any) => (
-                        <tr key={m._id} className="hover:bg-[#F8F6F1]/50">
+                      visibleMarkets.map((m: any) => (
+                        <tr key={m._id} className="hover:bg-[#fcf9f8]/50">
                           <td className="p-6">
                             <div className="flex items-center gap-6">
-                               <div className="w-16 h-16 border border-[#E5E1D8] bg-[#F8F6F1] p-1 overflow-hidden">
+                               <div className="w-16 h-16 border border-[#e0e0e0] bg-[#fcf9f8] p-1 overflow-hidden">
                                   {m.imageUrl && <img src={m.imageUrl} alt={m.name} className="w-full h-full object-cover" />}
                                </div>
                                <div>
-                                  <p className="font-serif italic text-lg text-[#121212]">{m.name}</p>
-                                  <p className="text-[10px] text-[#6B665E] truncate max-w-xs mt-1">{m.description || 'No description available'}</p>
+                                  <p className="font-sans text-lg text-[#1b1c1c]">{m.name}</p>
+                                  <p className="text-[10px] text-[#414844] truncate max-w-xs mt-1">{m.description || 'No description available'}</p>
                                </div>
                             </div>
                           </td>
-                          <td className="p-6 font-mono font-bold text-[#121212] text-sm">{m.code}</td>
+                          <td className="p-6 font-mono font-bold text-[#1b1c1c] text-sm">{m.code}</td>
                           <td className="p-6">
                             <span className="px-3 py-1 border border-green-200 bg-green-50 text-green-700 text-[9px] font-black uppercase tracking-widest">Active</span>
                           </td>
                           <td className="p-6 text-right">
                              <div className="flex items-center justify-end gap-6">
                                <div className="text-right">
-                                 <p className="text-xl font-serif italic text-[#A34D15]">{m.totalSellers || 0}</p>
-                                 <p className="text-[8px] font-black text-[#6B665E] uppercase tracking-widest mt-1">Sellers</p>
+                                 <p className="text-xl font-sans text-[#1b4332]">{m.totalSellers || 0}</p>
+                                 <p className="text-[8px] font-black text-[#414844] uppercase tracking-widest mt-1">Sellers</p>
                                </div>
-                               <button className="px-4 py-2 border border-[#E5E1D8] text-[9px] font-black uppercase tracking-widest text-[#121212] hover:border-[#121212]" onClick={() => setEditingMarket({
+                               <button className="px-4 py-2 border border-[#e0e0e0] text-[9px] font-black uppercase tracking-widest text-[#1b1c1c] hover:border-[#1b4332]" onClick={() => setEditingMarket({
                                  ...m,
                                  lat: m.location?.coordinates?.[1],
                                  lng: m.location?.coordinates?.[0]
@@ -824,40 +1243,51 @@ export default function AdminDashboardPage() {
                     )}
                   </tbody>
                 </table>
+                <div ref={marketLoadRef} className="min-h-1" />
+                {loadingMoreMarkets && (
+                  <div className="border-t border-[#e0e0e0] p-4">
+                    {[1, 2, 3].map(i => <div key={i} className="mb-3 h-16 animate-pulse rounded-md bg-[#f0eded]" />)}
+                  </div>
+                )}
+                {!loadingMoreMarkets && visibleMarketsCount < marketList.length && (
+                  <div className="border-t border-[#e0e0e0] p-4 text-center text-[10px] font-black uppercase tracking-[0.2em] text-[#414844]">
+                    Scroll to load more markets
+                  </div>
+                )}
               </div>
 
               {editingMarket && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#121212]/80 backdrop-blur-sm p-4 animate-reveal">
-                  <div className="bg-white w-full max-w-2xl border border-[#E5E1D8] shadow-2xl overflow-hidden">
-                    <div className="p-6 border-b border-[#E5E1D8] flex justify-between items-center bg-[#F8F6F1]">
-                      <h2 className="text-xl font-serif italic text-[#121212]">Edit Market: {editingMarket.name}</h2>
-                      <button onClick={() => setEditingMarket(null)} className="text-2xl text-[#121212] hover:text-[#F59E0B]">&times;</button>
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#012d1d]/80 backdrop-blur-sm p-4 animate-reveal">
+                  <div className="bg-white w-full max-w-2xl border border-[#e0e0e0] shadow-2xl overflow-hidden">
+                    <div className="p-6 border-b border-[#e0e0e0] flex justify-between items-center bg-[#fcf9f8]">
+                      <h2 className="text-xl font-sans text-[#1b1c1c]">Edit Market: {editingMarket.name}</h2>
+                      <button onClick={() => setEditingMarket(null)} className="text-2xl text-[#1b1c1c] hover:text-[#1b4332]">&times;</button>
                     </div>
                     <form onSubmit={handleUpdateMarket} className="p-8 space-y-6 max-h-[80vh] overflow-y-auto">
                       <div className="grid grid-cols-2 gap-6">
                         <div className="space-y-2">
-                          <label className="text-[9px] font-black uppercase tracking-widest text-[#121212]">Market Name</label>
-                          <input required className="w-full bg-[#F8F6F1] border border-[#E5E1D8] p-4 text-sm outline-none focus:border-[#121212]" value={editingMarket.name} onChange={e => setEditingMarket((prev: any) => ({ ...prev, name: e.target.value }))} />
+                          <label className="text-[9px] font-black uppercase tracking-widest text-[#1b1c1c]">Market Name</label>
+                          <input required className="w-full bg-[#fcf9f8] border border-[#e0e0e0] p-4 text-sm outline-none focus:border-[#1b4332]" value={editingMarket.name} onChange={e => setEditingMarket((prev: any) => ({ ...prev, name: e.target.value }))} />
                         </div>
                         <div className="space-y-2">
-                          <label className="text-[9px] font-black uppercase tracking-widest text-[#121212]">Market Code</label>
-                          <input required className="w-full bg-[#F8F6F1] border border-[#E5E1D8] p-4 text-sm outline-none focus:border-[#121212]" value={editingMarket.code} onChange={e => setEditingMarket((prev: any) => ({ ...prev, code: e.target.value.toUpperCase() }))} />
+                          <label className="text-[9px] font-black uppercase tracking-widest text-[#1b1c1c]">Market Code</label>
+                          <input required className="w-full bg-[#fcf9f8] border border-[#e0e0e0] p-4 text-sm outline-none focus:border-[#1b4332]" value={editingMarket.code} onChange={e => setEditingMarket((prev: any) => ({ ...prev, code: e.target.value.toUpperCase() }))} />
                         </div>
                       </div>
 
                       <div className="space-y-2">
-                        <label className="text-[9px] font-black uppercase tracking-widest text-[#121212]">Market Photo</label>
+                        <label className="text-[9px] font-black uppercase tracking-widest text-[#1b1c1c]">Market Photo</label>
                         <ImageUpload service="market" endpoint="/markets/upload-image" value={editingMarket.imageUrl} onChange={(url) => setEditingMarket((prev: any) => ({ ...prev, imageUrl: url }))} />
                       </div>
 
                       <div className="space-y-2">
-                        <label className="text-[9px] font-black uppercase tracking-widest text-[#121212]">Description</label>
-                        <textarea className="w-full bg-[#F8F6F1] border border-[#E5E1D8] p-4 text-sm outline-none focus:border-[#121212] h-24" value={editingMarket.description} onChange={e => setEditingMarket((prev: any) => ({ ...prev, description: e.target.value }))} />
+                        <label className="text-[9px] font-black uppercase tracking-widest text-[#1b1c1c]">Description</label>
+                        <textarea className="w-full bg-[#fcf9f8] border border-[#e0e0e0] p-4 text-sm outline-none focus:border-[#1b4332] h-24" value={editingMarket.description} onChange={e => setEditingMarket((prev: any) => ({ ...prev, description: e.target.value }))} />
                       </div>
 
-                      <div className="flex justify-end gap-4 pt-6 border-t border-[#E5E1D8]">
-                        <button type="button" className="px-6 py-3 border border-[#E5E1D8] text-[#121212] text-[10px] font-black uppercase tracking-widest hover:border-[#121212]" onClick={() => setEditingMarket(null)}>Cancel</button>
-                        <button type="submit" className="px-6 py-3 bg-[#121212] text-white text-[10px] font-black uppercase tracking-widest hover:bg-[#F59E0B]">Save Changes</button>
+                      <div className="flex justify-end gap-4 pt-6 border-t border-[#e0e0e0]">
+                        <button type="button" className="px-6 py-3 border border-[#e0e0e0] text-[#1b1c1c] text-[10px] font-black uppercase tracking-widest hover:border-[#1b4332]" onClick={() => setEditingMarket(null)}>Cancel</button>
+                        <button type="submit" className="px-6 py-3 bg-[#012d1d] text-white text-[10px] font-black uppercase tracking-widest hover:bg-[#012d1d]">Save Changes</button>
                       </div>
                     </form>
                   </div>
@@ -867,36 +1297,204 @@ export default function AdminDashboardPage() {
           )}
 
           {activeTab === 'fraud' && (
-            <div className="bg-white border border-[#E5E1D8] shadow-sm animate-reveal overflow-hidden">
+            <div className="space-y-5 animate-reveal">
+              <div className="rounded-lg border border-[#dfe7e2] bg-white p-6 shadow-sm">
+                <p className="text-[10px] font-black uppercase tracking-[0.18em] text-[#1b4332]">Security operations</p>
+                <h2 className="mt-2 text-2xl font-sans text-[#1b1c1c]">Fraud Alerts</h2>
+                <p className="mt-2 max-w-3xl text-sm font-semibold leading-6 text-[#5f7569]">
+                  Alerts are triaged against related orders, payment entries, rider movement, and dispute history before refunds or account restrictions are applied.
+                </p>
+              </div>
+
+              <div className="grid gap-4 md:grid-cols-4">
+                {[
+                  { label: 'Active alerts', value: Array.isArray(fraudAlerts) ? fraudAlerts.length : 0 },
+                  { label: 'Critical', value: Array.isArray(fraudAlerts) ? fraudAlerts.filter((f: any) => f.severity === 'CRITICAL').length : 0 },
+                  { label: 'Linked orders', value: Array.isArray(fraudAlerts) ? fraudAlerts.reduce((sum: number, f: any) => sum + (f.relatedOrders?.length || 0), 0) : 0 },
+                  { label: 'Refund route', value: 'Disputes tab' },
+                ].map(item => (
+                  <div key={item.label} className="rounded-lg border border-[#dfe7e2] bg-white p-5">
+                    <p className="text-[9px] font-black uppercase tracking-[0.18em] text-[#5f7569]">{item.label}</p>
+                    <p className="mt-3 text-2xl font-sans text-[#1b1c1c]">{item.value}</p>
+                  </div>
+                ))}
+              </div>
+
+              <div className="bg-white border border-[#e0e0e0] shadow-sm overflow-hidden">
               <table className="w-full text-left">
-                <thead className="bg-[#F8F6F1] text-[#6B665E] text-[9px] font-black uppercase tracking-[0.2em] border-b border-[#E5E1D8]">
+                <thead className="bg-[#fcf9f8] text-[#414844] text-[9px] font-black uppercase tracking-[0.2em] border-b border-[#e0e0e0]">
                   <tr>
-                    <th className="p-6">Severity</th>
-                    <th className="p-6">Transaction ID</th>
-                    <th className="p-6">Flag Reason</th>
+                    <th className="p-6 w-32">Type / Severity</th>
+                    <th className="p-6 w-48">Actor / Entity</th>
+                    <th className="p-6">Alert Details & Reason</th>
+                    <th className="p-6 w-40">Detected At</th>
+                    <th className="p-6 w-48 text-right">Next Step</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-[#E5E1D8]">
+                <tbody className="divide-y divide-[#e0e0e0]">
                   {!fraudAlerts || fraudAlerts.length === 0 ? (
-                    <tr><td colSpan={3} className="p-12 text-center text-[#6B665E] italic">No active fraud alerts. System secure.</td></tr>
+                    <tr><td colSpan={5} className="p-12 text-center text-[#414844]">No active fraud alerts. System secure.</td></tr>
                   ) : (
                     fraudAlerts.map((f: any) => (
-                      <tr key={f._id} className="hover:bg-[#F8F6F1]/50">
+                      <tr key={f._id} className="hover:bg-[#fcf9f8]/50 group transition-all">
                         <td className="p-6">
-                           <span className="bg-red-50 text-red-600 border border-red-200 px-3 py-1 text-[9px] font-black uppercase tracking-widest">{f.security?.flagReason?.split(':')[0] || 'FLAG'}</span>
+                           <div className="flex flex-col gap-1">
+                             <span className={`text-[8px] font-black uppercase tracking-normal ${f.type === 'SECURITY_FLAG' ? 'text-blue-600' : 'text-[#1b4332]'}`}>{f.type?.replace('_', ' ') || 'FLAG'}</span>
+                             <span className={`w-fit px-2 py-0.5 text-[7px] font-black uppercase tracking-widest border ${
+                               f.severity === 'CRITICAL' ? 'bg-red-600 text-white border-red-700' : 
+                               f.severity === 'HIGH' ? 'bg-red-50 text-red-600 border-red-200' : 
+                               'bg-blue-50 text-blue-600 border-blue-200'
+                             }`}>{f.severity || 'MEDIUM'}</span>
+                           </div>
                         </td>
-                        <td className="p-6 text-sm font-mono font-bold text-[#121212]">{f._id}</td>
-                        <td className="p-6 text-sm text-[#6B665E]">{f.security?.flagReason || f.reason}</td>
+                        <td className="p-6">
+                          <div className="flex flex-col">
+                            <span className="text-sm font-bold text-[#1b1c1c]">{f.actor || 'System Auto-Flag'}</span>
+                            <span className="text-[9px] font-mono text-[#414844] uppercase tracking-normal">{f.actorId || f._id}</span>
+                          </div>
+                        </td>
+                        <td className="p-6">
+                           <p className="text-sm text-[#1b1c1c] font-medium leading-relaxed">{f.reason}</p>
+                           {f.relatedOrders && f.relatedOrders.length > 0 && (
+                             <div className="mt-2 flex flex-wrap gap-1">
+                               {f.relatedOrders.slice(0, 5).map((order: string) => (
+                                 <span key={order} className="bg-[#fcf9f8] border border-[#e0e0e0] px-2 py-0.5 text-[8px] font-mono font-bold text-[#414844]">{order}</span>
+                               ))}
+                               {f.relatedOrders.length > 5 && <span className="text-[8px] text-[#414844] font-black">+{f.relatedOrders.length - 5} more</span>}
+                             </div>
+                           )}
+                        </td>
+                        <td className="p-6">
+                           <span className="text-[10px] font-bold text-[#414844]">{new Date(f.createdAt).toLocaleString()}</span>
+                        </td>
+                        <td className="p-6 text-right">
+                          <button
+                            type="button"
+                            onClick={() => setActiveTab('disputes')}
+                            className="rounded-md border border-[#dfe7e2] bg-[#f7faf8] px-4 py-2 text-[9px] font-black uppercase tracking-widest text-[#1b4332] hover:border-[#1b4332]"
+                          >
+                            Investigate Refund
+                          </button>
+                        </td>
                       </tr>
                     ))
                   )}
                 </tbody>
               </table>
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'payouts' && (
+            <div className="space-y-6 animate-reveal">
+              <div className="rounded-lg border border-[#dfe7e2] bg-white p-6 shadow-sm">
+                <p className="text-[10px] font-black uppercase tracking-[0.18em] text-[#1b4332]">Liquidity Terminal</p>
+                <h2 className="mt-2 text-2xl font-sans text-[#1b1c1c]">Payout Approvals</h2>
+                <p className="mt-2 max-w-3xl text-sm font-semibold leading-6 text-[#5f7569]">
+                  Review, approve, or reject Mobile Money liquidation requests submitted by sellers and riders. Approving a request instantly deducts funds from the user's wallet.
+                </p>
+              </div>
+
+              <div className="bg-white border border-[#e0e0e0] shadow-sm overflow-hidden">
+                <table className="w-full text-left">
+                  <thead className="bg-[#fcf9f8] text-[#414844] text-[9px] font-black uppercase tracking-[0.2em] border-b border-[#e0e0e0]">
+                    <tr>
+                      <th className="p-6">Transaction ID</th>
+                      <th className="p-6">User Reference</th>
+                      <th className="p-6">Recipient Phone</th>
+                      <th className="p-6">Amount</th>
+                      <th className="p-6">Status</th>
+                      <th className="p-6 text-right">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-[#e0e0e0]">
+                    {payoutsLoading ? (
+                      <tr>
+                        <td colSpan={6} className="p-12 text-center text-[#414844] animate-pulse">
+                          Synchronizing with Liquidity Gateway...
+                        </td>
+                      </tr>
+                    ) : !payoutRequests || payoutRequests.length === 0 ? (
+                      <tr>
+                        <td colSpan={6} className="p-12 text-center text-[#414844]">
+                          No payout requests recorded in ledger.
+                        </td>
+                      </tr>
+                    ) : (
+                      payoutRequests.map((p: any) => (
+                        <tr key={p._id} className="hover:bg-[#fcf9f8]/50 group transition-all">
+                          <td className="p-6">
+                            <span className="font-mono text-xs font-bold uppercase">#PAY-{p._id.substring(0,8).toUpperCase()}</span>
+                            <span className="block text-[8px] text-[#414844] font-bold uppercase mt-1 opacity-60">
+                              {p.createdAt ? new Date(p.createdAt).toLocaleString() : 'N/A'}
+                            </span>
+                          </td>
+                          <td className="p-6">
+                            <div className="flex flex-col">
+                              <span className="text-sm font-bold text-[#1b1c1c]">User Account</span>
+                              <span className="text-[9px] font-mono text-[#414844]">{p.userId}</span>
+                            </div>
+                          </td>
+                          <td className="p-6">
+                            <span className="text-sm font-bold text-[#1b1c1c]">{p.recipientPhone || p.momoNumber || 'N/A'}</span>
+                            <span className="block text-[8px] text-[#414844] font-bold uppercase mt-1 opacity-60">MTN MoMo Gateway</span>
+                          </td>
+                          <td className="p-6">
+                            <span className="text-sm font-black text-[#1b4332]">{p.amount?.toLocaleString()} RWF</span>
+                          </td>
+                          <td className="p-6">
+                            <span className={`w-fit px-2.5 py-1 text-[8px] font-black uppercase tracking-widest border rounded-full ${
+                              p.status === 'completed' ? 'bg-green-50 text-green-700 border-green-200' :
+                              p.status === 'failed' ? 'bg-red-50 text-red-700 border-red-200' :
+                              'bg-amber-50 text-amber-700 border-amber-200 animate-pulse'
+                            }`}>
+                              {p.status || 'PENDING'}
+                            </span>
+                          </td>
+                          <td className="p-6 text-right">
+                            {p.status === 'pending' || p.status === 'processing' ? (
+                              <div className="flex justify-end gap-2">
+                                <button
+                                  type="button"
+                                  onClick={() => handleRejectPayout(p._id)}
+                                  className="rounded-md border border-red-200 bg-red-50 hover:bg-red-100 px-4 py-2 text-[9px] font-black uppercase tracking-widest text-red-700 transition"
+                                >
+                                  Reject
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => handleApprovePayout(p._id)}
+                                  className="rounded-md border border-green-200 bg-[#1b4332] hover:bg-[#012d1d] px-4 py-2 text-[9px] font-black uppercase tracking-widest text-white transition"
+                                >
+                                  Approve & Pay
+                                </button>
+                              </div>
+                            ) : (
+                              <span className="text-[9px] font-black text-[#414844] uppercase tracking-widest opacity-40">Processed</span>
+                            )}
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
             </div>
           )}
 
         </main>
-      </div>
     </Layout>
+  );
+}
+
+export default function AdminDashboardPage() {
+  return (
+    <React.Suspense fallback={
+      <div className="min-h-screen bg-[#fdfaf7] flex items-center justify-center">
+        <div className="animate-spin w-10 h-10 border-4 border-[#ff6b00] border-t-transparent rounded-full"></div>
+      </div>
+    }>
+      <AdminDashboardContent />
+    </React.Suspense>
   );
 }

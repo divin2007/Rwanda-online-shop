@@ -48,6 +48,51 @@ export default function RiderEarningsPage() {
     }
   };
 
+  const handleViewReceipt = async (tx: any) => {
+    if (tx.account && tx.account.startsWith('user_wallet')) {
+      const mockReceipt: ReceiptOrder = {
+        _id: tx.transactionId,
+        orderNumber: `PAY-${tx.transactionId.substring(0,8).toUpperCase()}`,
+        status: tx.account === 'user_wallet' ? 'delivered' : tx.account === 'user_wallet_failed' ? 'cancelled' : 'placed',
+        createdAt: tx.createdAt,
+        buyer: {
+          fullName: 'Mobile Money Gateway',
+          phone: tx.description.match(/07\d{8}/)?.[0] || 'MTN MoMo'
+        },
+        seller: {
+          fullName: profile?.fullName || 'Verified Rider',
+          stallId: 'Rider Portal'
+        },
+        products: [
+          {
+            productId: 'withdrawal',
+            name: 'Mobile Money Cash Out',
+            unitPrice: tx.amount,
+            quantity: 1
+          }
+        ],
+        financials: {
+          subtotal: tx.amount,
+          deliveryFee: 0,
+          platformCommission: 0,
+          gatewayFee: 0,
+          totalAmount: tx.amount,
+          sellerPayout: 0,
+          riderPayout: tx.amount
+        },
+        payment: {
+          method: 'MTN Mobile Money',
+          status: tx.account === 'user_wallet' ? 'paid' : 'pending',
+          transactionRef: tx.transactionId
+        },
+        notes: tx.description
+      };
+      setSelectedReceipt(mockReceipt);
+    } else {
+      await fetchAndOpenReceipt(tx.transactionId);
+    }
+  };
+
   const handlePayoutRequest = async (e: React.FormEvent) => {
     e.preventDefault();
     const amount = Number(payoutAmount);
@@ -258,7 +303,7 @@ export default function RiderEarningsPage() {
                         <td className="p-4 text-sm text-text-secondary">{tx.balanceAfter.toLocaleString()} RWF</td>
                         <td className="p-4 text-center">
                           {tx.transactionId && (
-                            <button onClick={() => fetchAndOpenReceipt(tx.transactionId)} className="text-primary hover:text-primary-hover font-bold text-sm">
+                            <button onClick={() => handleViewReceipt(tx)} className="text-primary hover:text-primary-hover font-bold text-sm">
                               🧾 View
                             </button>
                           )}

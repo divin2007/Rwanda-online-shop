@@ -25,6 +25,33 @@ export const userSchema = new Schema({
     platform: String, 
     lastUsed: Date 
   }],
+  preferences: {
+    language: { type: String, enum: ['en', 'fr', 'kin'], default: 'en' },
+    currency: { type: String, enum: ['RWF', 'USD', 'EUR'], default: 'RWF' },
+    notifications: {
+      inApp: { type: Boolean, default: true },
+      email: { type: Boolean, default: true },
+      sms: { type: Boolean, default: false },
+      whatsapp: { type: Boolean, default: false },
+      orderUpdates: { type: Boolean, default: true },
+      promotions: { type: Boolean, default: false },
+      securityAlerts: { type: Boolean, default: true },
+      customMessagesEmailOnly: { type: Boolean, default: false }
+    },
+    privacy: {
+      showProfilePhoto: { type: Boolean, default: true },
+      sharePhoneWithOrderParties: { type: Boolean, default: true }
+    },
+    seller: {
+      autoReplyEnabled: { type: Boolean, default: false },
+      autoReplyMessage: { type: String, default: '' },
+      quoteExpiryHours: { type: Number, default: 24 }
+    },
+    rider: {
+      autoAcceptNearby: { type: Boolean, default: false },
+      maxPickupDistanceKm: { type: Number, default: 8 }
+    }
+  },
   security: {
     lastLoginAt: Date,
     lastLoginIp: String,

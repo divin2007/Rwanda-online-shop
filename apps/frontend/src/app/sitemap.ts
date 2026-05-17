@@ -2,6 +2,24 @@ import { MetadataRoute } from 'next';
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000';
+  const baseEntries: MetadataRoute.Sitemap = [
+    {
+      url: baseUrl,
+      lastModified: new Date(),
+      changeFrequency: 'daily',
+      priority: 1.0,
+    },
+    {
+      url: `${baseUrl}/markets`,
+      lastModified: new Date(),
+      changeFrequency: 'weekly',
+      priority: 0.9,
+    },
+  ];
+
+  if (baseUrl.includes('localhost')) {
+    return baseEntries;
+  }
 
   try {
     // 1. Fetch Markets
@@ -10,7 +28,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     const markets = marketsData.data || [];
 
     const marketEntries = markets.map((m: any) => ({
-      url: `${baseUrl}/market/${m.slug}`,
+      url: baseUrl.includes('localhost') ? `http://${m.slug}.localhost:3000` : `https://${m.slug}.rwshop.org`,
       lastModified: new Date(m.updatedAt || new Date()),
       changeFrequency: 'weekly' as const,
       priority: 0.8,
@@ -27,7 +45,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       const marketSlug = market?.slug || 'unknown';
       
       return {
-        url: `${baseUrl}/market/${marketSlug}/product/${p._id}`,
+        url: baseUrl.includes('localhost') ? `http://${marketSlug}.localhost:3000/product/${p._id}` : `https://${marketSlug}.rwshop.org/product/${p._id}`,
         lastModified: new Date(p.updatedAt || new Date()),
         changeFrequency: 'daily' as const,
         priority: 0.6,
@@ -35,30 +53,15 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     });
 
     return [
-      {
-        url: baseUrl,
-        lastModified: new Date(),
-        changeFrequency: 'daily',
-        priority: 1.0,
-      },
-      {
-        url: `${baseUrl}/markets`,
-        lastModified: new Date(),
-        changeFrequency: 'weekly',
-        priority: 0.9,
-      },
+      ...baseEntries,
       ...marketEntries,
       ...productEntries,
     ];
-  } catch (error) {
-    console.error('Sitemap generation failed:', error);
-    return [
-      {
-        url: baseUrl,
-        lastModified: new Date(),
-        changeFrequency: 'daily',
-        priority: 1.0,
-      },
-    ];
+  } catch {
+    if (!baseUrl.includes('localhost')) {
+      console.warn('Sitemap generation fell back to base URL entries.');
+    }
+
+    return baseEntries;
   }
 }

@@ -1,21 +1,19 @@
 'use client';
+/* eslint-disable @typescript-eslint/no-explicit-any, react/no-unescaped-entities */
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Card } from '@/components/ui/Card';
 import dynamic from 'next/dynamic';
 const MapPinPicker = dynamic(() => import('@/components/ui/MapPinPicker').then(mod => mod.MapPinPicker), { ssr: false });
 import { useCart } from '@/components/cart/CartContext';
 import { useAuth } from '@/context/AuthContext';
 import { orderApi, marketApi, deliveryApi } from '@/lib/api';
 import { useSocket } from '@/hooks/useSocket';
-import { useLanguage } from '@/context/LanguageContext';
 import toast from 'react-hot-toast';
 
 export const CheckoutContent = () => {
   const { cartTotal, items, clearCart } = useCart();
   const { user } = useAuth();
   const router = useRouter();
-  const { t } = useLanguage();
   const [coords, setCoords] = useState<{lat: number, lng: number} | null>(null);
   const [paymentMethod, setPaymentMethod] = useState<'MTN_MOMO' | 'AIRTEL_MONEY'>('MTN_MOMO');
   const [phone, setPhone] = useState('');
@@ -130,7 +128,17 @@ export const CheckoutContent = () => {
             productId: i.id,
             name: i.name,
             unitPrice: i.price,
-            quantity: i.quantity
+            quantity: i.quantity,
+            unit: i.unit,
+            category: i.category,
+            categoryId: i.categoryId,
+            imageUrl: i.image,
+            images: i.image ? [i.image] : [],
+            attributes: i.attributes,
+            variantId: i.variantId,
+            variantTitle: i.variantTitle,
+            sellerSku: i.sellerSku,
+            priceSnapshotAt: new Date(),
           })),
           financials: {
             subtotal,
@@ -152,7 +160,14 @@ export const CheckoutContent = () => {
           } : undefined,
           notes: notes
         }).then(res => ({ success: true, sellerName: firstItem.sellerName, data: res.data }))
-          .catch(err => ({ success: false, sellerName: firstItem.sellerName, error: err.response?.data?.error || err.message }));
+          .catch(err => {
+            const msg = err.response?.data?.message || err.response?.data?.error || err.message;
+            return { 
+              success: false, 
+              sellerName: firstItem.sellerName, 
+              error: Array.isArray(msg) ? msg.join(', ') : msg 
+            };
+          });
       });
 
       const results = await Promise.all(orderPromises);
@@ -169,7 +184,8 @@ export const CheckoutContent = () => {
       }
 
       if (failed.length > 0) {
-        toast.error(`Order failed for: ${failed.map(f => f.sellerName).join(', ')}`);
+        const errorDetails = failed.map(f => `${f.sellerName}: ${(f as any).error}`).join(' | ');
+        toast.error(`Order failed: ${errorDetails}`);
         if (succeeded.length === 0) setIsPlacingOrder(false);
       }
     } catch (error: any) {
@@ -186,35 +202,35 @@ export const CheckoutContent = () => {
   ];
 
   return (
-    <div className="max-w-[1400px] mx-auto space-y-24 pb-40 px-6 pt-10 animate-reveal">
+    <div className="rmf-container space-y-16 pb-40 px-4 md:px-8 pt-10 animate-reveal">
       {/* ── Header ── */}
-      <div className="border-b border-[#121212] pb-12">
-        <div className="flex items-center gap-4 mb-6">
-           <div className="w-12 h-px bg-[#F59E0B]" />
-           <p className="text-[10px] font-black text-[#F59E0B] uppercase tracking-[0.5em]">Secure Checkout</p>
+      <div className="border-b border-border-light pb-10">
+        <div className="flex items-center gap-4 mb-4">
+           <div className="w-10 h-1 bg-accent-premium rounded-full" />
+           <p className="text-[11px] font-bold text-primary uppercase tracking-widest">Secure Checkout</p>
         </div>
-        <h1 className="text-7xl font-serif text-[#121212] leading-[0.85] tracking-tighter italic">Checkout</h1>
+        <h1 className="text-4xl md:text-5xl font-bold text-text-primary tracking-tight">Checkout</h1>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-16 xl:gap-24 items-start">
-        <div className="lg:col-span-8 space-y-24">
+        <div className="lg:col-span-8 space-y-20">
           
           {/* ── Delivery Location ── */}
           <section className="space-y-8">
-            <div className="flex items-center justify-between border-b border-[#E5E1D8] pb-6">
-              <h2 className="text-3xl font-serif text-[#121212] italic tracking-tighter">1. Delivery Location</h2>
-              <div className="flex items-center gap-3">
-                 <div className={`w-2 h-2 rounded-full ${coords ? 'bg-green-500 animate-pulse' : 'bg-[#E5E1D8]'}`} />
-                 <span className="text-[9px] font-black uppercase tracking-widest text-[#121212]">{coords ? 'Location Pinned' : 'Drop Pin on Map'}</span>
+            <div className="flex items-center justify-between border-b border-border-light pb-6">
+              <h2 className="text-2xl font-bold text-text-primary tracking-tight">1. Delivery Location</h2>
+              <div className="flex items-center gap-2">
+                 <div className={`w-2.5 h-2.5 rounded-full ${coords ? 'bg-green-500 shadow-[0_0_10px_rgba(34,197,94,0.5)] animate-pulse' : 'bg-border-light'}`} />
+                 <span className="text-[10px] font-bold uppercase tracking-widest text-text-muted">{coords ? 'Location Pinned' : 'Drop Pin on Map'}</span>
               </div>
             </div>
             
-            <div className="h-[450px] border border-[#E5E1D8] relative overflow-hidden group">
+            <div className="h-[450px] border border-border-light rounded-2xl relative overflow-hidden group shadow-sm">
                <MapPinPicker onLocationSelected={setCoords} marketLocation={marketCoords} />
                
                {!coords && (
                  <div className="absolute top-6 left-6 z-10 pointer-events-none">
-                    <div className="bg-[#121212] text-white text-[9px] font-black uppercase tracking-[0.4em] py-3 px-6 shadow-md">
+                    <div className="bg-primary/90 backdrop-blur-md rounded-xl text-white text-[10px] font-bold uppercase tracking-widest py-3 px-6 shadow-md border border-white/20">
                         Drop Pin To Set Location
                     </div>
                  </div>
@@ -222,88 +238,90 @@ export const CheckoutContent = () => {
             </div>
             
             {coords && (
-              <div className="p-6 bg-[#F8F6F1] border border-[#E5E1D8] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 animate-reveal">
-                 <div className="space-y-1">
-                     <p className="text-[10px] font-black text-[#121212] uppercase tracking-[0.3em]">✓ Location Set</p>
-                     <p className="text-[9px] text-[#6B665E] font-medium tracking-widest">Delivery fee calculated based on distance.</p>
+              <div className="p-6 bg-background-surface border border-border-light rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 animate-reveal shadow-sm">
+                 <div className="space-y-1.5">
+                     <p className="text-[11px] font-bold text-primary uppercase tracking-widest flex items-center gap-2">
+                       <span className="text-green-500 text-lg leading-none">✓</span> Location Set
+                     </p>
+                     <p className="text-xs text-text-muted font-medium">Delivery fee calculated based on distance.</p>
                  </div>
-                 <p className="text-sm font-serif italic text-[#121212] bg-white px-4 py-2 border border-[#E5E1D8]">{coords.lat.toFixed(5)}, {coords.lng.toFixed(5)}</p>
+                 <p className="text-sm font-bold text-text-primary bg-white px-5 py-2.5 rounded-xl border border-border-light shadow-sm">{coords.lat.toFixed(5)}, {coords.lng.toFixed(5)}</p>
               </div>
             )}
           </section>
 
           {/* ── Payment Method ── */}
           <section className="space-y-8">
-            <h2 className="text-3xl font-serif text-[#121212] italic tracking-tighter border-b border-[#E5E1D8] pb-6">2. Payment & Details</h2>
+            <h2 className="text-2xl font-bold text-text-primary tracking-tight border-b border-border-light pb-6">2. Payment & Details</h2>
             
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
               {[
-                { id: 'MTN_MOMO', label: 'MTN MoMo', color: 'bg-[#FFCC00]', desc: 'Pay via MTN Mobile Money' },
-                { id: 'AIRTEL_MONEY', label: 'Airtel Money', color: 'bg-[#ED1C24]', desc: 'Pay via Airtel Money' }
+                { id: 'MTN_MOMO', label: 'MTN MoMo', color: 'bg-[#FFCC00] text-black border-[#FFCC00]', desc: 'Pay via MTN Mobile Money' },
+                { id: 'AIRTEL_MONEY', label: 'Airtel Money', color: 'bg-[#ED1C24] text-white border-[#ED1C24]', desc: 'Pay via Airtel Money' }
               ].map(method => (
                 <button 
                   key={method.id}
                   onClick={() => setPaymentMethod(method.id as any)}
-                  className={`p-8 border transition-all flex flex-col items-center gap-4 relative group ${
+                  className={`p-6 border rounded-2xl transition-all flex flex-col items-center gap-4 relative group ${
                     paymentMethod === method.id 
-                      ? 'border-[#121212] bg-[#F8F6F1] shadow-md' 
-                      : 'border-[#E5E1D8] bg-white hover:border-[#121212]'
+                      ? 'border-primary bg-primary/5 shadow-md' 
+                      : 'border-border-light bg-white hover:border-primary/50'
                   }`}
                 >
                   {paymentMethod === method.id && (
                     <div className="absolute top-4 right-4">
-                      <div className="w-2 h-2 bg-[#F59E0B] rounded-full animate-ping" />
+                      <div className="w-2.5 h-2.5 bg-primary rounded-full shadow-[0_0_8px_rgba(1,45,29,0.5)]" />
                     </div>
                   )}
-                  <div className={`w-12 h-12 ${method.color} border border-[#121212] flex items-center justify-center text-lg font-black`}>
+                  <div className={`w-14 h-14 ${method.color} border rounded-full flex items-center justify-center text-xl font-black shadow-sm`}>
                     {method.id === 'MTN_MOMO' ? 'M' : 'A'}
                   </div>
                   <div className="text-center">
-                    <span className="text-[10px] font-black uppercase tracking-[0.3em] text-[#121212] block mb-1">{method.label}</span>
-                    <span className="text-[8px] font-bold text-[#6B665E]">{method.desc}</span>
+                    <span className="text-xs font-bold uppercase tracking-widest text-text-primary block mb-1">{method.label}</span>
+                    <span className="text-[10px] font-bold text-text-muted">{method.desc}</span>
                   </div>
                 </button>
               ))}
             </div>
 
-            <div className="space-y-8 bg-white border border-[#E5E1D8] p-8 md:p-12">
+            <div className="space-y-8 bg-white border border-border-light rounded-2xl p-6 md:p-10 shadow-sm">
               <div className="space-y-2">
-                <label className="text-[10px] font-black text-[#121212] uppercase tracking-[0.4em] block">
+                <label className="text-[10px] font-bold text-text-muted uppercase tracking-widest block">
                   Mobile Money Number <span className="text-red-500">*</span>
                 </label>
                 <input 
                   type="tel" 
                   placeholder="07XXXXXXXX" 
-                  className="w-full bg-[#F8F6F1] border border-[#E5E1D8] focus:border-[#121212] px-5 py-4 text-sm outline-none transition-colors"
+                  className="rmf-input w-full"
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
                 />
               </div>
 
               {total > 50000 && (
-                <div className="space-y-6 pt-8 border-t border-[#E5E1D8] animate-reveal">
-                  <div className="space-y-1">
-                     <label className="text-[10px] font-black text-[#A34D15] uppercase tracking-[0.4em] block">National ID Required</label>
-                     <p className="text-[9px] text-[#6B665E] font-medium leading-relaxed">By law, orders over 50,000 RWF require a valid Rwandan National ID for verification.</p>
+                <div className="space-y-6 pt-8 border-t border-border-light animate-reveal">
+                  <div className="space-y-1.5">
+                     <label className="text-[10px] font-bold text-accent-premium uppercase tracking-widest block">National ID Required</label>
+                     <p className="text-xs text-text-muted font-medium leading-relaxed">By law, orders over 50,000 RWF require a valid Rwandan National ID for verification.</p>
                   </div>
                   <input 
                     type="text" 
                     placeholder="1 19XX 8 XXXX XXX X XX" 
                     maxLength={16}
-                    className="w-full bg-[#F8F6F1] border border-[#A34D15]/30 focus:border-[#A34D15] px-5 py-4 text-center tracking-[0.3em] font-black outline-none transition-colors"
+                    className="rmf-input w-full text-center tracking-[0.2em] font-bold text-lg"
                     value={nid}
                     onChange={(e) => setNid(e.target.value.replace(/\s/g, ''))}
                   />
                 </div>
               )}
 
-              <div className="space-y-2 pt-8 border-t border-[#E5E1D8]">
-                <label className="text-[10px] font-black text-[#121212] uppercase tracking-[0.4em] block">
-                  Delivery Notes <span className="opacity-40 font-normal">(Optional)</span>
+              <div className="space-y-2 pt-8 border-t border-border-light">
+                <label className="text-[10px] font-bold text-text-muted uppercase tracking-widest block">
+                  Delivery Notes <span className="opacity-60 font-medium">(Optional)</span>
                 </label>
                 <textarea 
                   placeholder="Any special instructions for the rider?" 
-                  className="w-full bg-[#F8F6F1] border border-[#E5E1D8] focus:border-[#121212] px-5 py-4 text-sm outline-none transition-colors min-h-[120px]"
+                  className="rmf-input w-full min-h-[120px] resize-y"
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
                 />
@@ -313,22 +331,22 @@ export const CheckoutContent = () => {
 
           {/* ── Delivery Schedule ── */}
           <section className="space-y-8">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[#E5E1D8] pb-6">
-               <h2 className="text-3xl font-serif text-[#121212] italic tracking-tighter">3. Schedule Delivery</h2>
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border-light pb-6">
+               <h2 className="text-2xl font-bold text-text-primary tracking-tight">3. Schedule Delivery</h2>
                
                <label className="relative inline-flex items-center cursor-pointer">
-                  <span className="text-[9px] font-black uppercase tracking-[0.2em] mr-4 text-[#6B665E]">Recurring Order</span>
+                  <span className="text-[10px] font-bold uppercase tracking-widest mr-4 text-text-muted">Recurring Order</span>
                   <input type="checkbox" className="sr-only peer" checked={isScheduled} onChange={() => setIsScheduled(!isScheduled)} />
-                  <div className="w-11 h-6 bg-[#E5E1D8] rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#121212]"></div>
+                  <div className="w-11 h-6 bg-border-light rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
                </label>
             </div>
             
             {isScheduled ? (
-              <div className="p-8 bg-[#F8F6F1] border border-[#E5E1D8] grid grid-cols-1 sm:grid-cols-2 gap-8 animate-reveal">
+              <div className="p-8 bg-background-surface border border-border-light rounded-2xl grid grid-cols-1 sm:grid-cols-2 gap-8 animate-reveal shadow-sm">
                 <div className="space-y-2">
-                  <label className="text-[9px] font-black text-[#121212] uppercase tracking-[0.3em] block">Frequency</label>
+                  <label className="text-[10px] font-bold text-text-muted uppercase tracking-widest block">Frequency</label>
                   <select 
-                    className="w-full bg-white border border-[#E5E1D8] focus:border-[#121212] px-5 py-3 text-sm outline-none transition-colors cursor-pointer"
+                    className="rmf-select w-full"
                     value={frequency}
                     onChange={(e) => setFrequency(e.target.value as any)}
                   >
@@ -337,9 +355,9 @@ export const CheckoutContent = () => {
                   </select>
                 </div>
                 <div className="space-y-2">
-                  <label className="text-[9px] font-black text-[#121212] uppercase tracking-[0.3em] block">Delivery Day</label>
+                  <label className="text-[10px] font-bold text-text-muted uppercase tracking-widest block">Delivery Day</label>
                   <select 
-                    className="w-full bg-white border border-[#E5E1D8] focus:border-[#121212] px-5 py-3 text-sm outline-none transition-colors cursor-pointer"
+                    className="rmf-select w-full"
                     value={scheduledDay}
                     onChange={(e) => setScheduledDay(e.target.value)}
                   >
@@ -350,9 +368,9 @@ export const CheckoutContent = () => {
                 </div>
               </div>
             ) : (
-              <div className="p-8 border border-dashed border-[#E5E1D8] text-center bg-white">
-                 <p className="text-sm font-medium text-[#6B665E]">This is a one-time order.</p>
-                 <p className="text-[9px] mt-2 text-[#6B665E]/60 uppercase tracking-widest">Toggle 'Recurring Order' to schedule regular deliveries.</p>
+              <div className="p-8 border border-dashed border-border-light rounded-2xl text-center bg-white shadow-sm">
+                 <p className="text-sm font-bold text-text-primary">This is a one-time order.</p>
+                 <p className="text-[10px] mt-2 text-text-muted uppercase tracking-widest">Toggle 'Recurring Order' to schedule regular deliveries.</p>
               </div>
             )}
           </section>
@@ -360,63 +378,63 @@ export const CheckoutContent = () => {
 
         {/* ── Order Summary ── */}
         <div className="lg:col-span-4">
-          <div className="bg-[#121212] text-white p-10 lg:p-12 sticky top-32 shadow-2xl">
-            <div className="flex items-center gap-4 mb-10">
-               <div className="w-8 h-px bg-[#F59E0B]" />
-               <p className="text-[10px] font-black text-[#F59E0B] uppercase tracking-[0.5em]">Order Summary</p>
+          <div className="bg-primary-cinematic text-white p-8 lg:p-10 sticky top-32 rounded-2xl shadow-xl cinematic-shadow border border-white/5">
+            <div className="flex items-center gap-3 mb-8">
+               <div className="w-8 h-1 bg-accent-premium rounded-full" />
+               <p className="text-[11px] font-bold text-accent-premium uppercase tracking-widest">Order Summary</p>
             </div>
             
-            <div className="space-y-6 mb-10 pb-8 border-b border-white/10">
+            <div className="space-y-5 mb-8 pb-8 border-b border-white/10">
               <div className="flex justify-between items-end">
-                <span className="text-[10px] font-black uppercase tracking-[0.3em] opacity-60">Subtotal</span>
-                <span className="text-lg font-serif italic">{subtotal.toLocaleString()} RWF</span>
+                <span className="text-xs font-bold uppercase tracking-widest text-white/60">Subtotal</span>
+                <span className="text-lg font-bold tracking-tight">{subtotal.toLocaleString()} RWF</span>
               </div>
               <div className="flex justify-between items-end">
-                <span className="text-[10px] font-black uppercase tracking-[0.3em] opacity-60">Delivery Fee</span>
+                <span className="text-xs font-bold uppercase tracking-widest text-white/60">Delivery Fee</span>
                 {isCalculatingFee ? (
                   <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                 ) : (
-                  <span className="text-lg font-serif italic text-white">
+                  <span className="text-lg font-bold tracking-tight text-white">
                     {coords ? `${deliveryFee.toLocaleString()} RWF` : '—'}
                   </span>
                 )}
               </div>
               <div className="flex justify-between items-end">
-                <span className="text-[10px] font-black uppercase tracking-[0.3em] opacity-60">Service Fee</span>
-                <span className="text-sm font-serif italic opacity-70">{gatewayFee.toLocaleString()} RWF</span>
+                <span className="text-xs font-bold uppercase tracking-widest text-white/60">Service Fee</span>
+                <span className="text-sm font-bold tracking-tight text-white/80">{gatewayFee.toLocaleString()} RWF</span>
               </div>
             </div>
 
-            <div className="flex flex-col mb-12 space-y-2">
-              <span className="text-[10px] font-black uppercase tracking-[0.5em] opacity-50">Total</span>
-              <div className="text-right">
-                <span className="text-6xl font-serif italic tracking-tighter text-white leading-none">
+            <div className="flex flex-col mb-10 space-y-2">
+              <span className="text-[10px] font-bold uppercase tracking-widest text-white/80">Total</span>
+              <div className="text-right flex items-end justify-end">
+                <span className="text-5xl font-bold tracking-tight text-white leading-none drop-shadow-md">
                   {(total || 0).toLocaleString()}
                 </span>
-                <span className="text-[9px] font-black uppercase tracking-[0.4em] text-[#F59E0B] ml-2">RWF</span>
+                <span className="text-[10px] font-bold uppercase tracking-widest text-accent-premium ml-2 mb-1">RWF</span>
               </div>
             </div>
 
             <button 
               disabled={!coords || !phone || items.length === 0 || isPlacingOrder || isCalculatingFee || isWaitingPayment}
               onClick={handleCheckout}
-              className="w-full py-6 text-[10px] font-black uppercase tracking-[0.3em] bg-[#F59E0B] text-[#121212] hover:bg-white transition-all disabled:opacity-40 disabled:grayscale flex items-center justify-center gap-3"
+              className="flex min-h-[3.5rem] w-full items-center justify-center gap-2 rounded-xl bg-accent-premium px-6 text-xs font-bold uppercase tracking-widest text-primary shadow-md shadow-accent-premium/20 transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:shadow-accent-premium/30 disabled:opacity-50 disabled:hover:translate-y-0 disabled:grayscale"
             >
               {isWaitingPayment ? (
                 <>
-                   <div className="w-3 h-3 border-2 border-[#121212]/30 border-t-[#121212] rounded-full animate-spin" />
+                   <div className="w-4 h-4 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
                    Awaiting Payment...
                 </>
               ) : isPlacingOrder ? (
                 <>
-                   <div className="w-3 h-3 border-2 border-[#121212]/30 border-t-[#121212] rounded-full animate-spin" />
+                   <div className="w-4 h-4 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
                    Processing...
                 </>
               ) : 'Confirm & Pay →'}
             </button>
             
             <div className="mt-8 text-center px-4">
-               <p className="text-[8px] text-white/40 leading-relaxed uppercase tracking-widest">
+               <p className="text-[10px] text-white/60 leading-relaxed uppercase tracking-widest">
                  A payment prompt will be sent to your mobile phone.
                </p>
             </div>

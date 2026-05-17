@@ -9,6 +9,24 @@ describe('RouteService', () => {
 
   describe('getOptimizedRoute', () => {
     it('should calculate an estimated route distance and time', async () => {
+      jest.spyOn(global, 'fetch').mockResolvedValue({
+        json: async () => ({
+          code: 'Ok',
+          routes: [
+            {
+              distance: 6200,
+              duration: 840,
+              geometry: {
+                coordinates: [
+                  [30.0924, -1.9546],
+                  [30.1265, -1.9365]
+                ]
+              }
+            }
+          ]
+        })
+      } as Response);
+
       // Kigali Convention Centre
       const from = { lat: -1.9546, lng: 30.0924 };
       // Kimironko Market
@@ -20,13 +38,13 @@ describe('RouteService', () => {
       expect(route.distanceKm).toBeGreaterThan(0);
       expect(route.estimatedMinutes).toBeGreaterThan(0);
       
-      // Straight line is ~4.3km, with 1.4 tortuosity it's ~6km
-      expect(route.distanceKm).toBeGreaterThan(5);
-      expect(route.distanceKm).toBeLessThan(7);
+      expect(route.distanceKm).toBe(6.2);
       
-      // At 25km/h, 6km takes ~14 mins + 5 min base = ~19 mins
-      expect(route.estimatedMinutes).toBeGreaterThan(15);
-      expect(route.estimatedMinutes).toBeLessThan(25);
+      expect(route.estimatedMinutes).toBe(19);
+      expect(route.geometry).toEqual([
+        [-1.9546, 30.0924],
+        [-1.9365, 30.1265]
+      ]);
     });
   });
 });
