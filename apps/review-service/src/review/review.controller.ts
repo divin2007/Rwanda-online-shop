@@ -1,6 +1,6 @@
 import { Controller, Get, Post, Body, Param, Request, Query, UseGuards, BadRequestException } from '@nestjs/common';
 import { ReviewService } from './review.service';
-import { JwtAuthGuard } from '@rmf/auth';
+import { JwtAuthGuard, Public } from '@rmf/auth';
 
 @Controller('reviews')
 export class ReviewController {
@@ -41,6 +41,7 @@ export class ReviewController {
   }
 
   // Public read — reviews for a product/seller/rider are public marketplace data
+  @Public()
   @Get('target/:type/:id')
   async getReviews(@Param('type') type: 'seller' | 'rider' | 'market' | 'product', @Param('id') id: string) {
     const validTypes = ['seller', 'rider', 'market', 'product'];

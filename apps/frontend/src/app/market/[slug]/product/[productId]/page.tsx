@@ -12,19 +12,21 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { getMarketUrl } from '@/lib/urls';
 import toast from 'react-hot-toast';
-import { 
-  Heart, 
-  ShoppingCart, 
-  ShieldCheck, 
-  Truck, 
-  Lock, 
-  Store, 
-  ArrowLeft, 
-  Check, 
-  Info, 
+import {
+  Heart,
+  ShoppingCart,
+  ShieldCheck,
+  Truck,
+  Lock,
+  Store,
+  ArrowLeft,
+  Check,
+  Info,
   Sparkles,
   ChevronRight,
-  ChevronLeft
+  ChevronLeft,
+  Maximize2,
+  X
 } from 'lucide-react';
 
 type ApiError = { response?: { data?: { message?: string } } };
@@ -39,12 +41,13 @@ export default function ProductDetailPage({ params }: { params: { slug: string, 
   const { data: product, loading, execute: fetchProduct } = useApi(productApi, 'get', `/products/${params.productId}`);
   const { data: reviewsData } = useApi(reviewApi, 'get', `/reviews/target/product/${params.productId}`);
   const [activeImageIndex, setActiveImageIndex] = React.useState(0);
+  const [isLightboxOpen, setIsLightboxOpen] = React.useState(false);
   const [customization, setCustomization] = React.useState('');
   const [qty, setQty] = React.useState(1);
   const [selectedVariantIndex, setSelectedVariantIndex] = React.useState(0);
 
   const thumbnailsRef = React.useRef<HTMLDivElement>(null);
-  
+
   const scrollThumbnails = (direction: 'left' | 'right') => {
     if (thumbnailsRef.current) {
       const scrollAmount = direction === 'left' ? -240 : 240;
@@ -52,14 +55,10 @@ export default function ProductDetailPage({ params }: { params: { slug: string, 
     }
   };
 
-  useEffect(() => {
-    fetchProduct();
-  }, [params.productId, fetchProduct]);
-
   const isWishlisted = product ? wishlist.includes(product._id) : false;
 
-  const activeVariants = Array.isArray(product?.variants) 
-    ? product.variants.filter((variant: any) => variant.isActive !== false) 
+  const activeVariants = Array.isArray(product?.variants)
+    ? product.variants.filter((variant: any) => variant.isActive !== false)
     : [];
 
   const selectedVariant = activeVariants[selectedVariantIndex] || null;
@@ -69,9 +68,55 @@ export default function ProductDetailPage({ params }: { params: { slug: string, 
   const effectiveStockQuantity = selectedVariant?.stockQuantity ?? product?.stockQuantity;
 
   // Resolve dynamic images list: Use variant images if the selected variant has them, otherwise fallback to main product images
-  const displayedImages = selectedVariant?.images?.length 
-    ? selectedVariant.images 
+  const rawDisplayedImages = selectedVariant?.images?.length
+    ? selectedVariant.images
     : (product?.images || []);
+
+  const displayedImages: string[] = React.useMemo(() => {
+    let list: any[] = [];
+    if (typeof rawDisplayedImages === 'string') {
+      list = (rawDisplayedImages as string).split(',');
+    } else if (Array.isArray(rawDisplayedImages)) {
+      list = rawDisplayedImages.flatMap((item: any) =>
+        typeof item === 'string' ? item.split(',') : item
+      );
+    }
+    return list
+      .map((url: any) => typeof url === 'string' ? url.trim() : '')
+      .filter((url: string) => url.startsWith('http') || url.startsWith('/'));
+  }, [rawDisplayedImages]);
+
+  useEffect(() => {
+    fetchProduct();
+  }, [params.productId, fetchProduct]);
+
+  // Premium auto-slideshow: Cycles through images smoothly and resets timer on manual interaction
+  useEffect(() => {
+    if (displayedImages.length <= 1) return;
+    const interval = setTimeout(() => {
+      setActiveImageIndex((prev) => (prev + 1) % displayedImages.length);
+    }, 4500); // 4.5 seconds for premium storytelling pacing
+    return () => clearTimeout(interval);
+  }, [activeImageIndex, displayedImages.length]);
+
+  // Safety: Sync activeImageIndex to remain within bounds if the image list changes (e.g. variant selection)
+  useEffect(() => {
+    if (activeImageIndex >= displayedImages.length) {
+      setActiveImageIndex(0);
+    }
+  }, [displayedImages.length, activeImageIndex]);
+
+  // Lock body scroll when lightbox is open to prevent background scrolling
+  useEffect(() => {
+    if (isLightboxOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [isLightboxOpen]);
 
   const handleAddToCart = () => {
     const cartProduct = selectedVariant ? {
@@ -82,8 +127,11 @@ export default function ProductDetailPage({ params }: { params: { slug: string, 
       variantTitle: selectedVariant.title,
       sellerSku: selectedVariant.sku,
       attributes: selectedVariant.attributes || product.attributes,
-      images: selectedVariant.images?.length ? selectedVariant.images : product.images,
-    } : product;
+      images: displayedImages,
+    } : {
+      ...product,
+      images: displayedImages,
+    };
     for (let i = 0; i < qty; i++) addToCart(cartProduct, customization);
     toast.success(`${product.name} added to cart!`);
   };
@@ -139,7 +187,7 @@ export default function ProductDetailPage({ params }: { params: { slug: string, 
           riderPayout: 900,
         },
         payment: { method: 'MTN_MOMO' },
-        attributes: { 
+        attributes: {
           isQuoteRequest: 'true',
           isCustomizable: customization ? 'true' : 'false'
         },
@@ -193,7 +241,7 @@ export default function ProductDetailPage({ params }: { params: { slug: string, 
   return (
     <Layout>
       <div className="max-w-7xl mx-auto px-6 pb-40 pt-10 space-y-16 animate-reveal">
-        
+
         {/* Breadcrumb Navigation */}
         <nav className="flex items-center gap-4 border-b border-[#e0e0e0]/60 pb-6 text-[10px] font-black uppercase tracking-[0.2em] flex-wrap text-[#414844]/60">
           <Link href="/" className="hover:text-[#ff6b00] transition-colors">Home</Link>
@@ -209,14 +257,15 @@ export default function ProductDetailPage({ params }: { params: { slug: string, 
 
         {/* Main Product Grid */}
         <div className="grid grid-cols-1 items-start gap-16 lg:grid-cols-[1fr_480px]">
-          
+
           {/* Left: Cinematic Image Gallery */}
           <div className="space-y-6">
             <div className="relative overflow-hidden rounded-3xl border border-[#e0e0e0] bg-[#fcf9f8] aspect-[4/3] md:aspect-[16/10] group shadow-2xl">
               {displayedImages[activeImageIndex] ? (
                 <img
+                  key={activeImageIndex}
                   src={displayedImages[activeImageIndex]}
-                  className="w-full h-full object-cover transition-transform duration-[2500ms] group-hover:scale-105"
+                  className="w-full h-full object-cover transition-transform duration-[2500ms] group-hover:scale-105 animate-fade-in"
                   alt={product.name}
                 />
               ) : (
@@ -274,14 +323,25 @@ export default function ProductDetailPage({ params }: { params: { slug: string, 
               {/* High-End Wishlist Trigger */}
               <button
                 onClick={() => toggleWishlist(product._id)}
-                className={`absolute top-6 right-6 w-14 h-14 rounded-full flex items-center justify-center transition-all z-10 shadow-2xl ${
-                  isWishlisted 
-                    ? 'bg-[#ff6b00] text-white border-none shadow-[0_0_20px_rgba(255,107,0,0.5)] scale-110' 
+                className={`absolute top-6 right-6 w-14 h-14 rounded-full flex items-center justify-center transition-all z-10 shadow-2xl ${isWishlisted
+                    ? 'bg-[#ff6b00] text-white border-none shadow-[0_0_20px_rgba(255,107,0,0.5)] scale-110'
                     : 'bg-white/80 backdrop-blur-md text-[#414844] hover:bg-white hover:text-[#ff6b00] hover:scale-105 border border-white/40'
-                }`}
+                  }`}
               >
                 <Heart size={20} fill={isWishlisted ? 'currentColor' : 'none'} className="transition-transform duration-500" />
               </button>
+
+              {/* View Whole Image Overlay Trigger */}
+              {displayedImages.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setIsLightboxOpen(true)}
+                  className="absolute bottom-6 right-6 z-10 bg-[#1b1c1c]/80 hover:bg-[#ff6b00] backdrop-blur-md text-white text-[9px] font-black uppercase tracking-[0.25em] px-5 py-3 rounded-xl shadow-2xl border border-white/10 flex items-center gap-2.5 transition-all duration-300 scale-95 hover:scale-100 active:scale-95 group/btn cursor-pointer"
+                >
+                  <Maximize2 size={12} className="group-hover/btn:scale-110 transition-transform duration-300" />
+                  view whole image
+                </button>
+              )}
             </div>
 
             {/* Thumbnail Navigation Carousel */}
@@ -308,7 +368,7 @@ export default function ProductDetailPage({ params }: { params: { slug: string, 
                   </button>
 
                   {/* Thumbnail Scrolling Container */}
-                  <div 
+                  <div
                     ref={thumbnailsRef}
                     className="flex items-center gap-4 overflow-x-auto pb-5 pt-2 px-1 scrollbar-none scroll-smooth snap-x"
                   >
@@ -316,11 +376,10 @@ export default function ProductDetailPage({ params }: { params: { slug: string, 
                       <button
                         key={idx}
                         onClick={() => setActiveImageIndex(idx)}
-                        className={`flex-shrink-0 w-24 h-24 rounded-2xl overflow-hidden border-2 transition-all snap-start shadow-sm hover:shadow-md ${
-                          activeImageIndex === idx 
-                            ? 'border-[#ff6b00] scale-105 ring-4 ring-[#ffedd5] shadow-lg' 
+                        className={`flex-shrink-0 w-24 h-24 rounded-2xl overflow-hidden border-2 transition-all snap-start shadow-sm hover:shadow-md ${activeImageIndex === idx
+                            ? 'border-[#ff6b00] scale-105 ring-4 ring-[#ffedd5] shadow-lg'
                             : 'border-[#e0e0e0] hover:border-[#ff6b00]/60 bg-white hover:scale-[1.02]'
-                        }`}
+                          }`}
                       >
                         <img src={img} className="w-full h-full object-cover" alt={`Product detail photo ${idx + 1}`} />
                       </button>
@@ -338,12 +397,50 @@ export default function ProductDetailPage({ params }: { params: { slug: string, 
                 </div>
               </div>
             )}
+
+            {/* Detailed Story & Attributes (Moved here to eliminate the large empty space) */}
+            <div className="bg-white border border-[#e0e0e0] rounded-3xl p-8 md:p-10 shadow-xl relative overflow-hidden mt-8 animate-reveal">
+              <h2 className="text-2xl font-sans tracking-tight text-[#1b1c1c] pb-6 border-b border-[#e0e0e0]/60">
+                Product Details
+              </h2>
+
+              <div className="mt-8 prose prose-neutral max-w-none">
+                <p className="text-base text-[#414844] leading-relaxed font-semibold border-l-4 border-[#ff6b00] pl-6 italic">
+                  {product.description || 'Verified authentic listing with full local compliance and trade approval.'}
+                </p>
+              </div>
+
+              {/* Dynamic Attribute Matrix */}
+              <div className="mt-12 grid gap-4 sm:grid-cols-2">
+                {[
+                  ['Catalog Category', product.categoryLabel || product.category || 'General'],
+                  ['Delivery Unit', effectiveUnit || 'piece'],
+                  ['Fulfillment Type', effectiveStockType?.replace(/_/g, ' ') || 'standard'],
+                  ['Weight (kg)', product.weight ? `${product.weight} kg` : 'Not specified'],
+                  ['Local Origin', product.isMadeInRwanda ? 'Made in Rwanda (Minicom Certified)' : 'Verified partner listing'],
+                  ...Object.entries(selectedVariant?.attributes || product.attributes || {}).map(([key, value]: [string, any]) => [
+                    key.replace(/([A-Z])/g, ' $1'),
+                    Array.isArray(value) ? value.join(', ') : String(value)
+                  ]),
+                ].map(([label, value]) => (
+                  <div key={label} className="rounded-xl border border-[#e0e0e0] bg-[#fcf9f8]/40 p-4 hover:border-[#ff6b00]/30 transition-colors">
+                    <p className="text-[8px] font-black uppercase tracking-[0.2em] text-[#414844]/55 mb-1">
+                      {label}
+                    </p>
+                    <p className="text-sm font-sans font-bold capitalize text-[#1b1c1c]">
+                      {value}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </div>
           </div>
 
-          {/* Right Column: Premium Purchase Interface (Sticky) */}
-          <div className="lg:sticky lg:top-24 space-y-10 bg-white border border-[#e0e0e0] rounded-3xl p-8 md:p-10 shadow-2xl relative overflow-hidden">
+          {/* Right Column: Premium Purchase Interface (Sticky Wrapper) */}
+          <div className="lg:sticky lg:top-24 space-y-8">
+            <div className="bg-white border border-[#e0e0e0] rounded-3xl p-8 md:p-10 shadow-2xl relative overflow-hidden flex flex-col gap-8">
             <div className="absolute top-0 left-0 w-full h-2 bg-[#ff6b00]"></div>
-            
+
             <div className="space-y-4">
               {/* Category Indicator */}
               <div className="flex items-center gap-4">
@@ -405,7 +502,21 @@ export default function ProductDetailPage({ params }: { params: { slug: string, 
                 </div>
                 <div className="grid gap-3">
                   {activeVariants.map((variant: any, index: number) => {
-                    const hasVariantImg = variant.images && variant.images[0];
+                    const variantImagesList: string[] = (() => {
+                      const rawImages = variant.images;
+                      let list: any[] = [];
+                      if (typeof rawImages === 'string') {
+                        list = (rawImages as string).split(',');
+                      } else if (Array.isArray(rawImages)) {
+                        list = rawImages.flatMap((item: any) =>
+                          typeof item === 'string' ? item.split(',') : item
+                        );
+                      }
+                      return list
+                        .map((url: any) => typeof url === 'string' ? url.trim() : '')
+                        .filter((url: string) => url.startsWith('http') || url.startsWith('/'));
+                    })();
+                    const hasVariantImg = variantImagesList.length > 0;
                     return (
                       <button
                         key={variant._id || variant.sku || index}
@@ -414,16 +525,15 @@ export default function ProductDetailPage({ params }: { params: { slug: string, 
                           setSelectedVariantIndex(index);
                           setActiveImageIndex(0); // Reset gallery view to first variant image instantly
                         }}
-                        className={`rounded-2xl border p-4 text-left transition-all flex items-center gap-4 ${
-                          selectedVariantIndex === index 
-                            ? 'border-[#ff6b00] bg-[#ff6b00]/5 shadow-md scale-[1.01]' 
+                        className={`rounded-2xl border p-4 text-left transition-all flex items-center gap-4 ${selectedVariantIndex === index
+                            ? 'border-[#ff6b00] bg-[#ff6b00]/5 shadow-md scale-[1.01]'
                             : 'border-[#e0e0e0] bg-white hover:border-[#ff6b00]/50 hover:bg-[#fcf9f8]/30'
-                        }`}
+                          }`}
                       >
                         {/* Variant Circular Preview Thumb */}
                         <div className="w-12 h-12 rounded-full border border-[#e0e0e0] overflow-hidden flex-shrink-0 bg-[#fcf9f8] flex items-center justify-center">
                           {hasVariantImg ? (
-                            <img src={variant.images[0]} alt="" className="w-full h-full object-cover" />
+                            <img src={variantImagesList[0]} alt="" className="w-full h-full object-cover" />
                           ) : (
                             <Sparkles size={14} className="text-[#ff6b00]" />
                           )}
@@ -463,24 +573,22 @@ export default function ProductDetailPage({ params }: { params: { slug: string, 
             <div className="flex items-center justify-between pt-4 border-t border-[#e0e0e0]/60">
               <div className="space-y-1">
                 <span className="text-[9px] font-black uppercase tracking-widest text-[#414844]/50 block">Status</span>
-                <div className={`flex items-center gap-2.5 text-[10px] font-black uppercase tracking-widest ${
-                  isInStock || isOnDemand ? 'text-green-700' : 'text-red-600'
-                }`}>
-                  <div className={`w-2.5 h-2.5 rounded-full ${
-                    isInStock || isOnDemand 
-                      ? 'bg-green-500 animate-pulse shadow-[0_0_8px_rgba(34,197,94,0.6)]' 
+                <div className={`flex items-center gap-2.5 text-[10px] font-black uppercase tracking-widest ${isInStock || isOnDemand ? 'text-green-700' : 'text-red-600'
+                  }`}>
+                  <div className={`w-2.5 h-2.5 rounded-full ${isInStock || isOnDemand
+                      ? 'bg-green-500 animate-pulse shadow-[0_0_8px_rgba(34,197,94,0.6)]'
                       : 'bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.6)]'
-                  }`} />
+                    }`} />
                   {isOnDemand ? 'on demand' : isInStock ? 'in stock' : 'sold out'}
                 </div>
               </div>
               <div className="text-right space-y-1">
                 <span className="text-[9px] font-black uppercase tracking-widest text-[#414844]/50 block">Stock Level</span>
                 <p className="text-xs font-bold text-[#1b1c1c] uppercase">
-                  {isOnDemand 
-                    ? 'Crafted on Request' 
-                    : isInStock 
-                      ? `${effectiveStockQuantity || 'Multiple'} ${effectiveUnit || 'items'} available` 
+                  {isOnDemand
+                    ? 'Crafted on Request'
+                    : isInStock
+                      ? `${effectiveStockQuantity || 'Multiple'} ${effectiveUnit || 'items'} available`
                       : 'Out of stock'
                   }
                 </p>
@@ -507,8 +615,8 @@ export default function ProductDetailPage({ params }: { params: { slug: string, 
               <div className="flex items-center justify-between pt-4 border-t border-[#e0e0e0]/60">
                 <span className="text-[10px] font-black text-[#414844] uppercase tracking-widest">Order Quantity</span>
                 <div className="flex border border-[#e0e0e0] rounded-xl overflow-hidden shadow-sm h-12 bg-white">
-                  <button 
-                    onClick={() => setQty(q => Math.max(1, q - 1))} 
+                  <button
+                    onClick={() => setQty(q => Math.max(1, q - 1))}
                     className="w-12 h-full flex items-center justify-center text-lg font-medium text-[#1b1c1c] hover:bg-[#ff6b00]/5 transition-colors"
                   >
                     −
@@ -516,8 +624,8 @@ export default function ProductDetailPage({ params }: { params: { slug: string, 
                   <div className="w-12 h-full flex items-center justify-center font-bold text-sm text-[#1b1c1c] border-x border-[#e0e0e0] bg-[#fcf9f8]">
                     {qty}
                   </div>
-                  <button 
-                    onClick={() => setQty(q => Math.min(effectiveStockQuantity || 99, q + 1))} 
+                  <button
+                    onClick={() => setQty(q => Math.min(effectiveStockQuantity || 99, q + 1))}
                     className="w-12 h-full flex items-center justify-center text-lg font-medium text-[#1b1c1c] hover:bg-[#ff6b00]/5 transition-colors"
                   >
                     +
@@ -563,7 +671,7 @@ export default function ProductDetailPage({ params }: { params: { slug: string, 
             </div>
 
             {/* Kigali Sanctuary Verified Seller Identity card */}
-            <div className="bg-[#1b1c1c] text-white p-6 rounded-2xl flex items-center gap-4 shadow-xl border border-white/5 relative overflow-hidden">
+            <div className="bg-[#1b1c1c] text-white p-6 rounded-xl flex items-center gap-4 shadow-xl border border-white/5 relative overflow-hidden">
               <div className="absolute top-0 left-0 w-1.5 h-full bg-[#ff6b00]"></div>
               <div className="w-12 h-12 bg-white/10 border border-white/20 rounded-full flex items-center justify-center font-bold text-xl flex-shrink-0 text-[#ff6b00] shadow-inner">
                 {product.seller?.name?.[0] || 'S'}
@@ -579,61 +687,17 @@ export default function ProductDetailPage({ params }: { params: { slug: string, 
                   <Store size={10} /> {params.slug.replace(/-/g, ' ')} Stall
                 </p>
               </div>
-              <Link 
-                href={getMarketUrl(params.slug)} 
+              <Link
+                href={getMarketUrl(params.slug)}
                 className="flex items-center justify-center w-10 h-10 rounded-full bg-white/5 text-[#ff6b00] hover:bg-[#ff6b00] hover:text-white transition-all border border-white/10"
               >
                 <ArrowLeft size={16} className="rotate-180" />
               </Link>
             </div>
-
-          </div>
-        </div>
-
-        {/* Separated Product Details Section */}
-        <section className="grid grid-cols-1 gap-12 lg:grid-cols-[1fr_480px] border-t border-[#e0e0e0]/60 pt-16">
-          
-          {/* Detailed Story & Attributes */}
-          <div className="space-y-10">
-            <div className="bg-white border border-[#e0e0e0] rounded-3xl p-8 md:p-10 shadow-xl relative overflow-hidden">
-              <h2 className="text-2xl font-sans tracking-tight text-[#1b1c1c] pb-6 border-b border-[#e0e0e0]/60">
-                Product Details
-              </h2>
-              
-              <div className="mt-8 prose prose-neutral max-w-none">
-                <p className="text-base text-[#414844] leading-relaxed font-semibold border-l-4 border-[#ff6b00] pl-6 italic">
-                  {product.description || 'Verified authentic listing with full local compliance and trade approval.'}
-                </p>
-              </div>
-
-              {/* Dynamic Attribute Matrix */}
-              <div className="mt-12 grid gap-4 sm:grid-cols-2">
-                {[
-                  ['Catalog Category', product.categoryLabel || product.category || 'General'],
-                  ['Delivery Unit', effectiveUnit || 'piece'],
-                  ['Fulfillment Type', effectiveStockType?.replace(/_/g, ' ') || 'standard'],
-                  ['Weight (kg)', product.weight ? `${product.weight} kg` : 'Not specified'],
-                  ['Local Origin', product.isMadeInRwanda ? 'Made in Rwanda (Minicom Certified)' : 'Verified partner listing'],
-                  ...Object.entries(selectedVariant?.attributes || product.attributes || {}).map(([key, value]: [string, any]) => [
-                    key.replace(/([A-Z])/g, ' $1'), 
-                    Array.isArray(value) ? value.join(', ') : String(value)
-                  ]),
-                ].map(([label, value]) => (
-                  <div key={label} className="rounded-xl border border-[#e0e0e0] bg-[#fcf9f8]/40 p-4 hover:border-[#ff6b00]/30 transition-colors">
-                    <p className="text-[8px] font-black uppercase tracking-[0.2em] text-[#414844]/55 mb-1">
-                      {label}
-                    </p>
-                    <p className="text-sm font-sans font-bold capitalize text-[#1b1c1c]">
-                      {value}
-                    </p>
-                  </div>
-                ))}
-              </div>
-            </div>
           </div>
 
-          {/* Guidelines Sidebar (Keeping layout identical) */}
-          <div className="bg-[#fcf9f8] border border-[#e0e0e0]/80 rounded-3xl p-8 space-y-6">
+          {/* Guidelines Sidebar (Moved inside sticky wrapper to stay aligned) */}
+          <div className="bg-[#fcf9f8] border border-[#e0e0e0]/80 rounded-3xl p-8 space-y-6 shadow-md">
             <h3 className="text-sm font-black uppercase tracking-widest text-[#1b1c1c] flex items-center gap-2">
               <Info size={14} className="text-[#ff6b00]" /> Buyer Guidelines
             </h3>
@@ -652,7 +716,8 @@ export default function ProductDetailPage({ params }: { params: { slug: string, 
               </li>
             </ul>
           </div>
-        </section>
+        </div>
+      </div>
 
         {/* Separated Product Reviews */}
         <section className="border-t border-[#e0e0e0]/60 pt-16">
@@ -694,8 +759,8 @@ export default function ProductDetailPage({ params }: { params: { slug: string, 
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {reviews.map((review: any) => (
-                <div 
-                  key={review._id} 
+                <div
+                  key={review._id}
                   className="p-6 md:p-8 rounded-2xl border border-[#e0e0e0] bg-white hover:border-[#ff6b00]/40 transition-all space-y-6 group shadow-md"
                 >
                   <div className="flex justify-between items-start">
@@ -728,6 +793,89 @@ export default function ProductDetailPage({ params }: { params: { slug: string, 
         </section>
 
       </div>
+
+      {/* Lightbox / Carousel Overlay Modal */}
+      {isLightboxOpen && displayedImages.length > 0 && (() => {
+        const safeImageSrc = displayedImages[activeImageIndex] || displayedImages[0] || '';
+        return (
+          <div className="fixed top-0 left-0 w-screen h-screen z-[99999] bg-[#000000] bg-opacity-95 backdrop-blur-xl flex flex-col justify-between p-6 select-none">
+            {/* Header */}
+            <div className="flex items-center justify-between w-full max-w-7xl mx-auto py-2">
+              <div className="text-[10px] font-black uppercase tracking-[0.25em] text-white text-opacity-50">
+                Image {Math.min(activeImageIndex + 1, displayedImages.length)} of {displayedImages.length}
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsLightboxOpen(false)}
+                className="w-10 h-10 rounded-full bg-white/5 text-white hover:bg-[#ff6b00] hover:text-white flex items-center justify-center transition-all duration-300 border border-white/10 hover:border-transparent scale-90 hover:scale-105 active:scale-95 cursor-pointer"
+                aria-label="Close image viewer"
+              >
+                <X size={18} className="text-white" />
+              </button>
+            </div>
+
+            {/* Main Body with Large Contained Image */}
+            <div className="relative flex-1 flex items-center justify-center w-full max-w-7xl mx-auto my-4 group/lightbox">
+              {/* Left Chevron */}
+              {displayedImages.length > 1 && (
+                <button
+                  type="button"
+                  onClick={() => setActiveImageIndex((prev) => (prev === 0 ? displayedImages.length - 1 : prev - 1))}
+                  className="absolute left-4 z-20 w-14 h-14 rounded-full bg-white/5 hover:bg-[#ff6b00] text-white hover:text-white flex items-center justify-center transition-all duration-300 border border-white/10 hover:border-transparent opacity-60 hover:opacity-100 scale-90 hover:scale-105 active:scale-95 cursor-pointer"
+                  aria-label="Previous image"
+                >
+                  <ChevronLeft size={24} className="text-white" />
+                </button>
+              )}
+
+              {/* Contained Image */}
+              {safeImageSrc && (
+                <img
+                  key={activeImageIndex}
+                  src={safeImageSrc}
+                  className="max-w-full max-h-[75vh] object-contain rounded-xl select-none animate-fade-in drop-shadow-[0_24px_50px_rgba(255,255,255,0.05)]"
+                  alt={product.name}
+                />
+              )}
+
+              {/* Right Chevron */}
+              {displayedImages.length > 1 && (
+                <button
+                  type="button"
+                  onClick={() => setActiveImageIndex((prev) => (prev === displayedImages.length - 1 ? 0 : prev + 1))}
+                  className="absolute right-4 z-20 w-14 h-14 rounded-full bg-white/5 hover:bg-[#ff6b00] text-white hover:text-white flex items-center justify-center transition-all duration-300 border border-white/10 hover:border-transparent opacity-60 hover:opacity-100 scale-90 hover:scale-105 active:scale-95 cursor-pointer"
+                  aria-label="Next image"
+                >
+                  <ChevronRight size={24} className="text-white" />
+                </button>
+              )}
+            </div>
+
+            {/* Footer Carousel Thumbnails */}
+            <div className="w-full max-w-4xl mx-auto pb-4">
+              <div className="flex items-center justify-center gap-3 overflow-x-auto py-2 px-4 scrollbar-none">
+                {displayedImages.map((img, idx) => (
+                  <button
+                    key={idx}
+                    type="button"
+                    onClick={() => setActiveImageIndex(idx)}
+                    className={`relative w-16 h-16 rounded-xl overflow-hidden border-2 transition-all duration-300 flex-shrink-0 ${idx === activeImageIndex
+                        ? 'border-[#ff6b00] scale-105 shadow-lg'
+                        : 'border-white/10 hover:border-white/30 scale-95'
+                      }`}
+                  >
+                    <img
+                      src={img}
+                      alt=""
+                      className="w-full h-full object-cover"
+                    />
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+        );
+      })()}
     </Layout>
   );
 }

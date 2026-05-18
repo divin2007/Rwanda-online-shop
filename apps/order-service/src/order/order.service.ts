@@ -110,10 +110,16 @@ export class OrderService implements OnModuleInit, OnModuleDestroy {
       const product = productMap.get(String(line.productId));
       if (!product) return line;
       const variant = line.variantId
-        ? (product.variants || []).find((candidate: any) => String(candidate._id || candidate.sku) === String(line.variantId))
+        ? (product.variants || []).find((candidate: any) => 
+            (candidate._id && String(candidate._id) === String(line.variantId)) || 
+            (candidate.sku && String(candidate.sku) === String(line.variantId))
+          )
         : null;
       // CRITICAL FIX: Never trust user-supplied unitPrice. Always use DB price.
-      const unitPrice = Number(variant?.price ?? product.price);
+      // Variant price is a relative markup over base product price.
+      const unitPrice = variant 
+        ? Number((product.price || 0) + (variant.price || 0)) 
+        : Number(product.price);
 
       return {
         ...line,

@@ -21,7 +21,7 @@ import { existsSync, mkdirSync, writeFileSync } from 'fs';
 import { extname, join } from 'path';
 import { Response } from 'express';
 import { ProductService } from './product.service';
-import { Roles, JwtAuthGuard } from '@rmf/auth';
+import { Roles, JwtAuthGuard, Public } from '@rmf/auth';
 import { UserRole } from '@rmf/shared-types';
 import { StorageService } from '../storage/storage.service';
 
@@ -75,12 +75,14 @@ export class ProductController {
   }
 
   // Public read — product listings are public marketplace data
+  @Public()
   @Get()
   async findAll(@Query() query: any) {
     const products = await this.productService.findAll(query);
     return { success: true, data: products };
   }
 
+  @Public()
   @Get('catalog/categories')
   async getCatalogCategories(@Query('includeInactive') includeInactive?: string) {
     const categories = await this.productService.getCatalogCategories(includeInactive === 'true');
@@ -96,6 +98,7 @@ export class ProductController {
     return { success: true, data: category };
   }
 
+  @Public()
   @Get('catalog/categories/:categoryId')
   async getCategorySchema(@Param('categoryId') categoryId: string) {
     const category = await this.productService.getCategorySchema(categoryId);
@@ -121,6 +124,7 @@ export class ProductController {
   }
 
   // Public read — facets are public search data
+  @Public()
   @Get('catalog/facets')
   async getFacets(@Query() query: any) {
     const facets = await this.productService.getFacets(query);
@@ -146,6 +150,7 @@ export class ProductController {
   }
 
   // Public read — individual product pages are public
+  @Public()
   @Get(':id')
   async findById(@Param('id') id: string) {
     const product = await this.productService.findById(id);
@@ -289,5 +294,12 @@ export class ProductController {
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
     res.setHeader('Content-Disposition', 'attachment; filename=rmf_bulk_product_template.xlsx');
     res.send(buffer);
+  }
+
+  @Public()
+  @Get('debug/inspect')
+  async debugInspect() {
+    const data = await this.productService.debugInspect();
+    return { success: true, data };
   }
 }

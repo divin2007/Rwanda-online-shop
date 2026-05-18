@@ -170,14 +170,14 @@ export class ProductService implements OnModuleInit {
       const id = this.normalizeCategoryId(category.id);
       const existing = await this.taxonomyModel.findOne({ id, deletedAt: null }).lean().exec();
       const sanitized = this.sanitizeCatalogCategory(category, existing);
-      
+
       const payload = {
         ...sanitized,
         synonyms: sanitized.synonyms?.length ? sanitized.synonyms : sanitized.aliases,
         searchBoost: sanitized.searchBoost || 1,
         isActive: true,
         version: existing ? Number(existing.version || 1) + 1 : 1,
-        auditTrail: existing 
+        auditTrail: existing
           ? (Array.isArray(existing.auditTrail) ? existing.auditTrail : []).concat({ action: 'synchronized', reason: 'default_catalog_bootstrap', at: new Date() })
           : [{ action: 'seeded', reason: 'default_catalog_bootstrap', at: new Date() }],
       };
@@ -542,7 +542,7 @@ export class ProductService implements OnModuleInit {
         const res: Record<string, any> = {};
         wb.SheetNames.forEach((name: string) => {
           const ws = wb.Sheets[name];
-          res[name] = XLSX.utils.sheet_to_json(ws, {header:1, defval:''});
+          res[name] = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' });
         });
         fs.writeFileSync('c:/Users/mahor/.gemini/antigravity/scratch/Rwanda-online-shop/xlsx-output.txt', JSON.stringify(res, null, 2));
         console.log('✅ SUCCESSFULLY DUMPED XLSX TEMPLATE TO xlsx-output.txt');
@@ -554,6 +554,30 @@ export class ProductService implements OnModuleInit {
     }
 
     await this.seedCatalogCategoriesIfNeeded();
+
+    // Self-healing migration for products that got corrupted with User ID instead of SellerProfile ID
+    try {
+      console.log('🔄 Running product database self-healing migration...');
+      const allProducts = await this.productModel.find({ deletedAt: null }).exec();
+      let healCount = 0;
+      for (const prod of allProducts) {
+        if (prod.sellerId) {
+          const seller = await this.sellerModel.findOne({ userId: prod.sellerId }).exec();
+          if (seller) {
+            prod.sellerId = seller._id;
+            prod.marketId = seller.marketId;
+            await prod.save();
+            healCount++;
+          }
+        }
+      }
+      if (healCount > 0) {
+        console.log(`✅ Successfully self-healed ${healCount} products!`);
+        await this.invalidateProductCaches();
+      }
+    } catch (e: any) {
+      console.error('❌ Product self-healing migration failed:', e.message);
+    }
 
     if (process.env.SEED_PRODUCTS_ON_STARTUP !== 'true') {
       return;
@@ -779,12 +803,12 @@ export class ProductService implements OnModuleInit {
     const trimmedSearch = String(search || '').trim();
     if (trimmedSearch && !this.isMadeInRwandaSearch(trimmedSearch)) {
       const safeSearch = this.escapeRegex(trimmedSearch);
-      
+
       const dynamicCategories = await this.getCatalogCategories();
-      const matchedCategories = dynamicCategories.filter(cat => 
-         cat.label.toLowerCase().includes(trimmedSearch.toLowerCase()) ||
-         cat.aliases?.some((a: string) => a.toLowerCase().includes(trimmedSearch.toLowerCase())) ||
-         cat.synonyms?.some((s: string) => s.toLowerCase().includes(trimmedSearch.toLowerCase()))
+      const matchedCategories = dynamicCategories.filter(cat =>
+        cat.label.toLowerCase().includes(trimmedSearch.toLowerCase()) ||
+        cat.aliases?.some((a: string) => a.toLowerCase().includes(trimmedSearch.toLowerCase())) ||
+        cat.synonyms?.some((s: string) => s.toLowerCase().includes(trimmedSearch.toLowerCase()))
       );
       const matchedCategoryIds = matchedCategories.map(cat => cat.id);
 
@@ -1019,6 +1043,8 @@ export class ProductService implements OnModuleInit {
     const actorId = updateData.updatedBy || updateData.actorId || updateData.sellerId || null;
     delete updateData.updatedBy;
     delete updateData.actorId;
+    delete updateData.sellerId;
+    delete updateData.marketId;
     updateData = await this.normalizeProductData(updateData, existing);
 
     const updatedProduct = await this.productModel.findOneAndUpdate(
@@ -1562,5 +1588,11 @@ export class ProductService implements OnModuleInit {
     XLSX.utils.book_append_sheet(wb, wsRef, 'Validation Reference');
 
     return XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
+  }
+
+  async debugInspect(): Promise<any> {
+    const sellers = await this.sellerModel.find().lean().exec();
+    const products = await this.productModel.find().populate(['sellerId', 'marketId']).lean().exec();
+    return { sellers, products };
   }
 }

@@ -17,7 +17,7 @@ import { randomUUID } from 'crypto';
 import { existsSync, mkdirSync, writeFileSync } from 'fs';
 import { join } from 'path';
 import { MarketService } from './market.service';
-import { Roles, JwtAuthGuard } from '@rmf/auth';
+import { Roles, JwtAuthGuard, Public } from '@rmf/auth';
 import { UserRole } from '@rmf/shared-types';
 import { StorageService } from '../storage/storage.service';
 
@@ -67,6 +67,7 @@ export class MarketController {
     return { success: true, data: market };
   }
 
+  @Public()
   @Get('agreement')
   async getAgreement() {
     const agreement = await this.marketService.getAgreement();
@@ -74,18 +75,21 @@ export class MarketController {
   }
 
   // Public read — market listings are public marketplace data
+  @Public()
   @Get()
   async findAll(@Query('activeOnly') activeOnly: string, @Query('type') type?: string) {
     const markets = await this.marketService.findAll({ activeOnly: activeOnly !== 'false', type });
     return { success: true, data: markets };
   }
 
+  @Public()
   @Get('slug/:slug')
   async findBySlug(@Param('slug') slug: string) {
     const market = await this.marketService.findBySlug(slug);
     return { success: true, data: market };
   }
 
+  @Public()
   @Get(':id')
   async findById(@Param('id') id: string) {
     const market = await this.marketService.findById(id);

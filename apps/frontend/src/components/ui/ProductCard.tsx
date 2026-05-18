@@ -115,7 +115,22 @@ export const ProductCard = ({ product, isCompact = false }: ProductCardProps) =>
     }
   };
 
-  if (!product.images || product.images.length === 0) return null;
+  const normalizedImages: string[] = React.useMemo(() => {
+    const rawImages = product.images;
+    let list: any[] = [];
+    if (typeof rawImages === 'string') {
+      list = (rawImages as string).split(',');
+    } else if (Array.isArray(rawImages)) {
+      list = rawImages.flatMap((item: any) => 
+        typeof item === 'string' ? item.split(',') : item
+      );
+    }
+    return list
+      .map((url: any) => typeof url === 'string' ? url.trim() : '')
+      .filter((url: string) => url.startsWith('http') || url.startsWith('/'));
+  }, [product.images]);
+
+  if (normalizedImages.length === 0) return null;
 
   const hasPromotion = product.promotion && product.promotion.promotedPrice > 0;
   const displayPrice = hasPromotion ? product.promotion!.promotedPrice : product.price;
@@ -132,7 +147,7 @@ export const ProductCard = ({ product, isCompact = false }: ProductCardProps) =>
       <div className="relative aspect-[4/3] overflow-hidden bg-background-surface">
         <Link href={productUrl} className="relative block h-full w-full">
           <Image
-            src={product.images[0]}
+            src={normalizedImages[0]}
             alt={product.name}
             fill
             unoptimized

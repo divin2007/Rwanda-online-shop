@@ -23,7 +23,7 @@ import { UserRole } from '@rmf/shared-types';
 
 @Controller('sellers')
 export class SellerController {
-  constructor(private readonly sellerService: SellerService) {}
+  constructor(private readonly sellerService: SellerService) { }
 
   private readonly documentExtensions: Record<string, string> = {
     'application/pdf': '.pdf',
@@ -80,6 +80,7 @@ export class SellerController {
   }
 
   // FIX [SELLER-ME]: Removed queryUserId fallback — prevents IDOR bypass.
+  @UseGuards(JwtAuthGuard)
   @Get('me')
   async findMe(@Request() req: any) {
     try {
