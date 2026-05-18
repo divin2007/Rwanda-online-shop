@@ -1,0 +1,20 @@
+{
+  "expo": {
+    "name": "Rwanda Market Facilitator",
+    "slug": "rmf-mobile",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.rmf.mobile"
+    },
+    "android": {
+      "package": "com.rmf.mobile"
+    },
+    "plugins": [
+      "expo-router"
+    ],
+    "scheme": "rmf"
+  }
+}
