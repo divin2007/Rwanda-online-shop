@@ -191,7 +191,7 @@ export default function SellerEarningsPage() {
         {/* Institutional Header */}
         <div className="border-b-2 border-[#e0e0e0] pb-10 flex justify-between items-end">
           <div>
-            <p className="text-[10px] font-black text-[#1b4332] uppercase tracking-[0.5em] mb-4">Financial Core</p>
+            <p className="text-[10px] font-black text-[#ff6b00] uppercase tracking-[0.5em] mb-4">Financial Core</p>
             <h1 className="text-5xl font-sans text-[#1b1c1c] tracking-normal">Earnings & Payouts</h1>
           </div>
           <div className="text-right">
@@ -203,10 +203,10 @@ export default function SellerEarningsPage() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-16">
           {/* Main Wallet Card */}
           <div className="lg:col-span-2 space-y-16">
-            <div className="bg-[#012d1d] text-white p-16 relative overflow-hidden group shadow-2xl border border-[#e0e0e0] rounded-lg">
+            <div className="bg-[#e05300] text-white p-16 relative overflow-hidden group shadow-2xl border border-[#e0e0e0] rounded-lg">
                <div className="absolute top-0 right-0 w-64 h-64 bg-[#ffd700]/5 rounded-full -mr-32 -mt-32 group-hover:scale-110 transition-transform duration-1000"></div>
                <div className="relative z-10">
-                  <p className="text-[11px] font-black uppercase tracking-[0.4em] text-[#1b4332] mb-6">Available Liquidity</p>
+                  <p className="text-[11px] font-black uppercase tracking-[0.4em] text-[#ff6b00] mb-6">Available Liquidity</p>
                   <h2 className="text-8xl font-sans tracking-normal mb-16 text-white drop-shadow-2xl">
                     {walletLoading ? '---' : (wallet?.balance?.toLocaleString() || 0)} <span className="text-3xl not-italic opacity-40 ml-4">RWF</span>
                   </h2>
@@ -228,7 +228,7 @@ export default function SellerEarningsPage() {
             <div className="space-y-8">
                <div className="border-b border-[#e0e0e0] pb-6 flex flex-col md:flex-row justify-between items-start md:items-end gap-6">
                  <h3 className="text-[12px] font-black uppercase tracking-[0.4em] text-[#1b1c1c]">Synchronization Log</h3>
-                 <span className="text-[9px] font-black uppercase tracking-widest text-[#1b4332] bg-[#1b4332]/5 border border-[#1b4332]/10 px-3 py-1 rounded-full">
+                 <span className="text-[9px] font-black uppercase tracking-widest text-[#ff6b00] bg-[#ff6b00]/5 border border-[#ff6b00]/10 px-3 py-1 rounded-full">
                    {filteredLedger.length} / {ledger?.length || 0} Ledger Movements
                  </span>
                </div>
@@ -247,7 +247,7 @@ export default function SellerEarningsPage() {
                          placeholder="Search reference, description, account..."
                          value={searchTerm}
                          onChange={e => setSearchTerm(e.target.value)}
-                         className="w-full rounded-md border border-[#e0e0e0] bg-[#f0eded]/10 pl-10 pr-4 py-3 text-xs font-semibold text-[#1b1c1c] outline-none transition focus:border-[#1b4332] placeholder:text-[#9da7a0]"
+                         className="w-full rounded-md border border-[#e0e0e0] bg-[#f0eded]/10 pl-10 pr-4 py-3 text-xs font-semibold text-[#1b1c1c] outline-none transition focus:border-[#ff6b00] placeholder:text-[#9da7a0]"
                        />
                      </div>
                    </div>
@@ -258,7 +258,7 @@ export default function SellerEarningsPage() {
                      <select
                        value={txType}
                        onChange={e => setTxType(e.target.value as any)}
-                       className="w-full rounded-md border border-[#e0e0e0] bg-white px-4 py-3 text-xs font-semibold text-[#1b1c1c] outline-none transition focus:border-[#1b4332]"
+                       className="w-full rounded-md border border-[#e0e0e0] bg-white px-4 py-3 text-xs font-semibold text-[#1b1c1c] outline-none transition focus:border-[#ff6b00]"
                      >
                        <option value="all">All Movements</option>
                        <option value="credit">Earnings (+)</option>
@@ -272,7 +272,7 @@ export default function SellerEarningsPage() {
                      <select
                        value={sortBy}
                        onChange={e => setSortBy(e.target.value as any)}
-                       className="w-full rounded-md border border-[#e0e0e0] bg-white px-4 py-3 text-xs font-semibold text-[#1b1c1c] outline-none transition focus:border-[#1b4332]"
+                       className="w-full rounded-md border border-[#e0e0e0] bg-white px-4 py-3 text-xs font-semibold text-[#1b1c1c] outline-none transition focus:border-[#ff6b00]"
                      >
                        <option value="date-desc">Newest First</option>
                        <option value="date-asc">Oldest First</option>
@@ -291,7 +291,7 @@ export default function SellerEarningsPage() {
                      <select
                        value={dateFilter}
                        onChange={e => setDateFilter(e.target.value as any)}
-                       className="w-full rounded-md border border-[#e0e0e0] bg-white px-4 py-3 text-xs font-semibold text-[#1b1c1c] outline-none transition focus:border-[#1b4332]"
+                       className="w-full rounded-md border border-[#e0e0e0] bg-white px-4 py-3 text-xs font-semibold text-[#1b1c1c] outline-none transition focus:border-[#ff6b00]"
                      >
                        <option value="all">All Time</option>
                        <option value="today">Today</option>
@@ -310,7 +310,7 @@ export default function SellerEarningsPage() {
                            type="date"
                            value={startDate}
                            onChange={e => setStartDate(e.target.value)}
-                           className="w-full rounded-md border border-[#e0e0e0] bg-white px-4 py-3 text-xs font-semibold text-[#1b1c1c] outline-none transition focus:border-[#1b4332]"
+                           className="w-full rounded-md border border-[#e0e0e0] bg-white px-4 py-3 text-xs font-semibold text-[#1b1c1c] outline-none transition focus:border-[#ff6b00]"
                          />
                        </div>
                        <div className="space-y-3">
@@ -319,7 +319,7 @@ export default function SellerEarningsPage() {
                            type="date"
                            value={endDate}
                            onChange={e => setEndDate(e.target.value)}
-                           className="w-full rounded-md border border-[#e0e0e0] bg-white px-4 py-3 text-xs font-semibold text-[#1b1c1c] outline-none transition focus:border-[#1b4332]"
+                           className="w-full rounded-md border border-[#e0e0e0] bg-white px-4 py-3 text-xs font-semibold text-[#1b1c1c] outline-none transition focus:border-[#ff6b00]"
                          />
                        </div>
                      </>
@@ -358,7 +358,7 @@ export default function SellerEarningsPage() {
                              {tx.transactionId && (
                                <button 
                                  onClick={() => handleViewReceipt(tx)}
-                                 className="text-[10px] font-black text-[#1b4332] uppercase tracking-widest border-b border-[#ffd700]/20 hover:border-[#ffd700] pb-1 transition-all"
+                                 className="text-[10px] font-black text-[#ff6b00] uppercase tracking-widest border-b border-[#ffd700]/20 hover:border-[#ffd700] pb-1 transition-all"
                                >
                                  View Artifact 
                                </button>
@@ -409,7 +409,7 @@ export default function SellerEarningsPage() {
                 <div className="p-8 bg-[#f0eded] space-y-6">
                    <div className="flex justify-between items-center text-[9px] font-black uppercase tracking-widest">
                       <span className="opacity-60">Network Protocol</span>
-                      <span className="text-[#1b4332]">SECURE-MOMO</span>
+                      <span className="text-[#ff6b00]">SECURE-MOMO</span>
                    </div>
                    <div className="flex justify-between items-center text-[9px] font-black uppercase tracking-widest">
                       <span className="opacity-60">Fee Analysis</span>
@@ -419,7 +419,7 @@ export default function SellerEarningsPage() {
                 <button 
                   type="submit" 
                   disabled={!wallet || wallet.balance < 500}
-                  className="w-full rmf-btn-primary py-5 bg-[#1b4332] hover:bg-[#012d1d]"
+                  className="w-full rmf-btn-primary py-5 bg-[#ff6b00] hover:bg-[#e05300]"
                 >
                   Initiate Payout →
                 </button>
@@ -433,7 +433,7 @@ export default function SellerEarningsPage() {
                  "All settled earnings are audited by the RMF Financial Gateway. Commission is automatically processed during the acquisition lifecycle."
                </p>
                <div className="pt-8 border-t border-[#e0e0e0]">
-                  <Link href="/support" className="text-[9px] font-black uppercase tracking-widest text-[#1b4332] hover:text-[#1b1c1c] transition-colors">Request Support Handshake →</Link>
+                  <Link href="/support" className="text-[9px] font-black uppercase tracking-widest text-[#ff6b00] hover:text-[#1b1c1c] transition-colors">Request Support Handshake →</Link>
                </div>
             </div>
           </div>

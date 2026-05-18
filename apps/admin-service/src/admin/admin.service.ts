@@ -11,7 +11,8 @@ export class AdminService {
     @InjectModel('Transaction') private orderModel: Model<any>,
     @InjectModel('AuditLog') private auditModel: Model<any>,
     @InjectModel('Delivery') private deliveryModel: Model<any>,
-    @InjectModel('Review') private reviewModel: Model<any>
+    @InjectModel('Review') private reviewModel: Model<any>,
+    @InjectModel('SupportTicket') private supportTicketModel: Model<any>
   ) {}
 
   private async resolveSellerProfile(sellerId: string): Promise<any | null> {
@@ -467,5 +468,24 @@ export class AdminService {
       statusDistribution: statusDistribution.map(s => ({ name: s._id, value: s.count })),
       performance: performanceData
     };
+  }
+
+  async getSupportTickets(): Promise<any> {
+    return this.supportTicketModel.find().sort({ createdAt: -1 }).exec();
+  }
+
+  async updateSupportTicketStatus(id: string, status: string, resolvedBy?: string): Promise<any> {
+    const updatePayload: any = { status };
+    if (status === 'RESOLVED' || status === 'CLOSED') {
+      updatePayload.resolvedBy = resolvedBy;
+      updatePayload.resolvedAt = new Date();
+    }
+    const ticket = await this.supportTicketModel.findByIdAndUpdate(
+      id,
+      { $set: updatePayload },
+      { new: true }
+    ).exec();
+    if (!ticket) throw new NotFoundException('Support ticket not found');
+    return ticket;
   }
 }

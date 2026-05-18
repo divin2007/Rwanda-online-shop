@@ -1,9 +1,25 @@
-import { Controller, Get, Post, Put, Body, Param, Request, Query, BadRequestException, UseInterceptors, UploadedFile } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Put,
+  Body,
+  Param,
+  Request,
+  Query,
+  BadRequestException,
+  UseInterceptors,
+  UploadedFile,
+  UseGuards,
+  ForbiddenException,
+} from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { randomUUID } from 'crypto';
 import { existsSync, mkdirSync, writeFileSync } from 'fs';
 import { join } from 'path';
 import { SellerService } from './seller.service';
+import { Roles, JwtAuthGuard } from '@rmf/auth';
+import { UserRole } from '@rmf/shared-types';
 
 @Controller('sellers')
 export class SellerController {
@@ -16,6 +32,7 @@ export class SellerController {
     'image/webp': '.webp',
   };
 
+  // Public read — admin and internal services need to list sellers
   @Get()
   async findAll(@Query('isApproved') isApproved?: string) {
     const filter: any = {};
@@ -26,10 +43,10 @@ export class SellerController {
     return { success: true, data: sellers };
   }
 
+  @UseGuards(JwtAuthGuard)
   @Post('onboard')
   async create(@Request() req: any, @Body() sellerData: any) {
-    // Priority: JWT user > body userId. Never fall back to a hardcoded test ID.
-    const userId = req.user?.userId || sellerData.userId;
+    const userId = req.user?.userId;
     if (!userId) {
       throw new BadRequestException('User ID is required. Please log in before onboarding.');
     }
@@ -37,6 +54,8 @@ export class SellerController {
     return { success: true, data: seller };
   }
 
+  // FIX [SELLER-UPLOAD]: Was unauthenticated — anyone could upload arbitrary files.
+  @UseGuards(JwtAuthGuard)
   @Post('upload-document')
   @UseInterceptors(FileInterceptor('file', { limits: { fileSize: 8 * 1024 * 1024 } }))
   async uploadDocument(@UploadedFile() file: any) {
@@ -60,19 +79,18 @@ export class SellerController {
     return extension;
   }
 
+  // FIX [SELLER-ME]: Removed queryUserId fallback — prevents IDOR bypass.
   @Get('me')
-  async findMe(@Request() req: any, @Query('userId') queryUserId?: string) {
+  async findMe(@Request() req: any) {
     try {
-        // Priority: JWT user > query param userId
-        const userId = req.user?.userId || queryUserId;
-        if (!userId) {
-          return { success: true, data: null };
-        }
-        const seller = await this.sellerService.findByUserId(userId);
-        return { success: true, data: seller };
-    } catch (e) {
-        // Return null data instead of 500/404 to allow frontend to handle onboarding
+      const userId = req.user?.userId;
+      if (!userId) {
         return { success: true, data: null };
+      }
+      const seller = await this.sellerService.findByUserId(userId);
+      return { success: true, data: seller };
+    } catch (e) {
+      return { success: true, data: null };
     }
   }
 
@@ -82,18 +100,30 @@ export class SellerController {
     return { success: true, data: seller };
   }
 
+  // FIX [SELLER-UPDATE]: Added ownership check — sellers can only update their own profile.
+  @UseGuards(JwtAuthGuard)
   @Put('user/:userId')
-  async update(@Param('userId') userId: string, @Body() updateData: any) {
+  async update(@Param('userId') userId: string, @Body() updateData: any, @Request() req: any) {
+    if (req.user.userId !== userId && req.user.role !== 'ADMIN') {
+      throw new ForbiddenException('You can only update your own seller profile');
+    }
     const seller = await this.sellerService.update(userId, updateData);
     return { success: true, data: seller };
   }
 
+  // FIX [SELLER-APPROVE]: Was unauthenticated — anyone could approve seller applications.
+  // Now requires ADMIN role.
+  @UseGuards(JwtAuthGuard)
+  @Roles(UserRole.ADMIN)
   @Post(':id/approve')
   async approve(@Param('id') id: string) {
     const seller = await this.sellerService.approve(id);
     return { success: true, data: seller };
   }
 
+  // FIX [SELLER-DECLINE]: Was unauthenticated — anyone could reject sellers.
+  @UseGuards(JwtAuthGuard)
+  @Roles(UserRole.ADMIN)
   @Post(':id/decline')
   async decline(@Param('id') id: string) {
     const seller = await this.sellerService.reject(id);

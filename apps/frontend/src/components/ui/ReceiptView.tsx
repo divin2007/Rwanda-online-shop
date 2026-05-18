@@ -105,8 +105,8 @@ export function ReceiptView({ order, role, onClose }: ReceiptViewProps) {
         <div className="w-full max-w-md bg-[#fcf9f8] border border-[#e0e0e0] shadow-2xl rounded-2xl overflow-hidden flex flex-col animate-reveal">
           
           {/* Slip Header */}
-          <div className="bg-[#012d1d] text-white p-8 text-center relative border-b-2 border-[#ffd700]/20">
-            <p className="text-[10px] font-black text-[#1b4332] uppercase tracking-[0.4em] mb-2">Liquidation Slip</p>
+          <div className="bg-[#e05300] text-white p-8 text-center relative border-b-2 border-[#ffd700]/20">
+            <p className="text-[10px] font-black text-[#ff6b00] uppercase tracking-[0.4em] mb-2">Liquidation Slip</p>
             <h2 className="text-2xl font-sans tracking-normal text-white">{receiptNumber}</h2>
             <p className="text-xs text-white/50 mt-1 uppercase tracking-widest">{orderDate}</p>
             
@@ -121,8 +121,8 @@ export function ReceiptView({ order, role, onClose }: ReceiptViewProps) {
           <div className="p-8 flex-grow overflow-y-auto space-y-8">
             
             {/* Massive Amount Display */}
-            <div className="text-center bg-[#012d1d]/5 p-6 border border-[#e0e0e0] rounded-xl space-y-2">
-              <p className="text-[9px] font-black text-[#1b4332] uppercase tracking-widest">Disbursed Amount</p>
+            <div className="text-center bg-[#e05300]/5 p-6 border border-[#e0e0e0] rounded-xl space-y-2">
+              <p className="text-[9px] font-black text-[#ff6b00] uppercase tracking-widest">Disbursed Amount</p>
               <h1 className="text-4xl font-sans text-[#1b1c1c] tracking-tight font-black">
                 {amount.toLocaleString()} <span className="text-lg font-sans font-light text-[#414844]">RWF</span>
               </h1>
@@ -141,7 +141,7 @@ export function ReceiptView({ order, role, onClose }: ReceiptViewProps) {
 
             {/* Audit Details */}
             <div className="space-y-4">
-              <p className="text-[9px] font-black text-[#1b4332] uppercase tracking-widest border-b border-[#e0e0e0] pb-2">Transaction Details</p>
+              <p className="text-[9px] font-black text-[#ff6b00] uppercase tracking-widest border-b border-[#e0e0e0] pb-2">Transaction Details</p>
               
               <div className="space-y-3">
                 {[
@@ -162,7 +162,7 @@ export function ReceiptView({ order, role, onClose }: ReceiptViewProps) {
             {/* Additional Ledger Notes */}
             {order.notes && (
               <div className="p-4 bg-[#f0eded]/40 border border-[#e0e0e0] text-[10px] leading-relaxed text-[#414844] rounded-lg">
-                <p className="font-black uppercase tracking-widest text-[#1b4332] mb-1">Ledger Memo</p>
+                <p className="font-black uppercase tracking-widest text-[#ff6b00] mb-1">Ledger Memo</p>
                 {order.notes}
               </div>
             )}
@@ -178,7 +178,7 @@ export function ReceiptView({ order, role, onClose }: ReceiptViewProps) {
             <div className="border-t border-[#e0e0e0] bg-[#fcf9f8]">
               <button
                 onClick={onClose}
-                className="w-full py-4 text-[10px] font-black uppercase tracking-[0.4em] text-[#1b1c1c] bg-white hover:bg-[#012d1d] hover:text-white transition-all"
+                className="w-full py-4 text-[10px] font-black uppercase tracking-[0.4em] text-[#1b1c1c] bg-white hover:bg-[#e05300] hover:text-white transition-all"
               >
                 Dismiss Voucher
               </button>
@@ -195,10 +195,10 @@ export function ReceiptView({ order, role, onClose }: ReceiptViewProps) {
 
         {/* ── Left: Negotiation Panel ── */}
         {isNegotiation && (
-          <div className="w-full md:w-[420px] bg-[#012d1d] flex flex-col border-r-0 md:border-r-2 border-b-2 md:border-b-0 border-[#ffd700]/20 overflow-y-auto">
+          <div className="w-full md:w-[420px] bg-[#e05300] flex flex-col border-r-0 md:border-r-2 border-b-2 md:border-b-0 border-[#ffd700]/20 overflow-y-auto">
             {/* Panel Header */}
             <div className="px-8 py-6 border-b border-[#ffd700]/20">
-              <p className="text-[9px] font-black text-[#1b4332] uppercase tracking-[0.5em] mb-1">Negotiation Hub</p>
+              <p className="text-[9px] font-black text-[#ff6b00] uppercase tracking-[0.5em] mb-1">Negotiation Hub</p>
               <h3 className="text-xl font-sans text-white leading-none">{receiptNumber}</h3>
             </div>
 
@@ -215,7 +215,7 @@ export function ReceiptView({ order, role, onClose }: ReceiptViewProps) {
 
             {/* Quick Actions */}
             <div className="px-8 py-6 border-t border-[#ffd700]/20">
-              <p className="text-[9px] font-black text-[#1b4332] uppercase tracking-[0.4em] mb-4">Quick Actions</p>
+              <p className="text-[9px] font-black text-[#ff6b00] uppercase tracking-[0.4em] mb-4">Quick Actions</p>
 
               {role === 'seller' && orderStatus === 'awaiting_quote' && (
                 <button
@@ -238,7 +238,7 @@ export function ReceiptView({ order, role, onClose }: ReceiptViewProps) {
               {role === 'buyer' && orderStatus === 'quote_sent' && (
                 <div className="space-y-3">
                   <p className="text-[10px] text-white/60 leading-relaxed">
-                    Seller proposed <span className="text-[#1b4332] font-black">{financials.subtotal.toLocaleString()} RWF</span>
+                    Seller proposed <span className="text-[#ff6b00] font-black">{financials.subtotal.toLocaleString()} RWF</span>
                   </p>
                   <button
                     onClick={() => {
@@ -291,9 +291,9 @@ export function ReceiptView({ order, role, onClose }: ReceiptViewProps) {
         <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
 
           {/* Receipt Header */}
-          <div className="bg-[#012d1d] px-8 py-6 flex items-start justify-between border-b-2 border-[#ffd700]/20">
+          <div className="bg-[#e05300] px-8 py-6 flex items-start justify-between border-b-2 border-[#ffd700]/20">
             <div>
-              <p className="text-[9px] font-black text-[#1b4332] uppercase tracking-[0.5em] mb-1">Official Receipt</p>
+              <p className="text-[9px] font-black text-[#ff6b00] uppercase tracking-[0.5em] mb-1">Official Receipt</p>
               <h2 className="text-3xl font-sans text-white leading-none tracking-normal">{receiptNumber}</h2>
               <p className="text-[10px] text-white/50 font-bold uppercase tracking-widest mt-2">{orderDate}</p>
             </div>
@@ -317,7 +317,7 @@ export function ReceiptView({ order, role, onClose }: ReceiptViewProps) {
             {/* Parties */}
             <div className="grid grid-cols-1 sm:grid-cols-2 border-b-2 border-[#e0e0e0]">
               <div className="p-8 border-b sm:border-b-0 sm:border-r border-[#e0e0e0]">
-                <p className="text-[9px] font-black text-[#1b4332] uppercase tracking-[0.4em] mb-4">Buyer</p>
+                <p className="text-[9px] font-black text-[#ff6b00] uppercase tracking-[0.4em] mb-4">Buyer</p>
                 <p className="text-xl font-sans text-[#1b1c1c] leading-none mb-2">{buyerName}</p>
                 <p className="text-[11px] text-[#414844] font-bold uppercase tracking-widest">{buyer.phone || 'Hidden'}</p>
                 {buyer.deliveryAddress?.address && (
@@ -325,12 +325,12 @@ export function ReceiptView({ order, role, onClose }: ReceiptViewProps) {
                 )}
               </div>
               <div className="p-8">
-                <p className="text-[9px] font-black text-[#1b4332] uppercase tracking-[0.4em] mb-4">Seller</p>
+                <p className="text-[9px] font-black text-[#ff6b00] uppercase tracking-[0.4em] mb-4">Seller</p>
                 <p className="text-xl font-sans text-[#1b1c1c] leading-none mb-2">{seller.fullName || 'Verified Seller'}</p>
                 <p className="text-[11px] text-[#414844] font-bold uppercase tracking-widest">Stall: {seller.stallId || 'N/A'}</p>
                 {order.delivery?.rider && (
                   <div className="mt-4 pt-4 border-t border-[#e0e0e0]">
-                    <p className="text-[9px] font-black text-[#1b4332] uppercase tracking-[0.4em] mb-1">Rider</p>
+                    <p className="text-[9px] font-black text-[#ff6b00] uppercase tracking-[0.4em] mb-1">Rider</p>
                     <p className="text-[12px] font-bold text-[#1b1c1c]">{order.delivery.rider.fullName || 'Assigned'}</p>
                     {order.delivery.rider.plateNumber && <p className="text-[10px] text-[#414844]">Plate: {order.delivery.rider.plateNumber}</p>}
                   </div>
@@ -340,15 +340,15 @@ export function ReceiptView({ order, role, onClose }: ReceiptViewProps) {
 
             {/* Project Brief */}
             {(isNegotiation || order.notes) && (
-              <div className="px-8 py-6 border-b-2 border-[#e0e0e0] bg-[#012d1d]/5">
-                <p className="text-[9px] font-black text-[#1b4332] uppercase tracking-[0.4em] mb-3">
+              <div className="px-8 py-6 border-b-2 border-[#e0e0e0] bg-[#e05300]/5">
+                <p className="text-[9px] font-black text-[#ff6b00] uppercase tracking-[0.4em] mb-3">
                   {isNegotiation ? 'Project Brief' : 'Order Notes'}
                 </p>
                 <p className="text-sm text-[#1b1c1c]/80 leading-relaxed">{order.notes || 'No brief provided.'}</p>
                 {orderStatus === 'quote_sent' && (
                   <div className="mt-3 inline-flex items-center gap-2">
                     <div className="w-1.5 h-1.5 bg-[#ffd700] rounded-full animate-pulse" />
-                    <span className="text-[9px] font-black text-[#1b4332] uppercase tracking-widest">Quote Received: {financials.subtotal.toLocaleString()} RWF</span>
+                    <span className="text-[9px] font-black text-[#ff6b00] uppercase tracking-widest">Quote Received: {financials.subtotal.toLocaleString()} RWF</span>
                   </div>
                 )}
               </div>
@@ -356,8 +356,8 @@ export function ReceiptView({ order, role, onClose }: ReceiptViewProps) {
 
             {/* Products Table */}
             <div className="border-b-2 border-[#e0e0e0]">
-              <div className="px-8 py-4 bg-[#012d1d]">
-                <p className="text-[9px] font-black text-[#1b4332] uppercase tracking-[0.4em]">Items Ordered</p>
+              <div className="px-8 py-4 bg-[#e05300]">
+                <p className="text-[9px] font-black text-[#ff6b00] uppercase tracking-[0.4em]">Items Ordered</p>
               </div>
               <table className="w-full">
                 <thead>
@@ -374,7 +374,7 @@ export function ReceiptView({ order, role, onClose }: ReceiptViewProps) {
                     </tr>
                   ) : (
                     productsList.map((item, idx) => (
-                      <tr key={item.productId || idx} className="border-b border-[#e0e0e0] hover:bg-[#012d1d]/3 transition-colors">
+                      <tr key={item.productId || idx} className="border-b border-[#e0e0e0] hover:bg-[#e05300]/3 transition-colors">
                         <td className="py-4 px-4 text-center text-[10px] font-black text-[#414844]">{idx + 1}</td>
                         <td className="py-4 px-4">
                           <p className="text-[13px] font-bold text-[#1b1c1c]">{item.name}</p>
@@ -382,7 +382,7 @@ export function ReceiptView({ order, role, onClose }: ReceiptViewProps) {
                         </td>
                         <td className="py-4 px-4 text-right text-[12px] text-[#414844] font-bold">{item.unitPrice.toLocaleString()} RWF</td>
                         <td className="py-4 px-4 text-right">
-                          <span className="inline-block bg-[#012d1d] text-white text-[9px] font-black px-3 py-1">{item.quantity}</span>
+                          <span className="inline-block bg-[#e05300] text-white text-[9px] font-black px-3 py-1">{item.quantity}</span>
                         </td>
                         <td className="py-4 px-4 text-right text-[13px] font-black text-[#1b1c1c]">{(item.unitPrice * (item.quantity || 0)).toLocaleString()} <span className="text-[9px] text-[#414844]">RWF</span></td>
                       </tr>
@@ -396,7 +396,7 @@ export function ReceiptView({ order, role, onClose }: ReceiptViewProps) {
             <div className="grid grid-cols-1 sm:grid-cols-2 border-b-2 border-[#e0e0e0]">
               {/* Payment Summary */}
               <div className="p-8 border-b sm:border-b-0 sm:border-r border-[#e0e0e0]">
-                <p className="text-[9px] font-black text-[#1b4332] uppercase tracking-[0.4em] mb-6">Payment Summary</p>
+                <p className="text-[9px] font-black text-[#ff6b00] uppercase tracking-[0.4em] mb-6">Payment Summary</p>
                 <div className="space-y-3">
                   {[
                     { label: 'Subtotal',       val: financials.subtotal,          dim: false },
@@ -413,7 +413,7 @@ export function ReceiptView({ order, role, onClose }: ReceiptViewProps) {
                     <span className="text-[10px] font-black uppercase tracking-[0.3em] text-[#1b1c1c]">Total Paid</span>
                     <div className="text-right">
                       <span className="text-3xl font-sans tracking-normal text-[#1b1c1c]">{(financials.totalAmount || 0).toLocaleString()}</span>
-                      <span className="text-[9px] font-black text-[#1b4332] ml-1 uppercase">RWF</span>
+                      <span className="text-[9px] font-black text-[#ff6b00] ml-1 uppercase">RWF</span>
                     </div>
                   </div>
                 </div>
@@ -423,11 +423,11 @@ export function ReceiptView({ order, role, onClose }: ReceiptViewProps) {
               <div className="p-8 space-y-6">
                 {/* Payment Method */}
                 <div>
-                  <p className="text-[9px] font-black text-[#1b4332] uppercase tracking-[0.4em] mb-4">Payment</p>
+                  <p className="text-[9px] font-black text-[#ff6b00] uppercase tracking-[0.4em] mb-4">Payment</p>
                   <div className="flex items-center justify-between mb-2">
                     <span className="text-[12px] font-bold text-[#1b1c1c]">{order.payment?.method || 'N/A'}</span>
                     <span className={`text-[9px] font-black uppercase tracking-widest px-3 py-1 ${
-                      isPaid ? 'bg-[#012d1d] text-white' :
+                      isPaid ? 'bg-[#e05300] text-white' :
                       order.payment?.status === 'pending' ? 'bg-[#ffd700] text-[#1b1c1c]' :
                       'bg-red-500 text-white'
                     }`}>
@@ -445,7 +445,7 @@ export function ReceiptView({ order, role, onClose }: ReceiptViewProps) {
                 {/* Payout (seller/admin only) */}
                 {(role === 'seller' || role === 'admin') && (
                   <div>
-                    <p className="text-[9px] font-black text-[#1b4332] uppercase tracking-[0.4em] mb-4">Payout Breakdown</p>
+                    <p className="text-[9px] font-black text-[#ff6b00] uppercase tracking-[0.4em] mb-4">Payout Breakdown</p>
                     <div className="space-y-2">
                       <div className="flex justify-between">
                         <span className="text-[10px] font-bold text-[#414844] uppercase tracking-widest">Seller</span>
@@ -462,7 +462,7 @@ export function ReceiptView({ order, role, onClose }: ReceiptViewProps) {
                 {/* Delivery */}
                 {order.delivery && (
                   <div>
-                    <p className="text-[9px] font-black text-[#1b4332] uppercase tracking-[0.4em] mb-3">Delivery</p>
+                    <p className="text-[9px] font-black text-[#ff6b00] uppercase tracking-[0.4em] mb-3">Delivery</p>
                     <div className="space-y-1">
                       {order.delivery.route?.distanceKm && (
                         <div className="flex justify-between">
@@ -483,11 +483,11 @@ export function ReceiptView({ order, role, onClose }: ReceiptViewProps) {
             </div>
 
             {/* Footer */}
-            <div className="px-8 py-6 bg-[#012d1d] flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div className="px-8 py-6 bg-[#e05300] flex flex-col sm:flex-row items-center justify-between gap-4">
               <div className="flex items-center gap-6">
                 <div className="border border-[#ffd700]/40 px-4 py-2">
-                  <p className="text-[8px] font-black text-[#1b4332] uppercase tracking-[0.4em] mb-0.5">Payment Status</p>
-                  <p className="text-[11px] font-black uppercase tracking-widest" style={{ color: isPaid || orderStatus === 'delivered' ? '#10B981' : orderStatus === 'cancelled' ? '#9A6B5D' : '#c1ecd4' }}>
+                  <p className="text-[8px] font-black text-[#ff6b00] uppercase tracking-[0.4em] mb-0.5">Payment Status</p>
+                  <p className="text-[11px] font-black uppercase tracking-widest" style={{ color: isPaid || orderStatus === 'delivered' ? '#10B981' : orderStatus === 'cancelled' ? '#9A6B5D' : '#ffedd5' }}>
                     {isPaid || orderStatus === 'delivered' ? 'SETTLED' : orderStatus === 'cancelled' ? 'CANCELLED' : 'PENDING'}
                   </p>
                 </div>
@@ -508,7 +508,7 @@ export function ReceiptView({ order, role, onClose }: ReceiptViewProps) {
             <div className="border-t-2 border-[#e0e0e0] bg-[#fcf9f8]">
               <button
                 onClick={onClose}
-                className="w-full py-4 text-[10px] font-black uppercase tracking-[0.4em] text-[#1b1c1c] hover:bg-[#012d1d] hover:text-white transition-all"
+                className="w-full py-4 text-[10px] font-black uppercase tracking-[0.4em] text-[#1b1c1c] hover:bg-[#e05300] hover:text-white transition-all"
               >
                 Close Receipt
               </button>

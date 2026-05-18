@@ -1,11 +1,13 @@
 import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
 import { productSchema, sellerProfileSchema, marketSchema, promotionSchema, taxonomyCategorySchema } from '@rmf/database';
+import { AuthGuardModule } from '@rmf/auth';
 import { ProductService } from './product.service';
 import { ProductController } from './product.controller';
 import { CacheModule } from '@nestjs/cache-manager';
 import KeyvRedis, { createClient } from '@keyv/redis';
 import { Keyv } from 'keyv';
+import { StorageModule } from '../storage/storage.module';
 
 const createRedisCache = (namespace: string) => {
   const redisUrl = process.env.REDIS_URL || `redis://${process.env.REDIS_HOST || '127.0.0.1'}:${process.env.REDIS_PORT || '6379'}`;
@@ -37,6 +39,8 @@ const createRedisCache = (namespace: string) => {
 
 @Module({
   imports: [
+    StorageModule,
+    AuthGuardModule.forRoot(),
     CacheModule.register({
       stores: [
         createRedisCache('product-cache'),

@@ -6,7 +6,8 @@ import {
   transactionSchema,
   auditLogSchema,
   deliverySchema,
-  reviewSchema
+  reviewSchema,
+  supportTicketSchema
 } from '@rmf/database';
 import { AuthGuardModule } from '@rmf/auth';
 import { AdminService } from './admin.service';
@@ -20,7 +21,8 @@ import { AdminController } from './admin.controller';
       { name: 'Transaction', schema: transactionSchema },
       { name: 'AuditLog', schema: auditLogSchema },
       { name: 'Delivery', schema: deliverySchema },
-      { name: 'Review', schema: reviewSchema }
+      { name: 'Review', schema: reviewSchema },
+      { name: 'SupportTicket', schema: supportTicketSchema }
     ]),
     AuthGuardModule.forRoot(),
   ],

@@ -63,6 +63,8 @@ export class NotificationService {
     'quote.accepted': 'Quote accepted — payment confirmed',
     'rider.found': 'Rider assigned to your delivery',
     'handover.completed': 'Goods handed over to rider',
+    'admin.support_ticket_created': 'New Support Ticket Received',
+    'seller.status_update': 'Merchant Account Update',
   };
 
   private getTemplate(type: string, lang: 'rw' | 'en', params: any): string {
@@ -115,6 +117,14 @@ export class NotificationService {
         en: `Goods for order ${params.orderNumber} have been handed over to the rider.`,
         rw: `Ibintu bya komande ${params.orderNumber} bihawe umumotari.`
       },
+      'admin.support_ticket_created': {
+        en: `New support ticket received from ${params.name} (${params.userEmail}).\n\nSubject: ${params.subject}\n\nMessage:\n${params.message}`,
+        rw: `Hari ubutumwa bushya bwo gusaba ubufasha buturutse kuri ${params.name} (${params.userEmail}).\n\nImpamvu: ${params.subject}\n\nUbutumwa:\n${params.message}`
+      },
+      'seller.status_update': {
+        en: `${params.message || 'Your merchant status has been updated.'}`,
+        rw: `${params.message || 'Uburenganzira bwawe bwo kugurisha bwavuguruwe.'}`
+      },
     };
 
     return templates[type]?.[lang] || `${this.emailSubjects[type] || type}: ${JSON.stringify(params).slice(0, 80)}`;
@@ -145,7 +155,7 @@ export class NotificationService {
   }
 
   private isCustomMessageType(type: string): boolean {
-    return /message|chat|custom/i.test(type);
+    return /message|chat|custom|support/i.test(type);
   }
 
   private shouldSend(type: string, channel: 'IN_APP' | 'EMAIL' | 'SMS', preferences: ReturnType<NotificationService['preferencesFor']>): { allowed: boolean; reason?: string } {

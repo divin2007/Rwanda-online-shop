@@ -29,13 +29,13 @@ export default function SellerQRPage() {
         {/* Institutional Header */}
         <div className="flex justify-between items-end border-b border-[#e0e0e0] pb-10">
           <div>
-            <p className="text-[10px] font-bold text-[#1b4332] uppercase tracking-[0.5em] mb-3">Facility Identity</p>
+            <p className="text-[10px] font-bold text-[#ff6b00] uppercase tracking-[0.5em] mb-3">Facility Identity</p>
             <h1 className="text-5xl font-sans text-[#1b1c1c]">Stall QR Credential</h1>
             <p className="text-[9px] font-bold text-[#414844] uppercase tracking-widest mt-2 opacity-60">Authorized Commercial Point of Presence</p>
           </div>
           <button 
             onClick={handlePrint}
-            className="bg-[#012d1d] text-white text-[10px] px-12 py-5 font-bold uppercase tracking-[0.3em] hover:bg-[#1b4332] transition-all shadow-xl flex items-center gap-4"
+            className="bg-[#e05300] text-white text-[10px] px-12 py-5 font-bold uppercase tracking-[0.3em] hover:bg-[#ff6b00] transition-all shadow-xl flex items-center gap-4 rounded-md"
           >
             <span>🖨</span> {t('print') || 'Export for Display'}
           </button>
@@ -44,15 +44,15 @@ export default function SellerQRPage() {
         {/* Print Content Area */}
         <div className="bg-white border border-[#e0e0e0] rounded-lg p-20 flex flex-col items-center justify-center space-y-12 shadow-2xl relative overflow-hidden print:border-none print:shadow-none print:p-0">
           {/* Decorative Corner Accents */}
-          <div className="absolute top-0 left-0 w-24 h-24 border-t-8 border-l-8 border-[#1b4332]"></div>
-          <div className="absolute top-0 right-0 w-24 h-24 border-t-8 border-r-8 border-[#1b4332]"></div>
-          <div className="absolute bottom-0 left-0 w-24 h-24 border-b-8 border-l-8 border-[#1b4332]"></div>
-          <div className="absolute bottom-0 right-0 w-24 h-24 border-b-8 border-r-8 border-[#1b4332]"></div>
+          <div className="absolute top-0 left-0 w-24 h-24 border-t-8 border-l-8 border-[#ff6b00]"></div>
+          <div className="absolute top-0 right-0 w-24 h-24 border-t-8 border-r-8 border-[#ff6b00]"></div>
+          <div className="absolute bottom-0 left-0 w-24 h-24 border-b-8 border-l-8 border-[#ff6b00]"></div>
+          <div className="absolute bottom-0 right-0 w-24 h-24 border-b-8 border-r-8 border-[#ff6b00]"></div>
 
           <div className="text-center space-y-4">
              <div className="flex items-baseline justify-center gap-1">
                 <span className="text-4xl font-sans font-black tracking-normal text-[#1b1c1c]">RMF</span>
-                <div className="w-2 h-2 bg-[#1b4332] rounded-full"></div>
+                <div className="w-2 h-2 bg-[#ff6b00] rounded-full"></div>
              </div>
              <p className="text-[10px] font-black uppercase tracking-[0.6em] text-[#414844]">Verified Network Merchant</p>
           </div>
@@ -76,12 +76,12 @@ export default function SellerQRPage() {
             <h2 className="text-3xl font-sans text-[#1b1c1c] mb-4 leading-tight">
                {profile?.shopDetails?.name || ''}
             </h2>
-            <p className="text-[11px] font-bold text-[#1b4332] uppercase tracking-[0.4em] mb-8">STALL ID: {profile?.stallId || ''}</p>
+            <p className="text-[11px] font-bold text-[#ff6b00] uppercase tracking-[0.4em] mb-8">STALL ID: {profile?.stallId || ''}</p>
             
             <div className="h-px w-full bg-[#e0e0e0] mb-8"></div>
             
             <p className="text-[9px] text-[#414844] leading-relaxed uppercase tracking-widest opacity-60">
-              Scan this code to initialize a secure MoMo transaction directly with this authorized RMF station.
+               Scan this code to initialize a secure MoMo transaction directly with this authorized RMF station.
             </p>
           </div>
 
@@ -92,9 +92,9 @@ export default function SellerQRPage() {
         </div>
 
         {/* Tactical Guidance */}
-        <div className="bg-[#f0eded]/50 border border-[#e0e0e0] p-10">
+        <div className="bg-[#ffedd5]/40 border border-[#ebdcd0] p-10 rounded-lg">
            <h3 className="text-[10px] font-bold uppercase tracking-widest text-[#1b1c1c] mb-6 flex items-center gap-4">
-              <span className="text-[#1b4332]">ℹ</span> Deployment Instructions
+              <span className="text-[#ff6b00]">ℹ</span> Deployment Instructions
            </h3>
            <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
               <div className="text-[11px] text-[#414844] leading-relaxed">

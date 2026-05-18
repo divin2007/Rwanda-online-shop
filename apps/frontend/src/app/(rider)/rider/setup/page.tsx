@@ -55,8 +55,8 @@ export default function RiderSetupPage() {
       <div className="max-w-4xl mx-auto py-20 animate-reveal">
         <div className="border-b-2 border-[#e0e0e0] pb-10 mb-16">
           <div className="flex items-center gap-6 mb-6">
-             <div className="w-12 h-px bg-[#1b4332]"></div>
-             <p className="text-[11px] font-black text-[#1b4332] uppercase tracking-[0.5em]">Network Onboarding</p>
+             <div className="w-12 h-px bg-[#ff6b00]"></div>
+             <p className="text-[11px] font-black text-[#ff6b00] uppercase tracking-[0.5em]">Network Onboarding</p>
           </div>
           <h1 className="text-7xl font-sans tracking-normal">Activate Station</h1>
           <p className="text-[10px] font-bold text-[#414844] uppercase tracking-[0.3em] mt-6 opacity-60">
@@ -107,7 +107,7 @@ export default function RiderSetupPage() {
               className="rmf-btn-primary w-full py-8 text-lg group relative overflow-hidden"
             >
               <span className="relative z-10">{isLoading ? 'Synchronizing Network...' : 'Confirm Activation →'}</span>
-              <div className="absolute inset-0 bg-[#1b4332] group-hover:bg-[#116c4a] transition-colors"></div>
+              <div className="absolute inset-0 bg-[#ff6b00] group-hover:bg-[#ea580c] transition-colors"></div>
             </button>
             <p className="text-[9px] text-center mt-6 text-[#414844] uppercase tracking-widest opacity-40">
               By activating, you agree to the RMF Logistics Facilitation Protocol and Audit Standards.

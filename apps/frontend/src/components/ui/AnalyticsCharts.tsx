@@ -6,7 +6,7 @@ import {
   BarChart, Bar, PieChart, Pie, Cell, Legend 
 } from 'recharts';
 
-const CHART_COLORS = ['#1b4332', '#116c4a', '#405046', '#8ca197', '#c1ecd4'];
+const CHART_COLORS = ['#ff6b00', '#ea580c', '#405046', '#8ca197', '#ffedd5'];
 
 interface AnalyticsChartsProps {
   orders?: any[];
@@ -103,7 +103,7 @@ export const AnalyticsCharts = ({ orders = [], data, type, hidePerformance = fal
       {/* Revenue Trend */}
       <div className="group relative rounded-lg border border-[#dfe7e2] bg-white p-5 shadow-sm">
         <h3 className="mb-5 flex items-center gap-3 text-[11px] font-black uppercase tracking-[0.16em] text-[#1b1c1c]">
-          <span className="h-2 w-2 rounded-full bg-[#116c4a]"></span>
+          <span className="h-2 w-2 rounded-full bg-[#ea580c]"></span>
           Revenue Trend (Last 7 Days)
         </h3>
         <div className="h-[280px] w-full">
@@ -111,20 +111,20 @@ export const AnalyticsCharts = ({ orders = [], data, type, hidePerformance = fal
             <AreaChart data={revenueData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
               <defs>
                 <linearGradient id="colorRev" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#116c4a" stopOpacity={0.18}/>
-                  <stop offset="95%" stopColor="#116c4a" stopOpacity={0}/>
+                  <stop offset="5%" stopColor="#ea580c" stopOpacity={0.18}/>
+                  <stop offset="95%" stopColor="#ea580c" stopOpacity={0}/>
                 </linearGradient>
               </defs>
               <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
               <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{ fontSize: 9, fontWeight: '900', fill: '#1b1c1c' }} minTickGap={15} />
               <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 9, fontWeight: '900', fill: '#64748b' }} tickFormatter={(value) => `${value / 1000}k`} />
               <Tooltip 
-                contentStyle={{ background: '#1b1c1c', border: '1px solid #c1ecd4', borderRadius: '8px', padding: '12px' }}
-                itemStyle={{ color: '#c1ecd4', fontSize: '10px', fontWeight: '900', textTransform: 'uppercase', letterSpacing: '0.1em' }}
+                contentStyle={{ background: '#1b1c1c', border: '1px solid #ffedd5', borderRadius: '8px', padding: '12px' }}
+                itemStyle={{ color: '#ffedd5', fontSize: '10px', fontWeight: '900', textTransform: 'uppercase', letterSpacing: '0.1em' }}
                 labelStyle={{ color: '#fff', fontSize: '8px', marginBottom: '4px', fontWeight: 'bold' }}
                 formatter={(value: any) => [`${value.toLocaleString()} RWF`, 'Revenue']}
               />
-              <Area type="monotone" dataKey="revenue" stroke="#116c4a" strokeWidth={3} fillOpacity={1} fill="url(#colorRev)" />
+              <Area type="monotone" dataKey="revenue" stroke="#ea580c" strokeWidth={3} fillOpacity={1} fill="url(#colorRev)" />
             </AreaChart>
           </ResponsiveContainer>
         </div>
@@ -133,7 +133,7 @@ export const AnalyticsCharts = ({ orders = [], data, type, hidePerformance = fal
       {/* Distribution */}
       <div className="group relative rounded-lg border border-[#dfe7e2] bg-white p-5 shadow-sm">
         <h3 className="mb-5 flex items-center gap-3 text-[11px] font-black uppercase tracking-[0.16em] text-[#1b1c1c]">
-          <span className="h-2 w-2 rounded-full bg-[#012d1d]"></span>
+          <span className="h-2 w-2 rounded-full bg-[#e05300]"></span>
           Order Status Distribution
         </h3>
         <div className="flex h-[280px] w-full items-center">
@@ -154,8 +154,8 @@ export const AnalyticsCharts = ({ orders = [], data, type, hidePerformance = fal
                 ))}
               </Pie>
               <Tooltip 
-                 contentStyle={{ background: '#1b1c1c', border: '1px solid #c1ecd4', borderRadius: '8px' }}
-                 itemStyle={{ color: '#c1ecd4', fontSize: '10px', fontWeight: '900' }}
+                 contentStyle={{ background: '#1b1c1c', border: '1px solid #ffedd5', borderRadius: '8px' }}
+                 itemStyle={{ color: '#ffedd5', fontSize: '10px', fontWeight: '900' }}
               />
               <Legend verticalAlign="bottom" wrapperStyle={{ paddingTop: '20px' }} iconType="rect" formatter={(value) => <span className="text-[8px] font-black uppercase tracking-widest text-[#414844] leading-relaxed">{value}</span>}/>
             </PieChart>
@@ -167,7 +167,7 @@ export const AnalyticsCharts = ({ orders = [], data, type, hidePerformance = fal
       {!hidePerformance && (
         <div className="mt-1 rounded-lg border border-[#dfe7e2] bg-white p-5 shadow-sm lg:col-span-2">
           <h3 className="mb-5 flex items-center gap-3 text-[11px] font-black uppercase tracking-[0.16em] text-[#1b1c1c]">
-            <span className="h-2 w-2 rounded-full bg-[#1b4332]"></span>
+            <span className="h-2 w-2 rounded-full bg-[#ff6b00]"></span>
             {type === 'admin' ? 'Top Selling Vendors' : 'Top Selling Products'}
           </h3>
           <div className="h-[280px] w-full">
@@ -178,13 +178,13 @@ export const AnalyticsCharts = ({ orders = [], data, type, hidePerformance = fal
                 <YAxis dataKey="name" type="category" axisLine={false} tickLine={false} tick={{ fontSize: 9, fontWeight: '900', fill: '#1b1c1c' }} width={120} />
                 <Tooltip 
                   cursor={{ fill: '#fcf9f8' }}
-                  contentStyle={{ background: '#1b1c1c', border: '1px solid #c1ecd4', borderRadius: '8px' }}
-                  itemStyle={{ color: '#c1ecd4', fontSize: '10px', fontWeight: '900' }}
+                  contentStyle={{ background: '#1b1c1c', border: '1px solid #ffedd5', borderRadius: '8px' }}
+                  itemStyle={{ color: '#ffedd5', fontSize: '10px', fontWeight: '900' }}
                   labelStyle={{ color: '#fff', fontSize: '8px', marginBottom: '4px' }}
                 />
                 <Bar 
                   dataKey={type === 'admin' ? 'revenue' : 'sales'} 
-                  fill="#116c4a" 
+                  fill="#ea580c" 
                   radius={[4, 4, 4, 4]} 
                   barSize={24}
                 />

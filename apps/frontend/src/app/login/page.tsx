@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { Eye, EyeOff, LockKeyhole, ShieldCheck, Store, Truck } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useAuth } from '@/context/AuthContext';
+import { useLanguage } from '@/context/LanguageContext';
 import { userApi } from '@/lib/api';
 
 type ApiError = { response?: { data?: { error?: string; message?: string } } };
@@ -15,10 +16,11 @@ export default function LoginPage() {
   const [showPw, setShowPw] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const { login, user, isLoading: authLoading } = useAuth();
+  const { t, language, setLanguage } = useLanguage();
   const router = useRouter();
 
   const routeForRole = React.useCallback((role?: string) => {
-    if (role === 'SELLER') return '/seller/dashboard';
+    if (role === 'SELLER') return '/seller/onboarding';
     if (role === 'RIDER') return '/rider/dashboard';
     if (role === 'ADMIN') return '/admin';
     return '/dashboard';
@@ -32,10 +34,7 @@ export default function LoginPage() {
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    // 2C fix: Google OAuth now sends a one-time code (base64url-encoded JSON blob)
-    // instead of raw tokens in URL params. This prevents token leakage.
     const code = params.get('code');
-    // Legacy support: also accept direct token params for backward compatibility
     const directToken = params.get('token');
     const directRefresh = params.get('refreshToken');
 
@@ -45,7 +44,6 @@ export default function LoginPage() {
     if (code) {
       try {
         const decoded = JSON.parse(Buffer.from(code, 'base64url').toString());
-        // Reject codes older than 30 seconds to prevent replay attacks
         if (Date.now() - decoded.ts > 30_000) {
           toast.error('Sign-in link expired. Please try again.');
           window.history.replaceState({}, '', '/login');
@@ -65,7 +63,6 @@ export default function LoginPage() {
 
     if (!token) return;
 
-    // Clear URL params immediately to prevent leakage via browser history
     window.history.replaceState({}, '', '/login');
 
     userApi.get('/auth/me', { headers: { Authorization: `Bearer ${token}` } })
@@ -105,7 +102,29 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="flex min-h-screen bg-[#fdfaf7] font-sans selection:bg-[#ff6b00] selection:text-white">
+    <div className="flex min-h-screen bg-[#fdfaf7] font-sans selection:bg-[#ff6b00] selection:text-white relative">
+      {/* Floating Language Switcher in top right corner */}
+      <div className="absolute right-4 top-4 z-50 flex h-9 items-center gap-1 rounded-md border border-[#ebdcd0] bg-white/90 backdrop-blur px-1.5 shadow-sm">
+        <span className="rounded bg-[#ffedd5] px-2 py-0.5 text-[9px] font-black uppercase text-[#ff6b00]">
+          {language.toUpperCase()}
+        </span>
+        {(['en', 'fr', 'kin'] as const).map((lang, index) => (
+          <React.Fragment key={lang}>
+            <button
+              type="button"
+              onClick={() => setLanguage(lang)}
+              title={lang === 'en' ? 'English' : lang === 'fr' ? 'French' : 'Kinyarwanda'}
+              className={`rounded px-1.5 py-1 text-xs font-black uppercase transition ${
+                language === lang ? 'bg-[#ffedd5] text-[#ff6b00]' : 'text-[#405046] hover:text-[#ff6b00]'
+              }`}
+            >
+              {lang}
+            </button>
+            {index < 2 && <span className="text-xs font-black text-[#d2bca8]">/</span>}
+          </React.Fragment>
+        ))}
+      </div>
+
       <div
         className="relative hidden w-[46%] flex-col justify-between overflow-hidden bg-[#e05300] p-16 text-white lg:flex"
         style={{
@@ -121,29 +140,27 @@ export default function LoginPage() {
             <span className="text-4xl font-black tracking-normal text-white transition-colors group-hover:text-[#ffedd5]">RMF</span>
             <div className="h-2 w-2 rounded-full bg-[#ffedd5]" />
           </Link>
-          <p className="mt-2 text-[9px] font-black uppercase tracking-[0.5em] text-white/50">Rwanda Market Facilitator</p>
+          <p className="mt-2 text-[9px] font-black uppercase tracking-[0.5em] text-white/50">{t('site_name')}</p>
         </div>
 
         <div className="relative z-10 space-y-8">
           <div className="flex items-center gap-4">
             <div className="h-px w-8 bg-[#ffedd5]" />
-            <p className="text-[10px] font-black uppercase tracking-[0.5em] text-[#ffedd5]">Welcome Back</p>
+            <p className="text-[10px] font-black uppercase tracking-[0.5em] text-[#ffedd5]">{t('login_title')}</p>
           </div>
-          <h2 className="text-6xl font-black leading-[0.95] tracking-normal text-white">
-            Trusted local<br />
-            markets,<br />
-            delivered.
+          <h2 className="text-6xl font-black leading-[0.95] tracking-normal text-white whitespace-pre-line">
+            {language === 'kin' ? 'Amasoko meza\nyo mu Rwanda,\nyakugezweho.' : language === 'fr' ? 'Marchés locaux,\nlivrés chez vous.' : 'Trusted local\nmarkets,\ndelivered.'}
           </h2>
           <p className="max-w-sm border-l-2 border-white/15 pl-6 text-base leading-relaxed text-white/75">
-            Shop from verified sellers across Kigali&apos;s best markets. Fast delivery, secure payments, real-time tracking.
+            {t('home_hero_desc')}
           </p>
         </div>
 
         <div className="relative z-10 grid grid-cols-3 gap-4 border-t border-white/15 pt-10">
           {[
-            { icon: ShieldCheck, label: 'Verified Sellers' },
-            { icon: LockKeyhole, label: 'Secure Checkout' },
-            { icon: Truck, label: 'Tracked Delivery' },
+            { icon: ShieldCheck, label: t('trust_point_2_title') },
+            { icon: LockKeyhole, label: t('secure_payments_title') },
+            { icon: Truck, label: t('trust_point_3_title') },
           ].map(({ icon: Icon, label }) => (
             <div key={label} className="space-y-2 text-center">
               <Icon className="mx-auto text-[#ffedd5]" size={22} />
@@ -163,12 +180,12 @@ export default function LoginPage() {
           <div>
             <div className="mb-4 inline-flex items-center gap-2 rounded-full bg-[#ffedd5] px-3 py-1.5 text-xs font-black text-[#ff6b00]">
               <Store size={15} />
-              Rwanda&apos;s verified local marketplace
+              {t('official_facilitator')}
             </div>
-            <h1 className="mb-2 text-4xl font-black tracking-normal text-[#1b1c1c]">Sign In</h1>
+            <h1 className="mb-2 text-4xl font-black tracking-normal text-[#1b1c1c]">{t('login_signin')}</h1>
             <p className="text-sm text-[#414844]">
-              New to RMF?{' '}
-              <Link href="/register" className="font-black text-[#ff6b00] hover:underline">Create a free account -&gt;</Link>
+              {t('login_no_account')}{' '}
+              <Link href="/register" className="font-black text-[#ff6b00] hover:underline">{t('login_register')} -&gt;</Link>
             </p>
           </div>
 
@@ -177,19 +194,19 @@ export default function LoginPage() {
             className="flex w-full items-center justify-center gap-4 rounded-lg border border-[#d9e0db] bg-white py-4 text-sm font-bold text-[#1b1c1c] transition-all hover:border-[#ff6b00]"
           >
             <img src="https://www.svgrepo.com/show/475656/google-color.svg" alt="Google" className="h-5 w-5" />
-            Continue with Google
+            {t('login_google')}
           </button>
 
           <div className="flex items-center gap-4">
             <div className="h-px flex-1 bg-[#e0e0e0]" />
-            <span className="text-[10px] font-black uppercase tracking-widest text-[#5f7569]">or sign in with email</span>
+            <span className="text-[10px] font-black uppercase tracking-widest text-[#5f7569]">{t('auth_external_protocols') || 'or sign in with email'}</span>
             <div className="h-px flex-1 bg-[#e0e0e0]" />
           </div>
 
           <form onSubmit={handleLogin} className="space-y-6">
             <div className="space-y-2">
               <label className="block text-[10px] font-black uppercase tracking-[0.3em] text-[#1b1c1c]" htmlFor="email">
-                Email Address
+                {t('login_email')}
               </label>
               <input
                 id="email"
@@ -206,10 +223,10 @@ export default function LoginPage() {
             <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <label className="block text-[10px] font-black uppercase tracking-[0.3em] text-[#1b1c1c]" htmlFor="password">
-                  Password
+                  {t('login_password')}
                 </label>
                 <button type="button" className="text-[10px] font-black uppercase tracking-widest text-[#ff6b00] hover:underline">
-                  Forgot Password?
+                  {language === 'kin' ? 'Wagiranye ijambo ry\'ibanga?' : language === 'fr' ? 'Mot de passe oublié ?' : 'Forgot Password?'}
                 </button>
               </div>
               <div className="relative">
@@ -242,15 +259,17 @@ export default function LoginPage() {
               {isLoading ? (
                 <>
                   <div className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
-                  Signing in...
+                  {t('login_signing_in')}
                 </>
-              ) : 'Sign In ->'}
+              ) : `${t('login_signin')} ->`}
             </button>
           </form>
 
           <p className="border-t border-[#e0e0e0] pt-4 text-center text-[10px] font-bold uppercase tracking-widest text-[#414844]">
-            Want to sell on RMF?{' '}
-            <Link href="/register?role=SELLER" className="font-black text-[#ff6b00] hover:underline">Apply as Seller</Link>
+            {language === 'kin' ? 'Nshaka gucururiza kuri RMF?' : language === 'fr' ? 'Vous voulez vendre sur RMF ?' : 'Want to sell on RMF?'}{' '}
+            <Link href="/register?role=SELLER" className="font-black text-[#ff6b00] hover:underline">
+              {t('become_seller')}
+            </Link>
           </p>
         </div>
       </div>

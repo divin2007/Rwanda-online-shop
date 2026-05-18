@@ -18,6 +18,17 @@ export class OrderGateway implements OnGatewayConnection, OnGatewayDisconnect {
   server: Server;
 
   handleConnection(client: Socket) {
+    const token = client.handshake.auth?.token || client.handshake.query?.token;
+    if (token) {
+      try {
+        const jwt = require('jsonwebtoken');
+        const secret = process.env.JWT_SECRET || 'change-me-to-a-strong-random-secret-at-least-32-chars';
+        const decoded = jwt.verify(token, secret);
+        (client as any).user = decoded;
+      } catch (err) {
+        console.log(`Socket auth failed: ${err}`);
+      }
+    }
     console.log(`Client connected to OrderGateway: ${client.id}`);
   }
 
@@ -27,8 +38,12 @@ export class OrderGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
   @SubscribeMessage('order:seller:updates')
   handleSellerUpdates(client: Socket, payload: any) {
+    const user = (client as any).user;
     const sellerId = payload?.sellerId;
     if (sellerId) {
+      if (!user || (user.userId !== sellerId && user.sub !== sellerId && user.role !== 'ADMIN')) {
+        return { event: 'order:seller:updates', data: { success: false, error: 'Unauthorized' } };
+      }
       client.join(`seller:${sellerId}:orders`);
     }
     return { event: 'order:seller:updates', data: { subscribed: true, sellerId: sellerId || null } };

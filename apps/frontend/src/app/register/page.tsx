@@ -7,6 +7,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { Bike, ShieldCheck, ShoppingCart, Store, Truck } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { useLanguage } from '@/context/LanguageContext';
 import { userApi } from '@/lib/api';
 
 type ApiError = { response?: { data?: { error?: string; message?: string } } };
@@ -27,27 +28,6 @@ const registerSchema = z.object({
 type RegisterFormValues = z.infer<typeof registerSchema>;
 type Role = 'BUYER' | 'SELLER' | 'RIDER';
 
-const roles = [
-  {
-    key: 'BUYER' as const,
-    icon: ShoppingCart,
-    label: 'Buyer',
-    desc: 'Shop from local markets and get orders delivered to your door.',
-  },
-  {
-    key: 'SELLER' as const,
-    icon: Store,
-    label: 'Seller',
-    desc: 'List products, receive orders, and manage your verified stall.',
-  },
-  {
-    key: 'RIDER' as const,
-    icon: Bike,
-    label: 'Rider',
-    desc: 'Accept delivery jobs and track handovers across Kigali.',
-  },
-];
-
 const getRoleFromQuery = (value: string | null): Role => (
   value === 'SELLER' || value === 'RIDER' || value === 'BUYER' ? value : 'BUYER'
 );
@@ -59,6 +39,7 @@ function RegisterContent() {
   const preRole = getRoleFromQuery(searchParams.get('role'));
   const [isLoading, setIsLoading] = useState(false);
   const [selectedRole, setSelectedRole] = useState<Role>(preRole);
+  const { t, language, setLanguage } = useLanguage();
 
   const { register, handleSubmit, setValue, formState: { errors } } = useForm<RegisterFormValues>({
     resolver: zodResolver(registerSchema),
@@ -96,12 +77,55 @@ function RegisterContent() {
     }
   };
 
+  const roles = [
+    {
+      key: 'BUYER' as const,
+      icon: ShoppingCart,
+      label: t('buyer') || 'Buyer',
+      desc: t('auth_acquisitions') || 'Shop from local markets and get orders delivered to your door.',
+    },
+    {
+      key: 'SELLER' as const,
+      icon: Store,
+      label: t('seller') || 'Seller',
+      desc: t('auth_merchant') || 'List products, receive orders, and manage your verified stall.',
+    },
+    {
+      key: 'RIDER' as const,
+      icon: Bike,
+      label: t('rider') || 'Rider',
+      desc: t('auth_logistics') || 'Accept delivery jobs and track handovers across Kigali.',
+    },
+  ];
+
   const inputClass = 'w-full rounded-md border bg-white px-5 py-4 text-sm outline-none transition-colors focus:border-[#ff6b00] focus:ring-2 focus:ring-[#ffedd5]';
   const fieldClass = (hasError?: boolean) => `${inputClass} ${hasError ? 'border-[#9a6b5d]' : 'border-[#d9e0db]'}`;
   const errorClass = 'text-[11px] font-bold text-[#7b3f3f]';
 
   return (
-    <div className="flex min-h-screen bg-[#fdfaf7] font-sans selection:bg-[#ff6b00] selection:text-white">
+    <div className="flex min-h-screen bg-[#fdfaf7] font-sans selection:bg-[#ff6b00] selection:text-white relative">
+      {/* Floating Language Switcher in top right corner */}
+      <div className="absolute right-4 top-4 z-50 flex h-9 items-center gap-1 rounded-md border border-[#ebdcd0] bg-white/90 backdrop-blur px-1.5 shadow-sm">
+        <span className="rounded bg-[#ffedd5] px-2 py-0.5 text-[9px] font-black uppercase text-[#ff6b00]">
+          {language.toUpperCase()}
+        </span>
+        {(['en', 'fr', 'kin'] as const).map((lang, index) => (
+          <React.Fragment key={lang}>
+            <button
+              type="button"
+              onClick={() => setLanguage(lang)}
+              title={lang === 'en' ? 'English' : lang === 'fr' ? 'French' : 'Kinyarwanda'}
+              className={`rounded px-1.5 py-1 text-xs font-black uppercase transition ${
+                language === lang ? 'bg-[#ffedd5] text-[#ff6b00]' : 'text-[#405046] hover:text-[#ff6b00]'
+              }`}
+            >
+              {lang}
+            </button>
+            {index < 2 && <span className="text-xs font-black text-[#d2bca8]">/</span>}
+          </React.Fragment>
+        ))}
+      </div>
+
       <div className="flex flex-1 items-center justify-center overflow-y-auto p-5 md:p-12">
         <div className="w-full max-w-2xl space-y-8 py-8 animate-reveal">
           <div className="flex items-baseline gap-2 lg:hidden">
@@ -112,18 +136,18 @@ function RegisterContent() {
           <div>
             <div className="mb-4 inline-flex items-center gap-2 rounded-full bg-[#ffedd5] px-3 py-1.5 text-xs font-black text-[#ff6b00]">
               <ShieldCheck size={15} />
-              Verified marketplace onboarding
+              {t('auth_compliance_protocol')}
             </div>
-            <h1 className="mb-2 text-4xl font-black tracking-normal text-[#1b1c1c]">Create Account</h1>
+            <h1 className="mb-2 text-4xl font-black tracking-normal text-[#1b1c1c]">{t('register_title')}</h1>
             <p className="text-sm text-[#414844]">
-              Already have an account?{' '}
-              <Link href="/login" className="font-black text-[#ff6b00] hover:underline">Sign in -&gt;</Link>
+              {t('already_have_account')}{' '}
+              <Link href="/login" className="font-black text-[#ff6b00] hover:underline">{t('sign_in')} -&gt;</Link>
             </p>
           </div>
 
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-6 rounded-lg border border-[#d9e0db] bg-white p-5 shadow-sm md:p-6">
             <div className="space-y-3">
-              <p className="text-[10px] font-black uppercase tracking-[0.28em] text-[#1b1c1c]">Join as</p>
+              <p className="text-[10px] font-black uppercase tracking-[0.28em] text-[#1b1c1c]">{t('i_want_to_be')}</p>
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
                 {roles.map((role) => {
                   const Icon = role.icon;
@@ -144,7 +168,7 @@ function RegisterContent() {
 
             <div className="space-y-2">
               <label className="block text-[10px] font-black uppercase tracking-[0.28em] text-[#1b1c1c]" htmlFor="fullName">
-                Full Name
+                {t('full_name')}
               </label>
               <input id="fullName" type="text" {...register('fullName')} placeholder="e.g. Amina Uwase" className={fieldClass(Boolean(errors.fullName))} />
               {errors.fullName && <p className={errorClass}>{errors.fullName.message}</p>}
@@ -153,14 +177,14 @@ function RegisterContent() {
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div className="space-y-2">
                 <label className="block text-[10px] font-black uppercase tracking-[0.28em] text-[#1b1c1c]" htmlFor="email">
-                  Email
+                  {t('email_label')}
                 </label>
                 <input id="email" type="email" {...register('email')} placeholder="you@example.com" autoComplete="email" className={fieldClass(Boolean(errors.email))} />
                 {errors.email && <p className={errorClass}>{errors.email.message}</p>}
               </div>
               <div className="space-y-2">
                 <label className="block text-[10px] font-black uppercase tracking-[0.28em] text-[#1b1c1c]" htmlFor="phone">
-                  Phone
+                  {t('phone_number')}
                 </label>
                 <input id="phone" type="tel" {...register('phone')} placeholder="07XXXXXXXX" className={fieldClass(Boolean(errors.phone))} />
                 {errors.phone && <p className={errorClass}>{errors.phone.message}</p>}
@@ -170,14 +194,14 @@ function RegisterContent() {
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div className="space-y-2">
                 <label className="block text-[10px] font-black uppercase tracking-[0.28em] text-[#1b1c1c]" htmlFor="password">
-                  Password
+                  {t('password_label')}
                 </label>
                 <input id="password" type="password" {...register('password')} placeholder="Min. 8 characters" autoComplete="new-password" className={fieldClass(Boolean(errors.password))} />
                 {errors.password && <p className={errorClass}>{errors.password.message}</p>}
               </div>
               <div className="space-y-2">
                 <label className="block text-[10px] font-black uppercase tracking-[0.28em] text-[#1b1c1c]" htmlFor="confirmPassword">
-                  Confirm Password
+                  {t('confirm_password')}
                 </label>
                 <input id="confirmPassword" type="password" {...register('confirmPassword')} placeholder="Re-enter password" autoComplete="new-password" className={fieldClass(Boolean(errors.confirmPassword))} />
                 {errors.confirmPassword && <p className={errorClass}>{errors.confirmPassword.message}</p>}
@@ -186,7 +210,7 @@ function RegisterContent() {
 
             <div className="space-y-2">
               <label className="block text-[10px] font-black uppercase tracking-[0.28em] text-[#1b1c1c]">
-                Referral Code <span className="font-semibold tracking-normal text-[#574e47]">(optional)</span>
+                {t('referral_code')}
               </label>
               <input type="text" {...register('referredBy')} placeholder="RMF-XXXX" className="w-full rounded-md border border-dashed border-[#d9e0db] bg-[#fdfaf7] px-5 py-4 text-sm outline-none transition-colors focus:border-[#ff6b00] focus:ring-2 focus:ring-[#ffedd5]" />
             </div>
@@ -199,16 +223,16 @@ function RegisterContent() {
               {isLoading ? (
                 <>
                   <div className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
-                  Creating account...
+                  {t('creating_account')}
                 </>
-              ) : `Create ${selectedRole.charAt(0) + selectedRole.slice(1).toLowerCase()} Account ->`}
+              ) : `${t('create_account')} ->`}
             </button>
 
             <p className="text-center text-[11px] leading-relaxed text-[#574e47]">
-              By registering you agree to our{' '}
-              <Link href="/terms" className="font-bold text-[#ff6b00] hover:underline">Terms of Service</Link>
-              {' '}and{' '}
-              <Link href="/privacy" className="font-bold text-[#ff6b00] hover:underline">Privacy Policy</Link>.
+              {language === 'kin' ? 'Kwiyandikisha bivuze ko wemeye ' : language === 'fr' ? 'En vous inscrivant, vous acceptez nos ' : 'By registering you agree to our '}
+              <Link href="/terms" className="font-bold text-[#ff6b00] hover:underline">{t('nav_terms')}</Link>
+              {language === 'kin' ? ' hamwe n\' ' : language === 'fr' ? ' et notre ' : ' and '}
+              <Link href="/privacy" className="font-bold text-[#ff6b00] hover:underline">{t('nav_privacy')}</Link>.
             </p>
           </form>
         </div>
@@ -229,29 +253,27 @@ function RegisterContent() {
             <span className="text-4xl font-black tracking-normal text-white transition-colors group-hover:text-[#ffedd5]">RMF</span>
             <div className="h-2 w-2 rounded-full bg-[#ffedd5]" />
           </Link>
-          <p className="mt-2 text-[9px] font-black uppercase tracking-[0.5em] text-white/50">Rwanda Market Facilitator</p>
+          <p className="mt-2 text-[9px] font-black uppercase tracking-[0.5em] text-white/50">{t('site_name')}</p>
         </div>
 
         <div className="relative z-10 space-y-8">
           <div className="flex items-center gap-4">
             <div className="h-px w-8 bg-[#ffedd5]" />
-            <p className="text-[10px] font-black uppercase tracking-[0.5em] text-[#ffedd5]">Join the Community</p>
+            <p className="text-[10px] font-black uppercase tracking-[0.5em] text-[#ffedd5]">{t('auth_network_registry')}</p>
           </div>
           <h2 className="text-5xl font-black leading-[0.95] tracking-normal text-white">
-            Built for<br />
-            Rwanda&apos;s local<br />
-            commerce.
+            {language === 'kin' ? 'Bwubatswe\nkuba ubucuruzi\nbwa hafi.' : language === 'fr' ? 'Conçu pour le\ncommerce local\ndu Rwanda.' : 'Built for\nRwanda\'s local\ncommerce.'}
           </h2>
           <p className="border-l-2 border-white/15 pl-6 text-base leading-relaxed text-white/75">
-            Buyers, sellers, and riders all share one verified operating system for market orders, handovers, and delivery.
+            {t('auth_infrastructure_desc')}
           </p>
         </div>
 
         <div className="relative z-10 grid grid-cols-3 gap-4 border-t border-white/15 pt-10">
           {[
-            { icon: Store, label: 'Markets' },
-            { icon: ShieldCheck, label: 'Verified' },
-            { icon: Truck, label: 'Delivery' },
+            { icon: Store, label: t('nav_markets') },
+            { icon: ShieldCheck, label: t('verified_facility') },
+            { icon: Truck, label: t('secure_transit') },
           ].map(({ icon: Icon, label }) => (
             <div key={label} className="text-center">
               <Icon className="mx-auto text-[#ffedd5]" size={22} />
@@ -275,3 +297,4 @@ export default function RegisterPage() {
     </React.Suspense>
   );
 }
+

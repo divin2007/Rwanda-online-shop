@@ -1,4 +1,15 @@
-import { BadRequestException, Controller, Post, Body, Get, UseGuards, Request, Param, Put } from '@nestjs/common';
+import {
+  BadRequestException,
+  Controller,
+  Post,
+  Body,
+  Get,
+  UseGuards,
+  Request,
+  Param,
+  Put,
+  ForbiddenException,
+} from '@nestjs/common';
 import { Types } from 'mongoose';
 import { Throttle } from '@nestjs/throttler';
 import { UsersService } from './users.service';
@@ -14,6 +25,16 @@ export class UsersController {
   async register(@Body() userData: RegisterDto) {
     const user = await this.usersService.create(userData);
     return { success: true, data: user };
+  }
+
+  @Throttle({ default: { limit: 3, ttl: 60000 } })
+  @Post('support')
+  async createSupportTicket(@Body() ticketData: any) {
+    if (!ticketData.name || !ticketData.email || !ticketData.subject || !ticketData.message) {
+      throw new BadRequestException('Name, email, subject, and message are required.');
+    }
+    const ticket = await this.usersService.createSupportTicket(ticketData);
+    return { success: true, data: ticket };
   }
 
   @UseGuards(JwtAuthGuard)
@@ -49,7 +70,6 @@ export class UsersController {
   @UseGuards(JwtAuthGuard)
   @Get('wishlist')
   async getWishlist(@Request() req: any) {
-    console.log(`[UsersController] Fetching wishlist for userId: ${req.user?.userId}`);
     const wishlist = await this.usersService.getWishlist(req.user.userId);
     return { success: true, data: wishlist };
   }
@@ -61,11 +81,18 @@ export class UsersController {
     return { success: true, data: user.wishlist };
   }
 
+  // FIX [IDOR-1]: Require auth + ownership check — users can only fetch their own record.
+  // Admins can fetch any record. Previously any authenticated user could fetch any userId.
   @UseGuards(JwtAuthGuard)
   @Get(':id')
-  async getById(@Param('id') id: string) {
+  async getById(@Param('id') id: string, @Request() req: any) {
     if (!Types.ObjectId.isValid(id)) {
       throw new BadRequestException('Invalid user ID');
+    }
+    const requestingUserId = req.user.userId;
+    const requestingRole = req.user.role;
+    if (requestingUserId !== id && requestingRole !== 'ADMIN') {
+      throw new ForbiddenException('You can only view your own profile');
     }
     const user = await this.usersService.findById(id);
     const userObj = user.toObject();
@@ -73,12 +100,21 @@ export class UsersController {
     return { success: true, data: userObj };
   }
 
-  // 3F fix: called by seller-service and rider-service after admin approval
-  // to sync the user's role in the JWT source of truth
+  // FIX [PRIV-ESC-1]: CRITICAL — was completely unauthenticated, allowing any caller to
+  // escalate any account to ADMIN. Now requires a valid JWT from an existing ADMIN.
+  @UseGuards(JwtAuthGuard)
   @Put(':id/role')
-  async updateRole(@Param('id') id: string, @Body() body: { role: string }) {
+  async updateRole(
+    @Param('id') id: string,
+    @Body() body: { role: string },
+    @Request() req: any,
+  ) {
     if (!Types.ObjectId.isValid(id)) {
       throw new BadRequestException('Invalid user ID');
+    }
+    // Only ADMINs may change roles
+    if (req.user.role !== 'ADMIN') {
+      throw new ForbiddenException('Only administrators can change user roles');
     }
     const validRoles = ['BUYER', 'SELLER', 'RIDER', 'ADMIN'];
     if (!validRoles.includes(body.role)) {
@@ -88,7 +124,6 @@ export class UsersController {
     return { success: true, data: { id: updated._id, role: updated.role } };
   }
 
-  // 1A fix: send email verification code
   @UseGuards(JwtAuthGuard)
   @Post('verify-email/send')
   async sendVerificationCode(@Request() req: any) {
@@ -96,7 +131,6 @@ export class UsersController {
     return { success: true, data: result };
   }
 
-  // 1A fix: verify email with code
   @UseGuards(JwtAuthGuard)
   @Post('verify-email/confirm')
   async verifyEmail(@Request() req: any, @Body() body: { code: string }) {

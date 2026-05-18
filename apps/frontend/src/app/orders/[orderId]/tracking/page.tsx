@@ -14,6 +14,7 @@ import { OrderChat } from '@/components/ui/OrderChat';
 import { ImageUpload } from '@/components/ui/ImageUpload';
 import { useLanguage } from '@/context/LanguageContext';
 import { useAuth } from '@/context/AuthContext';
+import { useRouter } from 'next/navigation';
 
 const TrackingMap = dynamic(() => import('@/components/ui/TrackingMap').then(mod => mod.TrackingMap), { ssr: false });
 const RiderMap = dynamic(() => import('@/components/ui/RiderMap').then(mod => mod.RiderMap), { ssr: false });
@@ -77,7 +78,8 @@ const ChatCard = ({ deliveryId, userName }: { deliveryId?: string, userName: str
 
 export default function OrderTrackingPage({ params }: { params: { orderId: string } }) {
   const { t } = useLanguage();
-  const { user } = useAuth();
+  const { user, isLoading } = useAuth();
+  const router = useRouter();
   const [isClient, setIsClient] = useState(false);
   const [deliveryData, setDeliveryData] = useState<any>(null);
   const [pickupPhotoUrl, setPickupPhotoUrl] = useState('');
@@ -85,6 +87,12 @@ export default function OrderTrackingPage({ params }: { params: { orderId: strin
   const [disputeReason, setDisputeReason] = useState('');
 
   const { data: order, loading, execute: fetchOrder } = useApi(orderApi, 'get', `/orders/${params.orderId}`, { refreshInterval: 5000 });
+
+  useEffect(() => {
+    if (!isLoading && !user) {
+      router.push('/login');
+    }
+  }, [user, isLoading, router]);
 
   useEffect(() => {
     if (order?.deliveryId) {
@@ -120,8 +128,38 @@ export default function OrderTrackingPage({ params }: { params: { orderId: strin
   const isNegotiationPhase = currentStatus === 'awaiting_quote' || currentStatus === 'quote_sent' || 
     (currentStatus === 'placed' && order?.payment?.status !== 'paid');
 
-  if (loading || !isClient) return <Layout><div className="flex justify-center p-20"><div className="animate-spin w-10 h-10 border-4 border-primary border-t-transparent rounded-full"></div></div></Layout>;
+  if (isLoading || loading || !isClient) return <Layout><div className="flex justify-center p-20"><div className="animate-spin w-10 h-10 border-4 border-primary border-t-transparent rounded-full"></div></div></Layout>;
+  if (!user) return null;
   if (!order) return <Layout><div className="p-20 text-center">{t('track_not_found')}</div></Layout>;
+
+  // Security guard: Authorization check
+  const isAuthorized = 
+    user.role === 'ADMIN' || 
+    user.id === order.buyerId || 
+    user.id === order.buyer?.userId || 
+    user.id === order.sellerId || 
+    user.id === order.seller?.userId || 
+    (user.role === 'RIDER' && (order.riderId === user.id || deliveryData?.riderId === user.id || deliveryData?.rider?.id === user.id));
+
+  if (!isAuthorized) {
+    return (
+      <Layout>
+        <div className="max-w-4xl mx-auto py-20 px-6 text-center animate-reveal">
+          <div className="text-6xl mb-6 opacity-80">🛡️</div>
+          <h2 className="text-3xl font-sans text-red-600 mb-4">Access Denied</h2>
+          <p className="text-base text-text-secondary max-w-md mx-auto mb-8">
+            You are not authorized to view the tracking details of this order. If you believe this is an error, please contact support.
+          </p>
+          <button 
+            onClick={() => router.push('/')} 
+            className="rmf-btn-primary rounded-xl px-8 py-3.5 mx-auto"
+          >
+            Back to Home
+          </button>
+        </div>
+      </Layout>
+    );
+  }
 
   return (
     <Layout>
@@ -136,10 +174,10 @@ export default function OrderTrackingPage({ params }: { params: { orderId: strin
         <section className="mb-8 rounded-lg border border-[#dfe7e2] bg-white p-5 shadow-sm">
           <div className="mb-4 flex flex-col justify-between gap-3 md:flex-row md:items-end">
             <div>
-              <p className="text-[10px] font-black uppercase tracking-[0.18em] text-[#1b4332]">Escrow procedure</p>
+              <p className="text-[10px] font-black uppercase tracking-[0.18em] text-[#ff6b00]">Escrow procedure</p>
               <h2 className="mt-1 text-2xl font-black text-[#1b1c1c]">Payment held until delivery is confirmed</h2>
             </div>
-            <span className="rounded-full bg-[#e8f5ed] px-3 py-1 text-xs font-black text-[#1b4332]">
+            <span className="rounded-full bg-[#e8f5ed] px-3 py-1 text-xs font-black text-[#ff6b00]">
               {order.payment?.status === 'paid' ? 'Escrow funded' : 'Awaiting payment'}
             </span>
           </div>
@@ -151,8 +189,8 @@ export default function OrderTrackingPage({ params }: { params: { orderId: strin
               ['Rider photo and QR proof', Boolean(deliveryData?.pickup?.pickupPhotoUrl || pickupPhotoUrl || deliveryData?.pickup?.qrScannedAt)],
               ['Buyer confirms receipt', currentStatus === 'delivered'],
             ].map(([label, done]) => (
-              <div key={label as string} className={`rounded-md border p-3 ${done ? 'border-[#c1ecd4] bg-[#e8f5ed]' : 'border-[#e0e0e0] bg-[#fcf9f8]'}`}>
-                <div className={`mb-2 h-2 w-2 rounded-full ${done ? 'bg-[#1b4332]' : 'bg-[#a7b0aa]'}`} />
+              <div key={label as string} className={`rounded-md border p-3 ${done ? 'border-[#ffedd5] bg-[#e8f5ed]' : 'border-[#e0e0e0] bg-[#fcf9f8]'}`}>
+                <div className={`mb-2 h-2 w-2 rounded-full ${done ? 'bg-[#ff6b00]' : 'bg-[#a7b0aa]'}`} />
                 <p className="text-[11px] font-black leading-tight text-[#1b1c1c]">{label as string}</p>
               </div>
             ))}
@@ -160,7 +198,7 @@ export default function OrderTrackingPage({ params }: { params: { orderId: strin
           {(deliveryData?.pickup?.pickupPhotoUrl || pickupPhotoUrl) && (
             <div className="mt-4 overflow-hidden rounded-md border border-[#e0e0e0] bg-[#fcf9f8]">
               <div className="border-b border-[#e0e0e0] px-4 py-2">
-                <p className="text-[10px] font-black uppercase tracking-[0.16em] text-[#1b4332]">Pickup evidence</p>
+                <p className="text-[10px] font-black uppercase tracking-[0.16em] text-[#ff6b00]">Pickup evidence</p>
               </div>
               <img src={deliveryData?.pickup?.pickupPhotoUrl || pickupPhotoUrl} alt="Rider pickup proof" className="max-h-56 w-full object-cover" />
             </div>
@@ -367,7 +405,7 @@ export default function OrderTrackingPage({ params }: { params: { orderId: strin
             
             {user?.role === 'RIDER' && deliveryData?.status !== 'delivered' && (
               <Card className="border border-[#dfe7e2] bg-white">
-                <h3 className="font-bold mb-4 uppercase text-xs tracking-widest text-[#1b4332]">Rider escrow controls</h3>
+                <h3 className="font-bold mb-4 uppercase text-xs tracking-widest text-[#ff6b00]">Rider escrow controls</h3>
                 <div className="space-y-4">
                   {deliveryData?.status === 'en_route_to_pickup' && (
                     <div className="space-y-3">
@@ -385,7 +423,7 @@ export default function OrderTrackingPage({ params }: { params: { orderId: strin
                       <Button
                         fullWidth
                         disabled={!pickupPhotoUrl}
-                        className="bg-[#1b4332] hover:bg-[#012d1d] disabled:opacity-40"
+                        className="bg-[#ff6b00] hover:bg-[#e05300] disabled:opacity-40"
                         onClick={async () => {
                           try {
                             await deliveryApi.post(`/deliveries/${deliveryData._id}/scan-qr`, {
@@ -408,7 +446,7 @@ export default function OrderTrackingPage({ params }: { params: { orderId: strin
                   {deliveryData?.status === 'pending_handover' && (
                     <Button 
                       fullWidth 
-                      className="bg-[#1b4332] hover:bg-[#012d1d]"
+                      className="bg-[#ff6b00] hover:bg-[#e05300]"
                       onClick={async () => {
                         try {
                           await deliveryApi.post(`/deliveries/${deliveryData._id}/handover`, { role: 'rider' });

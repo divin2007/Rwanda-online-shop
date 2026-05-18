@@ -30,7 +30,7 @@ const VerificationDocumentPanel = ({ title, url }: { title: string; url?: string
           <p className="mt-1 text-[10px] font-bold uppercase tracking-widest text-[#414844]">Document missing</p>
         </div>
       ) : isPdfUrl(url) ? (
-        <a href={url} target="_blank" rel="noreferrer" className="rounded-md border border-[#e0e0e0] bg-white px-5 py-3 text-[10px] font-black uppercase tracking-widest text-[#1b4332] transition hover:border-[#1b4332]">
+        <a href={url} target="_blank" rel="noreferrer" className="rounded-md border border-[#e0e0e0] bg-white px-5 py-3 text-[10px] font-black uppercase tracking-widest text-[#ff6b00] transition hover:border-[#ff6b00]">
           Open PDF
         </a>
       ) : (
@@ -539,11 +539,11 @@ function AdminDashboardContent() {
 
       {/* Verification Document Modal */}
       {selectedSeller && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#012d1d]/80 backdrop-blur-sm p-4 animate-reveal">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#e05300]/80 backdrop-blur-sm p-4 animate-reveal">
            <div className="bg-white w-full max-w-4xl border border-[#e0e0e0] shadow-2xl overflow-hidden">
               <div className="p-6 border-b border-[#e0e0e0] flex justify-between items-center bg-[#fcf9f8]">
                  <h2 className="text-xl font-sans text-[#1b1c1c]">Verification Documents: {selectedSeller.shopDetails?.name || selectedSeller.stallName || selectedSeller.plateNumber}</h2>
-                 <button onClick={() => setSelectedSeller(null)} className="text-2xl text-[#1b1c1c] hover:text-[#1b4332]">&times;</button>
+                 <button onClick={() => setSelectedSeller(null)} className="text-2xl text-[#1b1c1c] hover:text-[#ff6b00]">&times;</button>
               </div>
               <div className="p-8 grid grid-cols-1 md:grid-cols-2 gap-8 overflow-y-auto max-h-[70vh]">
                  <VerificationDocumentPanel
@@ -562,7 +562,7 @@ function AdminDashboardContent() {
                  </div>
               </div>
               <div className="p-6 border-t border-[#e0e0e0] flex justify-end gap-4 bg-[#fcf9f8]">
-                 <button onClick={() => setSelectedSeller(null)} className="px-6 py-3 border border-[#e0e0e0] text-[#1b1c1c] text-[10px] font-black uppercase tracking-widest hover:bg-[#012d1d] hover:text-white transition-all">Cancel</button>
+                 <button onClick={() => setSelectedSeller(null)} className="px-6 py-3 border border-[#e0e0e0] text-[#1b1c1c] text-[10px] font-black uppercase tracking-widest hover:bg-[#e05300] hover:text-white transition-all">Cancel</button>
                  <button onClick={() => {
                     if (selectedSeller.plateNumber) {
                       approveRider(selectedSeller._id);
@@ -570,7 +570,7 @@ function AdminDashboardContent() {
                       approveSeller(selectedSeller._id);
                     }
                     setSelectedSeller(null);
-                 }} className="px-6 py-3 bg-[#012d1d] text-white text-[10px] font-black uppercase tracking-widest hover:bg-[#012d1d] transition-all">Approve Application</button>
+                 }} className="px-6 py-3 bg-[#e05300] text-white text-[10px] font-black uppercase tracking-widest hover:bg-[#e05300] transition-all">Approve Application</button>
               </div>
            </div>
         </div>
@@ -588,7 +588,7 @@ function AdminDashboardContent() {
                <select
                   value={selectedBulkSellerId}
                   onChange={(event) => setSelectedBulkSellerId(event.target.value)}
-                  className="min-w-[15rem] rounded-md border border-[#e0e0e0] bg-white px-4 py-3 text-sm font-bold text-[#1b1c1c] outline-none transition focus:border-[#1b4332] focus:ring-4 focus:ring-[#1b4332]/10"
+                  className="min-w-[15rem] rounded-md border border-[#e0e0e0] bg-white px-4 py-3 text-sm font-bold text-[#1b1c1c] outline-none transition focus:border-[#ff6b00] focus:ring-4 focus:ring-[#ff6b00]/10"
                >
                   <option value="">Choose approved seller</option>
                   {Array.isArray(approvedSellers) && approvedSellers.map((seller: any) => (
@@ -612,9 +612,9 @@ function AdminDashboardContent() {
                />
                <label
                   htmlFor="bulk-upload-input"
-                  className="inline-flex cursor-pointer items-center justify-center gap-2 rounded-md bg-[#1b4332] px-6 py-3 text-[10px] font-black uppercase tracking-widest text-white transition hover:bg-[#012d1d]"
+                  className="inline-flex cursor-pointer items-center justify-center gap-2 rounded-md bg-[#ff6b00] px-6 py-3 text-[10px] font-black uppercase tracking-widest text-white transition hover:bg-[#e05300]"
                >
-                  <span className="h-2 w-2 rounded-full bg-[#c1ecd4]"></span>
+                  <span className="h-2 w-2 rounded-full bg-[#ffedd5]"></span>
                   Bulk upload
                </label>
             </div>
@@ -650,7 +650,7 @@ function AdminDashboardContent() {
                   <p className="text-[10px] font-black uppercase tracking-[0.2em] text-[#414844] mb-2">Monthly GMV</p>
                   <p className="text-3xl font-sans text-[#1b1c1c]">{analytics?.monthlyGMV?.toLocaleString() || 0}</p>
                 </div>
-                <div className="bg-white border border-[#e0e0e0] p-8 shadow-sm border-l-4 border-l-[#116c4a]">
+                <div className="bg-white border border-[#e0e0e0] p-8 shadow-sm border-l-4 border-l-[#ea580c]">
                   <p className="text-[10px] font-black uppercase tracking-[0.2em] text-[#414844] mb-2">Platform Revenue</p>
                   <p className="text-3xl font-sans text-[#1b1c1c]">{analytics?.monthlyCommission?.toLocaleString() || 0}</p>
                 </div>
@@ -680,7 +680,7 @@ function AdminDashboardContent() {
                     key={range}
                     onClick={() => setDateRange(range)}
                     className={`px-6 py-3 text-[9px] font-black uppercase tracking-[0.2em] transition-all border ${
-                      dateRange === range ? 'bg-[#012d1d] text-white border-[#e0e0e0]' : 'bg-white text-[#1b1c1c] border-[#e0e0e0] hover:border-[#1b4332]'
+                      dateRange === range ? 'bg-[#e05300] text-white border-[#e0e0e0]' : 'bg-white text-[#1b1c1c] border-[#e0e0e0] hover:border-[#ff6b00]'
                     }`}
                   >
                     {range === 'today' ? 'Today' : range === 'week' ? 'This Week' : range === 'month' ? 'This Month' : 'All Time'}
@@ -690,14 +690,14 @@ function AdminDashboardContent() {
 
               {/* Revenue Summary Cards */}
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-                <div className="bg-[#012d1d] text-white p-8 shadow-lg">
+                <div className="bg-[#e05300] text-white p-8 shadow-lg">
                   <p className="text-[10px] font-black uppercase tracking-[0.2em] text-white/50 mb-2">Total GMV</p>
                   <p className="text-3xl font-sans">{totalGMV.toLocaleString()}</p>
                   <p className="text-[9px] text-white/40 mt-2 uppercase tracking-widest">{filteredOrders.length} orders</p>
                 </div>
                 <div className="bg-white border border-[#e0e0e0] p-8 shadow-sm">
                   <p className="text-[10px] font-black uppercase tracking-[0.2em] text-[#414844] mb-2">Platform Revenue</p>
-                  <p className="text-3xl font-sans text-[#1b4332]">{platformRevenue.toLocaleString()}</p>
+                  <p className="text-3xl font-sans text-[#ff6b00]">{platformRevenue.toLocaleString()}</p>
                   <p className="text-[9px] text-[#414844] mt-2 uppercase tracking-widest opacity-60">Comm: {totalCommission.toLocaleString()} | Gate: {totalGateway.toLocaleString()}</p>
                 </div>
                 <div className="bg-white border border-[#e0e0e0] p-8 shadow-sm">
@@ -745,7 +745,7 @@ function AdminDashboardContent() {
                             <td className="p-4 text-xs font-medium">{order.buyer?.fullName || 'N/A'}</td>
                             <td className="p-4 text-xs font-medium">{order.seller?.fullName || 'N/A'}</td>
                             <td className="p-4 text-right text-xs font-bold">{(order.financials?.totalAmount || 0).toLocaleString()}</td>
-                            <td className="p-4 text-right text-xs font-bold text-[#1b4332]">{(order.financials?.platformCommission || 0).toLocaleString()}</td>
+                            <td className="p-4 text-right text-xs font-bold text-[#ff6b00]">{(order.financials?.platformCommission || 0).toLocaleString()}</td>
                             <td className="p-4 text-right text-xs font-bold text-green-700">+{(order.financials?.sellerPayout || 0).toLocaleString()}</td>
                             <td className="p-4 text-right text-xs font-bold text-[#1b1c1c]">+{(order.financials?.riderPayout || 0).toLocaleString()}</td>
                             <td className="p-4 text-center">
@@ -763,7 +763,7 @@ function AdminDashboardContent() {
                               </span>
                             </td>
                             <td className="p-4 text-center">
-                              <button onClick={() => openReceipt(order)} className="text-[10px] border border-[#e0e0e0] px-3 py-1 hover:border-[#1b4332]">View</button>
+                              <button onClick={() => openReceipt(order)} className="text-[10px] border border-[#e0e0e0] px-3 py-1 hover:border-[#ff6b00]">View</button>
                             </td>
                           </tr>
                         ))
@@ -807,9 +807,9 @@ function AdminDashboardContent() {
                     <p>Riders: {totalRiderPayout.toLocaleString()}</p>
                   </div>
                 </div>
-                <div className="bg-[#012d1d] text-white border border-[#e0e0e0] rounded-lg p-8">
+                <div className="bg-[#e05300] text-white border border-[#e0e0e0] rounded-lg p-8">
                   <p className="text-[10px] font-black uppercase tracking-[0.2em] text-white/50 mb-4 border-b border-white/20 pb-2">Net Position</p>
-                  <p className="text-3xl font-sans text-[#1b4332]">{(platformRevenue - (totalSellerPayout + totalRiderPayout)).toLocaleString()}</p>
+                  <p className="text-3xl font-sans text-[#ff6b00]">{(platformRevenue - (totalSellerPayout + totalRiderPayout)).toLocaleString()}</p>
                   <div className="text-[10px] font-bold text-white/40 mt-4 space-y-1">
                     <p>Revenue: {platformRevenue.toLocaleString()}</p>
                     <p>Payouts: {(totalSellerPayout + totalRiderPayout).toLocaleString()}</p>
@@ -843,9 +843,9 @@ function AdminDashboardContent() {
                         <td className="p-6 text-xs font-medium text-[#1b1c1c]">{s.marketId && s.marketId.length > 5 ? 'Market Vendor' : 'Independent'}</td>
                         <td className="p-6 text-xs text-[#414844]">{new Date(s.createdAt).toLocaleDateString()}</td>
                         <td className="p-6 text-right flex justify-end gap-3">
-                          <button className="px-4 py-2 border border-[#e0e0e0] text-[9px] font-black uppercase tracking-widest text-[#1b1c1c] hover:border-[#1b4332]" onClick={() => setSelectedSeller(s)}>View Docs</button>
+                          <button className="px-4 py-2 border border-[#e0e0e0] text-[9px] font-black uppercase tracking-widest text-[#1b1c1c] hover:border-[#ff6b00]" onClick={() => setSelectedSeller(s)}>View Docs</button>
                           <button className="px-4 py-2 border border-red-200 bg-red-50 text-[9px] font-black uppercase tracking-widest text-red-600 hover:border-red-500" onClick={() => declineSeller(s._id)}>Decline</button>
-                          <button className="px-4 py-2 bg-[#012d1d] text-white text-[9px] font-black uppercase tracking-widest hover:bg-[#012d1d]" onClick={() => approveSeller(s._id)}>Approve</button>
+                          <button className="px-4 py-2 bg-[#e05300] text-white text-[9px] font-black uppercase tracking-widest hover:bg-[#e05300]" onClick={() => approveSeller(s._id)}>Approve</button>
                         </td>
                       </tr>
                     ))
@@ -878,8 +878,8 @@ function AdminDashboardContent() {
                         <td className="p-6 font-mono text-sm font-medium">{r.plateNumber}</td>
                         <td className="p-6 text-xs text-[#414844]">{new Date(r.createdAt).toLocaleDateString()}</td>
                         <td className="p-6 text-right flex justify-end gap-3">
-                          <button className="px-4 py-2 border border-[#e0e0e0] text-[9px] font-black uppercase tracking-widest text-[#1b1c1c] hover:border-[#1b4332]" onClick={() => setSelectedSeller(r)}>View Docs</button>
-                          <button className="px-4 py-2 bg-[#012d1d] text-white text-[9px] font-black uppercase tracking-widest hover:bg-[#012d1d]" onClick={() => approveRider(r._id)}>Approve</button>
+                          <button className="px-4 py-2 border border-[#e0e0e0] text-[9px] font-black uppercase tracking-widest text-[#1b1c1c] hover:border-[#ff6b00]" onClick={() => setSelectedSeller(r)}>View Docs</button>
+                          <button className="px-4 py-2 bg-[#e05300] text-white text-[9px] font-black uppercase tracking-widest hover:bg-[#e05300]" onClick={() => approveRider(r._id)}>Approve</button>
                         </td>
                       </tr>
                     ))
@@ -916,13 +916,13 @@ function AdminDashboardContent() {
                           </div>
                         </td>
                         <td className="p-6">
-                          <p className="text-lg font-sans text-[#1b4332]">{p.price.toLocaleString()} RWF</p>
+                          <p className="text-lg font-sans text-[#ff6b00]">{p.price.toLocaleString()} RWF</p>
                           <p className="text-[10px] font-black text-[#414844] uppercase tracking-widest mt-1">{p.stockType === 'finite' ? `${p.stockQuantity} ${p.unit}` : p.stockType === 'infinite' ? 'Unlimited' : 'Made to Order'}</p>
                         </td>
                         <td className="p-6 text-xs text-[#414844]">{new Date(p.createdAt).toLocaleDateString()}</td>
                         <td className="p-6 text-right flex justify-end gap-3">
                           <button className="px-4 py-2 border border-red-200 bg-red-50 text-[9px] font-black uppercase tracking-widest text-red-600 hover:border-red-500" onClick={() => declineProduct(p._id)}>Reject</button>
-                          <button className="px-4 py-2 bg-[#012d1d] text-white text-[9px] font-black uppercase tracking-widest hover:bg-[#012d1d]" onClick={() => approveProduct(p._id)}>Approve</button>
+                          <button className="px-4 py-2 bg-[#e05300] text-white text-[9px] font-black uppercase tracking-widest hover:bg-[#e05300]" onClick={() => approveProduct(p._id)}>Approve</button>
                         </td>
                       </tr>
                     ))
@@ -954,7 +954,7 @@ function AdminDashboardContent() {
                 ].map(card => (
                   <div key={card.label} className="rounded-lg border border-[#dfe7e2] bg-white p-5 shadow-sm">
                     <p className="text-[10px] font-black uppercase tracking-[0.18em] text-[#5f7569]">{card.label}</p>
-                    <p className="mt-2 text-3xl font-sans text-[#1b4332]">{card.value}</p>
+                    <p className="mt-2 text-3xl font-sans text-[#ff6b00]">{card.value}</p>
                   </div>
                 ))}
               </div>
@@ -963,10 +963,10 @@ function AdminDashboardContent() {
                 <section className="rounded-lg border border-[#dfe7e2] bg-white p-6 shadow-sm">
                   <div className="mb-5 flex items-start justify-between gap-3">
                     <div>
-                      <p className="text-[10px] font-black uppercase tracking-[0.18em] text-[#1b4332]">Taxonomy editor</p>
+                      <p className="text-[10px] font-black uppercase tracking-[0.18em] text-[#ff6b00]">Taxonomy editor</p>
                       <h3 className="mt-2 text-2xl font-sans text-[#1b1c1c]">Category intelligence</h3>
                     </div>
-                    <button onClick={() => setTaxonomyForm({ id: '', label: '', productType: '', defaultUnit: 'pcs', aliases: '', synonyms: '', attributesJson: '[]', variantAxesJson: '[]' })} className="rounded-md border border-[#dfe7e2] px-3 py-2 text-[10px] font-black uppercase tracking-widest text-[#1b4332]">
+                    <button onClick={() => setTaxonomyForm({ id: '', label: '', productType: '', defaultUnit: 'pcs', aliases: '', synonyms: '', attributesJson: '[]', variantAxesJson: '[]' })} className="rounded-md border border-[#dfe7e2] px-3 py-2 text-[10px] font-black uppercase tracking-widest text-[#ff6b00]">
                       New
                     </button>
                   </div>
@@ -982,31 +982,31 @@ function AdminDashboardContent() {
                     ].map(([key, label]) => (
                       <label key={key} className="block">
                         <span className="mb-1 block text-[10px] font-black uppercase tracking-[0.14em] text-[#405046]">{label}</span>
-                        <input value={taxonomyForm[key]} onChange={e => setTaxonomyForm((prev: any) => ({ ...prev, [key]: e.target.value }))} className="h-10 w-full rounded-md border border-[#dfe7e2] px-3 text-sm font-semibold outline-none focus:border-[#1b4332]" />
+                        <input value={taxonomyForm[key]} onChange={e => setTaxonomyForm((prev: any) => ({ ...prev, [key]: e.target.value }))} className="h-10 w-full rounded-md border border-[#dfe7e2] px-3 text-sm font-semibold outline-none focus:border-[#ff6b00]" />
                       </label>
                     ))}
                   </div>
 
                   <label className="mt-4 block">
                     <span className="mb-1 block text-[10px] font-black uppercase tracking-[0.14em] text-[#405046]">Attributes JSON</span>
-                    <textarea value={taxonomyForm.attributesJson} onChange={e => setTaxonomyForm((prev: any) => ({ ...prev, attributesJson: e.target.value }))} className="min-h-40 w-full rounded-md border border-[#dfe7e2] bg-[#fcf9f8] p-3 font-mono text-xs outline-none focus:border-[#1b4332]" />
+                    <textarea value={taxonomyForm.attributesJson} onChange={e => setTaxonomyForm((prev: any) => ({ ...prev, attributesJson: e.target.value }))} className="min-h-40 w-full rounded-md border border-[#dfe7e2] bg-[#fcf9f8] p-3 font-mono text-xs outline-none focus:border-[#ff6b00]" />
                   </label>
 
                   <label className="mt-4 block">
                     <span className="mb-1 block text-[10px] font-black uppercase tracking-[0.14em] text-[#405046]">Variant axes JSON</span>
-                    <textarea value={taxonomyForm.variantAxesJson} onChange={e => setTaxonomyForm((prev: any) => ({ ...prev, variantAxesJson: e.target.value }))} className="min-h-28 w-full rounded-md border border-[#dfe7e2] bg-[#fcf9f8] p-3 font-mono text-xs outline-none focus:border-[#1b4332]" />
+                    <textarea value={taxonomyForm.variantAxesJson} onChange={e => setTaxonomyForm((prev: any) => ({ ...prev, variantAxesJson: e.target.value }))} className="min-h-28 w-full rounded-md border border-[#dfe7e2] bg-[#fcf9f8] p-3 font-mono text-xs outline-none focus:border-[#ff6b00]" />
                   </label>
 
                   <div className="mt-5 flex flex-wrap gap-3">
-                    <button onClick={saveTaxonomyCategory} className="rounded-md bg-[#1b4332] px-5 py-3 text-[10px] font-black uppercase tracking-widest text-white">Save category</button>
-                    <button onClick={() => runBackfill(true)} className="rounded-md border border-[#dfe7e2] px-5 py-3 text-[10px] font-black uppercase tracking-widest text-[#1b4332]">Dry-run backfill</button>
-                    <button onClick={() => runBackfill(false)} className="rounded-md border border-[#1b4332] bg-[#e8f5ed] px-5 py-3 text-[10px] font-black uppercase tracking-widest text-[#1b4332]">Run backfill</button>
+                    <button onClick={saveTaxonomyCategory} className="rounded-md bg-[#ff6b00] px-5 py-3 text-[10px] font-black uppercase tracking-widest text-white">Save category</button>
+                    <button onClick={() => runBackfill(true)} className="rounded-md border border-[#dfe7e2] px-5 py-3 text-[10px] font-black uppercase tracking-widest text-[#ff6b00]">Dry-run backfill</button>
+                    <button onClick={() => runBackfill(false)} className="rounded-md border border-[#ff6b00] bg-[#e8f5ed] px-5 py-3 text-[10px] font-black uppercase tracking-widest text-[#ff6b00]">Run backfill</button>
                   </div>
                 </section>
 
                 <section className="rounded-lg border border-[#dfe7e2] bg-white shadow-sm">
                   <div className="border-b border-[#dfe7e2] p-5">
-                    <p className="text-[10px] font-black uppercase tracking-[0.18em] text-[#1b4332]">Live taxonomy</p>
+                    <p className="text-[10px] font-black uppercase tracking-[0.18em] text-[#ff6b00]">Live taxonomy</p>
                     <h3 className="mt-2 text-2xl font-sans text-[#1b1c1c]">Managed product categories</h3>
                   </div>
                   <div className="divide-y divide-[#edf1ee]">
@@ -1018,7 +1018,7 @@ function AdminDashboardContent() {
                           <p className="mt-2 text-sm font-semibold text-[#405046]">{category.attributes?.length || 0} attributes · {category.variantAxes?.length || 0} variant axes · v{category.version || 1}</p>
                         </div>
                         <div className="flex gap-2">
-                          <button onClick={() => editTaxonomyCategory(category)} className="rounded-md border border-[#dfe7e2] px-3 py-2 text-[10px] font-black uppercase tracking-widest text-[#1b4332]">Edit</button>
+                          <button onClick={() => editTaxonomyCategory(category)} className="rounded-md border border-[#dfe7e2] px-3 py-2 text-[10px] font-black uppercase tracking-widest text-[#ff6b00]">Edit</button>
                           <button onClick={() => retireTaxonomyCategory(category.id)} className="rounded-md border border-[#ead2d2] px-3 py-2 text-[10px] font-black uppercase tracking-widest text-[#8a3c3c]">Retire</button>
                         </div>
                       </div>
@@ -1029,7 +1029,7 @@ function AdminDashboardContent() {
 
               <section className="rounded-lg border border-[#dfe7e2] bg-white p-6 shadow-sm">
                 <div className="mb-5">
-                  <p className="text-[10px] font-black uppercase tracking-[0.18em] text-[#1b4332]">Attribute governance</p>
+                  <p className="text-[10px] font-black uppercase tracking-[0.18em] text-[#ff6b00]">Attribute governance</p>
                   <h3 className="mt-2 text-2xl font-sans text-[#1b1c1c]">Data cleanup queue</h3>
                 </div>
                 <div className="grid gap-4 lg:grid-cols-3">
@@ -1061,11 +1061,11 @@ function AdminDashboardContent() {
             <div className="space-y-6 animate-reveal">
               <div className="rounded-lg border border-[#dfe7e2] bg-white p-6 shadow-sm">
                 <div>
-                  <p className="text-[10px] font-black uppercase tracking-[0.18em] text-[#1b4332]">Buyer protection queue</p>
+                  <p className="text-[10px] font-black uppercase tracking-[0.18em] text-[#ff6b00]">Buyer protection queue</p>
                   <h3 className="mt-2 text-2xl font-sans text-[#1b1c1c]">Open Dispute Exposure</h3>
                   <p className="mt-2 text-sm font-semibold text-[#5f7569]">Refunds under 10,000 RWF can be resolved instantly. Larger cases stay in manual review with the order, seller, rider, and payment evidence visible.</p>
                 </div>
-                <p className="mt-4 text-3xl font-sans text-[#1b4332]">{openDisputeExposure.toLocaleString()} RWF</p>
+                <p className="mt-4 text-3xl font-sans text-[#ff6b00]">{openDisputeExposure.toLocaleString()} RWF</p>
               </div>
 
               <div className="grid gap-4 md:grid-cols-3">
@@ -1075,7 +1075,7 @@ function AdminDashboardContent() {
                   { label: 'Audit', value: 'Every admin action is retained with order history', tone: 'bg-white' },
                 ].map(card => (
                   <div key={card.label} className={`rounded-lg border border-[#dfe7e2] ${card.tone} p-5`}>
-                    <p className="text-[10px] font-black uppercase tracking-[0.18em] text-[#1b4332]">{card.label}</p>
+                    <p className="text-[10px] font-black uppercase tracking-[0.18em] text-[#ff6b00]">{card.label}</p>
                     <p className="mt-3 text-sm font-semibold leading-6 text-[#405046]">{card.value}</p>
                   </div>
                 ))}
@@ -1099,7 +1099,7 @@ function AdminDashboardContent() {
                       disputes.map((d: any) => (
                         <tr key={d._id} className="hover:bg-[#fcf9f8]/50">
                           <td className="p-6 font-mono text-[10px] font-bold text-[#1b1c1c]">#{d._id.substring(0,8).toUpperCase()}</td>
-                          <td className="p-6 text-lg font-sans text-[#1b4332]">{d.financials?.totalAmount || d.total} RWF</td>
+                          <td className="p-6 text-lg font-sans text-[#ff6b00]">{d.financials?.totalAmount || d.total} RWF</td>
                           <td className="p-6 text-xs text-[#414844]">{d.dispute?.reason || 'Undelivered'}</td>
                           <td className="p-6">
                             <div className="flex flex-wrap gap-2">
@@ -1110,7 +1110,7 @@ function AdminDashboardContent() {
                           </td>
                           <td className="p-6 text-right">
                             <div className="flex gap-2 justify-end flex-wrap">
-                              <button className="px-3 py-2 bg-[#012d1d] text-white text-[9px] font-black uppercase tracking-widest hover:bg-[#1b4332] transition-colors" onClick={() => resolveDispute(d._id, 'REFUND')}>
+                              <button className="px-3 py-2 bg-[#e05300] text-white text-[9px] font-black uppercase tracking-widest hover:bg-[#ff6b00] transition-colors" onClick={() => resolveDispute(d._id, 'REFUND')}>
                                 Full Refund
                               </button>
                               <button className="px-3 py-2 border border-[#e0e0e0] text-[#1b1c1c] text-[9px] font-black uppercase tracking-widest hover:bg-[#f7faf8] transition-colors" onClick={() => resolveDispute(d._id, 'PARTIAL')}>
@@ -1138,8 +1138,8 @@ function AdminDashboardContent() {
                    <p className="text-[10px] font-black text-[#414844] uppercase tracking-[0.2em] mt-2">Manage physical market locations</p>
                  </div>
                  <div className="flex gap-4">
-                   <button className="px-6 py-3 border border-[#e0e0e0] text-[#1b1c1c] text-[10px] font-black uppercase tracking-widest hover:bg-[#012d1d] hover:text-white transition-all" onClick={handleSyncImagery}>Sync Images</button>
-                   <button className="px-6 py-3 bg-[#012d1d] text-white text-[10px] font-black uppercase tracking-widest hover:bg-[#012d1d] transition-all" onClick={() => setIsAddingMarket(true)}>Create Market</button>
+                   <button className="px-6 py-3 border border-[#e0e0e0] text-[#1b1c1c] text-[10px] font-black uppercase tracking-widest hover:bg-[#e05300] hover:text-white transition-all" onClick={handleSyncImagery}>Sync Images</button>
+                   <button className="px-6 py-3 bg-[#e05300] text-white text-[10px] font-black uppercase tracking-widest hover:bg-[#e05300] transition-all" onClick={() => setIsAddingMarket(true)}>Create Market</button>
                  </div>
               </div>
 
@@ -1150,11 +1150,11 @@ function AdminDashboardContent() {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       <div className="space-y-2">
                         <label className="text-[9px] font-black uppercase tracking-widest text-[#1b1c1c]">Market Name</label>
-                        <input required className="w-full bg-[#fcf9f8] border border-[#e0e0e0] p-4 text-sm outline-none focus:border-[#1b4332]" value={newMarket.name} onChange={e => setNewMarket(prev => ({ ...prev, name: e.target.value }))} placeholder="e.g. Kimironko Market" />
+                        <input required className="w-full bg-[#fcf9f8] border border-[#e0e0e0] p-4 text-sm outline-none focus:border-[#ff6b00]" value={newMarket.name} onChange={e => setNewMarket(prev => ({ ...prev, name: e.target.value }))} placeholder="e.g. Kimironko Market" />
                       </div>
                       <div className="space-y-2">
                         <label className="text-[9px] font-black uppercase tracking-widest text-[#1b1c1c]">Market Code</label>
-                        <input required className="w-full bg-[#fcf9f8] border border-[#e0e0e0] p-4 text-sm outline-none focus:border-[#1b4332]" value={newMarket.code} onChange={e => setNewMarket(prev => ({ ...prev, code: e.target.value.toUpperCase() }))} placeholder="e.g. KIM" />
+                        <input required className="w-full bg-[#fcf9f8] border border-[#e0e0e0] p-4 text-sm outline-none focus:border-[#ff6b00]" value={newMarket.code} onChange={e => setNewMarket(prev => ({ ...prev, code: e.target.value.toUpperCase() }))} placeholder="e.g. KIM" />
                       </div>
                     </div>
                     
@@ -1165,21 +1165,21 @@ function AdminDashboardContent() {
 
                     <div className="space-y-2">
                       <label className="text-[9px] font-black uppercase tracking-widest text-[#1b1c1c]">Description</label>
-                      <textarea className="w-full bg-[#fcf9f8] border border-[#e0e0e0] p-4 text-sm outline-none focus:border-[#1b4332] h-24" value={newMarket.description} onChange={e => setNewMarket(prev => ({ ...prev, description: e.target.value }))} placeholder="Market overview..." />
+                      <textarea className="w-full bg-[#fcf9f8] border border-[#e0e0e0] p-4 text-sm outline-none focus:border-[#ff6b00] h-24" value={newMarket.description} onChange={e => setNewMarket(prev => ({ ...prev, description: e.target.value }))} placeholder="Market overview..." />
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                        <div className="space-y-2">
                           <label className="text-[9px] font-black uppercase tracking-widest text-[#1b1c1c]">Latitude</label>
-                          <input type="number" step="any" className="w-full bg-[#fcf9f8] border border-[#e0e0e0] p-4 text-sm outline-none focus:border-[#1b4332]" value={newMarket.lat} onChange={e => setNewMarket(prev => ({ ...prev, lat: parseFloat(e.target.value) }))} />
+                          <input type="number" step="any" className="w-full bg-[#fcf9f8] border border-[#e0e0e0] p-4 text-sm outline-none focus:border-[#ff6b00]" value={newMarket.lat} onChange={e => setNewMarket(prev => ({ ...prev, lat: parseFloat(e.target.value) }))} />
                        </div>
                        <div className="space-y-2">
                           <label className="text-[9px] font-black uppercase tracking-widest text-[#1b1c1c]">Longitude</label>
-                          <input type="number" step="any" className="w-full bg-[#fcf9f8] border border-[#e0e0e0] p-4 text-sm outline-none focus:border-[#1b4332]" value={newMarket.lng} onChange={e => setNewMarket(prev => ({ ...prev, lng: parseFloat(e.target.value) }))} />
+                          <input type="number" step="any" className="w-full bg-[#fcf9f8] border border-[#e0e0e0] p-4 text-sm outline-none focus:border-[#ff6b00]" value={newMarket.lng} onChange={e => setNewMarket(prev => ({ ...prev, lng: parseFloat(e.target.value) }))} />
                        </div>
                        <div className="space-y-2">
                           <label className="text-[9px] font-black uppercase tracking-widest text-[#1b1c1c]">Type</label>
-                          <select className="w-full bg-[#fcf9f8] border border-[#e0e0e0] p-4 text-sm outline-none focus:border-[#1b4332]" value={newMarket.type} onChange={e => setNewMarket(prev => ({ ...prev, type: e.target.value }))}>
+                          <select className="w-full bg-[#fcf9f8] border border-[#e0e0e0] p-4 text-sm outline-none focus:border-[#ff6b00]" value={newMarket.type} onChange={e => setNewMarket(prev => ({ ...prev, type: e.target.value }))}>
                              <option value="public">Public Market</option>
                              <option value="individual">Independent Area</option>
                           </select>
@@ -1187,8 +1187,8 @@ function AdminDashboardContent() {
                     </div>
 
                     <div className="flex justify-end gap-4 pt-6 border-t border-[#e0e0e0]">
-                       <button type="button" className="px-6 py-3 border border-[#e0e0e0] text-[#1b1c1c] text-[10px] font-black uppercase tracking-widest hover:border-[#1b4332]" onClick={() => setIsAddingMarket(false)}>Cancel</button>
-                       <button type="submit" className="px-6 py-3 bg-[#012d1d] text-white text-[10px] font-black uppercase tracking-widest hover:bg-[#012d1d]">Create Market</button>
+                       <button type="button" className="px-6 py-3 border border-[#e0e0e0] text-[#1b1c1c] text-[10px] font-black uppercase tracking-widest hover:border-[#ff6b00]" onClick={() => setIsAddingMarket(false)}>Cancel</button>
+                       <button type="submit" className="px-6 py-3 bg-[#e05300] text-white text-[10px] font-black uppercase tracking-widest hover:bg-[#e05300]">Create Market</button>
                     </div>
                   </form>
                 </div>
@@ -1228,10 +1228,10 @@ function AdminDashboardContent() {
                           <td className="p-6 text-right">
                              <div className="flex items-center justify-end gap-6">
                                <div className="text-right">
-                                 <p className="text-xl font-sans text-[#1b4332]">{m.totalSellers || 0}</p>
+                                 <p className="text-xl font-sans text-[#ff6b00]">{m.totalSellers || 0}</p>
                                  <p className="text-[8px] font-black text-[#414844] uppercase tracking-widest mt-1">Sellers</p>
                                </div>
-                               <button className="px-4 py-2 border border-[#e0e0e0] text-[9px] font-black uppercase tracking-widest text-[#1b1c1c] hover:border-[#1b4332]" onClick={() => setEditingMarket({
+                               <button className="px-4 py-2 border border-[#e0e0e0] text-[9px] font-black uppercase tracking-widest text-[#1b1c1c] hover:border-[#ff6b00]" onClick={() => setEditingMarket({
                                  ...m,
                                  lat: m.location?.coordinates?.[1],
                                  lng: m.location?.coordinates?.[0]
@@ -1257,21 +1257,21 @@ function AdminDashboardContent() {
               </div>
 
               {editingMarket && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#012d1d]/80 backdrop-blur-sm p-4 animate-reveal">
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#e05300]/80 backdrop-blur-sm p-4 animate-reveal">
                   <div className="bg-white w-full max-w-2xl border border-[#e0e0e0] shadow-2xl overflow-hidden">
                     <div className="p-6 border-b border-[#e0e0e0] flex justify-between items-center bg-[#fcf9f8]">
                       <h2 className="text-xl font-sans text-[#1b1c1c]">Edit Market: {editingMarket.name}</h2>
-                      <button onClick={() => setEditingMarket(null)} className="text-2xl text-[#1b1c1c] hover:text-[#1b4332]">&times;</button>
+                      <button onClick={() => setEditingMarket(null)} className="text-2xl text-[#1b1c1c] hover:text-[#ff6b00]">&times;</button>
                     </div>
                     <form onSubmit={handleUpdateMarket} className="p-8 space-y-6 max-h-[80vh] overflow-y-auto">
                       <div className="grid grid-cols-2 gap-6">
                         <div className="space-y-2">
                           <label className="text-[9px] font-black uppercase tracking-widest text-[#1b1c1c]">Market Name</label>
-                          <input required className="w-full bg-[#fcf9f8] border border-[#e0e0e0] p-4 text-sm outline-none focus:border-[#1b4332]" value={editingMarket.name} onChange={e => setEditingMarket((prev: any) => ({ ...prev, name: e.target.value }))} />
+                          <input required className="w-full bg-[#fcf9f8] border border-[#e0e0e0] p-4 text-sm outline-none focus:border-[#ff6b00]" value={editingMarket.name} onChange={e => setEditingMarket((prev: any) => ({ ...prev, name: e.target.value }))} />
                         </div>
                         <div className="space-y-2">
                           <label className="text-[9px] font-black uppercase tracking-widest text-[#1b1c1c]">Market Code</label>
-                          <input required className="w-full bg-[#fcf9f8] border border-[#e0e0e0] p-4 text-sm outline-none focus:border-[#1b4332]" value={editingMarket.code} onChange={e => setEditingMarket((prev: any) => ({ ...prev, code: e.target.value.toUpperCase() }))} />
+                          <input required className="w-full bg-[#fcf9f8] border border-[#e0e0e0] p-4 text-sm outline-none focus:border-[#ff6b00]" value={editingMarket.code} onChange={e => setEditingMarket((prev: any) => ({ ...prev, code: e.target.value.toUpperCase() }))} />
                         </div>
                       </div>
 
@@ -1282,12 +1282,12 @@ function AdminDashboardContent() {
 
                       <div className="space-y-2">
                         <label className="text-[9px] font-black uppercase tracking-widest text-[#1b1c1c]">Description</label>
-                        <textarea className="w-full bg-[#fcf9f8] border border-[#e0e0e0] p-4 text-sm outline-none focus:border-[#1b4332] h-24" value={editingMarket.description} onChange={e => setEditingMarket((prev: any) => ({ ...prev, description: e.target.value }))} />
+                        <textarea className="w-full bg-[#fcf9f8] border border-[#e0e0e0] p-4 text-sm outline-none focus:border-[#ff6b00] h-24" value={editingMarket.description} onChange={e => setEditingMarket((prev: any) => ({ ...prev, description: e.target.value }))} />
                       </div>
 
                       <div className="flex justify-end gap-4 pt-6 border-t border-[#e0e0e0]">
-                        <button type="button" className="px-6 py-3 border border-[#e0e0e0] text-[#1b1c1c] text-[10px] font-black uppercase tracking-widest hover:border-[#1b4332]" onClick={() => setEditingMarket(null)}>Cancel</button>
-                        <button type="submit" className="px-6 py-3 bg-[#012d1d] text-white text-[10px] font-black uppercase tracking-widest hover:bg-[#012d1d]">Save Changes</button>
+                        <button type="button" className="px-6 py-3 border border-[#e0e0e0] text-[#1b1c1c] text-[10px] font-black uppercase tracking-widest hover:border-[#ff6b00]" onClick={() => setEditingMarket(null)}>Cancel</button>
+                        <button type="submit" className="px-6 py-3 bg-[#e05300] text-white text-[10px] font-black uppercase tracking-widest hover:bg-[#e05300]">Save Changes</button>
                       </div>
                     </form>
                   </div>
@@ -1299,7 +1299,7 @@ function AdminDashboardContent() {
           {activeTab === 'fraud' && (
             <div className="space-y-5 animate-reveal">
               <div className="rounded-lg border border-[#dfe7e2] bg-white p-6 shadow-sm">
-                <p className="text-[10px] font-black uppercase tracking-[0.18em] text-[#1b4332]">Security operations</p>
+                <p className="text-[10px] font-black uppercase tracking-[0.18em] text-[#ff6b00]">Security operations</p>
                 <h2 className="mt-2 text-2xl font-sans text-[#1b1c1c]">Fraud Alerts</h2>
                 <p className="mt-2 max-w-3xl text-sm font-semibold leading-6 text-[#5f7569]">
                   Alerts are triaged against related orders, payment entries, rider movement, and dispute history before refunds or account restrictions are applied.
@@ -1339,7 +1339,7 @@ function AdminDashboardContent() {
                       <tr key={f._id} className="hover:bg-[#fcf9f8]/50 group transition-all">
                         <td className="p-6">
                            <div className="flex flex-col gap-1">
-                             <span className={`text-[8px] font-black uppercase tracking-normal ${f.type === 'SECURITY_FLAG' ? 'text-blue-600' : 'text-[#1b4332]'}`}>{f.type?.replace('_', ' ') || 'FLAG'}</span>
+                             <span className={`text-[8px] font-black uppercase tracking-normal ${f.type === 'SECURITY_FLAG' ? 'text-blue-600' : 'text-[#ff6b00]'}`}>{f.type?.replace('_', ' ') || 'FLAG'}</span>
                              <span className={`w-fit px-2 py-0.5 text-[7px] font-black uppercase tracking-widest border ${
                                f.severity === 'CRITICAL' ? 'bg-red-600 text-white border-red-700' : 
                                f.severity === 'HIGH' ? 'bg-red-50 text-red-600 border-red-200' : 
@@ -1371,7 +1371,7 @@ function AdminDashboardContent() {
                           <button
                             type="button"
                             onClick={() => setActiveTab('disputes')}
-                            className="rounded-md border border-[#dfe7e2] bg-[#f7faf8] px-4 py-2 text-[9px] font-black uppercase tracking-widest text-[#1b4332] hover:border-[#1b4332]"
+                            className="rounded-md border border-[#dfe7e2] bg-[#f7faf8] px-4 py-2 text-[9px] font-black uppercase tracking-widest text-[#ff6b00] hover:border-[#ff6b00]"
                           >
                             Investigate Refund
                           </button>
@@ -1388,7 +1388,7 @@ function AdminDashboardContent() {
           {activeTab === 'payouts' && (
             <div className="space-y-6 animate-reveal">
               <div className="rounded-lg border border-[#dfe7e2] bg-white p-6 shadow-sm">
-                <p className="text-[10px] font-black uppercase tracking-[0.18em] text-[#1b4332]">Liquidity Terminal</p>
+                <p className="text-[10px] font-black uppercase tracking-[0.18em] text-[#ff6b00]">Liquidity Terminal</p>
                 <h2 className="mt-2 text-2xl font-sans text-[#1b1c1c]">Payout Approvals</h2>
                 <p className="mt-2 max-w-3xl text-sm font-semibold leading-6 text-[#5f7569]">
                   Review, approve, or reject Mobile Money liquidation requests submitted by sellers and riders. Approving a request instantly deducts funds from the user's wallet.
@@ -1440,7 +1440,7 @@ function AdminDashboardContent() {
                             <span className="block text-[8px] text-[#414844] font-bold uppercase mt-1 opacity-60">MTN MoMo Gateway</span>
                           </td>
                           <td className="p-6">
-                            <span className="text-sm font-black text-[#1b4332]">{p.amount?.toLocaleString()} RWF</span>
+                            <span className="text-sm font-black text-[#ff6b00]">{p.amount?.toLocaleString()} RWF</span>
                           </td>
                           <td className="p-6">
                             <span className={`w-fit px-2.5 py-1 text-[8px] font-black uppercase tracking-widest border rounded-full ${
@@ -1464,7 +1464,7 @@ function AdminDashboardContent() {
                                 <button
                                   type="button"
                                   onClick={() => handleApprovePayout(p._id)}
-                                  className="rounded-md border border-green-200 bg-[#1b4332] hover:bg-[#012d1d] px-4 py-2 text-[9px] font-black uppercase tracking-widest text-white transition"
+                                  className="rounded-md border border-green-200 bg-[#ff6b00] hover:bg-[#e05300] px-4 py-2 text-[9px] font-black uppercase tracking-widest text-white transition"
                                 >
                                   Approve & Pay
                                 </button>

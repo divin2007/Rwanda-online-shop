@@ -112,6 +112,9 @@ services:
       # Required for order notifications (M2 fix — was missing, caused silent failures)
       - key: NOTIFICATION_SERVICE_URL
         value: "https://rmf-notification-service.onrender.com"
+      # Internal service secret for authenticated microservice-to-microservice calls
+      - key: INTERNAL_SERVICE_SECRET
+        fromEnv: INTERNAL_SERVICE_SECRET
       - key: MTN_MOMO_API_KEY
         fromEnv: MTN_MOMO_API_KEY
       - key: MTN_MOMO_USER_ID
@@ -147,6 +150,8 @@ services:
         fromEnv: JWT_SECRET
       - key: CORS_ORIGIN
         fromEnv: CORS_ORIGIN
+      - key: INTERNAL_SERVICE_SECRET
+        fromEnv: INTERNAL_SERVICE_SECRET
 
   - type: web
     name: rmf-delivery-service
@@ -170,6 +175,8 @@ services:
         value: "https://rmf-order-service.onrender.com"
       - key: NOTIFICATION_SERVICE_URL
         value: "https://rmf-notification-service.onrender.com"
+      - key: INTERNAL_SERVICE_SECRET
+        fromEnv: INTERNAL_SERVICE_SECRET
 
   - type: web
     name: rmf-notification-service
@@ -187,6 +194,8 @@ services:
         fromEnv: JWT_SECRET
       - key: CORS_ORIGIN
         fromEnv: CORS_ORIGIN
+      - key: INTERNAL_SERVICE_SECRET
+        fromEnv: INTERNAL_SERVICE_SECRET
 
   - type: web
     name: rmf-review-service

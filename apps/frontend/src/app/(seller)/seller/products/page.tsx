@@ -1,6 +1,7 @@
 'use client';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Archive, Edit3, PackagePlus, Search, X } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { Archive, Edit3, PackagePlus, Search, X, FileSpreadsheet, UploadCloud, Download, CheckCircle2, AlertCircle } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { Layout } from '@/components/layout/Layout';
 import { ImageUpload } from '@/components/ui/ImageUpload';
@@ -8,7 +9,7 @@ import { CatalogAttributeFields } from '@/components/catalog/CatalogAttributeFie
 import { useAuth } from '@/context/AuthContext';
 import { useApi } from '@/hooks/useApi';
 import { CatalogCategory, ProductVariantDraft, categoryFor, fallbackCatalogCategories } from '@/lib/catalog';
-import { productApi } from '@/lib/api';
+import { productApi, sellerApi } from '@/lib/api';
 
 type Product = {
   _id: string;
@@ -83,13 +84,17 @@ const toForm = (product: Product): ProductForm => ({
 
 export default function SellerProductsPage() {
   const { user } = useAuth();
+  const router = useRouter();
   const productPath = user?.id ? `/products?sellerId=${user.id}` : '';
   const { data: products, execute: fetchProducts, loading: productsLoading } = useApi<Product[]>(productApi, 'get', productPath);
 
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [editingProduct, setEditingProduct] = useState<Product | null>(null);
-  const [formData, setFormData] = useState<ProductForm>(emptyForm);
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const profileUrl = user?.id ? `/sellers/me?userId=${user.id}` : '';
+  const { data: profile } = useApi<any>(sellerApi, 'get', profileUrl);
+
+  const [showBulkUpload, setShowBulkUpload] = useState(false);
+  const [bulkFile, setBulkFile] = useState<File | null>(null);
+  const [isBulkUploading, setIsBulkUploading] = useState(false);
+  const [bulkResult, setBulkResult] = useState<any>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('ALL');
   const [visibleCount, setVisibleCount] = useState(24);
@@ -101,6 +106,55 @@ export default function SellerProductsPage() {
   useEffect(() => {
     if (user?.id) fetchProducts();
   }, [fetchProducts, user?.id]);
+
+  const downloadSample = async () => {
+    const toastId = toast.loading('Generating premium Excel template...');
+    try {
+      const response = await productApi.get('/products/bulk/template', {
+        responseType: 'blob'
+      });
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', 'rmf_bulk_product_template.xlsx');
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+      toast.success('Excel template downloaded successfully!', { id: toastId });
+    } catch (err: any) {
+      toast.error('Failed to download template: ' + (err.message || 'Server error'), { id: toastId });
+    }
+  };
+
+  const handleBulkUpload = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!bulkFile) return toast.error('Please select a CSV or Excel file to upload.');
+    if (!user?.id) return toast.error('Seller ID not resolved. Please sign in again.');
+
+    setIsBulkUploading(true);
+    const toastId = toast.loading(`Uploading and parsing ${bulkFile.name}...`);
+    const uploadFormData = new FormData();
+    uploadFormData.append('file', bulkFile);
+    uploadFormData.append('sellerId', user.id);
+
+    try {
+      const res = await productApi.post('/products/bulk-upload', uploadFormData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
+      
+      const { total, success, failed, errors } = res.data.data;
+      setBulkResult({ total, success, failed, errors });
+      
+      toast.success(`Bulk upload complete! ${success} imported, ${failed} failed.`, { id: toastId, duration: 5000 });
+      setBulkFile(null);
+      fetchProducts();
+    } catch (err: any) {
+      toast.error('Bulk upload failed: ' + (err.response?.data?.message || err.message), { id: toastId });
+    } finally {
+      setIsBulkUploading(false);
+    }
+  };
 
   useEffect(() => {
     productApi.get('/products/catalog/categories')
@@ -151,56 +205,11 @@ export default function SellerProductsPage() {
   }, [filteredProducts.length, hasMoreProducts, isLoadingMore]);
 
   const openCreate = () => {
-    setEditingProduct(null);
-    setFormData(emptyForm);
-    setIsModalOpen(true);
+    router.push('/seller/products/new');
   };
 
   const openEdit = (product: Product) => {
-    setEditingProduct(product);
-    setFormData(toForm(product));
-    setIsModalOpen(true);
-  };
-
-  const closeModal = () => {
-    setIsModalOpen(false);
-    setEditingProduct(null);
-    setFormData(emptyForm);
-  };
-
-  const handleSubmit = async (event: React.FormEvent) => {
-    event.preventDefault();
-    if (!user?.id) return toast.error('Please sign in again before saving products.');
-    if (formData.images.length === 0) return toast.error('At least one product image is required.');
-
-    setIsSubmitting(true);
-    try {
-      const payload = {
-        ...formData,
-        categoryId: formData.category,
-        price: Number(formData.price),
-        stockQuantity: formData.stockType === 'finite' ? Number(formData.stockQuantity || 0) : 999999,
-        weight: Number(formData.weight) || 0,
-        sellerId: user.id,
-        updatedBy: user.id,
-      };
-
-      if (editingProduct?._id) {
-        await productApi.put(`/products/${editingProduct._id}`, payload);
-        toast.success('Product updated successfully.');
-      } else {
-        await productApi.post('/products', payload);
-        toast.success('Product added successfully.');
-      }
-
-      closeModal();
-      fetchProducts();
-    } catch (error: unknown) {
-      const apiError = error as ApiError;
-      toast.error(apiError.response?.data?.message || apiError.response?.data?.error || 'Failed to save product.');
-    } finally {
-      setIsSubmitting(false);
-    }
+    router.push(`/seller/products/new?id=${product._id}`);
   };
 
   const handleArchive = async (product: Product) => {
@@ -225,23 +234,149 @@ export default function SellerProductsPage() {
       <div className="animate-reveal space-y-8 pb-20">
         <section className="flex flex-col items-start justify-between gap-6 rounded-lg border border-[#d9e0db] bg-white p-5 shadow-sm md:flex-row md:items-center md:p-6">
           <div>
-            <p className="mb-2 text-[10px] font-black uppercase tracking-[0.28em] text-[#1b4332]">Inventory Management</p>
+            <p className="mb-2 text-[10px] font-black uppercase tracking-[0.28em] text-[#ff6b00]">Inventory Management</p>
             <h1 className="text-4xl font-black tracking-normal text-[#1b1c1c]">My Products</h1>
             <div className="mt-4 flex items-center gap-4">
               <p className="text-[9px] font-bold uppercase tracking-widest text-[#414844] opacity-70">{allProducts.length} total</p>
-              <div className="h-1 w-1 rounded-full bg-[#1b4332]" />
-              <p className="text-[9px] font-bold uppercase tracking-widest text-[#1b4332]">{visibleProducts.length} of {filteredProducts.length} shown</p>
+              <div className="h-1 w-1 rounded-full bg-[#ff6b00]" />
+              <p className="text-[9px] font-bold uppercase tracking-widest text-[#ff6b00]">{visibleProducts.length} of {filteredProducts.length} shown</p>
             </div>
           </div>
-          <button
-            type="button"
-            onClick={openCreate}
-            className="inline-flex items-center gap-3 rounded-md bg-[#012d1d] px-6 py-3 text-[10px] font-black uppercase tracking-[0.22em] text-white shadow-sm transition hover:bg-[#1b4332]"
-          >
-            <PackagePlus size={16} />
-            Add New
-          </button>
+          <div className="flex flex-wrap gap-3">
+            {profile?.capabilities?.bulk && (
+              <button
+                type="button"
+                onClick={() => setShowBulkUpload(!showBulkUpload)}
+                className={`inline-flex items-center gap-3 rounded-md border px-6 py-3 text-[10px] font-black uppercase tracking-[0.22em] shadow-sm transition ${
+                  showBulkUpload 
+                    ? 'border-[#ff6b00] bg-[#ff6b00] text-white'
+                    : 'border-[#e05300] bg-white text-[#e05300] hover:bg-[#fcf9f8]'
+                }`}
+              >
+                <FileSpreadsheet size={16} />
+                {showBulkUpload ? 'Close Bulk Import' : 'Bulk Import'}
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={openCreate}
+              className="inline-flex items-center gap-3 rounded-md bg-[#e05300] px-6 py-3 text-[10px] font-black uppercase tracking-[0.22em] text-white shadow-sm transition hover:bg-[#ff6b00]"
+            >
+              <PackagePlus size={16} />
+              Add New
+            </button>
+          </div>
         </section>
+
+        {showBulkUpload && (
+          <section className="animate-reveal rounded-lg border border-[#d9e0db] bg-white p-8 shadow-sm relative overflow-hidden space-y-6">
+            <div className="absolute top-0 left-0 w-full h-1 bg-[#ff6b00]"></div>
+            <div className="flex flex-col justify-between items-start gap-4 sm:flex-row sm:items-center">
+              <div>
+                <p className="text-[10px] font-black uppercase tracking-[0.28em] text-[#ff6b00]">Bulk Operations Activated</p>
+                <h3 className="text-2xl font-black text-[#1b1c1c] mt-1">Bulk Product Import</h3>
+                <p className="text-xs text-[#414844] mt-2 max-w-xl opacity-75">
+                  Import multiple products directly using a CSV spreadsheet template. Perfect for fast inventory listing and catalog synchronization.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={downloadSample}
+                className="inline-flex items-center gap-2 rounded-md border border-[#d9e0db] px-4 py-2.5 text-[9px] font-black uppercase tracking-widest text-[#1b1c1c] hover:border-[#ff6b00] transition"
+              >
+                <Download size={13} />
+                Template CSV
+              </button>
+            </div>
+
+            {bulkResult ? (
+              <div className="border border-[#edf1ee] rounded-md p-6 bg-[#fcf9f8] space-y-4">
+                <div className="flex items-center gap-3 text-lg font-black text-[#1b1c1c]">
+                  {bulkResult.failed === 0 ? (
+                    <CheckCircle2 className="text-[#80c29a]" size={22} />
+                  ) : (
+                    <AlertCircle className="text-red-500" size={22} />
+                  )}
+                  Import Complete
+                </div>
+                <div className="grid grid-cols-3 gap-4">
+                  <div className="border border-[#d9e0db] bg-white p-4 rounded text-center">
+                    <p className="text-xs font-black uppercase tracking-wider text-[#414844] opacity-60">Total Rows</p>
+                    <p className="text-3xl font-black text-[#1b1c1c] mt-2">{bulkResult.total}</p>
+                  </div>
+                  <div className="border border-[#e05300]/20 bg-green-50/10 p-4 rounded text-center">
+                    <p className="text-xs font-black uppercase tracking-wider text-[#ff6b00]">Successful</p>
+                    <p className="text-3xl font-black text-[#ff6b00] mt-2">{bulkResult.success}</p>
+                  </div>
+                  <div className={`border p-4 rounded text-center ${bulkResult.failed > 0 ? 'border-red-200 bg-red-50/10' : 'border-[#d9e0db] bg-white'}`}>
+                    <p className="text-xs font-black uppercase tracking-wider text-[#7b3f3f]">Failed</p>
+                    <p className="text-3xl font-black text-[#7b3f3f] mt-2">{bulkResult.failed}</p>
+                  </div>
+                </div>
+
+                {bulkResult.failed > 0 && (
+                  <div className="space-y-2">
+                    <p className="text-[10px] font-black uppercase tracking-[0.2em] text-[#7b3f3f]">Error Logs</p>
+                    <div className="max-h-40 overflow-y-auto text-[10px] border border-red-100 bg-red-50/50 p-4 rounded font-mono text-red-700 space-y-1">
+                      {bulkResult.errors.map((err: string, i: number) => (
+                        <div key={i}>{err}</div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                <div className="flex justify-end pt-2">
+                  <button
+                    type="button"
+                    onClick={() => setBulkResult(null)}
+                    className="rounded-md bg-[#e05300] px-6 py-2.5 text-[9px] font-black uppercase tracking-[0.2em] text-white hover:bg-[#ff6b00] transition"
+                  >
+                    Upload Another
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <form onSubmit={handleBulkUpload} className="space-y-4">
+                <div className="border-2 border-dashed border-[#b8c7be]/50 rounded-lg p-10 bg-[#f7faf8] text-center relative group hover:border-[#ff6b00] transition">
+                  <input
+                    type="file"
+                    accept=".csv, application/vnd.ms-excel, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                    onChange={(e) => setBulkFile(e.target.files?.[0] || null)}
+                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                  />
+                  <div className="flex flex-col items-center gap-3">
+                    <UploadCloud className="text-[#5f7569] group-hover:text-[#ff6b00] transition duration-300" size={36} />
+                    <p className="text-xs font-black uppercase tracking-widest text-[#1b1c1c]">
+                      {bulkFile ? bulkFile.name : 'Select or drag your CSV/Excel spreadsheet'}
+                    </p>
+                    <p className="text-[10px] text-[#414844] tracking-wider opacity-60">
+                      {bulkFile ? `${(bulkFile.size / 1024).toFixed(1)} KB` : 'Maximum file size: 5 MB'}
+                    </p>
+                  </div>
+                </div>
+
+                {bulkFile && (
+                  <div className="flex justify-end gap-3">
+                    <button
+                      type="button"
+                      onClick={() => setBulkFile(null)}
+                      className="rounded-md border border-[#d9e0db] px-5 py-3 text-[9px] font-black uppercase tracking-[0.2em] text-[#405046] hover:border-[#ff6b00] transition"
+                    >
+                      Clear
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={isBulkUploading}
+                      className="rounded-md bg-[#e05300] px-6 py-3 text-[9px] font-black uppercase tracking-[0.2em] text-white hover:bg-[#ff6b00] transition disabled:opacity-50"
+                    >
+                      {isBulkUploading ? 'Processing...' : 'Upload & Import'}
+                    </button>
+                  </div>
+                )}
+              </form>
+            )}
+          </section>
+        )}
 
         <section className="grid grid-cols-1 items-center gap-4 rounded-lg border border-[#d9e0db] bg-white p-4 shadow-sm md:grid-cols-12">
           <div className="relative md:col-span-4">
@@ -249,7 +384,7 @@ export default function SellerProductsPage() {
             <input
               type="text"
               placeholder="Search by name or description..."
-              className="h-11 w-full rounded-md border border-[#d9e0db] bg-white pl-11 pr-4 text-[11px] font-black uppercase tracking-widest outline-none transition focus:border-[#1b4332] focus:ring-2 focus:ring-[#c1ecd4]"
+              className="h-11 w-full rounded-md border border-[#d9e0db] bg-white pl-11 pr-4 text-[11px] font-black uppercase tracking-widest outline-none transition focus:border-[#ff6b00] focus:ring-2 focus:ring-[#ffedd5]"
               value={searchTerm}
               onChange={event => setSearchTerm(event.target.value)}
             />
@@ -262,8 +397,8 @@ export default function SellerProductsPage() {
                 onClick={() => setSelectedCategory(category.id)}
                 className={`rounded-md border px-4 py-2.5 text-[8px] font-black uppercase tracking-widest transition ${
                   selectedCategory === category.id
-                    ? 'border-[#012d1d] bg-[#012d1d] text-white'
-                    : 'border-[#d9e0db] bg-white text-[#414844] hover:border-[#1b4332]'
+                    ? 'border-[#e05300] bg-[#e05300] text-white'
+                    : 'border-[#d9e0db] bg-white text-[#414844] hover:border-[#ff6b00]'
                 }`}
               >
                 {category.label}
@@ -276,7 +411,7 @@ export default function SellerProductsPage() {
           <div className="overflow-x-auto">
             <table className="w-full min-w-[900px] text-left">
               <thead>
-                <tr className="bg-[#012d1d] text-white">
+                <tr className="bg-[#e05300] text-white">
                   <th className="p-5 text-[9px] font-black uppercase tracking-[0.26em]">Product</th>
                   <th className="p-5 text-[9px] font-black uppercase tracking-[0.26em]">Price</th>
                   <th className="p-5 text-[9px] font-black uppercase tracking-[0.26em]">Availability</th>
@@ -319,7 +454,7 @@ export default function SellerProductsPage() {
                         <p className="mt-1 text-[8px] font-bold uppercase tracking-widest text-[#5f7569]">Stock type: {product.stockType || 'finite'}</p>
                       </td>
                       <td className="p-5">
-                        <span className={`rounded-sm border px-3 py-1 text-[8px] font-black uppercase tracking-widest ${product.inStock === false ? 'border-[#d9b8ad] text-[#7b3f3f]' : 'border-[#80c29a] text-[#1b4332]'}`}>
+                        <span className={`rounded-sm border px-3 py-1 text-[8px] font-black uppercase tracking-widest ${product.inStock === false ? 'border-[#d9b8ad] text-[#7b3f3f]' : 'border-[#80c29a] text-[#ff6b00]'}`}>
                           {product.inStock === false ? 'Out of Stock' : 'In Stock'}
                         </span>
                       </td>
@@ -328,7 +463,7 @@ export default function SellerProductsPage() {
                           <button
                             type="button"
                             onClick={() => openEdit(product)}
-                            className="inline-flex items-center gap-1 rounded-md border border-[#d9e0db] px-3 py-2 text-[9px] font-black uppercase tracking-widest text-[#1b1c1c] transition hover:border-[#1b4332] hover:text-[#1b4332]"
+                            className="inline-flex items-center gap-1 rounded-md border border-[#d9e0db] px-3 py-2 text-[9px] font-black uppercase tracking-widest text-[#1b1c1c] transition hover:border-[#ff6b00] hover:text-[#ff6b00]"
                           >
                             <Edit3 size={13} />
                             Edit
@@ -349,7 +484,7 @@ export default function SellerProductsPage() {
                   <tr>
                     <td colSpan={5} className="p-16 text-center">
                       <p className="text-[12px] font-black uppercase tracking-[0.3em] text-[#5f7569]">No products match this view</p>
-                      <button type="button" onClick={openCreate} className="mt-6 text-[11px] font-black uppercase tracking-widest text-[#1b4332] hover:underline">
+                      <button type="button" onClick={openCreate} className="mt-6 text-[11px] font-black uppercase tracking-widest text-[#ff6b00] hover:underline">
                         Add your first product
                       </button>
                     </td>
@@ -374,142 +509,12 @@ export default function SellerProductsPage() {
           )}
         </section>
 
-        <section className="rounded-lg border border-[#d9e0db] bg-[#012d1d] p-6 text-white shadow-sm">
-          <p className="text-[10px] font-black uppercase tracking-[0.28em] text-[#c1ecd4]">Commercial standards</p>
+        <section className="rounded-lg border border-[#d9e0db] bg-[#e05300] p-6 text-white shadow-sm">
+          <p className="text-[10px] font-black uppercase tracking-[0.28em] text-[#ffedd5]">Commercial standards</p>
           <p className="mt-3 max-w-3xl text-sm leading-6 text-white/75">
             Keep photos clear, archive unavailable products instead of erasing them, and mark Made in Rwanda goods accurately so buyers can trust what they see.
           </p>
         </section>
-
-        {isModalOpen && (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center bg-[#012d1d]/60 p-4 backdrop-blur-sm">
-            <div className="max-h-[92vh] w-full max-w-5xl overflow-hidden rounded-lg border border-[#d9e0db] bg-white shadow-2xl">
-              <div className="flex items-center justify-between border-b border-[#d9e0db] bg-[#012d1d] px-5 py-4 text-white">
-                <div>
-                  <p className="text-[10px] font-black uppercase tracking-[0.28em] text-[#c1ecd4]">Inventory listing</p>
-                  <h2 className="mt-1 text-2xl font-black">{editingProduct ? 'Edit product' : 'Add product'}</h2>
-                </div>
-                <button type="button" onClick={closeModal} className="rounded-md border border-white/20 p-2 text-white/80 transition hover:bg-white hover:text-[#012d1d]" aria-label="Close product editor">
-                  <X size={18} />
-                </button>
-              </div>
-
-              <form onSubmit={handleSubmit} className="max-h-[calc(92vh-88px)] overflow-y-auto p-5 md:p-6">
-                <div className="grid gap-6 lg:grid-cols-[1fr_0.85fr]">
-                  <div className="space-y-4">
-                    <label className="block">
-                      <span className="mb-2 block text-[10px] font-black uppercase tracking-[0.24em] text-[#1b1c1c]">Name</span>
-                      <input required value={formData.name} onChange={event => setFormData({ ...formData, name: event.target.value })} className="w-full rounded-md border border-[#d9e0db] px-4 py-3 text-sm outline-none focus:border-[#1b4332] focus:ring-2 focus:ring-[#c1ecd4]" />
-                    </label>
-
-                    <label className="block">
-                      <span className="mb-2 block text-[10px] font-black uppercase tracking-[0.24em] text-[#1b1c1c]">Description</span>
-                      <textarea required rows={5} value={formData.description} onChange={event => setFormData({ ...formData, description: event.target.value })} className="w-full rounded-md border border-[#d9e0db] px-4 py-3 text-sm outline-none focus:border-[#1b4332] focus:ring-2 focus:ring-[#c1ecd4]" />
-                    </label>
-
-                    <div className="grid gap-4 sm:grid-cols-2">
-                      <label className="block">
-                        <span className="mb-2 block text-[10px] font-black uppercase tracking-[0.24em] text-[#1b1c1c]">Category</span>
-                        <select required value={formData.category} onChange={event => setFormData({ ...formData, category: event.target.value })} className="w-full rounded-md border border-[#d9e0db] px-4 py-3 text-sm outline-none focus:border-[#1b4332]">
-                          <option value="">Select category</option>
-                          {catalogCategories.map(category => <option key={category.id} value={category.id}>{category.label}</option>)}
-                        </select>
-                      </label>
-                      <label className="block">
-                        <span className="mb-2 block text-[10px] font-black uppercase tracking-[0.24em] text-[#1b1c1c]">Price (RWF)</span>
-                        <input required type="number" min="0" value={formData.price} onChange={event => setFormData({ ...formData, price: event.target.value })} className="w-full rounded-md border border-[#d9e0db] px-4 py-3 text-sm outline-none focus:border-[#1b4332]" />
-                      </label>
-                    </div>
-
-                    <div className="grid gap-4 sm:grid-cols-3">
-                      <label className="block">
-                        <span className="mb-2 block text-[10px] font-black uppercase tracking-[0.24em] text-[#1b1c1c]">Stock Type</span>
-                        <select value={formData.stockType} onChange={event => setFormData({ ...formData, stockType: event.target.value as ProductForm['stockType'] })} className="w-full rounded-md border border-[#d9e0db] px-4 py-3 text-sm outline-none focus:border-[#1b4332]">
-                          <option value="finite">Finite</option>
-                          <option value="infinite">Infinite</option>
-                          <option value="on_demand">On Demand</option>
-                        </select>
-                      </label>
-                      <label className="block">
-                        <span className="mb-2 block text-[10px] font-black uppercase tracking-[0.24em] text-[#1b1c1c]">Quantity</span>
-                        <input disabled={formData.stockType !== 'finite'} required={formData.stockType === 'finite'} type="number" min="0" value={formData.stockQuantity} onChange={event => setFormData({ ...formData, stockQuantity: event.target.value })} className="w-full rounded-md border border-[#d9e0db] px-4 py-3 text-sm outline-none disabled:bg-[#f7faf8] focus:border-[#1b4332]" />
-                      </label>
-                      <label className="block">
-                        <span className="mb-2 block text-[10px] font-black uppercase tracking-[0.24em] text-[#1b1c1c]">Unit</span>
-                        <select value={formData.unit} onChange={event => setFormData({ ...formData, unit: event.target.value })} className="w-full rounded-md border border-[#d9e0db] px-4 py-3 text-sm outline-none focus:border-[#1b4332]">
-                          <option value="pcs">Pieces</option>
-                          <option value="kg">Kilograms</option>
-                          <option value="pair">Pairs</option>
-                          <option value="set">Set</option>
-                        </select>
-                      </label>
-                    </div>
-
-                    <label className="block">
-                      <span className="mb-2 block text-[10px] font-black uppercase tracking-[0.24em] text-[#1b1c1c]">Weight (kg)</span>
-                      <input type="number" min="0" step="0.01" value={formData.weight} onChange={event => setFormData({ ...formData, weight: event.target.value })} className="w-full rounded-md border border-[#d9e0db] px-4 py-3 text-sm outline-none focus:border-[#1b4332]" />
-                    </label>
-
-                    {formData.category && (
-                      <CatalogAttributeFields
-                        category={categoryFor(catalogCategories, formData.category)}
-                        attributes={formData.attributes}
-                        onAttributesChange={attributes => setFormData({ ...formData, attributes })}
-                        variants={formData.variants}
-                        onVariantsChange={variants => setFormData({ ...formData, variants })}
-                      />
-                    )}
-                  </div>
-
-                  <div className="space-y-5">
-                    <div>
-                      <p className="mb-2 text-[10px] font-black uppercase tracking-[0.24em] text-[#1b1c1c]">Product images</p>
-                      <div className="grid grid-cols-2 gap-3">
-                        {formData.images.map((image, index) => (
-                          <div key={`${image}-${index}`} className="relative aspect-square overflow-hidden rounded-md border border-[#d9e0db] bg-[#fcf9f8]">
-                            <img src={image} alt={`Product image ${index + 1}`} className="h-full w-full object-cover" />
-                            <button type="button" onClick={() => setFormData({ ...formData, images: formData.images.filter((_, imageIndex) => imageIndex !== index) })} className="absolute right-2 top-2 rounded-md bg-white p-1 text-[#7b3f3f] shadow" aria-label="Remove image">
-                              <X size={14} />
-                            </button>
-                          </div>
-                        ))}
-                        {formData.images.length < 4 && (
-                          <div className="flex aspect-square items-center justify-center rounded-md border border-dashed border-[#b8c7be] bg-[#f7faf8] p-3">
-                            <ImageUpload
-                              service="product"
-                              endpoint="/products/upload-image"
-                              onUploadSuccess={url => setFormData({ ...formData, images: [...formData.images, url] })}
-                            />
-                          </div>
-                        )}
-                      </div>
-                    </div>
-
-                    <div className="grid gap-3 rounded-lg border border-[#d9e0db] bg-[#f7faf8] p-4">
-                      <label className="flex items-center gap-3 text-sm font-bold text-[#1b1c1c]">
-                        <input type="checkbox" className="h-4 w-4 accent-[#1b4332]" checked={formData.isMadeInRwanda} onChange={event => setFormData({ ...formData, isMadeInRwanda: event.target.checked })} />
-                        Made in Rwanda
-                      </label>
-                      <label className="flex items-center gap-3 text-sm font-bold text-[#1b1c1c]">
-                        <input type="checkbox" className="h-4 w-4 accent-[#1b4332]" checked={formData.isNegotiable} onChange={event => setFormData({ ...formData, isNegotiable: event.target.checked })} />
-                        Negotiable product
-                      </label>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="mt-6 flex flex-col-reverse gap-3 border-t border-[#edf1ee] pt-5 sm:flex-row sm:justify-end">
-                  <button type="button" onClick={closeModal} className="rounded-md border border-[#d9e0db] px-5 py-3 text-[10px] font-black uppercase tracking-[0.2em] text-[#405046] transition hover:border-[#1b4332]">
-                    Cancel
-                  </button>
-                  <button type="submit" disabled={isSubmitting} className="rounded-md bg-[#012d1d] px-6 py-3 text-[10px] font-black uppercase tracking-[0.2em] text-white transition hover:bg-[#1b4332] disabled:opacity-50">
-                    {isSubmitting ? 'Saving...' : editingProduct ? 'Save product' : 'Create product'}
-                  </button>
-                </div>
-              </form>
-            </div>
-          </div>
-        )}
       </div>
     </Layout>
   );

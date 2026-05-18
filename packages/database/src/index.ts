@@ -18,6 +18,7 @@ export * from './schemas/ledger-entry.schema';
 export * from './schemas/review.schema';
 export * from './schemas/rider-rejection.schema';
 export * from './schemas/contract.schema';
+export * from './schemas/support-ticket.schema';
 
 // Connection manager
 export const connectDatabase = async (uri: string) => {

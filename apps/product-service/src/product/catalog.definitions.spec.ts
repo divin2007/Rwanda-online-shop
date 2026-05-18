@@ -11,4 +11,22 @@ describe('catalog definitions', () => {
     expect(category.id).toBe('fashion');
     expect(category.variantAxes.map(axis => axis.key)).toEqual(expect.arrayContaining(['size', 'color']));
   });
+
+  it('resolves footwear queries to the shoes taxonomy', () => {
+    const category = resolveCatalogCategory('boots');
+    expect(category.id).toBe('shoes');
+    expect(category.variantAxes.map(axis => axis.key)).toEqual(expect.arrayContaining(['size', 'color']));
+  });
+
+  it('resolves bakery queries to the bakery taxonomy', () => {
+    const category = resolveCatalogCategory('croissant');
+    expect(category.id).toBe('bakery');
+    expect(category.variantAxes.map(axis => axis.key)).toEqual(expect.arrayContaining(['size', 'flavor']));
+  });
+
+  it('resolves hardware queries to the hardware taxonomy', () => {
+    const category = resolveCatalogCategory('screws');
+    expect(category.id).toBe('hardware');
+    expect(category.variantAxes.map(axis => axis.key)).toEqual(expect.arrayContaining(['size', 'color']));
+  });
 });

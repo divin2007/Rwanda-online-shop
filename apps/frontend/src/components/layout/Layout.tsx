@@ -534,11 +534,7 @@ const LayoutContent = ({ children }: LayoutProps) => {
       </div>
 
       {/* Global Cinematic Footer */}
-      {pathname !== '/' && (
-        <div className="rmf-container pb-8 w-full max-w-[1920px] mx-auto px-4 md:px-8 mt-auto">
-          <Footer />
-        </div>
-      )}
+      {pathname !== '/' && <Footer />}
     </div>
   );
 };

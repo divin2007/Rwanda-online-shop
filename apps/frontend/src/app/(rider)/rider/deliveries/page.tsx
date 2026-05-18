@@ -55,8 +55,8 @@ export default function RiderDeliveriesPage() {
       failed: 'bg-[#fff5f3] text-[#7b3f3f] border-[#f1cbc3]',
       assigned: 'bg-blue-100 text-blue-800 border-blue-300',
       picked_up: 'bg-purple-100 text-purple-800 border-purple-300',
-      en_route_to_pickup: 'bg-[#e8f5ed] text-[#1b4332] border-[#c1ecd4]',
-      en_route_to_dropoff: 'bg-[#e8f5ed] text-[#1b4332] border-[#c1ecd4]',
+      en_route_to_pickup: 'bg-[#e8f5ed] text-[#ff6b00] border-[#ffedd5]',
+      en_route_to_dropoff: 'bg-[#e8f5ed] text-[#ff6b00] border-[#ffedd5]',
       pending_handover: 'bg-[#f7faf8] text-[#405046] border-[#dfe7e2]',
     };
     return (
@@ -71,12 +71,12 @@ export default function RiderDeliveriesPage() {
       <div className="mx-auto max-w-6xl space-y-6 animate-reveal pb-20">
         
         {/* ── Header ── */}
-        <div className="overflow-hidden rounded-lg border border-[#0b4b32]/20 bg-[#012d1d] p-6 text-white shadow-sm md:p-8">
+        <div className="overflow-hidden rounded-lg border border-[#0b4b32]/20 bg-[#e05300] p-6 text-white shadow-sm md:p-8">
           <div className="flex flex-col items-start justify-between gap-6 md:flex-row md:items-end">
           <div>
             <div className="mb-2 flex items-center gap-3">
-              <div className="h-2 w-2 rounded-full bg-[#c1ecd4]" />
-              <p className="text-[10px] font-black uppercase tracking-[0.18em] text-[#c1ecd4]">Rider Hub</p>
+              <div className="h-2 w-2 rounded-full bg-[#ffedd5]" />
+              <p className="text-[10px] font-black uppercase tracking-[0.18em] text-[#ffedd5]">Rider Hub</p>
             </div>
             <h1 className="text-3xl font-black leading-none tracking-normal text-white md:text-4xl">My Deliveries</h1>
             <p className="mt-2 max-w-xl text-sm font-semibold leading-6 text-white/65">Track pickups, handovers, earnings, and proof steps from one place.</p>
@@ -89,7 +89,7 @@ export default function RiderDeliveriesPage() {
             </div>
             <div className="rounded-md border border-white/10 bg-white/5 px-4 py-3 text-right">
               <p className="mb-1 text-[9px] font-black uppercase tracking-widest text-white/45">Rating</p>
-              <p className="text-xl font-sans tracking-normal text-[#c1ecd4]">{stats.rating > 0 ? stats.rating.toFixed(1) : 'New'}</p>
+              <p className="text-xl font-sans tracking-normal text-[#ffedd5]">{stats.rating > 0 ? stats.rating.toFixed(1) : 'New'}</p>
             </div>
           </div>
         </div>
@@ -97,10 +97,10 @@ export default function RiderDeliveriesPage() {
         {/* ── Stats Row ── */}
         </div>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div className="rounded-lg bg-white border border-[#e0e0e0] border-l-4 border-l-[#116c4a] p-5 group hover:shadow-md transition-all">
+          <div className="rounded-lg bg-white border border-[#e0e0e0] border-l-4 border-l-[#ea580c] p-5 group hover:shadow-md transition-all">
             <p className="text-[9px] font-black text-[#414844] uppercase tracking-[0.14em] mb-4">Active Deliveries</p>
             <p className="text-3xl font-sans text-[#1b1c1c] tracking-normal">{stats.active}</p>
-            <p className="text-[9px] text-[#1b4332] font-black uppercase tracking-widest mt-2">In progress now</p>
+            <p className="text-[9px] text-[#ff6b00] font-black uppercase tracking-widest mt-2">In progress now</p>
           </div>
           
           <div className="rounded-lg bg-white border border-[#e0e0e0] border-l-4 border-l-[#1b1c1c] p-5 group hover:shadow-md transition-all">
@@ -109,8 +109,8 @@ export default function RiderDeliveriesPage() {
             <p className="text-[9px] text-[#414844] font-black uppercase tracking-widest mt-2 opacity-50">Total deliveries</p>
           </div>
           
-          <div className="rounded-lg bg-[#012d1d] p-5 group shadow-sm">
-            <p className="text-[9px] font-black text-[#1b4332] uppercase tracking-[0.14em] mb-4">Total Earnings</p>
+          <div className="rounded-lg bg-[#e05300] p-5 group shadow-sm">
+            <p className="text-[9px] font-black text-[#ff6b00] uppercase tracking-[0.14em] mb-4">Total Earnings</p>
             <p className="text-3xl font-sans text-white tracking-normal">{stats.earnings.toLocaleString()}</p>
             <p className="text-[9px] text-white/40 font-black uppercase tracking-widest mt-2">RWF earned</p>
           </div>
@@ -122,7 +122,7 @@ export default function RiderDeliveriesPage() {
             <button 
               onClick={() => setFilter('active')}
               className={`flex-1 md:flex-none flex items-center justify-center gap-3 px-8 py-3 text-[10px] font-black uppercase tracking-[0.2em] transition-all ${
-                filter === 'active' ? 'bg-[#012d1d] text-white' : 'bg-[#fcf9f8] text-[#1b1c1c]/40 hover:text-[#1b1c1c] border border-[#e0e0e0]'
+                filter === 'active' ? 'bg-[#e05300] text-white' : 'bg-[#fcf9f8] text-[#1b1c1c]/40 hover:text-[#1b1c1c] border border-[#e0e0e0]'
               }`}
             >
               Active
@@ -130,7 +130,7 @@ export default function RiderDeliveriesPage() {
             <button 
               onClick={() => setFilter('history')}
               className={`flex-1 md:flex-none flex items-center justify-center gap-3 px-8 py-3 text-[10px] font-black uppercase tracking-[0.2em] transition-all ${
-                filter === 'history' ? 'bg-[#012d1d] text-white' : 'bg-[#fcf9f8] text-[#1b1c1c]/40 hover:text-[#1b1c1c] border border-[#e0e0e0]'
+                filter === 'history' ? 'bg-[#e05300] text-white' : 'bg-[#fcf9f8] text-[#1b1c1c]/40 hover:text-[#1b1c1c] border border-[#e0e0e0]'
               }`}
             >
               History
@@ -144,7 +144,7 @@ export default function RiderDeliveriesPage() {
               placeholder="Search deliveries..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full rounded-md pl-12 pr-5 py-3 bg-[#fcf9f8] border border-[#e0e0e0] text-[10px] font-black uppercase tracking-widest focus:border-[#1b4332] outline-none transition-colors"
+              className="w-full rounded-md pl-12 pr-5 py-3 bg-[#fcf9f8] border border-[#e0e0e0] text-[10px] font-black uppercase tracking-widest focus:border-[#ff6b00] outline-none transition-colors"
             />
           </div>
         </div>
@@ -164,7 +164,7 @@ export default function RiderDeliveriesPage() {
                {searchQuery ? 'Try adjusting your search criteria' : 'You have no deliveries in this category'}
              </p>
              {filter === 'active' && !searchQuery && (
-               <Link href="/rider/dashboard" className="bg-[#012d1d] text-white px-5 py-3 text-[10px] font-black uppercase tracking-[0.18em] hover:bg-[#1b4332] transition-all inline-block shadow-lg">
+               <Link href="/rider/dashboard" className="bg-[#e05300] text-white px-5 py-3 text-[10px] font-black uppercase tracking-[0.18em] hover:bg-[#ff6b00] transition-all inline-block shadow-lg">
                   Go to Dashboard
                </Link>
              )}
@@ -172,11 +172,11 @@ export default function RiderDeliveriesPage() {
         ) : (
           <div className="space-y-6">
             {filteredDeliveries.map((delivery: any) => (
-              <div key={delivery._id} className="overflow-hidden rounded-lg bg-white border border-[#e0e0e0] group hover:border-[#1b4332] transition-all shadow-sm">
+              <div key={delivery._id} className="overflow-hidden rounded-lg bg-white border border-[#e0e0e0] group hover:border-[#ff6b00] transition-all shadow-sm">
                 <div className="flex flex-col md:flex-row">
                   
                   {/* Left: Meta Info */}
-                  <div className="md:w-64 p-5 border-b md:border-b-0 md:border-r border-[#e0e0e0] bg-[#fcf9f8]/50 group-hover:bg-[#012d1d]/5 transition-colors">
+                  <div className="md:w-64 p-5 border-b md:border-b-0 md:border-r border-[#e0e0e0] bg-[#fcf9f8]/50 group-hover:bg-[#e05300]/5 transition-colors">
                     <div className="flex items-center gap-3 flex-wrap mb-4">
                        {getStatusBadge(delivery.status)}
                     </div>
@@ -195,13 +195,13 @@ export default function RiderDeliveriesPage() {
                        <div className="flex gap-5 items-start">
                           <div className="w-8 h-8 bg-white border border-[#e0e0e0] flex items-center justify-center flex-shrink-0 text-sm shadow-sm">🏪</div>
                           <div>
-                             <p className="text-[8px] font-black text-[#1b4332] uppercase tracking-widest mb-1">Pickup</p>
+                             <p className="text-[8px] font-black text-[#ff6b00] uppercase tracking-widest mb-1">Pickup</p>
                              <p className="text-sm font-bold text-[#1b1c1c] leading-snug">{delivery.pickup?.address || 'Market Location'}</p>
                           </div>
                        </div>
                        <div className="w-px h-6 bg-[#e0e0e0] ml-4 -my-4" />
                        <div className="flex gap-5 items-start">
-                          <div className="w-8 h-8 bg-[#012d1d] text-white flex items-center justify-center flex-shrink-0 text-sm shadow-sm">🏠</div>
+                          <div className="w-8 h-8 bg-[#e05300] text-white flex items-center justify-center flex-shrink-0 text-sm shadow-sm">🏠</div>
                           <div>
                              <p className="text-[8px] font-black text-[#414844] uppercase tracking-widest mb-1">Drop-off</p>
                              <p className="text-sm font-bold text-[#1b1c1c] leading-snug">{delivery.dropoff?.address || 'Customer Location'}</p>
@@ -213,11 +213,11 @@ export default function RiderDeliveriesPage() {
                        <div className="text-left sm:text-right mb-6 sm:mb-0">
                           <p className="text-[8px] font-black text-[#414844] uppercase tracking-widest mb-1">Earnings</p>
                           <p className="text-3xl font-sans text-[#1b1c1c] tracking-normal">
-                            {delivery.financials?.deliveryFee?.toLocaleString() || '500'} <span className="text-xs not-italic font-sans text-[#1b4332] font-black uppercase">RWF</span>
+                            {delivery.financials?.deliveryFee?.toLocaleString() || '500'} <span className="text-xs not-italic font-sans text-[#ff6b00] font-black uppercase">RWF</span>
                           </p>
                        </div>
                        <Link href={`/orders/${delivery.orderId}/tracking`} className="w-full sm:w-auto">
-                         <button className="w-full sm:w-auto bg-[#1b4332] hover:bg-[#012d1d] text-white font-black uppercase tracking-[0.14em] text-[10px] transition-all py-3 px-8 shadow-md">
+                         <button className="w-full sm:w-auto bg-[#ff6b00] hover:bg-[#e05300] text-white font-black uppercase tracking-[0.14em] text-[10px] transition-all py-3 px-8 shadow-md">
                             Track Delivery →
                          </button>
                        </Link>

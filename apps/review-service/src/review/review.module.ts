@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
 import { reviewSchema, sellerProfileSchema, riderProfileSchema, marketSchema, productSchema } from '@rmf/database';
+import { AuthGuardModule } from '@rmf/auth';
 import { ReviewService } from './review.service';
 import { ReviewController } from './review.controller';
 
@@ -13,6 +14,7 @@ import { ReviewController } from './review.controller';
       { name: 'Market', schema: marketSchema },
       { name: 'Product', schema: productSchema }
     ]),
+    AuthGuardModule.forRoot(),
   ],
   providers: [ReviewService],
   controllers: [ReviewController],

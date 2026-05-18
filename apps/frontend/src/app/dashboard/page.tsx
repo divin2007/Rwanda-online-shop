@@ -45,21 +45,21 @@ export default function DashboardPage() {
             <div className="relative z-10 max-w-2xl">
               <div className="flex items-center gap-4 mb-8">
                  <div className="w-10 h-1 bg-accent-premium rounded-full"></div>
-                 <p className="text-[11px] font-bold text-primary uppercase tracking-widest">Welcome Back</p>
+                 <p className="text-[11px] font-bold text-primary uppercase tracking-widest">{t('dashboard_welcome')}</p>
               </div>
               
               <h1 className="text-5xl md:text-6xl font-bold mb-8 leading-[1.1] text-text-primary tracking-tight">
-                Hello, <br />
-                <span className="text-primary not-italic">{user?.fullName?.split(' ')[0] || 'Shopper'}.</span>
+                {t('hello')}, <br />
+                <span className="text-primary not-italic">{user?.fullName?.split(' ')[0] || t('shopper')}.</span>
               </h1>
               
               <p className="text-lg text-text-muted font-medium leading-relaxed mb-12 border-l-[3px] border-border-light pl-6 max-w-xl">
-                You have {orders.length} active order{orders.length !== 1 ? 's' : ''} and {wishlist.length} saved item{wishlist.length !== 1 ? 's' : ''} in your wishlist.
+                {t('you_have_active_orders', { ordersCount: orders.length, wishlistCount: wishlist.length }).replace('{ordersCount}', orders.length).replace('{wishlistCount}', wishlist.length)}
               </p>
               
               <div className="flex flex-wrap gap-4">
-                <Link href="/orders" className="rmf-btn-primary rounded-xl px-8 py-3">Track Orders</Link>
-                <Link href="/markets" className="rmf-btn-outline rounded-xl px-8 py-3 bg-white hover:bg-background-surface">Browse Markets</Link>
+                <Link href="/orders" className="rmf-btn-primary rounded-xl px-8 py-3">{t('track_orders')}</Link>
+                <Link href="/markets" className="rmf-btn-outline rounded-xl px-8 py-3 bg-white hover:bg-background-surface">{t('browse_markets')}</Link>
               </div>
             </div>
           </div>
@@ -69,7 +69,7 @@ export default function DashboardPage() {
             <div className="relative z-10 flex flex-col h-full justify-between gap-16">
               <div className="flex justify-between items-start">
                 <div>
-                  <p className="text-[10px] font-bold uppercase tracking-widest text-accent-premium mb-4">My Wallet</p>
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-accent-premium mb-4">{t('my_wallet')}</p>
                   <div className="flex items-baseline gap-3">
                     <h2 className="text-4xl lg:text-5xl font-bold tracking-tight drop-shadow-md">{wallet.balance?.toLocaleString() || 0}</h2>
                     <span className="text-lg font-bold text-accent-premium uppercase tracking-widest">RWF</span>
@@ -81,14 +81,14 @@ export default function DashboardPage() {
               <div className="space-y-6 pt-8 border-t border-white/10">
                 <div className="flex justify-between items-center">
                   <div className="text-[10px] font-bold text-white/50 uppercase tracking-widest">
-                    Account Status
+                    {t('account_status')}
                   </div>
                   <div className="flex items-center gap-2 bg-white/5 px-3 py-1.5 rounded-full border border-white/10">
                      <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse shadow-[0_0_8px_rgba(34,197,94,0.6)]"></div>
-                     <span className="text-[10px] font-bold text-white uppercase tracking-widest">Active</span>
+                     <span className="text-[10px] font-bold text-white uppercase tracking-widest">{t('active')}</span>
                   </div>
                 </div>
-                <Link href="/wallet" className="flex min-h-[3.5rem] w-full items-center justify-center gap-2 rounded-xl bg-white px-6 text-xs font-bold uppercase tracking-widest text-primary shadow-md transition-all duration-300 hover:-translate-y-1 hover:bg-white/90">Manage Wallet</Link>
+                <Link href="/wallet" className="flex min-h-[3.5rem] w-full items-center justify-center gap-2 rounded-xl bg-white px-6 text-xs font-bold uppercase tracking-widest text-primary shadow-md transition-all duration-300 hover:-translate-y-1 hover:bg-white/90">{t('manage_wallet')}</Link>
               </div>
             </div>
             {/* Visual Decoration */}
@@ -101,10 +101,10 @@ export default function DashboardPage() {
            <div className="lg:col-span-3">
               <div className="flex justify-between items-end mb-10 border-b border-border-light pb-6">
                 <div>
-                  <p className="text-[11px] font-bold text-primary uppercase tracking-widest mb-2">In Progress</p>
-                  <h2 className="text-3xl font-bold text-text-primary tracking-tight">My Orders</h2>
+                  <p className="text-[11px] font-bold text-primary uppercase tracking-widest mb-2">{t('dashboard_in_progress')}</p>
+                  <h2 className="text-3xl font-bold text-text-primary tracking-tight">{t('orders_title')}</h2>
                 </div>
-                <Link href="/orders" className="text-[10px] font-bold uppercase tracking-widest text-primary hover:text-primary/70 transition-colors border-b-2 border-transparent hover:border-accent-premium pb-1">View All →</Link>
+                <Link href="/orders" className="text-[10px] font-bold uppercase tracking-widest text-primary hover:text-primary/70 transition-colors border-b-2 border-transparent hover:border-accent-premium pb-1">{t('view_all')} →</Link>
               </div>
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -123,23 +123,23 @@ export default function DashboardPage() {
                           <img src={order.products?.[0]?.images?.[0] || 'https://images.unsplash.com/photo-1590073844006-33379778ae09'} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" alt={order.products?.[0]?.name} />
                        </div>
                        <div className="flex-grow pt-2">
-                          <p className="text-[9px] font-bold text-accent-premium uppercase tracking-widest mb-1">Order #{order._id.substring(0,8).toUpperCase()}</p>
-                          <h4 className="text-xl font-bold text-text-primary leading-tight tracking-tight line-clamp-2 transition-colors group-hover:text-primary">{order.products?.[0]?.name || 'Order Item'}</h4>
+                          <p className="text-[9px] font-bold text-accent-premium uppercase tracking-widest mb-1">{t('order')} #{order._id.substring(0,8).toUpperCase()}</p>
+                          <h4 className="text-xl font-bold text-text-primary leading-tight tracking-tight line-clamp-2 transition-colors group-hover:text-primary">{order.products?.[0]?.name || t('order_item')}</h4>
                        </div>
                     </div>
                     
                     <div className="flex justify-between items-end pt-5 border-t border-border-light">
                       <div>
-                        <p className="text-[10px] font-bold text-text-primary uppercase tracking-widest">{order.seller?.marketName || 'Market'}</p>
-                        <p className="text-[9px] text-text-muted font-medium tracking-widest mt-1">Placed: {new Date(order.createdAt).toLocaleDateString()}</p>
+                        <p className="text-[10px] font-bold text-text-primary uppercase tracking-widest">{order.seller?.marketName || t('market')}</p>
+                        <p className="text-[9px] text-text-muted font-medium tracking-widest mt-1">{t('placed')}: {new Date(order.createdAt).toLocaleDateString()}</p>
                       </div>
-                      <Link href={`/orders/${order._id}/tracking`} className="text-xs font-bold text-primary uppercase tracking-widest group-hover:underline transition-all">Track →</Link>
+                      <Link href={`/orders/${order._id}/tracking`} className="text-xs font-bold text-primary uppercase tracking-widest group-hover:underline transition-all">{t('track')} →</Link>
                     </div>
                   </div>
                 )) : (
                   <div className="md:col-span-2 border border-dashed border-border-light rounded-2xl bg-white py-24 text-center shadow-sm">
-                    <p className="text-xs font-bold text-text-muted uppercase tracking-widest">No active orders</p>
-                    <Link href="/markets" className="mt-6 inline-flex min-h-[2.5rem] items-center justify-center rounded-xl bg-primary/5 px-6 text-xs font-bold uppercase tracking-widest text-primary hover:bg-primary/10 transition-all">+ Start Shopping</Link>
+                    <p className="text-xs font-bold text-text-muted uppercase tracking-widest">{t('no_active_orders')}</p>
+                    <Link href="/markets" className="mt-6 inline-flex min-h-[2.5rem] items-center justify-center rounded-xl bg-primary/5 px-6 text-xs font-bold uppercase tracking-widest text-primary hover:bg-primary/10 transition-all">+ {t('start_shopping')}</Link>
                   </div>
                 )}
               </div>
@@ -148,7 +148,7 @@ export default function DashboardPage() {
            {/* Activity Sidebar */}
            <div className="bg-white border border-border-light rounded-2xl p-8 shadow-sm">
               <div className="flex justify-between items-center mb-8 border-b border-border-light pb-4">
-                <h3 className="text-xl font-bold text-text-primary tracking-tight">Recent Activity</h3>
+                <h3 className="text-xl font-bold text-text-primary tracking-tight">{t('recent_activity')}</h3>
                 <span className="text-xl opacity-40 text-primary">🕒</span>
               </div>
               <div className="space-y-6">
@@ -158,7 +158,7 @@ export default function DashboardPage() {
                       {act.type === 'deposit' ? '📈' : '🛍️'}
                     </div>
                     <div className="flex-grow pt-0.5">
-                      <p className="text-[10px] font-bold uppercase tracking-widest text-text-primary truncate max-w-[150px]">{act.description || 'Transaction'}</p>
+                      <p className="text-[10px] font-bold uppercase tracking-widest text-text-primary truncate max-w-[150px]">{act.description || t('transaction')}</p>
                       <p className="text-[9px] text-text-muted font-medium tracking-widest mt-0.5">{new Date(act.createdAt).toLocaleDateString()}</p>
                       <p className={`text-xs font-bold mt-1.5 ${act.type === 'deposit' ? 'text-green-600' : 'text-primary'}`}>
                         {act.type === 'deposit' ? '+' : '-'} {act.amount?.toLocaleString()} RWF
@@ -166,11 +166,11 @@ export default function DashboardPage() {
                     </div>
                   </div>
                 )) : (
-                  <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest py-10 text-center bg-background-surface rounded-xl border border-dashed border-border-light">No activity yet</p>
+                  <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest py-10 text-center bg-background-surface rounded-xl border border-dashed border-border-light">{t('no_activity_yet')}</p>
                 )}
               </div>
               <Link href="/wallet" className="block w-full text-center mt-8 text-[10px] font-bold uppercase tracking-widest text-primary hover:text-primary/70 transition-colors pt-6 border-t border-border-light">
-                View All Transactions
+                {t('view_all_transactions')}
               </Link>
            </div>
         </div>
@@ -180,10 +180,10 @@ export default function DashboardPage() {
            <div className="px-4 md:px-8">
               <div className="flex justify-between items-end mb-12">
                 <div>
-                  <p className="text-[11px] font-bold text-primary uppercase tracking-widest mb-2">Saved Items</p>
-                  <h2 className="text-3xl font-bold text-text-primary tracking-tight">My Wishlist</h2>
+                  <p className="text-[11px] font-bold text-primary uppercase tracking-widest mb-2">{t('saved_items')}</p>
+                  <h2 className="text-3xl font-bold text-text-primary tracking-tight">{t('my_wishlist')}</h2>
                 </div>
-                <Link href="/wishlist" className="text-[10px] font-bold uppercase tracking-widest text-primary hover:text-primary/70 transition-colors border-b-2 border-transparent hover:border-accent-premium pb-1">View All →</Link>
+                <Link href="/wishlist" className="text-[10px] font-bold uppercase tracking-widest text-primary hover:text-primary/70 transition-colors border-b-2 border-transparent hover:border-accent-premium pb-1">{t('view_all')} →</Link>
               </div>
               
               <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
@@ -193,24 +193,22 @@ export default function DashboardPage() {
                       <img src={item.images?.[0]} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" alt={item.name} />
                       <div className="absolute inset-0 bg-primary/0 group-hover:bg-primary/5 transition-colors"></div>
                     </div>
-                    <p className="text-[9px] font-bold text-accent-premium uppercase tracking-widest mb-1.5 px-1">{item.category || 'Product'}</p>
+                    <p className="text-[9px] font-bold text-accent-premium uppercase tracking-widest mb-1.5 px-1">{item.category || t('product')}</p>
                     <h5 className="text-base font-bold text-text-primary tracking-tight line-clamp-1 px-1 transition-colors group-hover:text-primary">{item.name}</h5>
                   </Link>
                 )) : (
                   <div className="col-span-4 py-16 border border-dashed border-border-light rounded-2xl bg-white text-center shadow-sm">
-                     <p className="text-xs font-bold text-text-muted uppercase tracking-widest">Your wishlist is empty</p>
+                     <p className="text-xs font-bold text-text-muted uppercase tracking-widest">{t('wishlist_empty_title')}</p>
                   </div>
                 )}
               </div>
            </div>
-        </section>
-
-        {/* Recommended Products */}
-        <section className="text-center pt-8">
+           </section>
+         <section className="text-center pt-8">
            <div className="max-w-2xl mx-auto mb-16">
-              <p className="text-[11px] font-bold text-primary uppercase tracking-widest mb-3">You Might Like</p>
-              <h2 className="text-4xl font-bold text-text-primary tracking-tight">Recommended for You</h2>
-              <p className="text-base text-text-muted font-medium mt-4">Products picked based on what's popular in your area.</p>
+              <p className="text-[11px] font-bold text-primary uppercase tracking-widest mb-3">{t('you_might_like')}</p>
+              <h2 className="text-4xl font-bold text-text-primary tracking-tight">{t('recommended_for_you')}</h2>
+              <p className="text-base text-text-muted font-medium mt-4">{t('products_picked_based_on_popular')}</p>
            </div>
            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6 text-left">
              {recommended.map((prod: any) => (
@@ -222,7 +220,7 @@ export default function DashboardPage() {
                  <div className="flex-grow flex flex-col justify-between px-1">
                    <h4 className="text-lg font-bold text-text-primary mb-2 leading-tight tracking-tight line-clamp-2 group-hover:text-primary transition-colors">{prod.name}</h4>
                    <div className="flex justify-between items-center mt-2 pt-2 border-t border-border-light/50">
-                      <p className="text-[9px] font-bold text-text-muted uppercase tracking-widest truncate max-w-[50%]">{prod.category || 'Product'}</p>
+                      <p className="text-[9px] font-bold text-text-muted uppercase tracking-widest truncate max-w-[50%]">{prod.category || t('product')}</p>
                       <p className="text-sm font-bold text-text-primary">{prod.price?.toLocaleString()} <span className="text-[9px] uppercase font-bold text-primary tracking-widest ml-1">RWF</span></p>
                    </div>
                  </div>

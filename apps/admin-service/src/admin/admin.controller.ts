@@ -1,12 +1,16 @@
-import { Controller, Get, Query, Param } from '@nestjs/common';
+import { Controller, Get, Query, Param, Patch, Body, Req, UseGuards } from '@nestjs/common';
 import { AdminService } from './admin.service';
-import { Roles } from '@rmf/auth';
+import { Roles, JwtAuthGuard } from '@rmf/auth';
 import { UserRole } from '@rmf/shared-types';
 
 @Controller()
 export class AdminController {
   constructor(private readonly adminService: AdminService) {}
 
+  // FIX [ADMIN-SUMMARY]: Was unauthenticated — platform financial summary was public.
+  // Now requires ADMIN role.
+  @UseGuards(JwtAuthGuard)
+  @Roles(UserRole.ADMIN)
   @Get('analytics/summary')
   async getSummaryAnalytics() {
     const stats = await this.adminService.getSummaryAnalytics();
@@ -74,5 +78,24 @@ export class AdminController {
   async getSellerDashboardAnalytics(@Param('id') id: string) {
     const analytics = await this.adminService.getAnalyticsDashboard(id);
     return { success: true, data: analytics };
+  }
+
+  @Get('admin/support')
+  @Roles(UserRole.ADMIN)
+  async getSupportTickets() {
+    const tickets = await this.adminService.getSupportTickets();
+    return { success: true, data: tickets };
+  }
+
+  @Patch('admin/support/:id')
+  @Roles(UserRole.ADMIN)
+  async updateSupportTicket(
+    @Param('id') id: string,
+    @Body('status') status: string,
+    @Req() req: any,
+  ) {
+    const adminId = req.user?.userId;
+    const ticket = await this.adminService.updateSupportTicketStatus(id, status, adminId);
+    return { success: true, data: ticket };
   }
 }

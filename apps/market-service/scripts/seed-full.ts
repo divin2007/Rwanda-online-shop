@@ -1,9 +1,24 @@
 import mongoose from 'mongoose';
-import * as dotenv from 'dotenv';
+import { existsSync, readFileSync } from 'fs';
 import { resolve } from 'path';
 
 // Load env from root
-dotenv.config({ path: resolve(__dirname, '../../../../.env') });
+const envPath = resolve(__dirname, '../../../../.env');
+if (existsSync(envPath)) {
+  const content = readFileSync(envPath, 'utf-8');
+  content.split(/\r?\n/).forEach(line => {
+    line = line.trim();
+    if (!line || line.startsWith('#')) return;
+    const eqIdx = line.indexOf('=');
+    if (eqIdx === -1) return;
+    const key = line.slice(0, eqIdx).trim();
+    let val = line.slice(eqIdx + 1).trim();
+    if ((val.startsWith('"') && val.endsWith('"')) || (val.startsWith("'") && val.endsWith("'"))) {
+      val = val.slice(1, -1);
+    }
+    process.env[key] = val;
+  });
+}
 
 const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/market_rwanda';
 
@@ -13,6 +28,10 @@ async function seed() {
   try {
     await mongoose.connect(MONGODB_URI);
     console.log('✅ Connected to Deployment Database');
+
+    console.log('🧹 Wiping existing database first...');
+    await mongoose.connection.dropDatabase();
+    console.log('✅ Database cleared completely');
 
     // Define Schemas (Inline to avoid complex imports in scratch script)
     const marketSchema = new mongoose.Schema({

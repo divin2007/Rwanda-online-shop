@@ -1,6 +1,6 @@
 'use client';
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import React, { useEffect, useState, useMemo, Suspense } from 'react';
+import React, { useEffect, useState, useMemo, Suspense, useRef } from 'react';
 import { useSearchParams } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import { Layout } from '@/components/layout/Layout';
@@ -9,7 +9,7 @@ import { ProductCard } from '@/components/ui/ProductCard';
 import { useApi } from '@/hooks/useApi';
 import { marketApi, productApi } from '@/lib/api';
 import { useLanguage } from '@/context/LanguageContext';
-import { MapPin, PackageCheck, Search, ShieldCheck, SlidersHorizontal, Sparkles, WifiOff } from 'lucide-react';
+import { MapPin, PackageCheck, Search, ShieldCheck, SlidersHorizontal, Sparkles, WifiOff, Clock, TrendingUp, Star, BadgePercent } from 'lucide-react';
 
 const RiderMap = dynamic(() => import('@/components/ui/RiderMap').then(mod => mod.RiderMap), {
   ssr: false,
@@ -74,39 +74,6 @@ interface Product {
     promotedPrice: number;
   };
 }
-
-const previewMarkets: Market[] = [
-  {
-    _id: 'preview-kimironko',
-    name: 'Kimironko Market',
-    description: 'Fresh produce, pantry essentials, and verified local sellers.',
-    location: { address: 'Kigali' },
-    image: 'https://images.unsplash.com/photo-1488459716781-31db52582fe9?auto=format&fit=crop&q=80&w=900',
-    totalSellers: 45,
-    activeProducts: 180,
-    slug: 'kimironko-market',
-  },
-  {
-    _id: 'preview-nyabugogo',
-    name: 'Nyabugogo Market',
-    description: 'Everyday household goods and delivery-ready orders.',
-    location: { address: 'Kigali' },
-    image: 'https://images.unsplash.com/photo-1506617564039-2f3b650b7010?auto=format&fit=crop&q=80&w=900',
-    totalSellers: 32,
-    activeProducts: 120,
-    slug: 'nyabugogo-market',
-  },
-  {
-    _id: 'preview-artisan',
-    name: 'Local Artisan Shops',
-    description: 'Made in Rwanda goods from verified local makers.',
-    location: { address: 'Rwanda' },
-    image: 'https://images.unsplash.com/photo-1516594798947-e65505dbb29d?auto=format&fit=crop&q=80&w=900',
-    totalSellers: 28,
-    activeProducts: 90,
-    slug: 'local-artisan-shops',
-  },
-];
 
 const catalogShortcuts = [
   { label: 'Made in Rwanda', value: 'Made in Rwanda' },
@@ -239,6 +206,7 @@ function MarketsContent() {
   }, [matchingProducts]);
   const hasSearch = Boolean(searchQuery.trim());
   const madeInRwandaIntent = isMadeInRwandaSearch(searchQuery);
+  const hasProductFiltersActive = hasSearch || madeInRwandaIntent || selectedProductCategory !== 'all' || Object.keys(attributeFilters).length > 0 || Boolean(priceRange.min) || Boolean(priceRange.max);
   const facets = facetsData || { categories: [], attributes: [] };
   const activeAttributeGroups = useMemo(
     () => (facets.attributes || []).filter((group: any) => selectedProductCategory === 'all' || group.id === selectedProductCategory),
@@ -257,23 +225,21 @@ function MarketsContent() {
   const filteredMarkets = useMemo(() => {
     let results = allMarkets;
     
-    // 1. Search Query (Fuzzy)
-    if (searchQuery.trim()) {
+    // 1. Search Query & Product Filters (Fuzzy + Exact match check)
+    if (hasProductFiltersActive) {
       results = results.filter((market: Market) => {
-        const nameSim = getSimilarity(market.name, searchQuery);
-        const descSim = market.description ? getSimilarity(market.description, searchQuery) : 0;
-        const addrSim = market.location?.address ? getSimilarity(market.location.address, searchQuery) : 0;
-        const productMatch = productMarketIds.has(market._id);
-        return (nameSim > 0.3 || descSim > 0.3 || addrSim > 0.3 || productMatch);
+        if (searchQuery.trim()) {
+          const nameSim = getSimilarity(market.name, searchQuery);
+          const descSim = market.description ? getSimilarity(market.description, searchQuery) : 0;
+          const addrSim = market.location?.address ? getSimilarity(market.location.address, searchQuery) : 0;
+          const productMatch = productMarketIds.has(market._id);
+          return (nameSim > 0.3 || descSim > 0.3 || addrSim > 0.3 || productMatch);
+        }
+        return productMarketIds.has(market._id);
       });
     }
 
-    // 2. Filter markets by matching products in price range
-    if (priceRange.min || priceRange.max) {
-      results = results.filter((market: Market) => productMarketIds.has(market._id));
-    }
-
-    // 3. Market Type
+    // 2. Market Type
     if (selectedCategory !== 'ALL') {
       const typeMap: Record<string, string> = {
         'INDIVIDUAL': 'individual',
@@ -291,38 +257,211 @@ function MarketsContent() {
     }
 
     return results;
-  }, [allMarkets, hasCoordinateSearch, productMarketIds, requestedLat, requestedLng, searchQuery, selectedCategory, priceRange]);
+  }, [allMarkets, hasCoordinateSearch, productMarketIds, requestedLat, requestedLng, searchQuery, selectedCategory, hasProductFiltersActive]);
 
   const liveDataUnavailable = Boolean(error);
   const productDataUnavailable = Boolean(productsError);
-  const marketsToRender = liveDataUnavailable ? previewMarkets : filteredMarkets;
-  const showCatalogResults = hasSearch || madeInRwandaIntent || Boolean(priceRange.min) || Boolean(priceRange.max);
+  const marketsToRender = filteredMarkets;
+  const showCatalogResults = hasProductFiltersActive;
+
+  const promotionalMarketIds = useMemo(() => {
+    const ids = new Set<string>();
+    (Array.isArray(productsData) ? productsData : []).forEach(product => {
+      if (product.promotion && (product.promotion.discount > 0 || product.promotion.promotedPrice > 0)) {
+        const marketId = getProductMarketId(product);
+        if (marketId) ids.add(marketId);
+      }
+    });
+    return ids;
+  }, [productsData]);
 
   // Derived market categories for shelves from actual DB data
-  const newMarkets = useMemo(() => [...marketsToRender].sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime()).slice(0, 6), [marketsToRender]);
-  const topSellersMarkets = useMemo(() => [...marketsToRender].sort((a, b) => (b.totalOrders || 0) - (a.totalOrders || 0)).slice(0, 6), [marketsToRender]);
-  const topRatedMarkets = useMemo(() => [...marketsToRender].sort((a, b) => {
-    const aScore = (a.rating || 0) + (a.productRatingSum || 0);
-    const bScore = (b.rating || 0) + (b.productRatingSum || 0);
-    return bScore - aScore;
-  }).slice(0, 6), [marketsToRender]);
-  const promotionalMarkets = useMemo(() => [...marketsToRender].sort(() => Math.random() - 0.5).slice(0, 6), [marketsToRender]);
-
-  const MarketShelf = ({ title, description, markets }: { title: string, description: string, markets: Market[] }) => (
-    <div className="space-y-4">
-      <div>
-        <h3 className="text-xl font-bold tracking-tight text-text-primary">{title}</h3>
-        <p className="text-sm font-medium text-text-muted mt-1">{description}</p>
-      </div>
-      <div className="flex gap-6 overflow-x-auto pb-4 scrollbar-hide snap-x">
-        {markets.map((market, idx) => (
-          <div key={`${market._id}-${idx}`} className="min-w-[280px] max-w-[300px] flex-shrink-0 snap-start">
-            <MarketCard market={market} />
-          </div>
-        ))}
-      </div>
-    </div>
+  const newMarkets = useMemo(
+    () => [...marketsToRender]
+      .sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime())
+      .slice(0, 6),
+    [marketsToRender]
   );
+  const topSellersMarkets = useMemo(
+    () => [...marketsToRender]
+      .filter(m => (m.totalOrders || 0) > 0)
+      .sort((a, b) => (b.totalOrders || 0) - (a.totalOrders || 0))
+      .slice(0, 6),
+    [marketsToRender]
+  );
+  const topRatedMarkets = useMemo(
+    () => [...marketsToRender]
+      .filter(m => (m.rating || 0) > 0 || (m.productRatingSum || 0) > 0)
+      .sort((a, b) => {
+        const aScore = (a.rating || 0) + (a.productRatingSum || 0);
+        const bScore = (b.rating || 0) + (b.productRatingSum || 0);
+        return bScore - aScore;
+      })
+      .slice(0, 6),
+    [marketsToRender]
+  );
+  const promotionalMarkets = useMemo(
+    () => [...marketsToRender]
+      .filter(m => promotionalMarketIds.has(m._id))
+      .slice(0, 6),
+    [marketsToRender, promotionalMarketIds]
+  );
+
+  // Helper to translate shortcut labels dynamically
+  const getShortcutLabel = (value: string) => {
+    switch (value) {
+      case 'Made in Rwanda': return t('made_in_rwanda');
+      case 'Food': return t('category_food');
+      case 'Crafts': return t('category_crafts');
+      case 'Textiles': return t('category_textiles');
+      default: return value;
+    }
+  };
+
+  const MarketShelf = ({ title, description, markets, isFullWidth = false }: { title: string, description: string, markets: Market[], isFullWidth?: boolean }) => {
+    const containerRef = useRef<HTMLDivElement>(null);
+
+    const theme = useMemo(() => {
+      if (isFullWidth) {
+        return {
+          icon: <BadgePercent className="text-white shrink-0 animate-bounce" size={26} />,
+          bg: 'bg-primary text-white relative overflow-hidden',
+          border: 'border-2 border-primary shadow-xl shadow-primary/10',
+          badge: 'bg-white/20 text-white border border-white/30 backdrop-blur-md font-black',
+          glow: 'hover:scale-[1.01] hover:shadow-primary/20',
+          textTitle: 'text-white',
+          textDesc: 'text-white/90 leading-relaxed text-sm font-semibold max-w-xl'
+        };
+      }
+      switch (title) {
+        case 'New Markets':
+        case 'Masoko Mashya':
+        case 'Nouveaux Marchés':
+          return {
+            icon: <Clock className="text-orange-500 animate-pulse shrink-0" size={22} />,
+            bg: 'bg-white',
+            border: 'border-2 border-orange-300 shadow-md shadow-orange-500/5',
+            badge: 'bg-orange-100 text-orange-800 border border-orange-200',
+            glow: 'hover:border-orange-400 hover:shadow-orange-500/10',
+            textTitle: 'text-text-primary',
+            textDesc: 'text-sm font-semibold text-text-muted leading-relaxed max-w-sm'
+          };
+        case 'Most Bought From':
+        case 'Ahabitswe cyane':
+        case 'Les Plus Achetés':
+          return {
+            icon: <TrendingUp className="text-red-500 shrink-0" size={22} />,
+            bg: 'bg-white',
+            border: 'border-2 border-red-300 shadow-md shadow-red-500/5',
+            badge: 'bg-red-100 text-red-800 border border-red-200',
+            glow: 'hover:border-red-400 hover:shadow-red-500/10',
+            textTitle: 'text-text-primary',
+            textDesc: 'text-sm font-semibold text-text-muted leading-relaxed max-w-sm'
+          };
+        case 'Most Reviewed':
+        case 'Ayashimagijwe cyane':
+        case 'Les Plus Évalués':
+          return {
+            icon: <Star className="text-amber-500 fill-amber-500 shrink-0 animate-bounce" size={22} />,
+            bg: 'bg-white',
+            border: 'border-2 border-amber-300 shadow-md shadow-amber-500/5',
+            badge: 'bg-amber-100 text-amber-800 border border-amber-200',
+            glow: 'hover:border-amber-400 hover:shadow-amber-500/10',
+            textTitle: 'text-text-primary',
+            textDesc: 'text-sm font-semibold text-text-muted leading-relaxed max-w-sm'
+          };
+        default:
+          return {
+            icon: <Sparkles className="text-primary shrink-0" size={22} />,
+            bg: 'bg-white',
+            border: 'border-2 border-border-light shadow-sm',
+            badge: 'bg-primary-light text-primary-dark border border-primary/20',
+            glow: 'hover:border-primary hover:shadow-primary/10',
+            textTitle: 'text-text-primary',
+            textDesc: 'text-sm font-semibold text-text-muted leading-relaxed max-w-sm'
+          };
+      }
+    }, [title, isFullWidth]);
+
+    useEffect(() => {
+      const container = containerRef.current;
+      if (!container || markets.length <= 1) return;
+
+      let animationFrameId: number;
+      let scrollSpeed = 0.4;
+      let direction = 1;
+
+      const animate = () => {
+        if (!container) return;
+        container.scrollLeft += scrollSpeed * direction;
+
+        const maxScroll = container.scrollWidth - container.clientWidth;
+        if (container.scrollLeft >= maxScroll - 1) {
+          direction = -1;
+        } else if (container.scrollLeft <= 1) {
+          direction = 1;
+        }
+        animationFrameId = requestAnimationFrame(animate);
+      };
+
+      let isPaused = false;
+      const handleMouseEnter = () => {
+        isPaused = true;
+        cancelAnimationFrame(animationFrameId);
+      };
+      const handleMouseLeave = () => {
+        isPaused = false;
+        animationFrameId = requestAnimationFrame(animate);
+      };
+
+      container.addEventListener('mouseenter', handleMouseEnter);
+      container.addEventListener('mouseleave', handleMouseLeave);
+
+      animationFrameId = requestAnimationFrame(animate);
+
+      return () => {
+        cancelAnimationFrame(animationFrameId);
+        container.removeEventListener('mouseenter', handleMouseEnter);
+        container.removeEventListener('mouseleave', handleMouseLeave);
+      };
+    }, [markets]);
+
+    return (
+      <div className={`space-y-5 rounded-3xl p-8 transition-all duration-500 ${theme.bg} ${theme.border} ${theme.glow}`}>
+        <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
+          <div className="space-y-1.5">
+            <div className="flex items-center gap-2.5">
+              {theme.icon}
+              <h3 className={`text-2xl sm:text-3xl font-extrabold tracking-tight ${theme.textTitle} flex items-center gap-2`}>
+                {title}
+                {isFullWidth && (
+                  <span className="inline-flex items-center gap-1 rounded-md bg-white/20 px-2.5 py-0.5 text-xs font-black uppercase tracking-wider text-white border border-white/20 backdrop-blur-sm animate-pulse">
+                    🔥 {t('special_deals')}
+                  </span>
+                )}
+              </h3>
+            </div>
+            <p className={theme.textDesc}>{description}</p>
+          </div>
+          <span className={`self-start rounded-full px-3.5 py-1 text-xs font-black uppercase tracking-wider ${theme.badge}`}>
+            {markets.length} {markets.length === 1 ? t('market') : t('markets_plural')}
+          </span>
+        </div>
+        <div 
+          ref={containerRef}
+          className={`flex gap-6 overflow-x-auto pb-4 snap-x scroll-smooth cursor-grab active:cursor-grabbing border-t pt-5 ${
+            isFullWidth ? 'border-white/20 white-scrollbar' : 'scrollbar-hide border-border-light/40'
+          }`}
+        >
+          {markets.map((market, idx) => (
+            <div key={`${market._id}-${idx}`} className="min-w-[240px] max-w-[255px] flex-shrink-0 snap-start transition-all duration-300 hover:scale-[1.03] hover:-translate-y-1">
+              <MarketCard market={market} isCompact={true} />
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  };
 
   return (
     <Layout>
@@ -332,20 +471,20 @@ function MarketsContent() {
             <div>
               <div className="mb-6 inline-flex items-center gap-2 rounded-full bg-white/10 px-4 py-2 text-sm font-bold tracking-wide text-primary-light backdrop-blur-md border border-white/10">
                 <ShieldCheck size={18} className="text-accent-premium" />
-                Verified local markets
+                {t('verified_local_markets')}
               </div>
               <h1 className="max-w-4xl text-4xl font-bold leading-[1.1] tracking-tight text-white md:text-6xl">
-                Find a trusted market <span className="text-accent-premium">before</span> you order.
+                {t('find_trusted_market_before')}
               </h1>
               <p className="mt-6 max-w-2xl text-base leading-relaxed text-white/70">
-                Search by market name, location, or seller type. RMF keeps seller identity and delivery readiness visible before checkout.
+                {t('markets_page_hero_description')}
               </p>
             </div>
             <div className="rounded-2xl border border-white/10 bg-white/5 backdrop-blur-sm px-6 py-5 min-w-[200px]">
               <p className="text-5xl font-bold text-accent-premium">{marketsToRender.length}</p>
-              <p className="mt-1 text-sm font-medium text-white/60">Markets shown</p>
+              <p className="mt-1 text-sm font-medium text-white/60">{t('markets_shown')}</p>
               {showCatalogResults && (
-                <p className="mt-3 text-[11px] font-bold uppercase tracking-[0.2em] text-primary-light">{matchingProducts.length} products</p>
+                <p className="mt-3 text-[11px] font-bold uppercase tracking-[0.2em] text-primary-light">{matchingProducts.length} {t('products_plural')}</p>
               )}
             </div>
           </div>
@@ -357,9 +496,9 @@ function MarketsContent() {
               <MapPin size={24} />
             </div>
             <div>
-              <p className="text-xs font-bold uppercase tracking-widest">Location filter active</p>
+              <p className="text-xs font-bold uppercase tracking-widest">{t('location_filter_active')}</p>
               <p className="mt-1.5 text-sm font-medium leading-relaxed text-text-muted">
-                Showing markets for {requestedLocation}. {hasCoordinateSearch ? 'Markets with coordinates are sorted by distance from your current map position.' : 'The directory checks market names, descriptions, and addresses for this area.'}
+                {t('showing_markets_for', { location: requestedLocation }).replace('{location}', requestedLocation)} {hasCoordinateSearch ? t('markets_sorted_by_distance') : t('markets_sorted_by_fuzzy')}
               </p>
             </div>
           </div>
@@ -371,8 +510,8 @@ function MarketsContent() {
               <WifiOff size={24} />
             </div>
             <div>
-              <p className="text-xs font-bold uppercase tracking-widest text-accent-premium">Live markets are offline</p>
-              <p className="mt-1.5 text-sm font-medium leading-relaxed text-text-muted">Preview markets are shown until the market service and database are reachable.</p>
+              <p className="text-xs font-bold uppercase tracking-widest text-accent-premium">{t('live_markets_offline')}</p>
+              <p className="mt-1.5 text-sm font-medium leading-relaxed text-text-muted">{t('preview_markets_shown_fallback')}</p>
             </div>
           </div>
         )}
@@ -383,8 +522,8 @@ function MarketsContent() {
               <WifiOff size={24} />
             </div>
             <div>
-              <p className="text-xs font-bold uppercase tracking-widest text-accent-premium">Catalog products are offline</p>
-              <p className="mt-1.5 text-sm font-medium leading-relaxed text-text-muted">Related markets are shown, but product results need the product service and database.</p>
+              <p className="text-xs font-bold uppercase tracking-widest text-accent-premium">{t('catalog_products_offline')}</p>
+              <p className="mt-1.5 text-sm font-medium leading-relaxed text-text-muted">{t('related_markets_shown_fallback')}</p>
             </div>
           </div>
         )}
@@ -392,11 +531,11 @@ function MarketsContent() {
         <section className="animate-reveal [animation-delay:200ms] rounded-2xl border border-border-light bg-white p-5 shadow-sm md:p-8">
           <div className="mb-5 flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-text-primary">
             <SlidersHorizontal size={18} className="text-primary" />
-            Search and filters
+            {t('search_and_filters')}
           </div>
           <div className="grid gap-6 lg:grid-cols-[1fr_0.62fr_0.68fr]">
             <div className="space-y-3">
-              <label className="text-xs font-bold text-text-muted">Search markets and products</label>
+              <label className="text-xs font-bold text-text-muted">{t('search_markets_and_products')}</label>
               <div className="relative group">
                   <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-text-muted" size={18} />
                   <input 
@@ -416,7 +555,7 @@ function MarketsContent() {
                       searchQuery === shortcut.value ? 'border-primary bg-primary text-white shadow-md shadow-primary/20' : 'border-border-light bg-background-surface text-text-secondary hover:border-primary hover:text-primary'
                     }`}
                   >
-                    {shortcut.label}
+                    {getShortcutLabel(shortcut.label)}
                   </button>
                 ))}
               </div>
@@ -425,7 +564,7 @@ function MarketsContent() {
                   onClick={() => { setSelectedProductCategory('all'); setAttributeFilters({}); }}
                   className={`shrink-0 rounded-full border px-4 py-2 text-xs font-bold transition-all duration-300 ${selectedProductCategory === 'all' ? 'border-primary bg-primary text-white shadow-md shadow-primary/20' : 'border-border-light bg-white text-text-secondary hover:border-primary hover:text-primary'}`}
                 >
-                  All categories
+                  {t('all_categories')}
                 </button>
                 {(facets.categories || []).map((category: any) => (
                   <button
@@ -440,7 +579,7 @@ function MarketsContent() {
             </div>
 
             <div className="space-y-3">
-              <label className="text-xs font-bold text-text-secondary">Price range (RWF)</label>
+              <label className="text-xs font-bold text-text-secondary">{t('price_range_rwf')}</label>
               <div className="grid grid-cols-2 gap-3">
                   <input 
                     placeholder="Min" 
@@ -460,12 +599,12 @@ function MarketsContent() {
             </div>
 
             <div className="space-y-3">
-              <label className="text-xs font-bold text-text-muted">Market type</label>
+              <label className="text-xs font-bold text-text-muted">{t('market_type')}</label>
               <div className="grid grid-cols-3 gap-3">
                   {[
-                    { key: 'ALL', label: 'All' },
-                    { key: 'PUBLIC', label: 'Public' },
-                    { key: 'INDIVIDUAL', label: 'Shops' },
+                    { key: 'ALL', label: t('all') },
+                    { key: 'PUBLIC', label: t('market_type_public') },
+                    { key: 'INDIVIDUAL', label: t('market_type_shops') },
                   ].map(cat => (
                     <button 
                       key={cat.key}
@@ -488,13 +627,13 @@ function MarketsContent() {
                   <span className="mb-2 block text-[10px] font-bold uppercase tracking-widest text-text-muted">{field.label}</span>
                   {field.type === 'boolean' ? (
                     <select value={attributeFilters[field.key] || ''} onChange={e => updateAttributeFilter(field.key, e.target.value)} className="rmf-select w-full">
-                      <option value="">Any</option>
-                      <option value="true">Yes</option>
-                      <option value="false">No</option>
+                      <option value="">{t('any')}</option>
+                      <option value="true">{t('yes')}</option>
+                      <option value="false">{t('no')}</option>
                     </select>
                   ) : (
                     <select value={attributeFilters[field.key] || ''} onChange={e => updateAttributeFilter(field.key, e.target.value)} className="rmf-select w-full">
-                      <option value="">Any</option>
+                      <option value="">{t('any')}</option>
                       {((field.values?.length ? field.values.map((item: any) => item.value) : field.options) || []).map((value: string) => (
                         <option key={value} value={value}>{value}</option>
                       ))}
@@ -512,20 +651,20 @@ function MarketsContent() {
               <div>
                 <p className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-primary">
                   {madeInRwandaIntent ? <Sparkles size={18} /> : <PackageCheck size={18} />}
-                  {madeInRwandaIntent ? 'Origin-tagged catalog' : 'Product results'}
+                  {madeInRwandaIntent ? t('origin_tagged_catalog') : t('product_results')}
                 </p>
                 <h2 className="mt-2 text-3xl font-bold tracking-tight text-text-primary md:text-4xl">
-                  {madeInRwandaIntent ? 'Made in Rwanda products' : `Products matching "${searchQuery.trim()}"`}
+                  {madeInRwandaIntent ? t('made_in_rwanda_products') : t('products_matching_query', { query: searchQuery.trim() }).replace('{query}', searchQuery.trim())}
                 </h2>
                 <p className="mt-3 max-w-2xl text-base leading-relaxed text-text-muted">
                   {madeInRwandaIntent
-                    ? 'These products come from the product catalog using the Made in Rwanda flag, then RMF connects them back to the markets where they are sold.'
-                    : 'Product search runs through the catalog and the market list is expanded with any markets selling matching products.'}
+                    ? t('made_in_rwanda_desc')
+                    : t('product_search_desc')}
                 </p>
               </div>
               <div className="rounded-xl border border-border-light bg-background-surface px-6 py-4 min-w-[160px]">
                 <p className="text-4xl font-bold text-primary">{matchingProducts.length}</p>
-                <p className="mt-1 text-[11px] font-bold uppercase tracking-widest text-text-muted">Products found</p>
+                <p className="mt-1 text-[11px] font-bold uppercase tracking-widest text-text-muted">{t('products_found')}</p>
               </div>
             </div>
 
@@ -543,12 +682,12 @@ function MarketsContent() {
               </div>
             ) : (
               <div className="rounded-2xl border border-dashed border-border-light bg-background-surface p-12 text-center">
-                <p className="text-xs font-bold uppercase tracking-widest text-primary">No matching products yet</p>
+                <p className="text-xs font-bold uppercase tracking-widest text-primary">{t('no_matching_products_yet')}</p>
                 <h3 className="mt-4 text-2xl font-bold text-text-primary">
-                  {madeInRwandaIntent ? 'Mark products as Made in Rwanda to fill this catalog.' : 'Try a different product, category, or market search.'}
+                  {madeInRwandaIntent ? t('mark_products_mir_prompt') : t('try_different_search_prompt')}
                 </h3>
                 <p className="mx-auto mt-4 max-w-xl text-base leading-relaxed text-text-muted">
-                  The catalog is connected; the product service just did not return matching active products for this query.
+                  {t('catalog_connected_desc')}
                 </p>
               </div>
             )}
@@ -556,61 +695,80 @@ function MarketsContent() {
         )}
 
         {!showCatalogResults && !loading && marketsToRender.length > 0 && (
-          <section className="animate-reveal [animation-delay:500ms] space-y-10">
-            <MarketShelf 
-              title="New Markets" 
-              description="Recently joined markets ready for your orders." 
-              markets={newMarkets} 
-            />
-            <MarketShelf 
-              title="Most Bought From" 
-              description="High-volume markets with the most active sellers." 
-              markets={topSellersMarkets} 
-            />
-            <MarketShelf 
-              title="Most Reviewed" 
-              description="Consistently highly rated markets by our community." 
-              markets={topRatedMarkets} 
-            />
-            <MarketShelf 
-              title="Active Promotions" 
-              description="Markets currently offering discounts and special deals." 
-              markets={promotionalMarkets} 
-            />
+          <section className="animate-reveal [animation-delay:500ms] space-y-8">
+            {/* Top Row: Active Promotions (Full Width) */}
+            {promotionalMarkets.length > 0 && (
+              <div className="w-full">
+                <MarketShelf 
+                  title={t('active_promotions')} 
+                  description={t('active_promotions_desc')} 
+                  markets={promotionalMarkets} 
+                  isFullWidth={true}
+                />
+              </div>
+            )}
+ 
+            {/* Bottom Row: Dynamic Grid for active shelves */}
+            {(newMarkets.length > 0 || topSellersMarkets.length > 0 || topRatedMarkets.length > 0) && (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                {newMarkets.length > 0 && (
+                  <MarketShelf 
+                    title={t('new_markets')} 
+                    description={t('new_markets_desc')} 
+                    markets={newMarkets} 
+                  />
+                )}
+                {topSellersMarkets.length > 0 && (
+                  <MarketShelf 
+                    title={t('most_bought_from')} 
+                    description={t('most_bought_from_desc')} 
+                    markets={topSellersMarkets} 
+                  />
+                )}
+                {topRatedMarkets.length > 0 && (
+                  <MarketShelf 
+                    title={t('most_reviewed')} 
+                    description={t('most_reviewed_desc')} 
+                    markets={topRatedMarkets} 
+                  />
+                )}
+              </div>
+            )}
           </section>
         )}
 
         <main className="animate-reveal [animation-delay:600ms] space-y-8 border-t border-border-light pt-8 mt-8">
           <div className="flex flex-col justify-between gap-4 md:flex-row md:items-end">
             <div>
-              <p className="text-xs font-bold uppercase tracking-widest text-primary">Marketplace directory</p>
-              <h2 className="mt-2 text-3xl font-bold tracking-tight text-text-primary md:text-4xl">Markets ready for browsing</h2>
+              <p className="text-xs font-bold uppercase tracking-widest text-primary">{t('marketplace_directory')}</p>
+              <h2 className="mt-2 text-3xl font-bold tracking-tight text-text-primary md:text-4xl">{t('markets_ready_browsing')}</h2>
             </div>
-            <p className="text-sm font-bold text-text-muted">{marketsToRender.length} results</p>
+            <p className="text-sm font-bold text-text-muted">{marketsToRender.length} {t('results_suffix')}</p>
           </div>
-
+ 
           {loading ? (
-            <div className="grid grid-cols-[repeat(auto-fill,minmax(300px,1fr))] gap-6">
-              {[1, 2, 3, 4, 5, 6].map(i => (
-                <div key={i} className="aspect-[4/5] bg-background-surface animate-pulse border border-border-light rounded-2xl"></div>
+            <div className="grid grid-cols-[repeat(auto-fill,minmax(240px,1fr))] gap-6">
+              {[1, 2, 3, 4, 5, 6, 7, 8].map(i => (
+                <div key={i} className="aspect-[4/5] bg-background-surface animate-pulse border border-border-light rounded-xl"></div>
               ))}
             </div>
           ) : marketsToRender.length > 0 ? (
-            <div className="grid grid-cols-[repeat(auto-fill,minmax(300px,1fr))] gap-6">
+            <div className="grid grid-cols-[repeat(auto-fill,minmax(240px,1fr))] gap-6">
               {marketsToRender.map((market: Market, idx: number) => (
                 <MarketCard 
                   key={market._id} 
                   market={market} 
                   index={idx} 
+                  isCompact={true}
                 />
               ))}
             </div>
           ) : (
             <div className="rounded-2xl border border-dashed border-border-light bg-white p-12 text-center shadow-sm">
-              <p className="text-xs font-bold uppercase tracking-widest text-primary">No matching markets</p>
-              <h3 className="mt-4 text-2xl font-bold text-text-primary">Try a different search or seller range.</h3>
+              <p className="text-xs font-bold uppercase tracking-widest text-primary">{t('no_matching_markets')}</p>
+              <h3 className="mt-4 text-2xl font-bold text-text-primary">{t('try_different_market_search_prompt')}</h3>
               <p className="mx-auto mt-4 max-w-xl text-base leading-relaxed text-text-muted">
-                Live market data is connected; there just are not any markets matching the current filters.
+                {t('live_markets_connected_desc')}
               </p>
             </div>
           )}
@@ -623,20 +781,20 @@ function MarketsContent() {
                 <div className="mb-6 inline-flex h-14 w-14 items-center justify-center rounded-xl bg-primary text-white shadow-lg shadow-primary/20">
                   <MapPin size={24} />
                 </div>
-                <p className="text-xs font-bold uppercase tracking-widest text-primary">Market map</p>
-                <h2 className="mt-4 text-3xl font-bold leading-[1.2] tracking-tight text-text-primary md:text-4xl">See every verified hub on the logistics map.</h2>
+                <p className="text-xs font-bold uppercase tracking-widest text-primary">{t('market_map')}</p>
+                <h2 className="mt-4 text-3xl font-bold leading-[1.2] tracking-tight text-text-primary md:text-4xl">{t('market_map_title')}</h2>
                 <p className="mt-6 text-base leading-relaxed text-text-muted">
-                  Market locations are loaded from the live market service. Switch map layers to inspect market coverage before choosing where to shop.
+                  {t('market_map_desc')}
                 </p>
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="rounded-xl border border-border-light bg-white p-5 shadow-sm">
                   <p className="text-3xl font-bold text-text-primary">{allMarkets.length || marketsToRender.length}</p>
-                  <p className="mt-1.5 text-[11px] font-bold uppercase tracking-widest text-text-muted">Mapped hubs</p>
+                  <p className="mt-1.5 text-[11px] font-bold uppercase tracking-widest text-text-muted">{t('mapped_hubs')}</p>
                 </div>
                 <div className="rounded-xl border border-border-light bg-white p-5 shadow-sm">
-                  <p className="text-3xl font-bold text-text-primary flex items-center gap-2">Live <span className="flex h-2.5 w-2.5 relative"><span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-accent-premium opacity-75"></span><span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-accent-premium"></span></span></p>
-                  <p className="mt-1.5 text-[11px] font-bold uppercase tracking-widest text-text-muted">Rider layer</p>
+                  <p className="text-3xl font-bold text-text-primary flex items-center gap-2">{t('live_label')} <span className="flex h-2.5 w-2.5 relative"><span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-accent-premium opacity-75"></span><span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-accent-premium"></span></span></p>
+                  <p className="mt-1.5 text-[11px] font-bold uppercase tracking-widest text-text-muted">{t('rider_layer')}</p>
                 </div>
               </div>
             </div>

@@ -174,7 +174,7 @@ export default function SellerOrderDetailPage({ params }: { params: { orderId: s
 
       <div className="animate-reveal space-y-6 pb-20">
         {/* Dossier Header */}
-        <div className="flex flex-col items-start justify-between gap-6 rounded-lg border border-[#0b4b32]/20 bg-[#012d1d] p-6 text-white shadow-sm md:flex-row md:items-end md:p-8">
+        <div className="flex flex-col items-start justify-between gap-6 rounded-lg border border-[#0b4b32]/20 bg-[#e05300] p-6 text-white shadow-sm md:flex-row md:items-end md:p-8">
           <div>
             <div className="flex items-center gap-4 mb-4">
                <Link href="/seller/dashboard" className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-white/60 hover:text-white group">
@@ -182,7 +182,7 @@ export default function SellerOrderDetailPage({ params }: { params: { orderId: s
                   Terminal Dashboard
                </Link>
                <span className="text-white/25">/</span>
-               <span className="text-[10px] font-black uppercase tracking-widest text-[#c1ecd4]">Active Order</span>
+               <span className="text-[10px] font-black uppercase tracking-widest text-[#ffedd5]">Active Order</span>
             </div>
             <h1 className="mb-4 text-3xl font-black leading-tight tracking-normal text-white md:text-4xl">
               Order {orderNumber}
@@ -191,7 +191,7 @@ export default function SellerOrderDetailPage({ params }: { params: { orderId: s
                <span>Initialized: {order.createdAt ? new Date(order.createdAt).toLocaleDateString() : 'N/A'}</span>
                <span>/</span>
                <span className="flex items-center gap-2">
-                 <span className={`w-2 h-2 rounded-full ${order.payment?.status === 'paid' ? 'bg-green-500' : 'bg-[#c1ecd4]'}`}></span>
+                 <span className={`w-2 h-2 rounded-full ${order.payment?.status === 'paid' ? 'bg-green-500' : 'bg-[#ffedd5]'}`}></span>
                  Payment {order.payment?.status?.toUpperCase() || 'PENDING'}
                </span>
             </div>
@@ -207,10 +207,10 @@ export default function SellerOrderDetailPage({ params }: { params: { orderId: s
             </button>
             <div className="flex gap-2">
                {orderStatus === 'confirmed' && (
-                 <button onClick={() => updateStatus('preparing')} className="rounded-md bg-[#c1ecd4] px-4 py-3 text-[9px] font-black uppercase tracking-[0.16em] text-[#012d1d]">Authorize Production</button>
+                 <button onClick={() => updateStatus('preparing')} className="rounded-md bg-[#ffedd5] px-4 py-3 text-[9px] font-black uppercase tracking-[0.16em] text-[#e05300]">Authorize Production</button>
                )}
                {orderStatus === 'preparing' && (
-                 <button onClick={() => updateStatus('ready_for_pickup')} className="rounded-md bg-[#c1ecd4] px-4 py-3 text-[9px] font-black uppercase tracking-[0.16em] text-[#012d1d]">Signal Readiness</button>
+                 <button onClick={() => updateStatus('ready_for_pickup')} className="rounded-md bg-[#ffedd5] px-4 py-3 text-[9px] font-black uppercase tracking-[0.16em] text-[#e05300]">Signal Readiness</button>
                )}
             </div>
           </div>
@@ -260,12 +260,12 @@ export default function SellerOrderDetailPage({ params }: { params: { orderId: s
 
             {/* Financial Reconciliation */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
-               <div className="bg-[#012d1d] text-white p-10 space-y-8 relative overflow-hidden">
+               <div className="bg-[#e05300] text-white p-10 space-y-8 relative overflow-hidden">
                   <div className="absolute top-0 right-0 p-6 opacity-10">
                      <svg className="w-20 h-20" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                   </div>
                   <div>
-                    <p className="text-[9px] font-black text-[#1b4332] uppercase tracking-[0.4em] mb-4">Order Total</p>
+                    <p className="text-[9px] font-black text-[#ff6b00] uppercase tracking-[0.4em] mb-4">Order Total</p>
                     <h3 className="text-5xl font-sans tracking-normal">{(order.financials?.totalAmount || 0).toLocaleString()} RWF</h3>
                   </div>
                   <div className="space-y-4 pt-8 border-t border-white/10">
@@ -307,20 +307,20 @@ export default function SellerOrderDetailPage({ params }: { params: { orderId: s
           <div className="space-y-10">
             {/* Logistics Handshake Matrix */}
             {orderStatus === 'ready_for_pickup' && (
-              <div className="bg-[#012d1d] text-white p-10 space-y-10 border-t-4 border-[#ffd700] shadow-2xl relative overflow-hidden group">
+              <div className="bg-[#e05300] text-white p-10 space-y-10 border-t-4 border-[#ffd700] shadow-2xl relative overflow-hidden group">
                  <div className="absolute top-0 right-0 p-8 opacity-5 group-hover:opacity-10 transition-opacity">
                     <svg className="w-40 h-40" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
                  </div>
                  <div className="relative z-10 flex flex-col md:flex-row justify-between items-start md:items-center gap-8">
                     <div className="space-y-4">
-                       <p className="text-[10px] font-black text-[#1b4332] uppercase tracking-[0.5em]">Logistics Handshake Active</p>
+                       <p className="text-[10px] font-black text-[#ff6b00] uppercase tracking-[0.5em]">Logistics Handshake Active</p>
                        <h3 className="text-4xl font-sans tracking-normal">Handover Protocol</h3>
                        {delivery?.rider ? (
                          <div className="flex items-center gap-6 mt-6">
                             <div className="w-14 h-14 bg-white/5 border border-white/10 flex items-center justify-center text-2xl">🏍️</div>
                             <div>
                                <p className="text-lg font-sans text-white">{delivery.rider.fullName || 'Authorized Rider'}</p>
-                               <p className="text-[10px] font-black text-[#1b4332] uppercase tracking-widest opacity-60">Plate: {delivery.rider.plateNumber || 'RAA 000X'}</p>
+                               <p className="text-[10px] font-black text-[#ff6b00] uppercase tracking-widest opacity-60">Plate: {delivery.rider.plateNumber || 'RAA 000X'}</p>
                             </div>
                          </div>
                        ) : (
@@ -375,7 +375,7 @@ export default function SellerOrderDetailPage({ params }: { params: { orderId: s
                         )}
                         <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center flex-shrink-0 z-10 transition-all duration-500 ${
                           isCurrent 
-                            ? 'bg-[#012d1d] border-[#e0e0e0] scale-110 shadow-[0_0_15px_rgba(246,195,67,0.3)]' 
+                            ? 'bg-[#e05300] border-[#e0e0e0] scale-110 shadow-[0_0_15px_rgba(246,195,67,0.3)]' 
                             : isPast 
                               ? 'bg-[#ffd700] border-[#ffd700]' 
                               : 'bg-white border-[#e0e0e0]'
@@ -384,14 +384,14 @@ export default function SellerOrderDetailPage({ params }: { params: { orderId: s
                              isCurrent 
                                ? 'bg-[#ffd700] animate-pulse' 
                                : isPast 
-                                 ? 'bg-[#012d1d]' 
+                                 ? 'bg-[#e05300]' 
                                  : 'bg-[#e0e0e0]'
                            }`}></div>
                         </div>
                         <div className="flex-grow pt-0.5">
                            <p className={`text-[10px] font-black uppercase tracking-widest transition-colors ${isCurrent ? 'text-[#1b1c1c]' : 'text-[#1b1c1c]/40'}`}>
                              {h.status.replace(/_/g, ' ')}
-                             {isCurrent && <span className="ml-3 text-[8px] text-[#1b4332] font-bold">ACTIVE</span>}
+                             {isCurrent && <span className="ml-3 text-[8px] text-[#ff6b00] font-bold">ACTIVE</span>}
                            </p>
                            <p className="text-[9px] font-bold text-[#414844] uppercase tracking-widest mt-1 opacity-50">{h.changedAt ? new Date(h.changedAt).toLocaleString() : 'Time pending'}</p>
                            {h.note && <p className="text-[11px] text-[#1b1c1c] mt-2 opacity-70 leading-relaxed border-l border-[#f0eded] pl-4">{h.note}</p>}
@@ -416,20 +416,20 @@ export default function SellerOrderDetailPage({ params }: { params: { orderId: s
                   
                   <div className="space-y-6">
                      <div className="space-y-2">
-                        <p className="text-[8px] font-black text-[#1b4332] uppercase tracking-widest">Authorized Contact</p>
+                        <p className="text-[8px] font-black text-[#ff6b00] uppercase tracking-widest">Authorized Contact</p>
                         <p className="text-[11px] font-bold text-[#1b1c1c]">{order.buyer?.phone || 'Encrypted'}</p>
                      </div>
                      <div className="space-y-2">
-                        <p className="text-[8px] font-black text-[#1b4332] uppercase tracking-widest">Delivery Address</p>
+                        <p className="text-[8px] font-black text-[#ff6b00] uppercase tracking-widest">Delivery Address</p>
                         <p className="text-[11px] font-medium text-[#1b1c1c] leading-relaxed">{order.buyer?.deliveryAddress?.address || 'Terminal Pickup'}</p>
                      </div>
                   </div>
                </div>
 
                {order.notes && (
-                  <div className="bg-[#012d1d] text-white p-6 relative overflow-hidden">
+                  <div className="bg-[#e05300] text-white p-6 relative overflow-hidden">
                      <div className="relative z-10">
-                        <p className="text-[8px] font-black text-[#1b4332] uppercase tracking-widest mb-3">Operator Instruction</p>
+                        <p className="text-[8px] font-black text-[#ff6b00] uppercase tracking-widest mb-3">Operator Instruction</p>
                          <p className="text-xs leading-relaxed opacity-70">{order.notes}</p>
                      </div>
                      <div className="absolute -bottom-4 -right-4 text-4xl opacity-5">💬</div>

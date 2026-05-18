@@ -94,7 +94,7 @@ export const NotificationBell = ({ compact = false }: { compact?: boolean }) => 
       return;
     }
     try {
-      const res = await notificationApi.get(`/notifications/user/${user.id}`);
+      const res = await notificationApi.get('/notifications/me');
       if (res.data?.success) {
         const logs = (Array.isArray(res.data.data) ? res.data.data : []) as NotificationItem[];
         setNotifications(logs.filter(log => log.channel === 'IN_APP'));
@@ -139,7 +139,7 @@ export const NotificationBell = ({ compact = false }: { compact?: boolean }) => 
     <div className="relative" ref={dropdownRef}>
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className={`relative inline-flex items-center gap-2 rounded-md border border-[#e0e0e0] bg-white text-sm font-bold text-[#1b1c1c] transition hover:border-[#1b4332] hover:text-[#1b4332] ${
+        className={`relative inline-flex items-center gap-2 rounded-md border border-[#e0e0e0] bg-white text-sm font-bold text-[#1b1c1c] transition hover:border-[#ff6b00] hover:text-[#ff6b00] ${
           compact ? 'h-9 w-9 justify-center px-0' : 'h-11 px-3'
         }`}
         aria-label="Notifications"
@@ -161,7 +161,7 @@ export const NotificationBell = ({ compact = false }: { compact?: boolean }) => 
               <p className="mt-1 text-xs font-semibold text-[#414844]">{unreadCount} unread updates</p>
             </div>
             {unreadCount > 0 && (
-              <button onClick={handleMarkAllRead} className="text-xs font-black text-[#1b4332] hover:text-[#012d1d]">
+              <button onClick={handleMarkAllRead} className="text-xs font-black text-[#ff6b00] hover:text-[#e05300]">
                 {t('notif_mark_all_read')}
               </button>
             )}
@@ -176,10 +176,10 @@ export const NotificationBell = ({ compact = false }: { compact?: boolean }) => 
               notifications.map((notif) => (
                 <div
                   key={notif._id}
-                  className={`relative flex cursor-pointer gap-4 border-b border-[#f0eded] p-5 transition-colors hover:bg-[#fcf9f8] ${!notif.isRead ? 'bg-[#c1ecd4]/50' : ''}`}
+                  className={`relative flex cursor-pointer gap-4 border-b border-[#f0eded] p-5 transition-colors hover:bg-[#fcf9f8] ${!notif.isRead ? 'bg-[#ffedd5]/50' : ''}`}
                   onClick={() => !notif.isRead && handleMarkRead(notif._id)}
                 >
-                  <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-md bg-[#1b4332] text-white">
+                  <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-md bg-[#ff6b00] text-white">
                     <Bell size={16} />
                   </div>
                   <div className="flex-1">
@@ -200,7 +200,7 @@ export const NotificationBell = ({ compact = false }: { compact?: boolean }) => 
 
           {notifications.length > 0 && (
             <div className="bg-[#fcf9f8] p-4 text-center">
-              <button className="text-xs font-black text-[#1b4332] transition hover:text-[#012d1d]">
+              <button className="text-xs font-black text-[#ff6b00] transition hover:text-[#e05300]">
                 {t('notif_view_all')} -&gt;
               </button>
             </div>

@@ -91,13 +91,13 @@ const Toggle = ({
   label: string;
   description: string;
 }) => (
-  <label className="flex cursor-pointer items-start justify-between gap-4 rounded-md border border-[#e0e0e0] bg-white p-4 transition hover:border-[#1b4332]">
+  <label className="flex cursor-pointer items-start justify-between gap-4 rounded-md border border-[#e0e0e0] bg-white p-4 transition hover:border-[#ff6b00]">
     <span>
       <span className="block text-sm font-black text-[#1b1c1c]">{label}</span>
       <span className="mt-1 block text-xs font-semibold leading-5 text-[#5f7569]">{description}</span>
     </span>
     <input type="checkbox" className="sr-only" checked={checked} onChange={event => onChange(event.target.checked)} />
-    <span className={`relative mt-1 h-6 w-11 shrink-0 rounded-full transition ${checked ? 'bg-[#1b4332]' : 'bg-[#dce4df]'}`}>
+    <span className={`relative mt-1 h-6 w-11 shrink-0 rounded-full transition ${checked ? 'bg-[#ff6b00]' : 'bg-[#dce4df]'}`}>
       <span className={`absolute top-1 h-4 w-4 rounded-full bg-white shadow-sm transition ${checked ? 'left-6' : 'left-1'}`} />
     </span>
   </label>
@@ -218,7 +218,7 @@ export default function SettingsPage() {
     return (
       <Layout>
         <div className="flex min-h-[60vh] items-center justify-center">
-          <div className="h-12 w-12 animate-spin rounded-full border-4 border-[#c1ecd4] border-t-[#1b4332]" />
+          <div className="h-12 w-12 animate-spin rounded-full border-4 border-[#ffedd5] border-t-[#ff6b00]" />
         </div>
       </Layout>
     );
@@ -228,15 +228,15 @@ export default function SettingsPage() {
     return (
       <Layout>
         <div className="mx-auto flex min-h-[60vh] max-w-xl flex-col items-center justify-center px-4 text-center">
-          <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-md bg-[#1b4332] text-white">
+          <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-md bg-[#ff6b00] text-white">
             <LockKeyhole size={22} />
           </div>
-          <h1 className="text-3xl font-black text-[#1b1c1c]">Sign in to manage settings</h1>
+          <h1 className="text-3xl font-black text-[#1b1c1c]">{t('settings_signin')}</h1>
           <p className="mt-3 text-sm font-semibold leading-6 text-[#5f7569]">
-            Settings are tied to your RMF account so notification, privacy, seller, and rider preferences can follow you across market portals.
+            {t('settings_signin_desc')}
           </p>
-          <a href="/login" className="mt-6 inline-flex h-11 items-center justify-center rounded-md bg-[#1b4332] px-6 text-sm font-black text-white">
-            Sign in
+          <a href="/login" className="mt-6 inline-flex h-11 items-center justify-center rounded-md bg-[#ff6b00] px-6 text-sm font-black text-white">
+            {t('sign_in')}
           </a>
         </div>
       </Layout>
@@ -246,25 +246,25 @@ export default function SettingsPage() {
   return (
     <Layout>
       <div className="mx-auto max-w-6xl space-y-6 pb-20">
-        <section className="overflow-hidden rounded-lg border border-[#d8ded9] bg-[#012d1d] p-6 text-white shadow-sm md:p-8">
+        <section className="overflow-hidden rounded-lg border border-[#d8ded9] bg-[#e05300] p-6 text-white shadow-sm md:p-8">
           <div className="flex flex-col justify-between gap-5 md:flex-row md:items-end">
             <div>
-              <div className="mb-3 inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1 text-[10px] font-black uppercase tracking-[0.16em] text-[#c1ecd4]">
+              <div className="mb-3 inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1 text-[10px] font-black uppercase tracking-[0.16em] text-[#ffedd5]">
                 <SlidersHorizontal size={14} />
-                Account controls
+                {t('account_controls')}
               </div>
-              <h1 className="text-3xl font-black tracking-normal md:text-4xl">Settings</h1>
+              <h1 className="text-3xl font-black tracking-normal md:text-4xl">{t('settings_title')}</h1>
               <p className="mt-2 max-w-xl text-sm font-semibold leading-6 text-white/70">
-                Manage language, notifications, privacy, and role-specific workflows across RMF.
+                {t('settings_desc')}
               </p>
             </div>
             <button
               type="button"
               onClick={saveSettings}
               disabled={saving || !isDirty}
-              className="inline-flex h-11 items-center justify-center rounded-md bg-[#c1ecd4] px-6 text-sm font-black text-[#012d1d] transition hover:bg-white disabled:opacity-60"
+              className="inline-flex h-11 items-center justify-center rounded-md bg-[#ffedd5] px-6 text-sm font-black text-[#e05300] transition hover:bg-white disabled:opacity-60"
             >
-              {saving ? 'Saving...' : isDirty ? 'Save settings' : 'Saved'}
+              {saving ? t('saving') : isDirty ? t('save_settings') : t('saved')}
             </button>
           </div>
         </section>
@@ -273,16 +273,16 @@ export default function SettingsPage() {
           <main className="space-y-5">
             <section className="rounded-lg border border-[#e0e0e0] bg-[#fcf9f8] p-5">
               <div className="mb-4 flex items-center gap-3">
-                <Globe2 className="text-[#1b4332]" size={20} />
-                <h2 className="text-xl font-black text-[#1b1c1c]">Language and money</h2>
+                <Globe2 className="text-[#ff6b00]" size={20} />
+                <h2 className="text-xl font-black text-[#1b1c1c]">{t('language_and_money')}</h2>
               </div>
               <div className="grid gap-3 sm:grid-cols-2">
                 <label className="block">
-                  <span className="mb-2 block text-xs font-black text-[#405046]">Current language</span>
+                  <span className="mb-2 block text-xs font-black text-[#405046]">{t('current_language')}</span>
                   <select
                     value={settings.language}
                     onChange={event => update('language', event.target.value as SettingsState['language'])}
-                    className="h-11 w-full rounded-md border border-[#d9e0db] bg-white px-3 text-sm font-bold outline-none focus:border-[#1b4332]"
+                    className="h-11 w-full rounded-md border border-[#d9e0db] bg-white px-3 text-sm font-bold outline-none focus:border-[#ff6b00]"
                   >
                     <option value="en">English</option>
                     <option value="fr">French</option>
@@ -290,11 +290,11 @@ export default function SettingsPage() {
                   </select>
                 </label>
                 <label className="block">
-                  <span className="mb-2 block text-xs font-black text-[#405046]">Currency</span>
+                  <span className="mb-2 block text-xs font-black text-[#405046]">{t('currency')}</span>
                   <select
                     value={settings.currency}
                     onChange={event => update('currency', event.target.value)}
-                    className="h-11 w-full rounded-md border border-[#d9e0db] bg-white px-3 text-sm font-bold outline-none focus:border-[#1b4332]"
+                    className="h-11 w-full rounded-md border border-[#d9e0db] bg-white px-3 text-sm font-bold outline-none focus:border-[#ff6b00]"
                   >
                     <option value="RWF">RWF</option>
                     <option value="USD">USD</option>
@@ -306,8 +306,8 @@ export default function SettingsPage() {
 
             <section className="rounded-lg border border-[#e0e0e0] bg-[#fcf9f8] p-5">
               <div className="mb-4 flex items-center gap-3">
-                <Bell className="text-[#1b4332]" size={20} />
-                <h2 className="text-xl font-black text-[#1b1c1c]">Notifications</h2>
+                <Bell className="text-[#ff6b00]" size={20} />
+                <h2 className="text-xl font-black text-[#1b1c1c]">{t('notifications')}</h2>
               </div>
               <div className="grid gap-3 md:grid-cols-2">
                 {notificationRows.map(([key, label, description]) => (
@@ -324,20 +324,20 @@ export default function SettingsPage() {
 
             <section className="rounded-lg border border-[#e0e0e0] bg-[#fcf9f8] p-5">
               <div className="mb-4 flex items-center gap-3">
-                <LockKeyhole className="text-[#1b4332]" size={20} />
-                <h2 className="text-xl font-black text-[#1b1c1c]">Privacy</h2>
+                <LockKeyhole className="text-[#ff6b00]" size={20} />
+                <h2 className="text-xl font-black text-[#1b1c1c]">{t('privacy')}</h2>
               </div>
               <div className="grid gap-3 md:grid-cols-2">
                 <Toggle
                   checked={settings.privacy.showProfilePhoto}
-                  label="Show profile photo"
-                  description="Display your photo on order, seller, rider, and support surfaces."
+                  label={t('show_profile_photo')}
+                  description={t('show_profile_photo_desc')}
                   onChange={value => update('privacy', { ...settings.privacy, showProfilePhoto: value })}
                 />
                 <Toggle
                   checked={settings.privacy.sharePhoneWithOrderParties}
-                  label="Share phone for active orders"
-                  description="Let sellers, riders, or buyers see your number only when an order requires coordination."
+                  label={t('share_phone')}
+                  description={t('share_phone_desc')}
                   onChange={value => update('privacy', { ...settings.privacy, sharePhoneWithOrderParties: value })}
                 />
               </div>
@@ -346,8 +346,8 @@ export default function SettingsPage() {
             {canUseSellerSettings && (
               <section className="rounded-lg border border-[#e0e0e0] bg-[#fcf9f8] p-5">
                 <div className="mb-4 flex items-center gap-3">
-                  <MessageSquareText className="text-[#1b4332]" size={20} />
-                  <h2 className="text-xl font-black text-[#1b1c1c]">Seller messaging</h2>
+                  <MessageSquareText className="text-[#ff6b00]" size={20} />
+                  <h2 className="text-xl font-black text-[#1b1c1c]">{t('seller_messaging')}</h2>
                 </div>
                 <div className="grid gap-3 md:grid-cols-2">
                   <Toggle
@@ -357,14 +357,14 @@ export default function SettingsPage() {
                     onChange={value => update('seller', { ...settings.seller, autoReplyEnabled: value })}
                   />
                   <label className="block rounded-md border border-[#e0e0e0] bg-white p-4">
-                    <span className="block text-sm font-black text-[#1b1c1c]">Quote expiry</span>
+                    <span className="block text-sm font-black text-[#1b1c1c]">{t('quote_expiry')}</span>
                     <input
                       type="number"
                       min={1}
                       max={168}
                       value={settings.seller.quoteExpiryHours}
                       onChange={event => update('seller', { ...settings.seller, quoteExpiryHours: Number(event.target.value) })}
-                      className="mt-2 h-10 w-full rounded-md border border-[#d9e0db] px-3 text-sm font-bold outline-none focus:border-[#1b4332]"
+                      className="mt-2 h-10 w-full rounded-md border border-[#d9e0db] px-3 text-sm font-bold outline-none focus:border-[#ff6b00]"
                     />
                   </label>
                 </div>
@@ -372,7 +372,7 @@ export default function SettingsPage() {
                   value={settings.seller.autoReplyMessage}
                   onChange={event => update('seller', { ...settings.seller, autoReplyMessage: event.target.value })}
                   placeholder="Example: Thanks for your message. I will confirm availability shortly."
-                  className="mt-3 min-h-24 w-full rounded-md border border-[#d9e0db] bg-white p-3 text-sm font-semibold outline-none focus:border-[#1b4332]"
+                  className="mt-3 min-h-24 w-full rounded-md border border-[#d9e0db] bg-white p-3 text-sm font-semibold outline-none focus:border-[#ff6b00]"
                 />
               </section>
             )}
@@ -380,17 +380,17 @@ export default function SettingsPage() {
 
           <aside className="space-y-5">
             <section className="rounded-lg border border-[#e0e0e0] bg-white p-5 shadow-sm">
-              <ShieldCheck className="text-[#1b4332]" size={24} />
-              <h2 className="mt-3 text-lg font-black text-[#1b1c1c]">Secure by default</h2>
+              <ShieldCheck className="text-[#ff6b00]" size={24} />
+              <h2 className="mt-3 text-lg font-black text-[#1b1c1c]">{t('secure_by_default')}</h2>
               <p className="mt-2 text-sm font-semibold leading-6 text-[#5f7569]">
-                Security alerts stay available even when promotional messages are off.
+                {t('secure_by_default_desc')}
               </p>
               <div className="mt-4 flex flex-wrap gap-2">
                 <button
                   type="button"
                   onClick={resetSettings}
                   disabled={!isDirty}
-                  className="inline-flex h-10 items-center gap-2 rounded-md border border-[#d9e0db] px-3 text-xs font-black text-[#405046] transition hover:border-[#1b4332] hover:text-[#1b4332] disabled:opacity-50"
+                  className="inline-flex h-10 items-center gap-2 rounded-md border border-[#d9e0db] px-3 text-xs font-black text-[#405046] transition hover:border-[#ff6b00] hover:text-[#ff6b00] disabled:opacity-50"
                 >
                   <RotateCcw size={15} />
                   Reset
@@ -399,30 +399,30 @@ export default function SettingsPage() {
                   type="button"
                   onClick={sendTestNotification}
                   disabled={testing || !settings.notifications.inApp}
-                  className="inline-flex h-10 items-center gap-2 rounded-md bg-[#1b4332] px-3 text-xs font-black text-white transition hover:bg-[#012d1d] disabled:opacity-50"
+                  className="inline-flex h-10 items-center gap-2 rounded-md bg-[#ff6b00] px-3 text-xs font-black text-white transition hover:bg-[#e05300] disabled:opacity-50"
                 >
                   <Send size={15} />
-                  {testing ? 'Sending...' : 'Test alert'}
+                  {testing ? t('sending') : t('test_alert')}
                 </button>
               </div>
               {!settings.notifications.inApp && (
                 <p className="mt-3 rounded-md bg-[#f7faf8] p-3 text-xs font-semibold leading-5 text-[#5f7569]">
-                  Test alerts are unavailable while in-app notifications are off.
+                  {t('test_alerts_unavailable')}
                 </p>
               )}
             </section>
 
             <section className="rounded-lg border border-[#e0e0e0] bg-white p-5 shadow-sm">
-              <Mail className="text-[#1b4332]" size={24} />
-              <h2 className="mt-3 text-lg font-black text-[#1b1c1c]">Message routing</h2>
+              <Mail className="text-[#ff6b00]" size={24} />
+              <h2 className="mt-3 text-lg font-black text-[#1b1c1c]">{t('message_routing')}</h2>
               <p className="mt-2 text-sm font-semibold leading-6 text-[#5f7569]">
-                Email-only custom messages keeps negotiation notes out of push alerts while preserving auditability.
+                {t('message_routing_desc')}
               </p>
             </section>
 
             {canUseRiderSettings && (
               <section className="rounded-lg border border-[#e0e0e0] bg-white p-5 shadow-sm">
-                <h2 className="text-lg font-black text-[#1b1c1c]">Rider preferences</h2>
+                <h2 className="text-lg font-black text-[#1b1c1c]">{t('rider_preferences')}</h2>
                 <div className="mt-4 space-y-3">
                   <Toggle
                     checked={settings.rider.autoAcceptNearby}
@@ -431,14 +431,14 @@ export default function SettingsPage() {
                     onChange={value => update('rider', { ...settings.rider, autoAcceptNearby: value })}
                   />
                   <label className="block">
-                    <span className="mb-2 block text-xs font-black text-[#405046]">Max pickup distance</span>
+                    <span className="mb-2 block text-xs font-black text-[#405046]">{t('max_pickup_distance')}</span>
                     <input
                       type="number"
                       min={1}
                       max={40}
                       value={settings.rider.maxPickupDistanceKm}
                       onChange={event => update('rider', { ...settings.rider, maxPickupDistanceKm: Number(event.target.value) })}
-                      className="h-11 w-full rounded-md border border-[#d9e0db] bg-white px-3 text-sm font-bold outline-none focus:border-[#1b4332]"
+                      className="h-11 w-full rounded-md border border-[#d9e0db] bg-white px-3 text-sm font-bold outline-none focus:border-[#ff6b00]"
                     />
                   </label>
                 </div>

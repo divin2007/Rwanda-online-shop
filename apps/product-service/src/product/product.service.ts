@@ -17,7 +17,7 @@ export class ProductService implements OnModuleInit {
     @Inject(CACHE_MANAGER) private cacheManager: Cache
   ) { }
 
-  private async findSellerProfile(sellerId: string): Promise<any | null> {
+  async findSellerProfile(sellerId: string): Promise<any | null> {
     if (!sellerId) return null;
 
     const lookups: any[] = [{ userId: sellerId }];
@@ -31,7 +31,7 @@ export class ProductService implements OnModuleInit {
 
   private parseImageList(value: any): string[] {
     const images = String(value || '')
-      .split(',')
+      .split(/[,\s;|\r\n]+/)
       .map((s: string) => s.trim())
       .filter(Boolean);
 
@@ -58,7 +58,13 @@ export class ProductService implements OnModuleInit {
 
   private parseAttributesFromRow(row: Record<string, any>): Record<string, any> {
     const attributes: Record<string, any> = {};
-    const rawJson = row.Attributes || row.attributes || row.AttributeJson || row.attributeJson;
+    const keys = Object.keys(row);
+    const attrCol = keys.find(k => {
+      const normalized = k.toLowerCase().trim().replace(/[^a-z0-9]+/g, '');
+      return ['attributes', 'attributejson', 'specs', 'specifications'].includes(normalized);
+    });
+
+    const rawJson = attrCol ? row[attrCol] : undefined;
     if (rawJson) {
       try {
         const parsed = typeof rawJson === 'string' ? JSON.parse(rawJson) : rawJson;
@@ -69,7 +75,13 @@ export class ProductService implements OnModuleInit {
     }
 
     for (const [key, value] of Object.entries(row)) {
-      const attrKey = key.startsWith('attr_') ? key.slice(5) : key.startsWith('Attribute:') ? key.slice(10) : null;
+      const lowerKey = key.toLowerCase().trim();
+      let attrKey: string | null = null;
+      if (lowerKey.startsWith('attr')) {
+        attrKey = key.slice(4);
+      } else if (lowerKey.startsWith('attribute')) {
+        attrKey = key.slice(9);
+      }
       if (attrKey && value !== undefined && value !== null && value !== '') {
         attributes[attrKey.trim()] = value;
       }
@@ -154,17 +166,32 @@ export class ProductService implements OnModuleInit {
   }
 
   private async seedCatalogCategoriesIfNeeded(): Promise<void> {
-    const count = await this.taxonomyModel.countDocuments({ deletedAt: null }).exec();
-    if (count > 0) return;
-    await this.taxonomyModel.insertMany(catalogCategories.map(category => ({
-      ...category,
-      synonyms: category.synonyms || category.aliases,
-      searchBoost: category.searchBoost || 1,
-      isActive: true,
-      version: 1,
-      auditTrail: [{ action: 'seeded', reason: 'default_catalog_bootstrap', at: new Date() }],
-    })), { ordered: false });
+    for (const category of catalogCategories) {
+      const id = this.normalizeCategoryId(category.id);
+      const existing = await this.taxonomyModel.findOne({ id, deletedAt: null }).lean().exec();
+      const sanitized = this.sanitizeCatalogCategory(category, existing);
+      
+      const payload = {
+        ...sanitized,
+        synonyms: sanitized.synonyms?.length ? sanitized.synonyms : sanitized.aliases,
+        searchBoost: sanitized.searchBoost || 1,
+        isActive: true,
+        version: existing ? Number(existing.version || 1) + 1 : 1,
+        auditTrail: existing 
+          ? (Array.isArray(existing.auditTrail) ? existing.auditTrail : []).concat({ action: 'synchronized', reason: 'default_catalog_bootstrap', at: new Date() })
+          : [{ action: 'seeded', reason: 'default_catalog_bootstrap', at: new Date() }],
+      };
+
+      await this.taxonomyModel.findOneAndUpdate(
+        { id },
+        { $set: payload },
+        { upsert: true, returnDocument: 'after' }
+      ).exec();
+    }
+    await this.cacheManager.del('catalog:categories');
+    await this.cacheManager.del('catalog:categories:all');
   }
+
 
   async getCatalogCategories(includeInactive = false): Promise<CatalogCategory[]> {
     const cacheKey = includeInactive ? 'catalog:categories:all' : 'catalog:categories';
@@ -197,7 +224,7 @@ export class ProductService implements OnModuleInit {
         $inc: existing ? { version: 1 } : {},
         $push: { auditTrail: { action: existing ? 'updated' : 'created', actorId, reason: 'admin_taxonomy_change', at: new Date() } },
       },
-      { new: true, upsert: true }
+      { returnDocument: 'after', upsert: true }
     ).lean().exec();
     await this.invalidateProductCaches();
     return this.sanitizeCatalogCategory(updated);
@@ -215,7 +242,7 @@ export class ProductService implements OnModuleInit {
         $set: { isActive: false, deletedAt: new Date(), updatedBy: actorId || null },
         $push: { auditTrail: { action: 'deleted', actorId: actorId || null, reason: 'admin_taxonomy_delete', at: new Date() } },
       },
-      { new: true }
+      { returnDocument: 'after' }
     ).lean().exec();
     if (!deleted) throw new NotFoundException('Catalog category not found');
     await this.invalidateProductCaches();
@@ -324,13 +351,14 @@ export class ProductService implements OnModuleInit {
     return text;
   }
 
-  private sanitizeAttributes(category: CatalogCategory, rawAttributes: any = {}): Record<string, any> {
+  private sanitizeAttributes(category: CatalogCategory, rawAttributes: any = {}, enforceRequired = true): Record<string, any> {
     const raw = rawAttributes instanceof Map ? Object.fromEntries(rawAttributes) : rawAttributes || {};
     const allowedKeys = new Set(category.attributes.map(field => field.key));
     const output: Record<string, any> = {};
 
     for (const field of category.attributes) {
-      const value = this.coerceAttributeValue(field, raw[field.key]);
+      const fieldDef = enforceRequired ? field : { ...field, required: false };
+      const value = this.coerceAttributeValue(fieldDef, raw[field.key]);
       if (value !== undefined) output[field.key] = value;
     }
 
@@ -396,7 +424,7 @@ export class ProductService implements OnModuleInit {
         stockQuantity,
         inStock: variant.inStock === undefined ? stockType !== 'finite' || stockQuantity > 0 : this.parseBooleanFlag(variant.inStock) !== false,
         images: Array.isArray(variant.images) ? variant.images.filter((url: any) => /^https?:\/\//i.test(String(url))).slice(0, 6) : [],
-        attributes: this.sanitizeAttributes(category, variant.attributes || {}),
+        attributes: this.sanitizeAttributes(category, variant.attributes || {}, false),
         isActive: variant.isActive === undefined ? true : this.parseBooleanFlag(variant.isActive) !== false,
       };
     });
@@ -505,6 +533,26 @@ export class ProductService implements OnModuleInit {
   }
 
   async onModuleInit() {
+    try {
+      const XLSX = require('xlsx');
+      const fs = require('fs');
+      const filePath = 'c:/Users/mahor/.gemini/antigravity/scratch/Rwanda-online-shop/rmf_bulk_product_template.xlsx';
+      if (fs.existsSync(filePath)) {
+        const wb = XLSX.readFile(filePath);
+        const res: Record<string, any> = {};
+        wb.SheetNames.forEach((name: string) => {
+          const ws = wb.Sheets[name];
+          res[name] = XLSX.utils.sheet_to_json(ws, {header:1, defval:''});
+        });
+        fs.writeFileSync('c:/Users/mahor/.gemini/antigravity/scratch/Rwanda-online-shop/xlsx-output.txt', JSON.stringify(res, null, 2));
+        console.log('✅ SUCCESSFULLY DUMPED XLSX TEMPLATE TO xlsx-output.txt');
+      } else {
+        console.log('❌ TEMPLATE FILE NOT FOUND AT:', filePath);
+      }
+    } catch (e: any) {
+      console.error('❌ FAILED TO DUMP XLSX TEMPLATE:', e.message);
+    }
+
     await this.seedCatalogCategoriesIfNeeded();
 
     if (process.env.SEED_PRODUCTS_ON_STARTUP !== 'true') {
@@ -667,8 +715,9 @@ export class ProductService implements OnModuleInit {
     });
     const cacheKey = `products:all:${canonicalQuery}`;
     const cached = await this.cacheManager.get<any[]>(cacheKey);
-
-    if (cached) return cached;
+    if (cached && Array.isArray(cached) && cached.every((item: any) => item !== null && item !== undefined)) {
+      return cached;
+    }
 
     const filter: any = { deletedAt: null };
 
@@ -730,12 +779,28 @@ export class ProductService implements OnModuleInit {
     const trimmedSearch = String(search || '').trim();
     if (trimmedSearch && !this.isMadeInRwandaSearch(trimmedSearch)) {
       const safeSearch = this.escapeRegex(trimmedSearch);
+      
+      const dynamicCategories = await this.getCatalogCategories();
+      const matchedCategories = dynamicCategories.filter(cat => 
+         cat.label.toLowerCase().includes(trimmedSearch.toLowerCase()) ||
+         cat.aliases?.some((a: string) => a.toLowerCase().includes(trimmedSearch.toLowerCase())) ||
+         cat.synonyms?.some((s: string) => s.toLowerCase().includes(trimmedSearch.toLowerCase()))
+      );
+      const matchedCategoryIds = matchedCategories.map(cat => cat.id);
+
       this.addAndFilter(filter, {
         $or: [
           { name: { $regex: safeSearch, $options: 'i' } },
           { description: { $regex: safeSearch, $options: 'i' } },
           { category: { $regex: safeSearch, $options: 'i' } },
           { categoryLabel: { $regex: safeSearch, $options: 'i' } },
+          { productType: { $regex: safeSearch, $options: 'i' } },
+          { 'attributes.brand': { $regex: safeSearch, $options: 'i' } },
+          { 'attributes.model': { $regex: safeSearch, $options: 'i' } },
+          { 'attributes.material': { $regex: safeSearch, $options: 'i' } },
+          { 'attributes.originDistrict': { $regex: safeSearch, $options: 'i' } },
+          ...(matchedCategoryIds.length > 0 ? [{ categoryId: { $in: matchedCategoryIds } }] : []),
+          ...(matchedCategoryIds.length > 0 ? [{ category: { $in: matchedCategoryIds } }] : [])
         ]
       });
     }
@@ -962,7 +1027,7 @@ export class ProductService implements OnModuleInit {
         $set: updateData,
         $push: { auditTrail: { action: 'updated', actorId, reason: 'seller_inventory_edit', at: new Date() } }
       },
-      { new: true }
+      { returnDocument: 'after' }
     ).exec();
 
     if (!updatedProduct) {
@@ -982,7 +1047,7 @@ export class ProductService implements OnModuleInit {
     const product = await this.productModel.findOneAndUpdate(
       { _id: id, deletedAt: null },
       { $set: { isApproved: true, isActive: true } },
-      { new: true }
+      { returnDocument: 'after' }
     ).exec();
 
     if (!product) {
@@ -1017,7 +1082,7 @@ export class ProductService implements OnModuleInit {
           }
         }
       },
-      { new: true }
+      { returnDocument: 'after' }
     ).exec();
 
     if (!product) {
@@ -1052,7 +1117,7 @@ export class ProductService implements OnModuleInit {
     const updated = await this.productModel.findOneAndUpdate(
       filter,
       { $inc: { stockQuantity: quantityChange } },
-      { new: true }
+      { returnDocument: 'after' }
     ).exec();
 
     if (!updated) {
@@ -1072,21 +1137,73 @@ export class ProductService implements OnModuleInit {
     console.log(`[BulkUpload] Starting for seller: ${sellerId}`);
     try {
       const workbook = XLSX.read(buffer, { type: 'buffer' });
-      const sheetName = workbook.SheetNames[0];
+      let sheetName = workbook.SheetNames.find(name => {
+        const lower = name.toLowerCase().trim();
+        return lower.includes('product');
+      });
+      if (!sheetName) {
+        sheetName = workbook.SheetNames[0];
+      }
       const sheet = workbook.Sheets[sheetName];
-      const rows = XLSX.utils.sheet_to_json(sheet) as any[];
-      console.log(`[BulkUpload] Found ${rows.length} rows in sheet: ${sheetName}`);
+      const rows = XLSX.utils.sheet_to_json(sheet, { header: 1 }) as any[][];
 
-      if (rows.length === 0) {
-        throw new BadRequestException('The uploaded file is empty.');
+      // Find the header row index by scanning for rows containing Name and Price
+      let headerRowIndex = -1;
+      for (let i = 0; i < rows.length; i++) {
+        const row = rows[i];
+        if (Array.isArray(row)) {
+          const hasName = row.some(cell => String(cell || '').toLowerCase().trim().includes('name'));
+          const hasPrice = row.some(cell => String(cell || '').toLowerCase().trim().includes('price'));
+          if (hasName && hasPrice) {
+            headerRowIndex = i;
+            break;
+          }
+        }
       }
 
-      const results = {
-        total: rows.length,
-        success: 0,
-        failed: 0,
-        errors: [] as string[]
-      };
+      if (headerRowIndex === -1) {
+        headerRowIndex = 0; // fallback if no matching header row is found
+      }
+
+      // Normalize headers to alphanumeric-only strings (strips spaces, asterisks, parentheses, dashes)
+      const headers = (rows[headerRowIndex] || []).map(cell =>
+        String(cell || '').toLowerCase().trim().replace(/[^a-z0-9]+/g, '')
+      );
+
+      // Parse data rows
+      const validRows: any[] = [];
+      for (let i = headerRowIndex + 1; i < rows.length; i++) {
+        const rowData = rows[i];
+        if (!Array.isArray(rowData) || rowData.length === 0) continue;
+
+        // Skip dropdown reference or footer tables in the sheet
+        const firstCellVal = String(rowData[0] || '').trim().toLowerCase();
+        if (firstCellVal.includes('dropdown reference') || (firstCellVal.includes('category') && rowData[1]?.includes('|'))) {
+          break; // Stop parsing as we reached the dropdown reference block
+        }
+
+        // Map row to an object using our normalized headers
+        const rowObj: Record<string, any> = {};
+        rowData.forEach((cell, cellIndex) => {
+          const header = headers[cellIndex];
+          if (header) {
+            rowObj[header] = cell;
+          }
+        });
+
+        // Verify if the row has a name/product name
+        const rawName = String(rowObj['name'] || rowObj['product'] || rowObj['title'] || '').trim();
+        if (rawName && !rawName.startsWith('#') && !rawName.startsWith('//')) {
+          rowObj['_rowIndex'] = i + 1;
+          validRows.push(rowObj);
+        }
+      }
+
+      console.log(`[BulkUpload] Found ${validRows.length} valid product rows of ${rows.length} total rows.`);
+
+      if (validRows.length === 0) {
+        throw new BadRequestException('The uploaded file contains no valid product rows.');
+      }
 
       // Find seller to get marketId
       console.log(`[BulkUpload] Looking up seller for user: ${sellerId}`);
@@ -1098,24 +1215,159 @@ export class ProductService implements OnModuleInit {
       }
       console.log(`[BulkUpload] Found seller: ${seller._id} (Market: ${seller.marketId})`);
 
-      for (const [index, row] of rows.entries()) {
+      // Group rows by case-insensitive name to handle base product + variants
+      const productGroups = new Map<string, any[]>();
+      for (const row of validRows) {
+        const nameVal = String(row['name'] || row['product'] || row['title'] || '').trim().toLowerCase();
+        let group = productGroups.get(nameVal);
+        if (!group) {
+          group = [];
+          productGroups.set(nameVal, group);
+        }
+        group.push(row);
+      }
+
+      const results = {
+        total: productGroups.size,
+        success: 0,
+        failed: 0,
+        errors: [] as string[]
+      };
+
+      for (const [groupKey, groupRows] of productGroups.entries()) {
         try {
+          const baseRow = groupRows[0];
+          const nameVal = String(baseRow['name'] || baseRow['product'] || baseRow['title'] || '').trim();
+          const descriptionVal = baseRow['description'] || baseRow['details'] || baseRow['desc'] || baseRow['about'];
+          const categoryVal = baseRow['category'] || baseRow['type'] || 'General';
+
+          // Price field mapping (normalizing Price (RWF) * to 'pricerwf')
+          const priceVal = Number(baseRow['price'] || baseRow['pricerwf'] || baseRow['cost'] || baseRow['unitprice'] || baseRow['unit_price'] || baseRow['rate'] || 0);
+          const unitVal = baseRow['unit'] || baseRow['pkg'] || 'pcs';
+
+          // Stock quantity field mapping (normalizing Stock Qty * to 'stockqty')
+          const stockQuantityVal = Number(baseRow['stock'] || baseRow['stockqty'] || baseRow['quantity'] || baseRow['qty'] || 0);
+
+          const rawStockType = baseRow['stocktype'] || baseRow['inventorytype'];
+          const stockTypeVal = String(rawStockType || 'finite').toLowerCase().trim();
+
+          const madeInRwandaVal = baseRow['madeinrwanda'] || baseRow['ismadeinrwanda'];
+          const isMadeInRwanda = madeInRwandaVal === 'yes' || madeInRwandaVal === 'true' || madeInRwandaVal === true || madeInRwandaVal === 1 || String(madeInRwandaVal).toLowerCase().trim() === 'yes';
+
+          // Image URL mapping (normalizing Image URL to 'imageurl')
+          const imagesVal = baseRow['imageurl'] || baseRow['images'] || baseRow['image'] || baseRow['urls'] || baseRow['img'];
+
+          // Resolve category definition to identify required taxonomy fields
+          const categoryObj = await this.resolveCatalogCategoryDynamic(categoryVal);
+          const attributes = this.parseAttributesFromRow(baseRow);
+
+          // Supply safe fallbacks for missing mandatory category fields
+          for (const field of categoryObj.attributes) {
+            if (field.required) {
+              const currentVal = attributes[field.key];
+              if (currentVal === undefined || currentVal === null || currentVal === '') {
+                if (field.type === 'select' && field.options?.length) {
+                  const fallbackOption = field.options.find(opt => ['other', 'mixed', 'a', 'new'].includes(opt.toLowerCase())) || field.options[0];
+                  attributes[field.key] = fallbackOption;
+                } else if (field.type === 'boolean') {
+                  attributes[field.key] = true;
+                } else if (field.type === 'number') {
+                  attributes[field.key] = field.min !== undefined ? field.min : 0;
+                } else {
+                  attributes[field.key] = 'Generic';
+                }
+              }
+            }
+          }
+
+          // Parse variants if multiple rows are present or if a single row has variant options specified
+          const allowedAxisKeys = categoryObj.variantAxes.map(axis => axis.key);
+          const variants: any[] = [];
+          const variantAxesMap = new Map<string, Set<string>>();
+          for (const axisKey of allowedAxisKeys) {
+            variantAxesMap.set(axisKey, new Set<string>());
+          }
+
+          if (allowedAxisKeys.length > 0) {
+            for (const row of groupRows) {
+              const options: Record<string, string> = {};
+              let hasAnyOption = false;
+
+              for (const axisKey of allowedAxisKeys) {
+                const normalizedKey = axisKey.toLowerCase().replace(/[^a-z0-9]+/g, '');
+                const val = row[axisKey] || row[normalizedKey] || '';
+                if (val !== undefined && val !== null && String(val).trim() !== '') {
+                  const stringVal = String(val).trim();
+                  options[axisKey] = stringVal;
+                  variantAxesMap.get(axisKey)?.add(stringVal);
+                  hasAnyOption = true;
+                }
+              }
+
+              // Parse as variant if options are specified OR if there are multiple rows for this product
+              if (hasAnyOption || groupRows.length > 1) {
+                const variantPrice = Number(row['price'] || row['pricerwf'] || row['cost'] || row['unitprice'] || row['unit_price'] || row['rate'] || priceVal);
+                const variantStock = Number(row['stock'] || row['stockqty'] || row['quantity'] || row['qty'] || stockQuantityVal);
+                const variantStockType = String(row['stocktype'] || row['inventorytype'] || stockTypeVal).toLowerCase().trim();
+                const variantSku = String(row['sku'] || row['variantcode'] || '').trim();
+                const variantImages = this.parseImageList(row['imageurl'] || row['images'] || row['image'] || imagesVal);
+
+                const optionLabels = Object.values(options).filter(Boolean);
+                const variantTitle = optionLabels.length > 0
+                  ? `${nameVal} (${optionLabels.join(' / ')})`
+                  : `${nameVal} Variant`;
+
+                variants.push({
+                  sku: variantSku || undefined,
+                  title: variantTitle,
+                  options,
+                  price: variantPrice,
+                  stockType: variantStockType,
+                  stockQuantity: variantStock,
+                  unit: row['unit'] || baseRow['unit'] || unitVal,
+                  inStock: variantStockType !== 'finite' || variantStock > 0,
+                  images: variantImages,
+                  isActive: true
+                });
+              }
+            }
+          }
+
+          // Build final variantAxes array with the unique values collected
+          const variantAxes: any[] = [];
+          if (allowedAxisKeys.length > 0) {
+            for (const axisKey of allowedAxisKeys) {
+              const uniqueVals = Array.from(variantAxesMap.get(axisKey) || []);
+              if (uniqueVals.length > 0) {
+                const axisDef = categoryObj.variantAxes.find(a => a.key === axisKey);
+                variantAxes.push({
+                  key: axisKey,
+                  label: axisDef?.label || axisKey,
+                  values: uniqueVals
+                });
+              }
+            }
+          }
+
           let productData = {
-            name: row.Name || row.name || row.Product,
-            description: row.Description || row.description || row.Details,
-            category: row.Category || row.category || 'General',
-            price: Number(row.Price || row.price || 0),
-            unit: row.Unit || row.unit || 'pcs',
-            stockQuantity: Number(row.Stock || row.stock || 0),
-            stockType: (row.StockType || row.stockType || 'finite').toLowerCase(),
-            isMadeInRwanda: row.MadeInRwanda === 'yes' || row.MadeInRwanda === true || row.isMadeInRwanda === true,
-            images: this.parseImageList(row.Images || row.images || row.Image || row.image),
-            attributes: this.parseAttributesFromRow(row),
+            name: nameVal,
+            description: descriptionVal,
+            category: categoryVal,
+            price: priceVal,
+            unit: unitVal,
+            stockQuantity: stockQuantityVal,
+            stockType: stockTypeVal,
+            isMadeInRwanda: isMadeInRwanda,
+            images: this.parseImageList(imagesVal),
+            attributes: attributes,
+            variantAxes: variantAxes,
+            variants: variants,
             sellerId: seller._id,
             marketId: seller.marketId,
             isApproved: true,
             isActive: true
           };
+
           productData = await this.normalizeProductData(productData);
 
           if (!productData.name || isNaN(productData.price) || productData.price <= 0) {
@@ -1133,7 +1385,7 @@ export class ProductService implements OnModuleInit {
           results.success++;
         } catch (err: any) {
           results.failed++;
-          results.errors.push(`Row ${index + 2}: ${err.message}`);
+          results.errors.push(`Product "${groupKey}" (Rows: ${groupRows.map(r => r._rowIndex).join(', ')}): ${err.message}`);
         }
       }
 
@@ -1184,5 +1436,131 @@ export class ProductService implements OnModuleInit {
       }
       return p;
     });
+  }
+
+  generateExcelTemplate(): Buffer {
+    const wb = XLSX.utils.book_new();
+
+    const productHeaders = [
+      'Name',
+      'Description',
+      'Category',
+      'Price',
+      'Unit',
+      'Stock',
+      'StockType',
+      'MadeInRwanda',
+      'Images',
+      'Size',
+      'Color',
+      'Flavor',
+      'PackageSize',
+      'Capacity',
+      'SKU'
+    ];
+
+    const sampleRows = [
+      {
+        Name: 'Handwoven Agaseke Basket',
+        Description: 'Traditional handwoven Rwandan basket with high quality sisal fibers.',
+        Category: 'handicrafts',
+        Price: 25000,
+        Unit: 'pcs',
+        Stock: 10,
+        StockType: 'finite',
+        MadeInRwanda: 'yes',
+        Images: 'https://images.unsplash.com/photo-1607344645866-009c320b63e0',
+        Size: 'Small',
+        Color: 'Red',
+        Flavor: '',
+        PackageSize: '',
+        Capacity: '',
+        SKU: 'AGA-S-RED'
+      },
+      {
+        Name: 'Handwoven Agaseke Basket',
+        Description: 'Traditional handwoven Rwandan basket with high quality sisal fibers.',
+        Category: 'handicrafts',
+        Price: 28000,
+        Unit: 'pcs',
+        Stock: 15,
+        StockType: 'finite',
+        MadeInRwanda: 'yes',
+        Images: 'https://images.unsplash.com/photo-1607344645866-009c320b63e0',
+        Size: 'Medium',
+        Color: 'Blue',
+        Flavor: '',
+        PackageSize: '',
+        Capacity: '',
+        SKU: 'AGA-M-BLU'
+      },
+      {
+        Name: 'Rwandan Specialty Coffee',
+        Description: 'High-altitude Arabica beans from Gisenyi.',
+        Category: 'grocery',
+        Price: 12000,
+        Unit: 'kg',
+        Stock: 100,
+        StockType: 'infinite',
+        MadeInRwanda: 'yes',
+        Images: 'https://images.unsplash.com/photo-1559056199-641a0ac8b55e',
+        Size: '',
+        Color: '',
+        Flavor: '',
+        PackageSize: '1kg',
+        Capacity: '',
+        SKU: 'COF-1KG'
+      },
+      {
+        Name: 'Rwandan Specialty Coffee',
+        Description: 'High-altitude Arabica beans from Gisenyi.',
+        Category: 'grocery',
+        Price: 6500,
+        Unit: 'kg',
+        Stock: 200,
+        StockType: 'infinite',
+        MadeInRwanda: 'yes',
+        Images: 'https://images.unsplash.com/photo-1559056199-641a0ac8b55e',
+        Size: '',
+        Color: '',
+        Flavor: '',
+        PackageSize: '500g',
+        Capacity: '',
+        SKU: 'COF-500G'
+      },
+      {
+        Name: 'Comfortable Kitenge Cushion',
+        Description: 'Soft cotton cushion for home interior.',
+        Category: 'home',
+        Price: 15000,
+        Unit: 'pcs',
+        Stock: 5,
+        StockType: 'on_demand',
+        MadeInRwanda: 'yes',
+        Images: 'https://images.unsplash.com/photo-1584100936595-c0654b55a2e6',
+        Size: 'Medium',
+        Color: 'Yellow',
+        Flavor: '',
+        PackageSize: '',
+        Capacity: '',
+        SKU: 'CUSH-KIT-YLW'
+      }
+    ];
+
+    const wsProducts = XLSX.utils.json_to_sheet(sampleRows, { header: productHeaders });
+    XLSX.utils.book_append_sheet(wb, wsProducts, 'Products');
+
+    const referenceData = [
+      { Parameter: 'Category', 'Allowed Values': 'grocery, fashion, handicrafts, home, electronics, other', Description: 'The category matching your product. Custom entries resolve to "other" schema.' },
+      { Parameter: 'StockType', 'Allowed Values': 'finite, infinite, on_demand', Description: 'How stock availability is managed.' },
+      { Parameter: 'MadeInRwanda', 'Allowed Values': 'yes, no', Description: 'Is this product made or produced in Rwanda?' },
+      { Parameter: 'Unit', 'Allowed Values': 'pcs, kg, pair, set', Description: 'The pricing unit for the inventory listing.' },
+      { Parameter: 'Variants (Size, Color, Flavor, PackageSize, Capacity, SKU)', 'Allowed Values': 'Text / standard codes', Description: 'Group rows with the SAME "Name" to declare variants (e.g. red/blue or small/medium/large).' }
+    ];
+
+    const wsRef = XLSX.utils.json_to_sheet(referenceData);
+    XLSX.utils.book_append_sheet(wb, wsRef, 'Validation Reference');
+
+    return XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
   }
 }

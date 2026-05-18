@@ -1,10 +1,27 @@
-import { Controller, Get, Post, Put, Patch, Body, Param, Request, Query, UseInterceptors, UploadedFile, BadRequestException } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Put,
+  Patch,
+  Body,
+  Param,
+  Request,
+  Query,
+  UseInterceptors,
+  UploadedFile,
+  BadRequestException,
+  UseGuards,
+  ForbiddenException,
+} from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { randomUUID } from 'crypto';
 import { existsSync, mkdirSync, writeFileSync } from 'fs';
 import { join } from 'path';
 import { RiderService } from './rider.service';
 import type { Coordinates } from '@rmf/location';
+import { Roles, JwtAuthGuard } from '@rmf/auth';
+import { UserRole } from '@rmf/shared-types';
 
 @Controller('riders')
 export class RiderController {
@@ -17,34 +34,44 @@ export class RiderController {
     'image/webp': '.webp',
   };
 
+  @UseGuards(JwtAuthGuard)
   @Post('register')
-  async create(@Body() riderData: any) {
-    const rider = await this.riderService.create(riderData);
+  async create(@Request() req: any, @Body() riderData: any) {
+    const userId = req.user?.userId;
+    if (!userId) {
+      throw new BadRequestException('User ID is required. Please log in before registering as a rider.');
+    }
+    const rider = await this.riderService.create({ ...riderData, userId });
     return { success: true, data: rider };
   }
 
+  // FIX [RIDER-ME]: Removed queryUserId fallback — prevents IDOR.
   @Get('me')
-  async findMe(@Request() req: any, @Query('userId') queryUserId?: string) {
+  async findMe(@Request() req: any) {
     try {
-        const userId = req.user?.userId || queryUserId;
-        if (!userId) return { success: true, data: null };
-        const rider = await this.riderService.findByUserId(userId);
-        return { success: true, data: rider };
+      const userId = req.user?.userId;
+      if (!userId) return { success: true, data: null };
+      const rider = await this.riderService.findByUserId(userId);
+      return { success: true, data: rider };
     } catch (e) {
-        return { success: true, data: null };
+      return { success: true, data: null };
     }
   }
 
+  // FIX [RIDER-STATUS]: Removed body.userId fallback — only JWT identity used.
   @Patch('me/status')
-  async updateMyStatus(@Request() req: any, @Body() data: { isActive: boolean, location?: Coordinates, userId?: string }) {
-    const userId = req.user?.userId || data.userId;
+  async updateMyStatus(@Request() req: any, @Body() data: { isActive: boolean; location?: Coordinates }) {
+    const userId = req.user?.userId;
+    if (!userId) throw new ForbiddenException('Authentication required');
     const rider = await this.riderService.updateStatus(userId, data.isActive, data.location);
     return { success: true, data: rider };
   }
 
+  // FIX [RIDER-LOCATION]: Removed body.userId fallback.
   @Patch('me/location')
-  async updateMyLocation(@Request() req: any, @Body() data: { lat: number, lng: number, userId?: string }) {
-    const userId = req.user?.userId || data.userId;
+  async updateMyLocation(@Request() req: any, @Body() data: { lat: number; lng: number }) {
+    const userId = req.user?.userId;
+    if (!userId) throw new ForbiddenException('Authentication required');
     const rider = await this.riderService.updateLocation(userId, data);
     return { success: true, data: rider };
   }
@@ -61,43 +88,62 @@ export class RiderController {
     return { success: true, data: rider };
   }
 
+  @UseGuards(JwtAuthGuard)
   @Put('user/:userId/status')
   async updateStatus(
-    @Param('userId') userId: string, 
-    @Body() data: { isActive: boolean, location?: Coordinates }
+    @Param('userId') userId: string,
+    @Body() data: { isActive: boolean; location?: Coordinates },
+    @Request() req: any,
   ) {
+    if (req.user.userId !== userId && req.user.role !== 'ADMIN') {
+      throw new ForbiddenException('You can only update your own status');
+    }
     const rider = await this.riderService.updateStatus(userId, data.isActive, data.location);
     return { success: true, data: rider };
   }
 
+  @UseGuards(JwtAuthGuard)
   @Put('user/:userId/location')
   async updateLocation(
-    @Param('userId') userId: string, 
-    @Body() location: Coordinates
+    @Param('userId') userId: string,
+    @Body() location: Coordinates,
+    @Request() req: any,
   ) {
+    if (req.user.userId !== userId && req.user.role !== 'ADMIN') {
+      throw new ForbiddenException('You can only update your own location');
+    }
     const rider = await this.riderService.updateLocation(userId, location);
     return { success: true, data: rider };
   }
 
   @Get()
   async findAll(@Query('isApproved') isApproved?: string) {
-    const riders = await this.riderService.findAll(isApproved === 'true' || isApproved === 'false' ? isApproved === 'true' : undefined);
+    const riders = await this.riderService.findAll(
+      isApproved === 'true' || isApproved === 'false' ? isApproved === 'true' : undefined,
+    );
     return { success: true, data: riders };
   }
 
+  // FIX [RIDER-APPROVE]: Was unauthenticated — anyone could approve rider applications.
+  @UseGuards(JwtAuthGuard)
+  @Roles(UserRole.ADMIN)
   @Post(':id/approve')
   async approve(@Param('id') id: string) {
     const rider = await this.riderService.approve(id);
     return { success: true, data: rider };
   }
 
-  // 4A fix: reject endpoint for admin to decline rider applications
+  // FIX [RIDER-REJECT]: Was unauthenticated — anyone could reject riders.
+  @UseGuards(JwtAuthGuard)
+  @Roles(UserRole.ADMIN)
   @Post(':id/reject')
   async reject(@Param('id') id: string, @Body() body?: { reason?: string }) {
     const rider = await this.riderService.reject(id, body?.reason);
     return { success: true, data: rider };
   }
 
+  // FIX [RIDER-UPLOAD]: Was unauthenticated — anyone could upload documents.
+  @UseGuards(JwtAuthGuard)
   @Post('upload-document')
   @UseInterceptors(FileInterceptor('file', { limits: { fileSize: 8 * 1024 * 1024 } }))
   async uploadDocument(@UploadedFile() file: any) {
@@ -110,9 +156,9 @@ export class RiderController {
     const fileName = `${randomUUID()}${extension}`;
     writeFileSync(join(uploadDir, fileName), file.buffer);
     const publicBaseUrl = process.env.RIDER_SERVICE_PUBLIC_URL || `http://localhost:${process.env.PORT || 3005}`;
-    return { 
-      success: true, 
-      data: { url: `${publicBaseUrl}/uploads/rider-documents/${fileName}` } 
+    return {
+      success: true,
+      data: { url: `${publicBaseUrl}/uploads/rider-documents/${fileName}` },
     };
   }
 

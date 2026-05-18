@@ -76,36 +76,36 @@ export default function WalletPage() {
     <Layout>
       <div className="max-w-6xl mx-auto space-y-12 animate-reveal">
         <div className="border-b border-[#e0e0e0] pb-10">
-          <p className="text-[10px] font-black text-[#1b4332] uppercase tracking-[0.5em] mb-4">My Account</p>
-          <h1 className="text-5xl font-sans text-[#1b1c1c] tracking-normal">Wallet</h1>
+          <p className="text-[10px] font-black text-[#ff6b00] uppercase tracking-[0.5em] mb-4">{t('my_account')}</p>
+          <h1 className="text-5xl font-sans text-[#1b1c1c] tracking-normal">{t('wallet_title')}</h1>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-12">
           {/* Main Wallet Card */}
           <div className="lg:col-span-2 space-y-12">
-            <div className="bg-[#012d1d] text-white p-12 relative overflow-hidden group shadow-2xl">
+            <div className="bg-[#e05300] text-white p-12 relative overflow-hidden group shadow-2xl">
                <div className="absolute top-0 right-0 w-64 h-64 bg-[#ffd700]/10 rounded-full -mr-32 -mt-32 group-hover:scale-110 transition-transform duration-1000"></div>
                <div className="relative z-10">
                   <div className="flex justify-between items-start mb-20">
                     <div className="flex items-center gap-3">
                       <div className="w-10 h-10 bg-[#ffd700] flex items-center justify-center font-black">RMF</div>
-                      <span className="text-[10px] font-bold uppercase tracking-[0.4em]">My Wallet</span>
+                      <span className="text-[10px] font-bold uppercase tracking-[0.4em]">{t('my_wallet')}</span>
                     </div>
-                    <span className="text-[9px] font-bold uppercase tracking-widest opacity-40">Verified Account</span>
+                    <span className="text-[9px] font-bold uppercase tracking-widest opacity-40">{t('verified_account')}</span>
                   </div>
                   
-                  <p className="text-[11px] font-black uppercase tracking-[0.4em] text-[#1b4332] mb-4">Available Balance</p>
+                  <p className="text-[11px] font-black uppercase tracking-[0.4em] text-[#ff6b00] mb-4">{t('available_balance')}</p>
                   <h2 className="text-7xl font-sans tracking-normal mb-12">
                     {loading ? '---' : (wallet?.balance?.toLocaleString() || 0)} <span className="text-3xl not-italic opacity-40 ml-4">RWF</span>
                   </h2>
                   
                   <div className="flex justify-between items-end">
                     <div>
-                       <p className="text-[9px] font-bold uppercase tracking-widest opacity-40 mb-2">Account Holder</p>
-                       <p className="text-sm font-sans">{user?.fullName || 'Account'}</p>
+                       <p className="text-[9px] font-bold uppercase tracking-widest opacity-40 mb-2">{t('account_holder')}</p>
+                       <p className="text-sm font-sans">{user?.fullName || t('account')}</p>
                     </div>
                     <div className="text-right">
-                       <p className="text-[9px] font-bold uppercase tracking-widest opacity-40 mb-2">Account ID</p>
+                       <p className="text-[9px] font-bold uppercase tracking-widest opacity-40 mb-2">{t('account_id')}</p>
                        <p className="text-[10px] font-black uppercase tracking-widest">#{user?.id?.substring(0,8)}</p>
                     </div>
                   </div>
@@ -114,7 +114,7 @@ export default function WalletPage() {
 
             {/* Transaction History */}
             <div className="space-y-8">
-              <h3 className="text-[11px] font-black uppercase tracking-[0.4em] text-[#1b1c1c] border-b border-[#e0e0e0] pb-6">Transaction History</h3>
+              <h3 className="text-[11px] font-black uppercase tracking-[0.4em] text-[#1b1c1c] border-b border-[#e0e0e0] pb-6">{t('transaction_history')}</h3>
               <div className="bg-white border border-[#e0e0e0] divide-y divide-[#e0e0e0]">
                 {transactions && transactions.length > 0 ? transactions.map((tx: any) => (
                   <div key={tx._id} className="p-8 flex justify-between items-center hover:bg-[#fcf9f8] transition-colors">
@@ -136,7 +136,7 @@ export default function WalletPage() {
                   </div>
                 )) : (
                   <div className="p-20 text-center text-[10px] font-black uppercase tracking-[0.4em] opacity-30">
-                    No transactions yet
+                    {t('no_transactions_yet')}
                   </div>
                 )}
               </div>
@@ -150,27 +150,27 @@ export default function WalletPage() {
               <button
                 onClick={() => setActiveTab('deposit')}
                 className={`flex-1 py-4 text-[10px] font-black uppercase tracking-widest transition-all ${
-                  activeTab === 'deposit' ? 'bg-[#012d1d] text-white' : 'bg-white text-[#1b1c1c] hover:bg-[#f0eded]'
+                  activeTab === 'deposit' ? 'bg-[#e05300] text-white' : 'bg-white text-[#1b1c1c] hover:bg-[#f0eded]'
                 }`}
               >
-                Deposit
+                {t('deposit')}
               </button>
               <button
                 onClick={() => setActiveTab('withdraw')}
                 className={`flex-1 py-4 text-[10px] font-black uppercase tracking-widest transition-all ${
-                  activeTab === 'withdraw' ? 'bg-[#012d1d] text-white' : 'bg-white text-[#1b1c1c] hover:bg-[#f0eded]'
+                  activeTab === 'withdraw' ? 'bg-[#e05300] text-white' : 'bg-white text-[#1b1c1c] hover:bg-[#f0eded]'
                 }`}
               >
-                Withdraw
+                {t('withdraw')}
               </button>
             </div>
 
             {activeTab === 'deposit' ? (
               <div className="bg-white border border-[#e0e0e0] rounded-lg p-10 shadow-xl">
-                <h3 className="text-[11px] font-black uppercase tracking-[0.4em] text-[#1b1c1c] mb-10">Add Money</h3>
+                <h3 className="text-[11px] font-black uppercase tracking-[0.4em] text-[#1b1c1c] mb-10">{t('add_money')}</h3>
                 <form onSubmit={handleTopUp} className="space-y-8">
                   <div className="space-y-3">
-                    <label className="text-[9px] font-black text-[#414844] uppercase tracking-widest opacity-60">Amount (RWF)</label>
+                    <label className="text-[9px] font-black text-[#414844] uppercase tracking-widest opacity-60">{t('amount')} (RWF)</label>
                     <input 
                       type="number" 
                       value={topUpAmount}
@@ -186,7 +186,7 @@ export default function WalletPage() {
                         key={amt}
                         type="button"
                         onClick={() => setTopUpAmount(String(amt))}
-                        className="py-3 border border-[#e0e0e0] text-[9px] font-black uppercase tracking-widest hover:border-[#1b4332] transition-all"
+                        className="py-3 border border-[#e0e0e0] text-[9px] font-black uppercase tracking-widest hover:border-[#ff6b00] transition-all"
                       >
                         {amt.toLocaleString()}
                       </button>
@@ -194,12 +194,12 @@ export default function WalletPage() {
                   </div>
                   <div className="p-6 bg-[#f0eded] space-y-4">
                      <div className="flex justify-between items-center text-[9px] font-black uppercase tracking-widest">
-                        <span className="opacity-60">Payment Method</span>
+                        <span className="opacity-60">{t('payment_method')}</span>
                         <span>MTN Mobile Money</span>
                      </div>
                      <div className="flex justify-between items-center text-[9px] font-black uppercase tracking-widest">
-                        <span className="opacity-60">Confirmation</span>
-                        <span>Instant via SMS</span>
+                        <span className="opacity-60">{t('confirmation')}</span>
+                        <span>{t('instant_via_sms')}</span>
                      </div>
                   </div>
                   <button 
@@ -207,17 +207,17 @@ export default function WalletPage() {
                     disabled={isProcessing}
                     className="w-full rmf-btn-primary py-5 group"
                   >
-                    {isProcessing ? 'Processing...' : 'Deposit Now'}
+                    {isProcessing ? t('processing') : t('deposit_now')}
                     <span className="ml-4 group-hover:translate-x-1 transition-transform inline-block">→</span>
                   </button>
                 </form>
               </div>
             ) : (
               <div className="bg-white border border-[#e0e0e0] rounded-lg p-10 shadow-xl">
-                <h3 className="text-[11px] font-black uppercase tracking-[0.4em] text-[#1b1c1c] mb-10">Withdraw Money</h3>
+                <h3 className="text-[11px] font-black uppercase tracking-[0.4em] text-[#1b1c1c] mb-10">{t('withdraw_money')}</h3>
                 <form onSubmit={handleWithdraw} className="space-y-8">
                   <div className="space-y-3">
-                    <label className="text-[9px] font-black text-[#414844] uppercase tracking-widest opacity-60">Amount (RWF)</label>
+                    <label className="text-[9px] font-black text-[#414844] uppercase tracking-widest opacity-60">{t('amount')} (RWF)</label>
                     <input 
                       type="number" 
                       value={withdrawAmount}
@@ -226,11 +226,11 @@ export default function WalletPage() {
                       className="rmf-input w-full px-6 py-4"
                     />
                     <p className="text-[8px] font-bold text-[#414844] opacity-50">
-                      Available: {wallet?.balance?.toLocaleString() || 0} RWF
+                      {t('available')}: {wallet?.balance?.toLocaleString() || 0} RWF
                     </p>
                   </div>
                   <div className="space-y-3">
-                    <label className="text-[9px] font-black text-[#414844] uppercase tracking-widest opacity-60">MoMo Phone Number</label>
+                    <label className="text-[9px] font-black text-[#414844] uppercase tracking-widest opacity-60">{t('momo_phone_number')}</label>
                     <input 
                       type="tel" 
                       value={withdrawPhone}
@@ -241,12 +241,12 @@ export default function WalletPage() {
                   </div>
                   <div className="p-6 bg-[#f0eded] space-y-4">
                      <div className="flex justify-between items-center text-[9px] font-black uppercase tracking-widest">
-                        <span className="opacity-60">Method</span>
+                        <span className="opacity-60">{t('method')}</span>
                         <span>MTN Mobile Money</span>
                      </div>
                      <div className="flex justify-between items-center text-[9px] font-black uppercase tracking-widest">
-                        <span className="opacity-60">Processing</span>
-                        <span>Within 24 hours</span>
+                        <span className="opacity-60">{t('processing_time')}</span>
+                        <span>{t('within_24_hours')}</span>
                      </div>
                   </div>
                   <button 
@@ -254,7 +254,7 @@ export default function WalletPage() {
                     disabled={isWithdrawing}
                     className="w-full rmf-btn-primary py-5 group"
                   >
-                    {isWithdrawing ? 'Processing...' : 'Request Withdrawal'}
+                    {isWithdrawing ? t('processing') : t('request_withdrawal')}
                     <span className="ml-4 group-hover:translate-x-1 transition-transform inline-block">→</span>
                   </button>
                 </form>
@@ -262,12 +262,12 @@ export default function WalletPage() {
             )}
 
             <div className="p-10 border border-[#e0e0e0] space-y-6 bg-[#f0eded]/30">
-               <p className="text-[10px] font-black uppercase tracking-[0.4em] text-[#1b4332]">Wallet Security</p>
+               <p className="text-[10px] font-black uppercase tracking-[0.4em] text-[#ff6b00]">{t('wallet_security')}</p>
                <p className="text-[10px] leading-relaxed text-[#414844]">
-                 All transactions are secured with end-to-end encryption. Your wallet is protected by our escrow system — funds are only released upon successful delivery.
+                 {t('wallet_security_desc')}
                </p>
                <div className="pt-6 border-t border-[#e0e0e0]">
-                  <Link href="/orders" className="text-[9px] font-black uppercase tracking-widest text-[#1b1c1c] hover:text-[#1b4332] transition-colors">Need help? Contact Support →</Link>
+                  <Link href="/orders" className="text-[9px] font-black uppercase tracking-widest text-[#1b1c1c] hover:text-[#ff6b00] transition-colors">{t('need_help_contact')} →</Link>
                </div>
             </div>
           </div>

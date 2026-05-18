@@ -112,7 +112,8 @@ export class OrderService implements OnModuleInit, OnModuleDestroy {
       const variant = line.variantId
         ? (product.variants || []).find((candidate: any) => String(candidate._id || candidate.sku) === String(line.variantId))
         : null;
-      const unitPrice = Number(line.unitPrice ?? variant?.price ?? product.price);
+      // CRITICAL FIX: Never trust user-supplied unitPrice. Always use DB price.
+      const unitPrice = Number(variant?.price ?? product.price);
 
       return {
         ...line,
@@ -147,6 +148,51 @@ export class OrderService implements OnModuleInit, OnModuleDestroy {
     } catch (error) {
       this.logger.error(`Failed to trigger notifications: ${type}`, error);
     }
+  }
+
+  async getPublicStats(): Promise<any> {
+    const startOfDay = new Date();
+    startOfDay.setHours(0, 0, 0, 0);
+
+    const activeSellers = await this.sellerModel.countDocuments({ isApproved: true });
+
+    const liveDeliveries = await this.orderModel.countDocuments({
+      status: { $in: [OrderStatus.PICKED_UP, OrderStatus.IN_TRANSIT] }
+    });
+
+    const ordersToday = await this.orderModel.countDocuments({
+      createdAt: { $gte: startOfDay }
+    });
+
+    // Avg delivery time from completed orders
+    const completedOrders = await this.orderModel.find({
+      status: OrderStatus.DELIVERED
+    }).exec();
+
+    let avgDeliveryTime = 0;
+    if (completedOrders.length > 0) {
+      let totalMinutes = 0;
+      let count = 0;
+      for (const order of completedOrders) {
+        const pickedUpEvent = order.history?.find((h: any) => h.status === OrderStatus.PICKED_UP);
+        const deliveredEvent = order.history?.find((h: any) => h.status === OrderStatus.DELIVERED);
+        if (pickedUpEvent?.createdAt && deliveredEvent?.createdAt) {
+          const diffMs = new Date(deliveredEvent.createdAt).getTime() - new Date(pickedUpEvent.createdAt).getTime();
+          totalMinutes += Math.floor(diffMs / 60000);
+          count++;
+        }
+      }
+      if (count > 0) {
+        avgDeliveryTime = Math.ceil(totalMinutes / count);
+      }
+    }
+
+    return {
+      activeSellers,
+      liveDeliveries,
+      ordersToday,
+      avgDeliveryTime
+    };
   }
 
   async onModuleInit() {
@@ -195,18 +241,37 @@ export class OrderService implements OnModuleInit, OnModuleDestroy {
         throw new BadRequestException(`Order blocked by fraud detection: ${fraudCheck.reason}`);
       }
 
-      // C3 fix: commission validation uses tolerance instead of strict float equality.
-      // e.g. 33333 * 0.015 = 499.995 in JS floats, but the frontend rounds to 500.
-      if (!isQuoteRequest) {
-        const calculatedCommission = Math.max(orderData.financials.subtotal * 0.015, 100);
-        if (Math.abs(orderData.financials.platformCommission - calculatedCommission) > 1) {
-          throw new BadRequestException(`Invalid platform commission. Expected ~${Math.round(calculatedCommission)}`);
-        }
-      }
-
       const orderNumber = `ORD-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
       const status = isQuoteRequest ? OrderStatus.AWAITING_QUOTE : (orderData.schedule ? OrderStatus.SCHEDULED : OrderStatus.PLACED);
       orderData.products = await this.snapshotOrderProducts(orderData.products || []);
+
+      // CRITICAL FIX: Recalculate financials server-side to prevent cart manipulation
+      if (!isQuoteRequest) {
+        let calculatedSubtotal = 0;
+        for (const item of orderData.products) {
+          calculatedSubtotal += (item.unitPrice || 0) * (item.quantity || 1);
+        }
+        
+        // Ensure user hasn't manipulated the subtotal
+        if (Math.abs(orderData.financials.subtotal - calculatedSubtotal) > 1) {
+          throw new BadRequestException(`Invalid subtotal. Expected ${calculatedSubtotal}`);
+        }
+        
+        const calculatedCommission = Math.max(calculatedSubtotal * 0.015, 100);
+        if (Math.abs(orderData.financials.platformCommission - calculatedCommission) > 1) {
+          throw new BadRequestException(`Invalid platform commission. Expected ~${Math.round(calculatedCommission)}`);
+        }
+        
+        const expectedTotal = calculatedSubtotal + (orderData.financials.deliveryFee || 0);
+        if (Math.abs(orderData.financials.totalAmount - expectedTotal) > 1) {
+          throw new BadRequestException(`Invalid total amount. Expected ${expectedTotal}`);
+        }
+        
+        // Force the correct values
+        orderData.financials.subtotal = calculatedSubtotal;
+        orderData.financials.platformCommission = calculatedCommission;
+        orderData.financials.totalAmount = expectedTotal;
+      }
 
       // Ensure seller details are fully populated from SellerProfile if missing or default values are used
       if (orderData.seller?.sellerId) {

@@ -28,7 +28,7 @@ export default function SellerAnalyticsPage() {
         <div className="border-b-2 border-[#e0e0e0] pb-12">
           <div className="flex items-center gap-4 mb-6">
              <div className="w-12 h-px bg-[#ffd700]" />
-             <p className="text-[10px] font-black text-[#1b4332] uppercase tracking-[0.5em]">Analytics & Reporting</p>
+             <p className="text-[10px] font-black text-[#ff6b00] uppercase tracking-[0.5em]">Analytics & Reporting</p>
           </div>
           <h1 className="text-7xl md:text-8xl font-sans text-[#1b1c1c] leading-[0.85] tracking-normal">Sales Analytics</h1>
           <p className="text-[10px] font-bold text-[#414844] uppercase tracking-widest mt-6 opacity-80">
@@ -47,7 +47,7 @@ export default function SellerAnalyticsPage() {
                 <div className="absolute top-0 right-0 p-6 opacity-10 text-5xl group-hover:opacity-20 transition-opacity grayscale">{stat.icon}</div>
                 <p className="text-[9px] font-black uppercase tracking-widest text-[#414844] mb-2">{stat.label}</p>
                 <h3 className="text-4xl font-sans tracking-normal text-[#1b1c1c]">{stat.val}</h3>
-                <p className="text-[9px] font-medium uppercase tracking-widest text-[#1b4332] mt-4">{stat.sub}</p>
+                <p className="text-[9px] font-medium uppercase tracking-widest text-[#ff6b00] mt-4">{stat.sub}</p>
              </div>
            ))}
         </div>
@@ -86,11 +86,11 @@ export default function SellerAnalyticsPage() {
                        <div key={i} className="group">
                           <div className="flex justify-between items-end mb-2">
                              <span className="text-[10px] font-black uppercase tracking-widest text-[#1b1c1c] line-clamp-1 pr-4">{prod.name}</span>
-                             <span className="text-base font-sans text-[#1b4332] flex-shrink-0">{prod.sales} Sold</span>
+                             <span className="text-base font-sans text-[#ff6b00] flex-shrink-0">{prod.sales} Sold</span>
                           </div>
                           <div className="h-1.5 bg-[#fcf9f8] relative rounded-full overflow-hidden">
                              <div 
-                                className="absolute top-0 left-0 h-full bg-[#012d1d] transition-all duration-1000 rounded-full" 
+                                className="absolute top-0 left-0 h-full bg-[#e05300] transition-all duration-1000 rounded-full" 
                                 style={{ width: `${Math.min(100, (prod.sales / (analytics?.performance?.[0]?.sales || 1)) * 100)}%` }}
                              />
                           </div>
@@ -106,7 +106,7 @@ export default function SellerAnalyticsPage() {
         </div>
 
         {/* ── Store Performance Summary ── */}
-        <div className="bg-[#012d1d] text-white p-10 md:p-12 relative shadow-xl mt-8">
+        <div className="bg-[#e05300] text-white p-10 md:p-12 relative shadow-xl mt-8">
            <div className="absolute top-0 right-0 px-6 py-3 bg-[#ffd700] text-[#1b1c1c] text-[9px] font-black uppercase tracking-[0.4em]">Store Health</div>
            
            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12 pt-8">
@@ -124,7 +124,7 @@ export default function SellerAnalyticsPage() {
               </div>
               <div className="space-y-3">
                  <p className="text-[9px] font-black uppercase tracking-widest text-white/50">Customer Rating</p>
-                 <p className="text-4xl font-sans text-[#1b4332]">{ratingValue > 0 ? ratingValue.toFixed(1) : 'New'}</p>
+                 <p className="text-4xl font-sans text-[#ff6b00]">{ratingValue > 0 ? ratingValue.toFixed(1) : 'New'}</p>
                  <div className="h-px bg-white/10 my-4" />
                  <p className="text-[8px] uppercase tracking-widest opacity-40">{summary?.totalReviews || 0} buyer reviews</p>
               </div>

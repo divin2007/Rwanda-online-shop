@@ -33,6 +33,17 @@ export class DeliveryGateway implements OnGatewayConnection, OnGatewayDisconnect
   ) {}
 
   handleConnection(client: Socket) {
+    const token = client.handshake.auth?.token || client.handshake.query?.token;
+    if (token) {
+      try {
+        const jwt = require('jsonwebtoken');
+        const secret = process.env.JWT_SECRET || 'change-me-to-a-strong-random-secret-at-least-32-chars';
+        const decoded = jwt.verify(token, secret);
+        (client as any).user = decoded;
+      } catch (err) {
+        console.log(`Socket auth failed: ${err}`);
+      }
+    }
     console.log(`Client connected: ${client.id}`);
   }
 
@@ -53,6 +64,11 @@ export class DeliveryGateway implements OnGatewayConnection, OnGatewayDisconnect
     @ConnectedSocket() client: Socket,
     @MessageBody() payload: { riderId: string, lat: number, lng: number, marketId?: string }
   ) {
+    const user = (client as any).user;
+    if (!user || (user.userId !== payload.riderId && user.sub !== payload.riderId && user.role !== 'ADMIN')) {
+      return { success: false, error: 'Unauthorized' };
+    }
+
     // 10s updates, memory-only
     this.activeRiders.set(payload.riderId, {
       socketId: client.id,
@@ -76,6 +92,11 @@ export class DeliveryGateway implements OnGatewayConnection, OnGatewayDisconnect
     @ConnectedSocket() client: Socket,
     @MessageBody() payload: { deliveryId: string, lat: number, lng: number }
   ) {
+    const user = (client as any).user;
+    if (!user || (user.role !== 'RIDER' && user.role !== 'ADMIN')) {
+      return { success: false, error: 'Unauthorized' };
+    }
+
     // Save to DB for actual active delivery
     await this.deliveryService.streamLocation(payload.deliveryId, { lat: payload.lat, lng: payload.lng });
 
@@ -101,6 +122,11 @@ export class DeliveryGateway implements OnGatewayConnection, OnGatewayDisconnect
     @ConnectedSocket() client: Socket,
     @MessageBody() payload: { deliveryId: string, senderId: string, senderName: string, text: string }
   ) {
+    const user = (client as any).user;
+    if (!user || (user.userId !== payload.senderId && user.sub !== payload.senderId && user.role !== 'ADMIN')) {
+      return { success: false, error: 'Unauthorized' };
+    }
+
     const chatMsg = {
       ...payload,
       timestamp: new Date()

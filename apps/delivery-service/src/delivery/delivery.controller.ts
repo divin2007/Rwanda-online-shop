@@ -1,4 +1,19 @@
-import { Controller, Get, Post, Put, Patch, Body, Param, Request, Query, UseInterceptors, UploadedFile, BadRequestException } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Put,
+  Patch,
+  Body,
+  Param,
+  Request,
+  Query,
+  UseInterceptors,
+  UploadedFile,
+  BadRequestException,
+  UseGuards,
+  ForbiddenException,
+} from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { randomUUID } from 'crypto';
 import { existsSync, mkdirSync, writeFileSync } from 'fs';
@@ -6,14 +21,14 @@ import { extname, join } from 'path';
 import { DeliveryService } from './delivery.service';
 import type { Coordinates } from '@rmf/location';
 import { DeliveryStatus } from '@rmf/shared-types';
-import { Public } from '@rmf/auth';
+import { Public, JwtAuthGuard } from '@rmf/auth';
 
 @Controller('deliveries')
 export class DeliveryController {
   constructor(private readonly deliveryService: DeliveryService) {}
 
   @Post('fee')
-  async calculateFee(@Body() data: { from: Coordinates, to: Coordinates, weightFactor?: number }) {
+  async calculateFee(@Body() data: { from: Coordinates; to: Coordinates; weightFactor?: number }) {
     const feeInfo = await this.deliveryService.calculateDeliveryFee(data.from, data.to, data.weightFactor);
     return { success: true, data: feeInfo };
   }
@@ -24,17 +39,19 @@ export class DeliveryController {
     return { success: true, data: deliveries };
   }
 
+  // FIX [DELIVERY-ACTIVE]: Removed queryUserId fallback — prevents IDOR.
   @Get('active')
-  async getActive(@Request() req: any, @Query('userId') queryUserId?: string) {
-    const userId = req.user?.userId || queryUserId;
+  async getActive(@Request() req: any) {
+    const userId = req.user?.userId;
     if (!userId) return { success: true, data: null };
     const delivery = await this.deliveryService.getActiveDelivery(userId);
     return { success: true, data: delivery };
   }
 
+  // FIX [DELIVERY-HISTORY]: Removed queryUserId fallback — prevents IDOR.
   @Get('history')
-  async getHistory(@Request() req: any, @Query('userId') queryUserId?: string) {
-    const userId = req.user?.userId || queryUserId;
+  async getHistory(@Request() req: any) {
+    const userId = req.user?.userId;
     if (!userId) return { success: true, data: [] };
     const history = await this.deliveryService.getHistory(userId);
     return { success: true, data: history };
@@ -59,18 +76,21 @@ export class DeliveryController {
     return { success: true, data: delivery };
   }
 
+  @UseGuards(JwtAuthGuard)
   @Patch(':id/accept')
-  async accept(@Param('id') id: string, @Body() body: { riderId: string }) {
-    const delivery = await this.deliveryService.acceptDelivery(id, body.riderId);
+  async accept(@Param('id') id: string, @Request() req: any) {
+    const delivery = await this.deliveryService.acceptDelivery(id, req.user.userId);
     return { success: true, data: delivery };
   }
 
+  @UseGuards(JwtAuthGuard)
   @Patch(':id/reject')
   async reject(@Param('id') id: string) {
     const delivery = await this.deliveryService.rejectDelivery(id);
     return { success: true, data: delivery };
   }
 
+  @UseGuards(JwtAuthGuard)
   @Patch(':id/complete')
   async complete(@Param('id') id: string) {
     const delivery = await this.deliveryService.updateStatus(id, DeliveryStatus.DELIVERED);
@@ -78,11 +98,13 @@ export class DeliveryController {
   }
 
   @Post(':id/scan-qr')
-  async scanQr(@Param('id') id: string, @Body() data: { stallId: string, photoUrl?: string }) {
-    const delivery = await this.deliveryService.photoVerifiedPickup(id, data.photoUrl || "", `marketrwanda:stall:${data.stallId}`);
+  async scanQr(@Param('id') id: string, @Body() data: { stallId: string; photoUrl?: string }) {
+    const delivery = await this.deliveryService.photoVerifiedPickup(id, data.photoUrl || '', `marketrwanda:stall:${data.stallId}`);
     return { success: true, data: delivery };
   }
 
+  // FIX [DELIVERY-PHOTO]: Was unauthenticated — anyone could upload files.
+  @UseGuards(JwtAuthGuard)
   @Post(':id/pickup-photo')
   @UseInterceptors(FileInterceptor('file'))
   async uploadPhoto(@UploadedFile() file: any) {
@@ -108,24 +130,28 @@ export class DeliveryController {
     return extensions[mimeType] || '.bin';
   }
 
+  @UseGuards(JwtAuthGuard)
   @Put(':id/status')
   async updateStatus(@Param('id') id: string, @Body() body: { status: DeliveryStatus }) {
     const delivery = await this.deliveryService.updateStatus(id, body.status);
     return { success: true, data: delivery };
   }
 
+  @UseGuards(JwtAuthGuard)
   @Post(':id/pickup')
-  async pickup(@Param('id') id: string, @Body() body: { photoUrl: string, qrData: string }) {
+  async pickup(@Param('id') id: string, @Body() body: { photoUrl: string; qrData: string }) {
     const delivery = await this.deliveryService.photoVerifiedPickup(id, body.photoUrl, body.qrData);
     return { success: true, data: delivery };
   }
 
+  @UseGuards(JwtAuthGuard)
   @Post(':id/location')
   async streamLocation(@Param('id') id: string, @Body() coords: Coordinates) {
     const delivery = await this.deliveryService.streamLocation(id, coords);
     return { success: true, data: delivery };
   }
 
+  @UseGuards(JwtAuthGuard)
   @Post(':id/handover')
   async confirmHandover(@Param('id') id: string, @Body() body: { role: 'seller' | 'rider' }) {
     const delivery = await this.deliveryService.confirmHandover(id, body.role);

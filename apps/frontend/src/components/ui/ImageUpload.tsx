@@ -130,7 +130,7 @@ export const ImageUpload = ({
   if (compact) {
     return (
       <div className="relative inline-block">
-        <label className="inline-flex cursor-pointer items-center gap-2 rounded-md border border-[#e0e0e0] bg-white px-3 py-2 text-xs font-bold text-[#405046] shadow-sm transition hover:border-[#1b4332] hover:text-[#1b4332] active:scale-95">
+        <label className="inline-flex cursor-pointer items-center gap-2 rounded-md border border-[#e0e0e0] bg-white px-3 py-2 text-xs font-bold text-[#405046] shadow-sm transition hover:border-[#ff6b00] hover:text-[#ff6b00] active:scale-95">
           {isUploading ? <Upload size={14} className="animate-pulse" /> : isDocumentUpload ? <FileText size={14} /> : <Camera size={14} />}
           {label}
           <input
@@ -149,19 +149,19 @@ export const ImageUpload = ({
   return (
     <div className="w-full">
       {label && <label className="mb-2 block text-sm font-bold text-[#1b1c1c]">{label}</label>}
-      <div className="relative flex min-h-[8rem] cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed border-[#e0e0e0] bg-white p-4 text-center transition hover:border-[#1b4332] hover:bg-[#fcf9f8]">
+      <div className="relative flex min-h-[8rem] cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed border-[#e0e0e0] bg-white p-4 text-center transition hover:border-[#ff6b00] hover:bg-[#fcf9f8]">
         {preview && !isPdfPreview ? (
           <div className="relative aspect-video w-full overflow-hidden rounded-md">
             <img src={preview} alt="Upload preview" loading="eager" fetchPriority="high" className="h-full w-full object-cover" />
             {isUploading && (
-              <div className="absolute inset-0 flex items-center justify-center bg-[#012d1d]/45">
+              <div className="absolute inset-0 flex items-center justify-center bg-[#e05300]/45">
                 <div className="h-8 w-8 animate-spin rounded-full border-4 border-white border-t-transparent" />
               </div>
             )}
           </div>
         ) : (
           <div className="flex flex-col items-center gap-3 py-5">
-            <div className="flex h-11 w-11 items-center justify-center rounded-md bg-[#c1ecd4] text-[#1b4332]">
+            <div className="flex h-11 w-11 items-center justify-center rounded-md bg-[#ffedd5] text-[#ff6b00]">
               {fileName || value ? <CheckCircle2 size={22} /> : isDocumentUpload ? <FileText size={22} /> : <Camera size={22} />}
             </div>
             <div>

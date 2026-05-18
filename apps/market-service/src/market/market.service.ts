@@ -19,10 +19,10 @@ export class MarketService implements OnModuleInit {
   }
 
   async onModuleInit() {
-    // M5 fix: do NOT clear market cache on startup — clearing on every restart
-    // causes a cold-start DB stampede if the service restarts under load.
-    // Cache is invalidated surgically on create/update/delete operations.
     this.logger.log('Market Service initialized.');
+    await this.clearMarketListCache().catch(err => {
+      this.logger.warn(`Failed to clear cache on init: ${err.message}`);
+    });
   }
 
   private escapeRegex(value: string): string {
@@ -138,6 +138,15 @@ export class MarketService implements OnModuleInit {
     ];
   }
 
+  private async clearMarketListCache(): Promise<void> {
+    await this.cacheManager.del('markets:all:true:any');
+    await this.cacheManager.del('markets:all:false:any');
+    for (const type of Object.values(MarketType)) {
+      await this.cacheManager.del(`markets:all:true:${type}`);
+      await this.cacheManager.del(`markets:all:false:${type}`);
+    }
+  }
+
   async create(marketData: any): Promise<any> {
     if (!marketData.location || !this.locationService.validateCoordinates(marketData.location.coordinates)) {
       throw new BadRequestException('Invalid coordinates provided');
@@ -158,8 +167,7 @@ export class MarketService implements OnModuleInit {
     try {
       const newMarket = new this.marketModel(marketData);
       const saved = await newMarket.save();
-      await this.cacheManager.del('markets:all:true');
-      await this.cacheManager.del('markets:all:false');
+      await this.clearMarketListCache();
       return saved;
     } catch (error: any) {
       if (error.code === 11000) {
@@ -232,8 +240,7 @@ export class MarketService implements OnModuleInit {
 
     await this.cacheManager.del(`market:id:${id}`);
     await this.cacheManager.del(`market:slug:${updatedMarket.slug}`);
-    await this.cacheManager.del('markets:all:true');
-    await this.cacheManager.del('markets:all:false');
+    await this.clearMarketListCache();
 
     return updatedMarket;
   }
@@ -282,7 +289,6 @@ export class MarketService implements OnModuleInit {
       }
     }
 
-    await this.cacheManager.del('markets:all:true');
-    await this.cacheManager.del('markets:all:false');
+    await this.clearMarketListCache();
   }
 }

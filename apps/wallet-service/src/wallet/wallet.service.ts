@@ -282,6 +282,10 @@ export class WalletService {
     if (!wallet) {
       throw new NotFoundException('Wallet not found');
     }
+    
+    if (!amount || amount <= 0) {
+      throw new BadRequestException('Payout amount must be greater than zero');
+    }
 
     // Check available balance (excluding already-pending payouts)
     const pendingTotal = await this.payoutRequestModel.aggregate([

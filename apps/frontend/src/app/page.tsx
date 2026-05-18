@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import dynamic from 'next/dynamic';
 import Image from 'next/image';
 import Link from 'next/link';
@@ -24,8 +24,9 @@ import {
 import { Layout } from '@/components/layout/Layout';
 import { useApi } from '@/hooks/useApi';
 import { formatCurrency } from '@/lib/format';
-import { marketApi, productApi } from '@/lib/api';
+import { marketApi, productApi, orderApi } from '@/lib/api';
 import { Footer } from '@/components/layout/Footer';
+import { useLanguage } from '@/context/LanguageContext';
 
 const RiderMap = dynamic(() => import('@/components/ui/RiderMap').then(mod => mod.RiderMap), {
   ssr: false,
@@ -341,7 +342,7 @@ const marketProductCount = (market: Market, index: number) => {
 };
 
 const sellerNameFromProduct = (product: Product) => {
-  if (typeof product.sellerId === 'object') {
+  if (product.sellerId && typeof product.sellerId === 'object') {
     return product.sellerId.shopDetails?.name || product.sellerId.stallName || 'Verified Seller';
   }
   return 'Verified Seller';
@@ -358,6 +359,7 @@ const getMarketSlug = (product: Product, market?: Market) => {
 };
 
 const CompactMarketCard = ({ market, index }: { market: Market; index: number }) => {
+  const { t } = useLanguage();
   const fallback = marketImages[index % marketImages.length];
   const [imageSrc, setImageSrc] = useState(marketImage(market, index));
 
@@ -394,7 +396,7 @@ const CompactMarketCard = ({ market, index }: { market: Market; index: number })
           </p>
         </div>
         <div className="flex items-center justify-between pt-2 border-t border-border-light/50">
-          <span className="text-[12px] font-black text-primary tracking-wide transition-all duration-300">Explore Market</span>
+          <span className="text-[12px] font-black text-primary tracking-wide transition-all duration-300">{t('markets_explore_button')}</span>
           <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/10 text-primary transition-all duration-300 group-hover:bg-primary group-hover:text-white group-hover:scale-105">
             <ArrowRight size={16} />
           </div>
@@ -404,53 +406,56 @@ const CompactMarketCard = ({ market, index }: { market: Market; index: number })
   );
 };
 
-const CompactProductCard = ({ product }: { product: DisplayProduct }) => (
-  <Link
-    href={product.href}
-    className="group block overflow-hidden rounded-2xl border border-border-light bg-white shadow-md transition-all duration-500 hover:-translate-y-2 hover:border-primary/20 hover:shadow-xl"
-  >
-    <div className="relative h-44 overflow-hidden bg-background-surface">
-      <Image
-        src={product.image}
-        alt={product.name}
-        fill
-        unoptimized
-        sizes="(min-width: 1024px) 250px, 45vw"
-        className="object-cover transition duration-700 group-hover:scale-110"
-      />
-      <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent opacity-0 transition-opacity duration-500 group-hover:opacity-100" />
-      {product.tag && (
-        <span className="absolute left-3 top-3 rounded-full bg-accent-premium px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-white shadow-lg backdrop-blur-sm">
-          {product.tag}
-        </span>
-      )}
-      {product.madeInRwanda && !product.tag && (
-        <span className="absolute left-3 top-3 rounded-full bg-primary/90 px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-white shadow-lg backdrop-blur-sm">
-          Verified
-        </span>
-      )}
-      <div className="absolute bottom-4 right-4 translate-y-8 opacity-0 transition-all duration-300 group-hover:translate-y-0 group-hover:opacity-100">
-        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-white text-primary shadow-lg hover:bg-primary hover:text-white transition-colors">
-          <ShoppingCart size={16} />
+const CompactProductCard = ({ product }: { product: DisplayProduct }) => {
+  const { t } = useLanguage();
+  return (
+    <Link
+      href={product.href}
+      className="group block overflow-hidden rounded-2xl border border-border-light bg-white shadow-md transition-all duration-500 hover:-translate-y-2 hover:border-primary/20 hover:shadow-xl"
+    >
+      <div className="relative h-44 overflow-hidden bg-background-surface">
+        <Image
+          src={product.image}
+          alt={product.name}
+          fill
+          unoptimized
+          sizes="(min-width: 1024px) 250px, 45vw"
+          className="object-cover transition duration-700 group-hover:scale-110"
+        />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent opacity-0 transition-opacity duration-500 group-hover:opacity-100" />
+        {product.tag && (
+          <span className="absolute left-3 top-3 rounded-full bg-accent-premium px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-white shadow-lg backdrop-blur-sm">
+            {product.tag}
+          </span>
+        )}
+        {product.madeInRwanda && !product.tag && (
+          <span className="absolute left-3 top-3 rounded-full bg-primary/90 px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-white shadow-lg backdrop-blur-sm">
+            {t('verified_partner')}
+          </span>
+        )}
+        <div className="absolute bottom-4 right-4 translate-y-8 opacity-0 transition-all duration-300 group-hover:translate-y-0 group-hover:opacity-100">
+          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-white text-primary shadow-lg hover:bg-primary hover:text-white transition-colors">
+            <ShoppingCart size={16} />
+          </div>
         </div>
       </div>
-    </div>
-    <div className="p-5">
-      <p className="line-clamp-1 text-base font-bold tracking-tight text-text-primary group-hover:text-primary transition-colors">{product.name}</p>
-      <p className="mt-1 line-clamp-1 text-xs font-semibold text-text-muted">by {product.seller}</p>
-      <div className="mt-5 flex items-end justify-between">
-        <div>
-          <p className="text-[10px] font-bold uppercase tracking-widest text-text-muted/60">{product.category}</p>
-          <p className="text-lg font-bold text-text-primary mt-0.5">{formatCurrency(product.price)}</p>
-        </div>
-        <div className="flex items-center gap-1 text-xs font-bold text-amber-800 bg-amber-500/10 px-2.5 py-0.5 rounded-full">
-          <Star size={12} className="fill-amber-600 text-amber-600" />
-          {product.rating}
+      <div className="p-5">
+        <p className="line-clamp-1 text-base font-bold tracking-tight text-text-primary group-hover:text-primary transition-colors">{product.name}</p>
+        <p className="mt-1 line-clamp-1 text-xs font-semibold text-text-muted">by {product.seller}</p>
+        <div className="mt-5 flex items-end justify-between">
+          <div>
+            <p className="text-[10px] font-bold uppercase tracking-widest text-text-muted/60">{product.category}</p>
+            <p className="text-lg font-bold text-text-primary mt-0.5">{formatCurrency(product.price)}</p>
+          </div>
+          <div className="flex items-center gap-1 text-xs font-bold text-amber-800 bg-amber-500/10 px-2.5 py-0.5 rounded-full">
+            <Star size={12} className="fill-amber-600 text-amber-600" />
+            {product.rating}
+          </div>
         </div>
       </div>
-    </div>
-  </Link>
-);
+    </Link>
+  );
+};
 
 const MiniFeaturedMarketCard = ({ market, index }: { market: Market; index: number }) => {
   const fallback = marketImages[index % marketImages.length];
@@ -479,55 +484,72 @@ const MiniFeaturedMarketCard = ({ market, index }: { market: Market; index: numb
   );
 };
 
-const LivePlatformStats = ({ compact = false }: { compact?: boolean }) => (
-  <section className="rounded-2xl border border-border-light bg-white p-5 shadow-sm transition-all duration-300 hover:shadow-md">
-    <div className="mb-4 flex items-center justify-between">
-      <div>
-        <h2 className="text-[13px] font-bold tracking-tight text-text-primary">Platform Pulse</h2>
-        <p className="mt-0.5 text-[10px] font-medium text-text-muted">Real-time metrics</p>
-      </div>
-      <span className="flex h-2 w-2 relative">
-        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
-        <span className="relative inline-flex rounded-full h-2 w-2 bg-primary"></span>
-      </span>
-    </div>
-    <div className="space-y-4 pt-1">
-      {[
-        { label: 'Active Sellers', value: '1,204', icon: Users, color: 'text-primary' },
-        { label: 'Live Deliveries', value: '43', icon: Activity, color: 'text-primary' },
-        { label: 'Orders Today', value: '1,892', icon: Package, color: 'text-primary' },
-        { label: 'Avg. Delivery', value: '28 min', icon: Clock3, color: 'text-text-muted' },
-      ].map((stat, idx) => (
-        <div key={idx} className="flex items-center justify-between border-b border-border-light/40 pb-3 last:border-0 last:pb-0">
-          <div className="flex items-center gap-3">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-background-surface transition-colors group-hover:bg-primary/5">
-              <stat.icon size={14} className={stat.color} />
-            </div>
-            <span className="text-xs font-bold text-text-secondary">{stat.label}</span>
-          </div>
-          <span className="text-sm font-black text-text-primary">{stat.value}</span>
-        </div>
-      ))}
-    </div>
-  </section>
-);
+const LivePlatformStats = ({ compact = false, markets = [] }: { compact?: boolean; markets?: Market[] }) => {
+  const { t } = useLanguage();
 
-const MapPanel = ({ title, compact = false }: { title: string; compact?: boolean }) => (
-  <section className="overflow-hidden rounded-2xl border border-border-light bg-white shadow-sm transition-all duration-300 hover:shadow-md">
-    <div className="flex items-center justify-between border-b border-background-surface px-4 py-3">
-      <div>
-        <h2 className="text-[13px] font-bold tracking-tight text-text-primary">{title}</h2>
-        {!compact && <p className="mt-0.5 text-[10px] font-medium text-text-muted">Active delivery network</p>}
+  const { data: responseData } = useApi<any>(orderApi, 'get', '/orders/public/stats');
+  const statsData = responseData;
+
+  const activeSellersCount = statsData?.activeSellers !== undefined ? statsData.activeSellers : 0;
+  const liveDeliveries = statsData?.liveDeliveries !== undefined ? statsData.liveDeliveries : 0;
+  const ordersToday = statsData?.ordersToday !== undefined ? statsData.ordersToday : 0;
+  const avgDeliveryTime = statsData?.avgDeliveryTime !== undefined ? statsData.avgDeliveryTime : 0;
+
+  const stats = [
+    { label: t('active_sellers'), value: activeSellersCount.toLocaleString(), icon: Users, color: 'text-primary' },
+    { label: t('live_deliveries'), value: String(liveDeliveries), icon: Activity, color: 'text-primary' },
+    { label: t('orders_today'), value: ordersToday.toLocaleString(), icon: Package, color: 'text-primary' },
+    { label: t('avg_delivery'), value: avgDeliveryTime > 0 ? `${avgDeliveryTime} min` : '0 min', icon: Clock3, color: 'text-text-muted' },
+  ];
+
+  return (
+    <section className="rounded-2xl border border-border-light bg-white p-5 shadow-sm transition-all duration-300 hover:shadow-md">
+      <div className="mb-4 flex items-center justify-between">
+        <div>
+          <h2 className="text-[13px] font-bold tracking-tight text-text-primary">{t('platform_pulse')}</h2>
+          <p className="mt-0.5 text-[10px] font-medium text-text-muted">{t('real_time_metrics')}</p>
+        </div>
+        <span className="flex h-2 w-2 relative">
+          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
+          <span className="relative inline-flex rounded-full h-2 w-2 bg-primary"></span>
+        </span>
       </div>
-      <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-primary">
-        <MapPin size={16} />
-      </span>
-    </div>
-    <div className={compact ? 'h-[172px]' : 'h-[218px]'}>
-      <RiderMap marketId="all-admin" centerLat={-1.9441} centerLng={30.0619} marketName="Kigali markets" />
-    </div>
-  </section>
-);
+      <div className="space-y-4 pt-1">
+        {stats.map((stat, idx) => (
+          <div key={idx} className="flex items-center justify-between border-b border-border-light/40 pb-3 last:border-0 last:pb-0">
+            <div className="flex items-center gap-3">
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-background-surface transition-colors group-hover:bg-primary/5">
+                <stat.icon size={14} className={stat.color} />
+              </div>
+              <span className="text-xs font-bold text-text-secondary">{stat.label}</span>
+            </div>
+            <span className="text-sm font-black text-text-primary">{stat.value}</span>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+};
+
+const MapPanel = ({ title, compact = false }: { title: string; compact?: boolean }) => {
+  const { t } = useLanguage();
+  return (
+    <section className="overflow-hidden rounded-2xl border border-border-light bg-white shadow-sm transition-all duration-300 hover:shadow-md">
+      <div className="flex items-center justify-between border-b border-background-surface px-4 py-3">
+        <div>
+          <h2 className="text-[13px] font-bold tracking-tight text-text-primary">{title}</h2>
+          {!compact && <p className="mt-0.5 text-[10px] font-medium text-text-muted">{t('active_delivery_network')}</p>}
+        </div>
+        <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-primary">
+          <MapPin size={16} />
+        </span>
+      </div>
+      <div className={compact ? 'h-[172px]' : 'h-[218px]'}>
+        <RiderMap marketId="all-admin" centerLat={-1.9441} centerLng={30.0619} marketName="Kigali markets" />
+      </div>
+    </section>
+  );
+};
 
 const MostBoughtPanel = ({
   products,
@@ -535,43 +557,47 @@ const MostBoughtPanel = ({
 }: {
   products: DisplayProduct[];
   market?: Market;
-}) => (
-  <section className="animate-reveal rounded-2xl premium-gradient p-6 text-white shadow-xl cinematic-shadow">
-    <div className="mb-6 flex items-start justify-between gap-3">
-      <div>
-        <h2 className="text-xl font-bold leading-tight tracking-tight">Most Bought Today</h2>
-        <p className="mt-1 text-xs font-medium text-white/60">{market?.name || 'Kimironko Market Hub'}</p>
+}) => {
+  const { t } = useLanguage();
+  return (
+    <section className="animate-reveal rounded-2xl premium-gradient p-6 text-white shadow-xl cinematic-shadow">
+      <div className="mb-6 flex items-start justify-between gap-3">
+        <div>
+          <h2 className="text-xl font-bold leading-tight tracking-tight">{t('most_bought_today')}</h2>
+          <p className="mt-1 text-xs font-medium text-white/60">{market?.name || 'Kimironko Market Hub'}</p>
+        </div>
+        <div className="rounded-lg bg-white/10 backdrop-blur-md border border-white/10 px-3 py-1.5 text-right">
+          <p className="text-[9px] font-bold uppercase tracking-widest text-white/40">{t('peak_hour')}</p>
+          <p className="text-xs font-bold text-white">11:00 - 13:00</p>
+        </div>
       </div>
-      <div className="rounded-lg bg-white/10 backdrop-blur-md border border-white/10 px-3 py-1.5 text-right">
-        <p className="text-[9px] font-bold uppercase tracking-widest text-white/40">Peak hour</p>
-        <p className="text-xs font-bold text-white">11:00 - 13:00</p>
+      <div className="space-y-3">
+        {products.slice(0, 4).map((product, index) => (
+          <Link href={product.href} key={product.id} className="group grid grid-cols-[auto_1fr_auto] items-center gap-4 rounded-xl border border-white/5 bg-white/[0.03] px-3 py-3 transition-all duration-300 hover:bg-white/10 hover:border-white/10">
+            <span className="text-sm font-bold text-white/40 group-hover:text-white transition-colors">{index + 1}</span>
+            <div className="min-w-0">
+              <p className="line-clamp-1 text-sm font-bold leading-tight text-white">{product.name}</p>
+              <p className="line-clamp-1 text-[11px] font-medium text-white/85">{product.seller}</p>
+            </div>
+            <span className="text-[11px] font-black bg-white/20 text-white px-2.5 py-0.5 rounded-full shadow-sm">
+              {(product.orders || fallbackOrderCounts[index] || 120).toLocaleString()} orders
+            </span>
+          </Link>
+        ))}
       </div>
-    </div>
-    <div className="space-y-3">
-      {products.slice(0, 4).map((product, index) => (
-        <Link href={product.href} key={product.id} className="group grid grid-cols-[auto_1fr_auto] items-center gap-4 rounded-xl border border-white/5 bg-white/[0.03] px-3 py-3 transition-all duration-300 hover:bg-white/10 hover:border-white/10">
-          <span className="text-sm font-bold text-white/40 group-hover:text-white transition-colors">{index + 1}</span>
-          <div className="min-w-0">
-            <p className="line-clamp-1 text-sm font-bold leading-tight text-white">{product.name}</p>
-            <p className="line-clamp-1 text-[11px] font-medium text-white/85">{product.seller}</p>
-          </div>
-          <span className="text-[11px] font-black bg-white/20 text-white px-2.5 py-0.5 rounded-full shadow-sm">
-            {(product.orders || fallbackOrderCounts[index] || 120).toLocaleString()} orders
-          </span>
-        </Link>
-      ))}
-    </div>
-  </section>
-);
+    </section>
+  );
+};
 
 
 
 export default function HomePage() {
+  const { t } = useLanguage();
   const { data: marketsData, error: marketsError } = useApi<Market[]>(marketApi, 'get', '/markets?activeOnly=true');
   const { data: productsData, error: productsError } = useApi<Product[]>(productApi, 'get', '/products?limit=24&isActive=true&sortBy=-totalOrders');
 
   const liveMarkets = useMemo(() => (Array.isArray(marketsData) ? marketsData : []), [marketsData]);
-  const displayMarkets = liveMarkets.length > 0 ? liveMarkets : fallbackMarkets;
+  const displayMarkets = liveMarkets;
 
   const marketById = useMemo(() => {
     const map = new Map<string, Market>();
@@ -608,7 +634,7 @@ export default function HomePage() {
         };
       });
 
-    return normalized.length > 0 ? normalized : fallbackProducts;
+    return normalized;
   }, [marketById, productsData]);
 
 
@@ -644,27 +670,27 @@ export default function HomePage() {
                 <div className="relative z-10 flex min-h-[320px] max-w-2xl flex-col justify-center p-8 md:p-12 lg:min-h-[400px]">
                   <div className="mb-4 inline-flex w-fit items-center gap-2 rounded-full bg-white/10 px-4 py-1.5 text-[11px] font-bold tracking-wide text-primary-light backdrop-blur-md border border-white/10">
                     <ShieldCheck size={14} className="text-primary" />
-                    Rwanda&apos;s verified local marketplace
+                    {t('verified_hub')}
                   </div>
                   <h1 className="max-w-xl text-4xl font-bold leading-[1.1] tracking-tight text-white md:text-5xl lg:text-6xl">
-                    Trusted local markets, <span className="text-primary">delivered</span> to you.
+                    {t('trusted_markets')} <span className="text-primary">{t('delivered')}</span> {t('to_you')}
                   </h1>
                   <p className="mt-6 max-w-md text-base font-medium leading-relaxed text-white/70 lg:text-lg">
-                    Discover verified sellers across Rwanda. Secure MoMo payments and live delivery tracking for every order.
+                    {t('discover_verified_sellers')}
                   </p>
                   <div className="mt-10 flex flex-wrap items-center gap-4">
                     <Link href="/markets" className="rmf-btn-primary group">
-                      Browse Markets
+                      {t('browse_markets')}
                       <ArrowRight size={18} className="transition-transform group-hover:translate-x-1" />
                     </Link>
                     <Link href="/register?role=SELLER" className="rmf-btn-outline text-white hover:text-primary">
-                      Start Selling
+                      {t('start_selling')}
                     </Link>
                     <div className="ml-2 hidden items-center gap-3 md:flex">
                       <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/20 backdrop-blur-md border border-primary/30">
                         <span className="font-bold text-primary">M</span>
                       </div>
-                      <span className="text-xs font-bold text-white/80 tracking-wide uppercase">MoMo Trusted</span>
+                      <span className="text-xs font-bold text-white/80 tracking-wide uppercase">{t('momo_trusted')}</span>
                     </div>
                   </div>
                 </div>
@@ -673,11 +699,11 @@ export default function HomePage() {
               {/* Operational Activity and Pulse Side-by-Side */}
               <div className="animate-reveal [animation-delay:200ms] grid gap-6 md:grid-cols-[1fr_280px]">
                 <MapPanel title="Live Market Activity Map" />
-                <LivePlatformStats compact />
+                <LivePlatformStats compact markets={liveMarkets} />
               </div>
 
               <section className="animate-reveal [animation-delay:400ms] rounded-2xl border border-border-light bg-white p-6 shadow-sm">
-                <p className="mb-4 text-[11px] font-bold uppercase tracking-[0.2em] text-primary/50">Pick a nearby market</p>
+                <p className="mb-4 text-[11px] font-bold uppercase tracking-[0.2em] text-primary/50">{t('pick_nearby_market')}</p>
                 <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
                   {chipLinks.map((chip, index) => {
                     const Icon = chip.icon;
@@ -702,8 +728,8 @@ export default function HomePage() {
               {/* Flattened layout to give sections full breathability and prevent squashing */}
               <section className="animate-reveal [animation-delay:600ms] rounded-2xl border border-border-light bg-white p-8 shadow-sm">
                 <div className="mb-6">
-                  <h2 className="text-3xl font-bold tracking-tight text-text-primary">Rwanda&apos;s Market Hubs</h2>
-                  <p className="mt-1.5 text-base font-medium text-text-muted">Choose your preferred local marketplace to discover thousands of verified sellers.</p>
+                  <h2 className="text-3xl font-bold tracking-tight text-text-primary">{t('rwandas_market_hubs')}</h2>
+                  <p className="mt-1.5 text-base font-medium text-text-muted">{t('choose_preferred_marketplace')}</p>
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                   {displayMarkets.slice(0, 6).map((market, index) => (
@@ -716,11 +742,11 @@ export default function HomePage() {
               <section id="trending-products" className="animate-reveal [animation-delay:800ms] scroll-mt-24 rounded-2xl border border-border-light bg-white p-8 shadow-sm">
                 <div className="mb-6 flex items-center justify-between">
                   <div>
-                    <h2 className="text-3xl font-bold tracking-tight text-text-primary">Trending Products</h2>
-                    <p className="mt-1.5 text-base font-medium text-text-muted">Most popular items hand-picked from our verified local network.</p>
+                    <h2 className="text-3xl font-bold tracking-tight text-text-primary">{t('trending_products')}</h2>
+                    <p className="mt-1.5 text-base font-medium text-text-muted">{t('most_popular_items')}</p>
                   </div>
                   <Link href="/markets" className="hidden items-center gap-2 text-base font-bold text-primary hover:underline sm:inline-flex">
-                    Shop all trending
+                    {t('shop_all_trending')}
                     <ArrowRight size={18} />
                   </Link>
                 </div>
@@ -736,11 +762,11 @@ export default function HomePage() {
               <section className="animate-reveal [animation-delay:1000ms] rounded-2xl border border-border-light bg-white p-6 shadow-sm">
                 <div className="mb-6 flex items-center justify-between">
                   <div>
-                    <h2 className="text-2xl font-bold tracking-tight text-text-primary">Featured Markets</h2>
-                    <p className="mt-1 text-xs font-medium text-text-muted">Explore top local hubs</p>
+                    <h2 className="text-2xl font-bold tracking-tight text-text-primary">{t('featured_markets')}</h2>
+                    <p className="mt-1 text-xs font-medium text-text-muted">{t('explore_top_local_hubs')}</p>
                   </div>
                   <Link href="/markets" className="inline-flex items-center gap-1 text-sm font-bold text-primary hover:underline">
-                    View all
+                    {t('view_all')}
                     <ChevronDown size={16} />
                   </Link>
                 </div>
@@ -757,10 +783,10 @@ export default function HomePage() {
                 {/* Adjusted grid to grid-cols-2 to give elements beautiful size */}
                 <div className="grid grid-cols-2 gap-4">
                   {[
-                    ['Verified vendors', BadgeCheck, 'accent-premium'],
-                    ['Buyer protection', ShieldCheck, 'primary'],
-                    ['MoMo checkout', ShoppingCart, 'primary'],
-                    ['Fast delivery', Clock3, 'primary'],
+                    [t('verified_vendors'), BadgeCheck, 'accent-premium'],
+                    [t('buyer_protection'), ShieldCheck, 'primary'],
+                    [t('momo_checkout'), ShoppingCart, 'primary'],
+                    [t('fast_delivery'), Clock3, 'primary'],
                   ].map(([label, Icon, color]) => {
                     const TrustIcon = Icon as typeof BadgeCheck;
                     return (
@@ -774,11 +800,8 @@ export default function HomePage() {
               </section>
             </aside>
           </div>
-          
-          <div className="mt-8">
-            <Footer />
-          </div>
         </div>
+        <Footer />
       </div>
     </Layout>
   );

@@ -1,21 +1,42 @@
-import { Controller, Get, Post, Put, Body, Param, Query, UseInterceptors, UploadedFile, BadRequestException } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Put,
+  Body,
+  Param,
+  Query,
+  UseInterceptors,
+  UploadedFile,
+  BadRequestException,
+  UseGuards,
+  Request,
+} from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { randomUUID } from 'crypto';
 import { existsSync, mkdirSync, writeFileSync } from 'fs';
 import { join } from 'path';
 import { MarketService } from './market.service';
+import { Roles, JwtAuthGuard } from '@rmf/auth';
+import { UserRole } from '@rmf/shared-types';
+import { StorageService } from '../storage/storage.service';
 
 @Controller('markets')
 export class MarketController {
-  constructor(private readonly marketService: MarketService) {}
+  constructor(
+    private readonly marketService: MarketService,
+    private readonly storageService: StorageService,
+  ) {}
 
   private readonly imageExtensions: Record<string, string> = {
     'image/jpeg': '.jpg',
     'image/png': '.png',
     'image/webp': '.webp',
-    'image/gif': '.gif'
+    'image/gif': '.gif',
   };
 
+  // FIX [MARKET-UPLOAD]: Was unauthenticated — anyone could upload files to the server.
+  @UseGuards(JwtAuthGuard)
   @Post('upload-image')
   @UseInterceptors(FileInterceptor('file', { limits: { fileSize: 5 * 1024 * 1024 } }))
   async uploadImage(@UploadedFile() file: any) {
@@ -23,12 +44,9 @@ export class MarketController {
       throw new BadRequestException('No image file provided');
     }
     const extension = this.extensionFromMime(file.mimetype);
-    const uploadDir = join(process.cwd(), 'uploads', 'markets');
-    if (!existsSync(uploadDir)) mkdirSync(uploadDir, { recursive: true });
     const fileName = `${randomUUID()}${extension}`;
-    writeFileSync(join(uploadDir, fileName), file.buffer);
-    const publicBaseUrl = process.env.MARKET_SERVICE_PUBLIC_URL || `http://localhost:${process.env.PORT || 3002}`;
-    return { success: true, data: { url: `${publicBaseUrl}/uploads/markets/${fileName}` } };
+    const url = await this.storageService.uploadFile(file.buffer, fileName, file.mimetype, 'markets');
+    return { success: true, data: { url } };
   }
 
   private extensionFromMime(mimeType: string): string {
@@ -39,6 +57,10 @@ export class MarketController {
     return extension;
   }
 
+  // FIX [MARKET-CREATE]: Was unauthenticated — anyone could create markets.
+  // Now requires ADMIN role.
+  @UseGuards(JwtAuthGuard)
+  @Roles(UserRole.ADMIN)
   @Post()
   async create(@Body() marketData: any) {
     const market = await this.marketService.create(marketData);
@@ -51,6 +73,7 @@ export class MarketController {
     return { success: true, data: agreement };
   }
 
+  // Public read — market listings are public marketplace data
   @Get()
   async findAll(@Query('activeOnly') activeOnly: string, @Query('type') type?: string) {
     const markets = await this.marketService.findAll({ activeOnly: activeOnly !== 'false', type });
@@ -69,22 +92,32 @@ export class MarketController {
     return { success: true, data: market };
   }
 
+  // FIX [MARKET-UPDATE]: Was unauthenticated — anyone could modify market data.
+  // Now requires ADMIN role.
+  @UseGuards(JwtAuthGuard)
+  @Roles(UserRole.ADMIN)
   @Put(':id')
   async update(@Param('id') id: string, @Body() updateData: any) {
     const market = await this.marketService.update(id, updateData);
     return { success: true, data: market };
   }
 
+  // FIX [MARKET-SYNC]: Was unauthenticated admin action.
+  @UseGuards(JwtAuthGuard)
+  @Roles(UserRole.ADMIN)
   @Post('sync-imagery')
   async syncImagery() {
     await this.marketService.syncInstitutionalImagery();
     return { success: true, message: 'Institutional imagery synchronized' };
   }
 
+  // FIX [MARKET-PENALTY]: Was unauthenticated — anyone could apply penalties to markets.
+  @UseGuards(JwtAuthGuard)
+  @Roles(UserRole.ADMIN)
   @Post(':id/penalties')
   async applyPenalty(
-    @Param('id') id: string, 
-    @Body() penaltyData: { type: 'warning' | 'charge' | 'suspension', reason: string }
+    @Param('id') id: string,
+    @Body() penaltyData: { type: 'warning' | 'charge' | 'suspension'; reason: string },
   ) {
     const market = await this.marketService.applyPenalty(id, penaltyData.type, penaltyData.reason);
     return { success: true, data: market };

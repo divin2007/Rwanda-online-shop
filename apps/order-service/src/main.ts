@@ -89,8 +89,9 @@ async function bootstrap() {
   }));
 
   app.setGlobalPrefix('api/v1');
-  await app.listen(process.env.PORT || 3006, '0.0.0.0');
-  console.log(`Order Service is running on port ${process.env.PORT || 3006}`);
+  const port = (process.env.PORT && process.env.PORT !== '3000') ? process.env.PORT : 3006;
+  await app.listen(port, '0.0.0.0');
+  console.log(`Order Service is running on port ${port}`);
 }
 bootstrap();
 

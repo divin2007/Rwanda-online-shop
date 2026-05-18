@@ -11,7 +11,7 @@ type Props = {
   onVariantsChange?: (variants: ProductVariantDraft[]) => void;
 };
 
-const fieldClass = 'w-full rounded-md border border-[#d9e0db] bg-white px-3 py-2.5 text-sm font-semibold outline-none focus:border-[#1b4332] focus:ring-2 focus:ring-[#c1ecd4]';
+const fieldClass = 'w-full rounded-md border border-[#d9e0db] bg-white px-3 py-2.5 text-sm font-semibold outline-none focus:border-[#ff6b00] focus:ring-2 focus:ring-[#ffedd5]';
 
 const inputTypeFor = (field: CatalogField) => {
   if (field.type === 'date') return 'date';
@@ -54,7 +54,7 @@ export function CatalogAttributeFields({ category, attributes, onAttributesChang
   return (
     <section className="space-y-4 rounded-lg border border-[#d9e0db] bg-[#f7faf8] p-4">
       <div>
-        <p className="text-[10px] font-black uppercase tracking-[0.22em] text-[#1b4332]">Category intelligence</p>
+        <p className="text-[10px] font-black uppercase tracking-[0.22em] text-[#ff6b00]">Category intelligence</p>
         <h3 className="mt-1 text-lg font-black text-[#1b1c1c]">{category.label} attributes</h3>
       </div>
 
@@ -80,7 +80,7 @@ export function CatalogAttributeFields({ category, attributes, onAttributesChang
                   type="checkbox"
                   checked={Boolean(attributes[field.key])}
                   onChange={event => updateAttribute(field.key, event.target.checked)}
-                  className="h-4 w-4 accent-[#1b4332]"
+                  className="h-4 w-4 accent-[#ff6b00]"
                 />
                 Yes
               </label>
@@ -106,7 +106,7 @@ export function CatalogAttributeFields({ category, attributes, onAttributesChang
               <p className="text-sm font-black text-[#1b1c1c]">Variants</p>
               <p className="mt-1 text-xs font-semibold text-[#5f7569]">Use these for size, color, package size, capacity, or other buyer-selectable options.</p>
             </div>
-            <button type="button" onClick={addVariant} className="rounded-md bg-[#1b4332] px-3 py-2 text-xs font-black text-white">
+            <button type="button" onClick={addVariant} className="rounded-md bg-[#ff6b00] px-3 py-2 text-xs font-black text-white">
               Add variant
             </button>
           </div>

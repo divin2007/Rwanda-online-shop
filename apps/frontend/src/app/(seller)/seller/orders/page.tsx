@@ -22,7 +22,7 @@ type SellerOrder = {
 
 const statusTone = (status?: string) => {
   const normalized = status || 'placed';
-  if (['delivered', 'confirmed', 'picked_up'].includes(normalized)) return 'bg-[#e8f5ed] text-[#1b4332] border-[#c1ecd4]';
+  if (['delivered', 'confirmed', 'picked_up'].includes(normalized)) return 'bg-[#e8f5ed] text-[#ff6b00] border-[#ffedd5]';
   if (['awaiting_quote', 'quote_sent', 'placed', 'preparing', 'ready_for_pickup'].includes(normalized)) return 'bg-[#f7faf8] text-[#405046] border-[#dfe7e2]';
   if (['cancelled', 'failed', 'disputed'].includes(normalized)) return 'bg-[#fff5f3] text-[#7b3f3f] border-[#f1cbc3]';
   return 'bg-[#eef3ee] text-[#405046] border-[#dfe7e2]';
@@ -53,10 +53,10 @@ export default function SellerOrdersPage() {
   return (
     <Layout>
       <div className="mx-auto max-w-6xl space-y-6 pb-20">
-        <section className="overflow-hidden rounded-lg border border-[#d8ded9] bg-[#012d1d] p-6 text-white shadow-sm md:p-8">
+        <section className="overflow-hidden rounded-lg border border-[#d8ded9] bg-[#e05300] p-6 text-white shadow-sm md:p-8">
           <div className="flex flex-col justify-between gap-5 md:flex-row md:items-end">
             <div>
-              <div className="mb-3 inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1 text-[10px] font-black uppercase tracking-[0.16em] text-[#c1ecd4]">
+              <div className="mb-3 inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1 text-[10px] font-black uppercase tracking-[0.16em] text-[#ffedd5]">
                 <PackageCheck size={14} />
                 Seller operations
               </div>
@@ -81,7 +81,7 @@ export default function SellerOrdersPage() {
             const StatIcon = Icon as typeof Clock3;
             return (
               <div key={label as string} className="rounded-lg border border-[#e0e0e0] bg-white p-4 shadow-sm">
-                <StatIcon size={18} className="text-[#1b4332]" />
+                <StatIcon size={18} className="text-[#ff6b00]" />
                 <p className="mt-3 text-2xl font-black text-[#1b1c1c]">{value as React.ReactNode}</p>
                 <p className="text-xs font-bold text-[#5f7569]">{label as string}</p>
               </div>
@@ -97,13 +97,13 @@ export default function SellerOrdersPage() {
                 value={query}
                 onChange={event => setQuery(event.target.value)}
                 placeholder="Search by buyer, product, or order number..."
-                className="h-11 w-full rounded-md border border-[#d9e0db] bg-[#fcf9f8] pl-10 pr-3 text-sm font-semibold outline-none focus:border-[#1b4332]"
+                className="h-11 w-full rounded-md border border-[#d9e0db] bg-[#fcf9f8] pl-10 pr-3 text-sm font-semibold outline-none focus:border-[#ff6b00]"
               />
             </div>
             <select
               value={status}
               onChange={event => setStatus(event.target.value)}
-              className="h-11 rounded-md border border-[#d9e0db] bg-[#fcf9f8] px-3 text-sm font-black outline-none focus:border-[#1b4332]"
+              className="h-11 rounded-md border border-[#d9e0db] bg-[#fcf9f8] px-3 text-sm font-black outline-none focus:border-[#ff6b00]"
             >
               <option value="all">All statuses</option>
               <option value="awaiting_quote">Awaiting quote</option>
@@ -125,7 +125,7 @@ export default function SellerOrdersPage() {
             </div>
           ) : filtered.length === 0 ? (
             <div className="p-12 text-center">
-              <p className="text-sm font-black uppercase tracking-[0.18em] text-[#1b4332]">No orders found</p>
+              <p className="text-sm font-black uppercase tracking-[0.18em] text-[#ff6b00]">No orders found</p>
               <p className="mt-2 text-sm font-semibold text-[#5f7569]">Try a different search or status filter.</p>
             </div>
           ) : (
@@ -156,9 +156,9 @@ export default function SellerOrdersPage() {
                     <div className="flex items-center justify-between gap-5 md:justify-end">
                       <div className="text-right">
                         <p className="text-lg font-black text-[#1b1c1c]">{formatCurrency(order.financials?.totalAmount || 0)}</p>
-                        <p className="text-[10px] font-black uppercase text-[#1b4332]">{order.payment?.status || 'payment pending'}</p>
+                        <p className="text-[10px] font-black uppercase text-[#ff6b00]">{order.payment?.status || 'payment pending'}</p>
                       </div>
-                      <ArrowRight size={18} className="text-[#1b4332]" />
+                      <ArrowRight size={18} className="text-[#ff6b00]" />
                     </div>
                   </Link>
                 );

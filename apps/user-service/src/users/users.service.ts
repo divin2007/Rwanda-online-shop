@@ -110,7 +110,36 @@ const sanitizePreferences = (raw: any): UserPreferences => {
 
 @Injectable()
 export class UsersService {
-  constructor(@InjectModel('User') private userModel: Model<any>) {}
+  constructor(
+    @InjectModel('User') private userModel: Model<any>,
+    @InjectModel('SupportTicket') private supportTicketModel: Model<any>
+  ) {}
+
+  async createSupportTicket(ticketData: any): Promise<any> {
+    const ticket = new this.supportTicketModel(ticketData);
+    const savedTicket = await ticket.save();
+
+    // Send email to admin
+    try {
+      const axios = require('axios');
+      const notificationUrl = process.env.NOTIFICATION_SERVICE_URL || 'http://localhost:3009/api/v1';
+      await axios.post(`${notificationUrl}/notifications/email`, {
+        email: 'admin@rwanda-online-shop.com', // fallback admin email
+        type: 'admin.support_ticket_created',
+        params: { 
+          ticketId: savedTicket._id.toString(),
+          name: ticketData.name,
+          userEmail: ticketData.email,
+          subject: ticketData.subject,
+          message: ticketData.message
+        }
+      });
+    } catch (e: any) {
+      console.warn(`[UsersService] Failed to send admin notification for ticket ${savedTicket._id}: ${e.message}`);
+    }
+
+    return savedTicket;
+  }
 
   async create(userData: any): Promise<any> {
     // 1C fix: build dedup filter carefully — only include phone if actually provided.

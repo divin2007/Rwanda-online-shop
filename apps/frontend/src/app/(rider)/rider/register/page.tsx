@@ -79,7 +79,7 @@ export default function RiderRegistrationPage() {
     <Layout>
       <div className="flex min-h-[calc(100vh-80px)] animate-reveal">
         {/* Left: Branding & Value Proposition */}
-        <div className="hidden lg:flex w-1/2 bg-[#012d1d] flex-col justify-between p-24 relative overflow-hidden group">
+        <div className="hidden lg:flex w-1/2 bg-[#e05300] flex-col justify-between p-24 relative overflow-hidden group">
            <img 
               src="https://images.unsplash.com/photo-1558981806-ec527fa84c39" 
               className="absolute inset-0 w-full h-full object-cover opacity-20 grayscale group-hover:scale-105 group-hover:grayscale-[50%] transition-all duration-[10000ms]" 
@@ -88,7 +88,7 @@ export default function RiderRegistrationPage() {
            <div className="relative z-10">
               <div className="flex items-center gap-6 mb-12">
                  <div className="w-16 h-px bg-[#ffd700]" />
-                 <p className="text-[11px] font-black text-[#1b4332] uppercase tracking-[0.5em]">Join the Fleet</p>
+                 <p className="text-[11px] font-black text-[#ff6b00] uppercase tracking-[0.5em]">Join the Fleet</p>
               </div>
               <h1 className="text-[100px] font-sans text-white leading-[0.85] tracking-normal mb-8">
                  Deliver &<br />Earn.
@@ -101,11 +101,11 @@ export default function RiderRegistrationPage() {
            <div className="relative z-10 flex gap-12">
               <div>
                  <p className="text-3xl font-sans text-white tracking-normal mb-2">500+</p>
-                 <p className="text-[9px] font-black uppercase tracking-[0.3em] text-[#1b4332]">Daily Deliveries</p>
+                 <p className="text-[9px] font-black uppercase tracking-[0.3em] text-[#ff6b00]">Daily Deliveries</p>
               </div>
               <div>
                  <p className="text-3xl font-sans text-white tracking-normal mb-2">Weekly</p>
-                 <p className="text-[9px] font-black uppercase tracking-[0.3em] text-[#1b4332]">Payouts</p>
+                 <p className="text-[9px] font-black uppercase tracking-[0.3em] text-[#ff6b00]">Payouts</p>
               </div>
            </div>
         </div>
@@ -124,7 +124,7 @@ export default function RiderRegistrationPage() {
                     <input 
                       type="text" 
                       required 
-                      className="w-full bg-white border border-[#e0e0e0] focus:border-[#1b4332] p-5 text-sm font-mono font-bold outline-none transition-colors" 
+                      className="w-full bg-white border border-[#e0e0e0] focus:border-[#ff6b00] p-5 text-sm font-mono font-bold outline-none transition-colors" 
                       placeholder="e.g. RAB 123 C" 
                       value={plateNumber} 
                       onChange={e => setPlateNumber(e.target.value.toUpperCase())} 
@@ -138,16 +138,16 @@ export default function RiderRegistrationPage() {
                     </div>
                     
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                       <div className="bg-white border border-[#e0e0e0] p-4 group hover:border-[#1b4332] transition-colors">
+                       <div className="bg-white border border-[#e0e0e0] p-4 group hover:border-[#ff6b00] transition-colors">
                           <ImageUpload label="Driving License" service="rider" endpoint="/riders/upload-document" kind="document" onUploadSuccess={url => setDocuments({...documents, license: url})} />
                        </div>
-                       <div className="bg-white border border-[#e0e0e0] p-4 group hover:border-[#1b4332] transition-colors">
+                       <div className="bg-white border border-[#e0e0e0] p-4 group hover:border-[#ff6b00] transition-colors">
                           <ImageUpload label="National ID" service="rider" endpoint="/riders/upload-document" kind="document" onUploadSuccess={url => setDocuments({...documents, id: url})} />
                        </div>
-                       <div className="bg-white border border-[#e0e0e0] p-4 group hover:border-[#1b4332] transition-colors">
+                       <div className="bg-white border border-[#e0e0e0] p-4 group hover:border-[#ff6b00] transition-colors">
                           <ImageUpload label="Vehicle Photo" service="rider" endpoint="/riders/upload-document" kind="image" onUploadSuccess={url => setDocuments({...documents, vehicle: url})} />
                        </div>
-                       <div className="bg-white border border-[#e0e0e0] p-4 group hover:border-[#1b4332] transition-colors">
+                       <div className="bg-white border border-[#e0e0e0] p-4 group hover:border-[#ff6b00] transition-colors">
                           <ImageUpload label="Insurance" service="rider" endpoint="/riders/upload-document" kind="document" onUploadSuccess={url => setDocuments({...documents, insurance: url})} />
                        </div>
                     </div>
@@ -156,7 +156,7 @@ export default function RiderRegistrationPage() {
                  <button 
                     type="submit" 
                     disabled={isSubmitting}
-                    className="w-full bg-[#012d1d] text-white mt-12 py-6 text-[10px] font-black uppercase tracking-[0.4em] hover:bg-[#012d1d] transition-all disabled:opacity-50 disabled:grayscale"
+                    className="w-full bg-[#e05300] text-white mt-12 py-6 text-[10px] font-black uppercase tracking-[0.4em] hover:bg-[#e05300] transition-all disabled:opacity-50 disabled:grayscale"
                  >
                     {isSubmitting ? 'Submitting Application...' : 'Submit Registration'}
                  </button>
