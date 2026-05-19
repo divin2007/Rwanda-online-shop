@@ -62,12 +62,14 @@ export const RiderMap = ({ marketId, centerLat = -1.9441, centerLng = 30.0619, m
   const [tails, setTails] = useState<Record<string, [number, number][]>>({});
   const [markets, setMarkets] = useState<MarketLocation[]>([]);
   const [isClient, setIsClient] = useState(false);
+  const [mapInstanceKey, setMapInstanceKey] = useState('');
   const [mapMode, setMapMode] = useState<'standard' | 'satellite'>('standard');
 
   const isAdmin = marketId === 'all-admin';
 
   useEffect(() => {
     setIsClient(true);
+    setMapInstanceKey(`rider-map-${Date.now()}`);
     if (isAdmin) {
       marketApi.get('/markets').then(res => {
         if (res.data?.success) setMarkets(res.data.data);
@@ -110,12 +112,12 @@ export const RiderMap = ({ marketId, centerLat = -1.9441, centerLng = 30.0619, m
     }
   }, [data, marketId, isAdmin, profiles]);
 
-  if (!isClient) return <div className="w-full h-full bg-background-surface animate-pulse"></div>;
+  if (!isClient || !mapInstanceKey) return <div className="w-full h-full bg-background-surface animate-pulse"></div>;
 
   return (
     <div className="w-full h-full relative z-0">
       <MapContainer 
-        key={`rider-map-${marketId}`}
+        key={`${mapInstanceKey}-${marketId}`}
         center={[centerLat, centerLng]} 
         zoom={isAdmin ? 12 : 15} 
         style={{ height: '100%', width: '100%' }}

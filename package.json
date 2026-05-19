@@ -18,6 +18,7 @@
   "devDependencies": {
     "@types/bcrypt": "^6.0.0",
     "@types/passport-jwt": "^4.0.1",
+    "eslint": "^9.39.4",
     "turbo": "^2.9.8"
   },
   "dependencies": {
@@ -38,5 +39,18 @@
     "passport": "^0.7.0",
     "passport-jwt": "^4.0.1",
     "readdirp": "^4.1.2"
+  },
+  "overrides": {
+    "postcss": "8.5.14",
+    "ws": "8.20.1",
+    "engine.io": {
+      "ws": "8.20.1"
+    },
+    "engine.io-client": {
+      "ws": "8.20.1"
+    },
+    "next@16.2.6": {
+      "postcss": "8.5.14"
+    }
   }
 }

@@ -274,7 +274,6 @@ const translations = {
     trust_point_1_title: 'Buyer Protection',
     trust_point_1_desc: 'Every transaction is held in escrow until you confirm you received your order.',
     become_seller: 'Start Selling',
-    active_sellers: 'Verified Sellers',
     shop_now: 'Shop Now',
     verified_sellers_title: 'Verified Sellers',
     verified_sellers_desc: 'Every seller is checked for business registration and quality before going live.',
@@ -371,7 +370,6 @@ const translations = {
     dashboard_wishlist_items: 'Items in Wishlist',
     dashboard_platform_activity: 'Platform Activity',
     dashboard_total_orders: 'Total Orders',
-    dashboard_in_progress: 'In Progress',
     dashboard_delivered: 'Delivered',
     dashboard_ref_earnings: 'Ref. Earnings',
     dashboard_live_tracking: 'Live Delivery Tracking',
@@ -413,7 +411,6 @@ const translations = {
     markets_title: "Explore Rwanda's Markets",
     markets_subtitle: 'Browse through vibrant public markets and verified independent shops. Direct from source to your door.',
     markets_search_placeholder: 'Search markets (e.g. Kimironko)...',
-    markets_explore_button: 'Explore Market',
     vendors_count: 'Vendors',
     market_purchase: 'Market Purchase',
     verified_buyer: 'Verified Buyer',
@@ -999,7 +996,6 @@ const translations = {
     trust_point_1_title: 'Protection du Facilitateur',
     trust_point_1_desc: 'Chaque transaction est soutenue par le Fonds de Confiance RMF, garantissant l\'intégrité de l\'artéfact.',
     become_seller: 'Rejoindre le Réseau de Marchands',
-    active_sellers: 'Marchands Vérifiés',
     shop_now: 'Initialiser le Mandat',
     verified_sellers_title: 'Artisans Vérifiés',
     verified_sellers_desc: 'Chaque marchand du réseau est audité pour sa qualité et son authenticité.',
@@ -1096,7 +1092,6 @@ const translations = {
     dashboard_wishlist_items: 'Articles en Favoris',
     dashboard_platform_activity: 'Activité de la Plateforme',
     dashboard_total_orders: 'Total des Commandes',
-    dashboard_in_progress: 'En Cours',
     dashboard_delivered: 'Livré',
     dashboard_ref_earnings: 'Gains Parrainage',
     dashboard_live_tracking: 'Suivi de Livraison en Direct',
@@ -1138,7 +1133,6 @@ const translations = {
     markets_title: "Explorez les Marchés du Rwanda",
     markets_subtitle: 'Parcourez les marchés publics vibrants et les boutiques indépendantes vérifiées. Directement de la source à votre porte.',
     markets_search_placeholder: 'Rechercher des marchés (ex: Kimironko)...',
-    markets_explore_button: 'Explorer le Marché',
     vendors_count: 'Vendeurs',
     market_purchase: 'Achat au Marché',
     verified_buyer: 'Acheteur Vérifié',
@@ -1724,7 +1718,6 @@ const translations = {
     trust_point_1_title: 'Kurinda Umukoresha',
     trust_point_1_desc: 'Buri gikorwa cyose gishyigikiwe n\'ikigega cya RMF cyizeza ireme rishitse.',
     become_seller: 'Injira mu Muyoboro w\'Abacuruzi',
-    active_sellers: 'Abacuruzi Bemejwe',
     shop_now: 'Tangiza Ubusabe',
     verified_sellers_title: 'Abahanzi Bemejwe',
     verified_sellers_desc: 'Buri mucuruzi mu muyoboro asuzumwa ireme n\'umwimerere w\'ibyo akora.',
@@ -1821,7 +1814,6 @@ const translations = {
     dashboard_wishlist_items: 'Ibyo Wifuza',
     dashboard_platform_activity: 'Ibikorerwa kuri Platform',
     dashboard_total_orders: 'Ibyatunzwe Yose',
-    dashboard_in_progress: 'Birimo Gukorwa',
     dashboard_delivered: 'Byageze',
     dashboard_ref_earnings: 'Inyungu z\'Iyamamazabikorwa',
     dashboard_live_tracking: 'Kurikirana aho Ibyo Waguze Bigeze',
@@ -1863,7 +1855,6 @@ const translations = {
     markets_title: 'Shakisha Amasoko ya Rwanda',
     markets_subtitle: 'Rambagira amasoko ya rubanda n\'amaduka yigenga yemejwe. Kuva aho bituruka kugeza ku rugo rwawe.',
     markets_search_placeholder: 'Shakisha amasoko (urugero: Kimironko)...',
-    markets_explore_button: 'Rambagira Iri Soko',
     vendors_count: 'Abagurisha',
     market_purchase: 'Icyaguzwe mu isoko',
     verified_buyer: 'Umuguzi Wemejwe',
@@ -2184,7 +2175,7 @@ const translations = {
 interface LanguageContextType {
   language: Language;
   setLanguage: (lang: Language) => void;
-  t: (key: string) => string;
+  t: (key: string, params?: Record<string, string | number>) => string;
 }
 
 const LanguageContext = createContext<LanguageContextType | undefined>(undefined);
@@ -2208,12 +2199,17 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
     localStorage.setItem('rmf_language', lang);
   };
 
-  const t = (key: string): string => {
+  const t = (key: string, params?: Record<string, string | number>): string => {
     const translation = translations[language][key as keyof typeof translations['en']];
-    if (!translation) {
-      return translations['en'][key as keyof typeof translations['en']] || key;
-    }
-    return translation;
+    const fallback = translations['en'][key as keyof typeof translations['en']];
+    const value = String(translation || fallback || key);
+
+    if (!params) return value;
+
+    return Object.entries(params).reduce(
+      (text, [paramKey, paramValue]) => text.replaceAll(`{${paramKey}}`, String(paramValue)),
+      value,
+    );
   };
 
   return (

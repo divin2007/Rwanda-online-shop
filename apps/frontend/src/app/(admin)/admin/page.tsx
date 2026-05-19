@@ -607,7 +607,7 @@ function AdminDashboardContent() {
                   type="file"
                   id="bulk-upload-input"
                   className="hidden"
-                  accept=".csv, .xlsx, .xls"
+                  accept=".csv, .xlsx"
                   onChange={handleBulkUpload}
                />
                <label

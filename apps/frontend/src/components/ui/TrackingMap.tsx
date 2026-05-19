@@ -50,6 +50,7 @@ const MapController = ({ flyToLocation, center }: { flyToLocation: { lat: number
 
 export const TrackingMap = ({ lat, lng, pickup, dropoff, routeGeometry }: TrackingMapProps) => {
   const [isClient, setIsClient] = useState(false);
+  const [mapInstanceKey, setMapInstanceKey] = useState('');
   const [liveRoute, setLiveRoute] = useState<[number, number][]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<any[]>([]);
@@ -59,6 +60,7 @@ export const TrackingMap = ({ lat, lng, pickup, dropoff, routeGeometry }: Tracki
 
   useEffect(() => {
     setIsClient(true);
+    setMapInstanceKey(`tracking-map-${Date.now()}`);
   }, []);
 
   // Fetch LIVE road-following route from Rider to Buyer/Store
@@ -115,7 +117,7 @@ export const TrackingMap = ({ lat, lng, pickup, dropoff, routeGeometry }: Tracki
     return () => clearTimeout(timer);
   }, [searchQuery, doSearch]);
 
-  if (!isClient) return <div className="w-full h-full bg-background-surface animate-pulse"></div>;
+  if (!isClient || !mapInstanceKey) return <div className="w-full h-full bg-background-surface animate-pulse"></div>;
 
   const handleSelectResult = (result: any) => {
     setFlyToLocation({ lat: parseFloat(result.lat), lon: parseFloat(result.lon) });
@@ -162,7 +164,7 @@ export const TrackingMap = ({ lat, lng, pickup, dropoff, routeGeometry }: Tracki
       </div>
 
       <MapContainer 
-        key={`map-${lat}-${lng}`}
+        key={`${mapInstanceKey}-${lat}-${lng}`}
         center={center} 
         zoom={15} 
         style={{ height: '100%', width: '100%' }}

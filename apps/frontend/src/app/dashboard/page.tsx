@@ -54,7 +54,7 @@ export default function DashboardPage() {
               </h1>
               
               <p className="text-lg text-text-muted font-medium leading-relaxed mb-12 border-l-[3px] border-border-light pl-6 max-w-xl">
-                {t('you_have_active_orders', { ordersCount: orders.length, wishlistCount: wishlist.length }).replace('{ordersCount}', orders.length).replace('{wishlistCount}', wishlist.length)}
+                {t('you_have_active_orders', { ordersCount: orders.length, wishlistCount: wishlist.length })}
               </p>
               
               <div className="flex flex-wrap gap-4">

@@ -105,7 +105,7 @@ const Toggle = ({
 
 export default function SettingsPage() {
   const { user, isLoading } = useAuth();
-  const { setLanguage } = useLanguage();
+  const { t, setLanguage } = useLanguage();
   const [settings, setSettings] = useState<SettingsState>(defaults);
   const [savedSettings, setSavedSettings] = useState<SettingsState>(defaults);
   const [loading, setLoading] = useState(true);

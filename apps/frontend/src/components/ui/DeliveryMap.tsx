@@ -54,6 +54,7 @@ const MapController = ({ flyToLocation, center }: { flyToLocation: { lat: number
 
 export const DeliveryMap = ({ riderLocation, pickupLocation, dropoffLocation, status, routeGeometry }: DeliveryMapProps) => {
   const [isClient, setIsClient] = useState(false);
+  const [mapInstanceKey, setMapInstanceKey] = useState('');
   const [liveRoute, setLiveRoute] = useState<[number, number][]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<any[]>([]);
@@ -62,6 +63,7 @@ export const DeliveryMap = ({ riderLocation, pickupLocation, dropoffLocation, st
 
   useEffect(() => {
     setIsClient(true);
+    setMapInstanceKey(`delivery-map-${Date.now()}`);
   }, []);
 
   // Fetch LIVE road-following route from Rider to Destination
@@ -120,7 +122,7 @@ export const DeliveryMap = ({ riderLocation, pickupLocation, dropoffLocation, st
     return () => clearTimeout(timer);
   }, [searchQuery]);
 
-  if (!isClient) return <div className="w-full h-full bg-background-surface animate-pulse rounded-xl"></div>;
+  if (!isClient || !mapInstanceKey) return <div className="w-full h-full bg-background-surface animate-pulse rounded-xl"></div>;
 
   const handleSelectResult = (result: any) => {
     setFlyToLocation({ lat: parseFloat(result.lat), lon: parseFloat(result.lon) });
@@ -167,6 +169,7 @@ export const DeliveryMap = ({ riderLocation, pickupLocation, dropoffLocation, st
       </div>
 
       <MapContainer 
+        key={mapInstanceKey}
         center={center} 
         zoom={16} 
         style={{ height: '100%', width: '100%' }}

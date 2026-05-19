@@ -57,6 +57,11 @@ export const LeafletMap = ({
   const [searchResults, setSearchResults] = useState<any[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [flyToLocation, setFlyToLocation] = useState<{ lat: number, lon: number } | null>(null);
+  const [mapInstanceKey, setMapInstanceKey] = useState('');
+
+  useEffect(() => {
+    setMapInstanceKey(`leaflet-map-${Date.now()}`);
+  }, []);
 
   const handlePositionChange = (coords: Coordinates) => {
     setPosition(coords);
@@ -105,6 +110,10 @@ export const LeafletMap = ({
 
   const center = initialLocation ? [initialLocation.lat, initialLocation.lng] as [number, number] : DEFAULT_CENTER;
 
+  if (!mapInstanceKey) {
+    return <div className="w-full h-full bg-background-surface animate-pulse" />;
+  }
+
   return (
     <div className="w-full h-full relative z-0">
       {/* Search Input Container */}
@@ -142,7 +151,7 @@ export const LeafletMap = ({
         </div>
       </div>
 
-      <MapContainer center={center} zoom={13} style={{ height: '100%', width: '100%' }}>
+      <MapContainer key={mapInstanceKey} center={center} zoom={13} style={{ height: '100%', width: '100%' }}>
         <TileLayer
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"

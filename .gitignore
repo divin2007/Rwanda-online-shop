@@ -17,4 +17,8 @@ packages/**/node_modules
 *.log
 .codex-run-logs/
 apps/**/uploads/
-
+rmf_bulk_product_template.xlsx
+apps/**/rmf_bulk_product_template.xlsx
+xlsx-output.txt
+apps/**/scratch/check-*.js
+apps/**/scratch/inspect-*.js

@@ -17,8 +17,7 @@ import {
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { randomUUID } from 'crypto';
-import { existsSync, mkdirSync, writeFileSync } from 'fs';
-import { extname, join } from 'path';
+import { extname } from 'path';
 import { Response } from 'express';
 import { ProductService } from './product.service';
 import { Roles, JwtAuthGuard, Public } from '@rmf/auth';
@@ -32,23 +31,6 @@ export class ProductController {
     private readonly storageService: StorageService,
   ) {}
 
-  @Get('test-read-template')
-  async testReadTemplate() {
-    const XLSX = require('xlsx');
-    try {
-      const filePath = 'c:/Users/mahor/.gemini/antigravity/scratch/Rwanda-online-shop/rmf_bulk_product_template.xlsx';
-      const wb = XLSX.readFile(filePath);
-      const res: Record<string, any> = {};
-      wb.SheetNames.forEach((name: string) => {
-        const ws = wb.Sheets[name];
-        res[name] = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' });
-      });
-      return { success: true, data: res };
-    } catch (e: any) {
-      return { success: false, error: e.message };
-    }
-  }
-
   private readonly imageExtensions: Record<string, string> = {
     'image/jpeg': '.jpg',
     'image/png': '.png',
@@ -60,7 +42,6 @@ export class ProductController {
   private readonly bulkMimeTypes = new Set([
     'text/csv',
     'application/csv',
-    'application/vnd.ms-excel',
     'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
   ]);
 
@@ -69,8 +50,12 @@ export class ProductController {
   @UseGuards(JwtAuthGuard)
   @Roles(UserRole.SELLER, UserRole.ADMIN)
   @Post()
-  async create(@Body() productData: any) {
-    const product = await this.productService.create(productData);
+  async create(@Body() productData: any, @Request() req: any) {
+    const product = await this.productService.create(
+      req.user.role === UserRole.ADMIN
+        ? productData
+        : { ...productData, sellerId: req.user.userId },
+    );
     return { success: true, data: product };
   }
 
@@ -146,6 +131,14 @@ export class ProductController {
   @Post('catalog/migrate-backfill')
   async backfillCatalog(@Body() body: { dryRun?: boolean; limit?: number } = {}) {
     const result = await this.productService.backfillCatalogMetadata(body);
+    return { success: true, data: result };
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Roles(UserRole.ADMIN)
+  @Post('admin/self-heal-seller-links')
+  async selfHealSellerLinks(@Body() body: { dryRun?: boolean; limit?: number } = {}) {
+    const result = await this.productService.selfHealSellerLinks(body);
     return { success: true, data: result };
   }
 
@@ -265,41 +258,21 @@ export class ProductController {
     }
 
     const extension = extname(file.originalname || '').toLowerCase();
-    if (!this.bulkMimeTypes.has(file.mimetype) && !['.csv', '.xlsx', '.xls'].includes(extension)) {
-      throw new BadRequestException('Unsupported bulk upload file. Use CSV, XLS, or XLSX.');
+    if (!this.bulkMimeTypes.has(file.mimetype) && !['.csv', '.xlsx'].includes(extension)) {
+      throw new BadRequestException('Unsupported bulk upload file. Use CSV or XLSX.');
     }
 
-    const results = await this.productService.bulkUpload(file.buffer, sellerId);
+    const results = await this.productService.bulkUpload(file.buffer, sellerId, extension);
     return { success: true, data: results };
   }
 
+  @Public()
   @Get('bulk/template')
   async downloadTemplate(@Res() res: Response) {
-    const buffer = this.productService.generateExcelTemplate();
-    
-    try {
-      const filePath = join(process.cwd(), 'rmf_bulk_product_template.xlsx');
-      const absoluteFallbackPath = 'c:/Users/mahor/.gemini/antigravity/scratch/Rwanda-online-shop/rmf_bulk_product_template.xlsx';
-      
-      const fs = require('fs');
-      fs.writeFileSync(filePath, buffer);
-      if (filePath !== absoluteFallbackPath) {
-        fs.writeFileSync(absoluteFallbackPath, buffer);
-      }
-      console.log('[BulkUpload] Successfully synchronized rmf_bulk_product_template.xlsx on disk.');
-    } catch (err: any) {
-      console.warn('[BulkUpload] Could not write updated template to workspace root disk:', err.message);
-    }
+    const buffer = await this.productService.generateExcelTemplate();
 
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
     res.setHeader('Content-Disposition', 'attachment; filename=rmf_bulk_product_template.xlsx');
     res.send(buffer);
-  }
-
-  @Public()
-  @Get('debug/inspect')
-  async debugInspect() {
-    const data = await this.productService.debugInspect();
-    return { success: true, data };
   }
 }

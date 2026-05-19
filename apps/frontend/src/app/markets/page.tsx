@@ -498,7 +498,7 @@ function MarketsContent() {
             <div>
               <p className="text-xs font-bold uppercase tracking-widest">{t('location_filter_active')}</p>
               <p className="mt-1.5 text-sm font-medium leading-relaxed text-text-muted">
-                {t('showing_markets_for', { location: requestedLocation }).replace('{location}', requestedLocation)} {hasCoordinateSearch ? t('markets_sorted_by_distance') : t('markets_sorted_by_fuzzy')}
+                {t('showing_markets_for', { location: requestedLocation })} {hasCoordinateSearch ? t('markets_sorted_by_distance') : t('markets_sorted_by_fuzzy')}
               </p>
             </div>
           </div>
@@ -654,7 +654,7 @@ function MarketsContent() {
                   {madeInRwandaIntent ? t('origin_tagged_catalog') : t('product_results')}
                 </p>
                 <h2 className="mt-2 text-3xl font-bold tracking-tight text-text-primary md:text-4xl">
-                  {madeInRwandaIntent ? t('made_in_rwanda_products') : t('products_matching_query', { query: searchQuery.trim() }).replace('{query}', searchQuery.trim())}
+                  {madeInRwandaIntent ? t('made_in_rwanda_products') : t('products_matching_query', { query: searchQuery.trim() })}
                 </h2>
                 <p className="mt-3 max-w-2xl text-base leading-relaxed text-text-muted">
                   {madeInRwandaIntent

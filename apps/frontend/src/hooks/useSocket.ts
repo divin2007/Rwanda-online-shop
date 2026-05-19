@@ -11,6 +11,7 @@ export function useSocket<T = any>(url: string, channel: string, token?: string,
   // regardless of WebSocket CORS issues in the browser
   useEffect(() => {
     if (!url) return;
+    const authToken = token || (typeof window !== 'undefined' ? localStorage.getItem('accessToken') || undefined : undefined);
 
     const s = io(url, {
       transports: ['polling', 'websocket'], // polling first = always works, upgrades silently
@@ -18,7 +19,7 @@ export function useSocket<T = any>(url: string, channel: string, token?: string,
       reconnectionAttempts: Infinity,
       reconnectionDelay: 1000,
       timeout: 20000,
-      ...(token ? { auth: { token } } : {}),
+      ...(authToken ? { auth: { token: authToken } } : {}),
       ...(options || {})
     });
 
@@ -35,7 +36,7 @@ export function useSocket<T = any>(url: string, channel: string, token?: string,
       setSocket(null);
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [url]); // Only re-create socket if the service URL changes
+  }, [url, token]); // Re-create socket if the service URL or explicit auth token changes
 
   // Attach / detach the channel listener separately from socket creation
   useEffect(() => {

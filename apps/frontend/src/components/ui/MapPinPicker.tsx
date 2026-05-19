@@ -63,9 +63,11 @@ export const MapPinPicker = ({
   const [isSearching, setIsSearching] = useState(false);
   const [flyToLocation, setFlyToLocation] = useState<{ lat: number, lon: number } | null>(null);
   const [isClient, setIsClient] = useState(false);
+  const [mapInstanceKey, setMapInstanceKey] = useState('');
 
   useEffect(() => {
     setIsClient(true);
+    setMapInstanceKey(`pin-picker-map-${Date.now()}`);
   }, []);
 
   const doSearch = async (val: string) => {
@@ -126,7 +128,7 @@ export const MapPinPicker = ({
     }
   }, [marketLocation, position]);
 
-  if (!isClient) return <div className="w-full h-full bg-background-surface animate-pulse flex items-center justify-center">Loading Map...</div>;
+  if (!isClient || !mapInstanceKey) return <div className="w-full h-full bg-background-surface animate-pulse flex items-center justify-center">Loading Map...</div>;
 
   const handleSelectResult = (result: any) => {
     setFlyToLocation({ lat: parseFloat(result.lat), lon: parseFloat(result.lon) });
@@ -172,6 +174,7 @@ export const MapPinPicker = ({
       </div>
 
       <MapContainer 
+        key={mapInstanceKey}
         center={marketLocation ? [marketLocation.lat, marketLocation.lng] : [centerLat, centerLng]} 
         zoom={13} 
         style={{ height: '100%', width: '100%' }}

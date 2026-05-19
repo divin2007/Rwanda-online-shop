@@ -3,7 +3,8 @@ import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import type { Cache } from 'cache-manager';
-import * as XLSX from 'xlsx';
+import ExcelJS from 'exceljs';
+import { Readable } from 'stream';
 import { CatalogCategory, CatalogField, catalogCategories, resolveCatalogCategory } from './catalog.definitions';
 
 @Injectable()
@@ -56,19 +57,41 @@ export class ProductService implements OnModuleInit {
     return undefined;
   }
 
+  private normalizeImportKey(value: unknown): string {
+    return String(value || '').toLowerCase().trim().replace(/[^a-z0-9]+/g, '');
+  }
+
+  private canonicalAttributeKey(value: unknown): string {
+    const rawKey = String(value || '').trim();
+    const normalized = this.normalizeImportKey(rawKey);
+    if (!normalized) return rawKey;
+
+    const attributeFields = catalogCategories.flatMap(category => category.attributes);
+    const match = attributeFields.find(field =>
+      this.normalizeImportKey(field.key) === normalized
+      || this.normalizeImportKey(field.label) === normalized
+    );
+
+    return match?.key || rawKey;
+  }
+
   private parseAttributesFromRow(row: Record<string, any>): Record<string, any> {
     const attributes: Record<string, any> = {};
     const keys = Object.keys(row);
     const attrCol = keys.find(k => {
-      const normalized = k.toLowerCase().trim().replace(/[^a-z0-9]+/g, '');
-      return ['attributes', 'attributejson', 'specs', 'specifications'].includes(normalized);
+      const normalized = this.normalizeImportKey(k);
+      return ['attributes', 'attributejson', 'attributesjson', 'specs', 'specifications'].includes(normalized);
     });
 
     const rawJson = attrCol ? row[attrCol] : undefined;
     if (rawJson) {
       try {
         const parsed = typeof rawJson === 'string' ? JSON.parse(rawJson) : rawJson;
-        if (parsed && typeof parsed === 'object') Object.assign(attributes, parsed);
+        if (parsed && typeof parsed === 'object') {
+          for (const [key, value] of Object.entries(parsed)) {
+            attributes[this.canonicalAttributeKey(key)] = value;
+          }
+        }
       } catch {
         throw new Error('Attributes must be valid JSON when provided');
       }
@@ -83,7 +106,7 @@ export class ProductService implements OnModuleInit {
         attrKey = key.slice(9);
       }
       if (attrKey && value !== undefined && value !== null && value !== '') {
-        attributes[attrKey.trim()] = value;
+        attributes[this.canonicalAttributeKey(attrKey)] = value;
       }
     }
 
@@ -92,15 +115,26 @@ export class ProductService implements OnModuleInit {
 
   private async invalidateProductCaches(productId?: string) {
     if (productId) {
-      await this.cacheManager.del(`product:${productId}`);
+      await this.safeCacheDel(`product:${productId}`);
     }
-    await this.cacheManager.del('products:all');
-    await this.cacheManager.del('catalog:categories');
-    await this.cacheManager.del('catalog:categories:all');
+    await this.safeCacheDel('products:all');
+    await this.safeCacheDel('catalog:categories');
+    await this.safeCacheDel('catalog:categories:all');
     // N7 fix: do NOT call cacheManager.reset() here — it wipes the entire Redis namespace
     // (including session data and other services if sharing Redis). Use targeted key deletion.
     // For a full product cache flush, the keys follow the pattern `products:all:*`—
     // handled by the canonical query key in findAll().
+  }
+
+  private async safeCacheDel(key: string): Promise<void> {
+    try {
+      await Promise.race([
+        this.cacheManager.del(key),
+        new Promise(resolve => setTimeout(resolve, 500)),
+      ]);
+    } catch (error: any) {
+      console.warn(`[ProductService] Cache delete skipped for ${key}: ${error?.message || error}`);
+    }
   }
 
   private normalizeCategoryId(value: unknown): string {
@@ -188,8 +222,8 @@ export class ProductService implements OnModuleInit {
         { upsert: true, returnDocument: 'after' }
       ).exec();
     }
-    await this.cacheManager.del('catalog:categories');
-    await this.cacheManager.del('catalog:categories:all');
+    await this.safeCacheDel('catalog:categories');
+    await this.safeCacheDel('catalog:categories:all');
   }
 
 
@@ -533,51 +567,7 @@ export class ProductService implements OnModuleInit {
   }
 
   async onModuleInit() {
-    try {
-      const XLSX = require('xlsx');
-      const fs = require('fs');
-      const filePath = 'c:/Users/mahor/.gemini/antigravity/scratch/Rwanda-online-shop/rmf_bulk_product_template.xlsx';
-      if (fs.existsSync(filePath)) {
-        const wb = XLSX.readFile(filePath);
-        const res: Record<string, any> = {};
-        wb.SheetNames.forEach((name: string) => {
-          const ws = wb.Sheets[name];
-          res[name] = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' });
-        });
-        fs.writeFileSync('c:/Users/mahor/.gemini/antigravity/scratch/Rwanda-online-shop/xlsx-output.txt', JSON.stringify(res, null, 2));
-        console.log('✅ SUCCESSFULLY DUMPED XLSX TEMPLATE TO xlsx-output.txt');
-      } else {
-        console.log('❌ TEMPLATE FILE NOT FOUND AT:', filePath);
-      }
-    } catch (e: any) {
-      console.error('❌ FAILED TO DUMP XLSX TEMPLATE:', e.message);
-    }
-
     await this.seedCatalogCategoriesIfNeeded();
-
-    // Self-healing migration for products that got corrupted with User ID instead of SellerProfile ID
-    try {
-      console.log('🔄 Running product database self-healing migration...');
-      const allProducts = await this.productModel.find({ deletedAt: null }).exec();
-      let healCount = 0;
-      for (const prod of allProducts) {
-        if (prod.sellerId) {
-          const seller = await this.sellerModel.findOne({ userId: prod.sellerId }).exec();
-          if (seller) {
-            prod.sellerId = seller._id;
-            prod.marketId = seller.marketId;
-            await prod.save();
-            healCount++;
-          }
-        }
-      }
-      if (healCount > 0) {
-        console.log(`✅ Successfully self-healed ${healCount} products!`);
-        await this.invalidateProductCaches();
-      }
-    } catch (e: any) {
-      console.error('❌ Product self-healing migration failed:', e.message);
-    }
 
     if (process.env.SEED_PRODUCTS_ON_STARTUP !== 'true') {
       return;
@@ -1159,19 +1149,96 @@ export class ProductService implements OnModuleInit {
     return updated;
   }
 
-  async bulkUpload(buffer: Buffer, sellerId: string): Promise<any> {
+  private plainSpreadsheetValue(value: any): any {
+    if (value === null || value === undefined) return '';
+    if (value instanceof Date) return value.toISOString().slice(0, 10);
+    if (typeof value !== 'object') return value;
+    if (Array.isArray(value.richText)) {
+      return value.richText.map((part: any) => part?.text || '').join('');
+    }
+    if ('text' in value) return value.text;
+    if ('hyperlink' in value && 'text' in value) return value.text;
+    if ('result' in value) return value.result;
+    return String(value);
+  }
+
+  private worksheetRows(worksheet: ExcelJS.Worksheet): any[][] {
+    const rows: any[][] = [];
+    const columnCount = Math.max(worksheet.actualColumnCount, worksheet.columnCount);
+    for (let rowNumber = 1; rowNumber <= worksheet.rowCount; rowNumber++) {
+      const row = worksheet.getRow(rowNumber);
+      const values: any[] = [];
+      for (let colNumber = 1; colNumber <= columnCount; colNumber++) {
+        values.push(this.plainSpreadsheetValue(row.getCell(colNumber).value));
+      }
+      rows.push(values);
+    }
+    return rows;
+  }
+
+  private async readBulkUploadRows(buffer: Buffer, fileExtension = '.xlsx'): Promise<any[][]> {
+    const extension = fileExtension.toLowerCase();
+    const workbook = new ExcelJS.Workbook();
+
+    if (extension === '.csv') {
+      const worksheet = await workbook.csv.read(Readable.from(buffer));
+      return this.worksheetRows(worksheet);
+    }
+
+    if (extension !== '.xlsx') {
+      throw new BadRequestException('Unsupported spreadsheet format. Use XLSX or CSV.');
+    }
+
+    await workbook.xlsx.load(buffer as any);
+    const worksheet = workbook.worksheets.find(sheet => sheet.name.toLowerCase().includes('product'))
+      || workbook.worksheets[0];
+
+    if (!worksheet) {
+      throw new BadRequestException('The uploaded file has no readable worksheet.');
+    }
+
+    return this.worksheetRows(worksheet);
+  }
+
+  async selfHealSellerLinks(options: { dryRun?: boolean; limit?: number } = {}): Promise<any> {
+    const dryRun = options.dryRun !== false;
+    const limit = Math.min(Math.max(Number(options.limit || 1000), 1), 10000);
+    const products = await this.productModel.find({ deletedAt: null, sellerId: { $exists: true, $ne: null } }).limit(limit).exec();
+    let healed = 0;
+    const samples: any[] = [];
+
+    for (const product of products) {
+      const seller = await this.sellerModel.findOne({ userId: product.sellerId }).exec();
+      if (!seller) continue;
+
+      healed++;
+      if (samples.length < 20) {
+        samples.push({
+          productId: product._id,
+          previousSellerId: product.sellerId,
+          sellerProfileId: seller._id,
+          marketId: seller.marketId,
+        });
+      }
+
+      if (!dryRun) {
+        product.sellerId = seller._id;
+        product.marketId = seller.marketId;
+        await product.save();
+      }
+    }
+
+    if (healed > 0 && !dryRun) {
+      await this.invalidateProductCaches();
+    }
+
+    return { dryRun, scanned: products.length, healed, limit, samples };
+  }
+
+  async bulkUpload(buffer: Buffer, sellerId: string, fileExtension = '.xlsx'): Promise<any> {
     console.log(`[BulkUpload] Starting for seller: ${sellerId}`);
     try {
-      const workbook = XLSX.read(buffer, { type: 'buffer' });
-      let sheetName = workbook.SheetNames.find(name => {
-        const lower = name.toLowerCase().trim();
-        return lower.includes('product');
-      });
-      if (!sheetName) {
-        sheetName = workbook.SheetNames[0];
-      }
-      const sheet = workbook.Sheets[sheetName];
-      const rows = XLSX.utils.sheet_to_json(sheet, { header: 1 }) as any[][];
+      const rows = await this.readBulkUploadRows(buffer, fileExtension);
 
       // Find the header row index by scanning for rows containing Name and Price
       let headerRowIndex = -1;
@@ -1464,135 +1531,386 @@ export class ProductService implements OnModuleInit {
     });
   }
 
-  generateExcelTemplate(): Buffer {
-    const wb = XLSX.utils.book_new();
+  async generateExcelTemplate(): Promise<Buffer> {
+    const workbook = new ExcelJS.Workbook();
+    workbook.creator = 'Rwanda Market Facilitator';
+    workbook.lastModifiedBy = 'Rwanda Market Facilitator';
+    workbook.created = new Date();
+    workbook.modified = new Date();
+    workbook.title = 'RMF bulk product import template';
+    workbook.subject = 'Seller product bulk upload';
+    workbook.calcProperties.fullCalcOnLoad = true;
 
-    const productHeaders = [
-      'Name',
-      'Description',
-      'Category',
-      'Price',
-      'Unit',
-      'Stock',
-      'StockType',
-      'MadeInRwanda',
-      'Images',
-      'Size',
-      'Color',
-      'Flavor',
-      'PackageSize',
-      'Capacity',
-      'SKU'
-    ];
+    const darkGreen = 'FF003F2D';
+    const green = 'FF0F5B43';
+    const paleGreen = 'FFEAF5EF';
+    const paleYellow = 'FFFFF5CC';
+    const border = { style: 'thin' as const, color: { argb: 'FFD8E2DD' } };
+    const headerRowNumber = 5;
+    const firstDataRow = 6;
+    const lastDataRow = 205;
 
-    const sampleRows = [
-      {
-        Name: 'Handwoven Agaseke Basket',
-        Description: 'Traditional handwoven Rwandan basket with high quality sisal fibers.',
-        Category: 'handicrafts',
-        Price: 25000,
-        Unit: 'pcs',
-        Stock: 10,
-        StockType: 'finite',
-        MadeInRwanda: 'yes',
-        Images: 'https://images.unsplash.com/photo-1607344645866-009c320b63e0',
-        Size: 'Small',
-        Color: 'Red',
-        Flavor: '',
-        PackageSize: '',
-        Capacity: '',
-        SKU: 'AGA-S-RED'
-      },
-      {
-        Name: 'Handwoven Agaseke Basket',
-        Description: 'Traditional handwoven Rwandan basket with high quality sisal fibers.',
-        Category: 'handicrafts',
-        Price: 28000,
-        Unit: 'pcs',
-        Stock: 15,
-        StockType: 'finite',
-        MadeInRwanda: 'yes',
-        Images: 'https://images.unsplash.com/photo-1607344645866-009c320b63e0',
-        Size: 'Medium',
-        Color: 'Blue',
-        Flavor: '',
-        PackageSize: '',
-        Capacity: '',
-        SKU: 'AGA-M-BLU'
-      },
-      {
-        Name: 'Rwandan Specialty Coffee',
-        Description: 'High-altitude Arabica beans from Gisenyi.',
-        Category: 'grocery',
-        Price: 12000,
-        Unit: 'kg',
-        Stock: 100,
-        StockType: 'infinite',
-        MadeInRwanda: 'yes',
-        Images: 'https://images.unsplash.com/photo-1559056199-641a0ac8b55e',
-        Size: '',
-        Color: '',
-        Flavor: '',
-        PackageSize: '1kg',
-        Capacity: '',
-        SKU: 'COF-1KG'
-      },
-      {
-        Name: 'Rwandan Specialty Coffee',
-        Description: 'High-altitude Arabica beans from Gisenyi.',
-        Category: 'grocery',
-        Price: 6500,
-        Unit: 'kg',
-        Stock: 200,
-        StockType: 'infinite',
-        MadeInRwanda: 'yes',
-        Images: 'https://images.unsplash.com/photo-1559056199-641a0ac8b55e',
-        Size: '',
-        Color: '',
-        Flavor: '',
-        PackageSize: '500g',
-        Capacity: '',
-        SKU: 'COF-500G'
-      },
-      {
-        Name: 'Comfortable Kitenge Cushion',
-        Description: 'Soft cotton cushion for home interior.',
-        Category: 'home',
-        Price: 15000,
-        Unit: 'pcs',
-        Stock: 5,
-        StockType: 'on_demand',
-        MadeInRwanda: 'yes',
-        Images: 'https://images.unsplash.com/photo-1584100936595-c0654b55a2e6',
-        Size: 'Medium',
-        Color: 'Yellow',
-        Flavor: '',
-        PackageSize: '',
-        Capacity: '',
-        SKU: 'CUSH-KIT-YLW'
+    const products = workbook.addWorksheet('Products', {
+      views: [{ state: 'frozen', ySplit: headerRowNumber }],
+      properties: { defaultRowHeight: 20 },
+    });
+
+    const columnLetter = (index: number): string => {
+      let dividend = index;
+      let name = '';
+      while (dividend > 0) {
+        const modulo = (dividend - 1) % 26;
+        name = String.fromCharCode(65 + modulo) + name;
+        dividend = Math.floor((dividend - modulo) / 26);
       }
+      return name;
+    };
+
+    const listSheet = workbook.addWorksheet('_Lists');
+    listSheet.state = 'veryHidden';
+    let listColumn = 1;
+
+    const addNamedList = (name: string, values: string[]): void => {
+      const safeValues = values.length ? values : [''];
+      const col = listColumn++;
+      safeValues.forEach((value, index) => {
+        listSheet.getCell(index + 1, col).value = value;
+      });
+      const letter = columnLetter(col);
+      workbook.definedNames.add(`_Lists!$${letter}$1:$${letter}$${safeValues.length}`, name);
+    };
+
+    const safeDefinedName = (name: string): string => {
+      const cleaned = name.replace(/[^A-Za-z0-9_]/g, '_');
+      return /^[A-Za-z_]/.test(cleaned) ? cleaned : `_${cleaned}`;
+    };
+
+    const uniqueFields = (fields: CatalogField[]): CatalogField[] => {
+      const seen = new Set<string>();
+      return fields.filter(field => {
+        if (seen.has(field.key)) return false;
+        seen.add(field.key);
+        return true;
+      });
+    };
+
+    const variantFields = uniqueFields(catalogCategories.flatMap(category => category.variantAxes));
+    const attributeFields = uniqueFields(catalogCategories.flatMap(category => category.attributes));
+    const dropdownFields = uniqueFields([...variantFields, ...attributeFields]);
+    const units = Array.from(new Set([...catalogCategories.map(category => category.defaultUnit), 'pcs', 'kg', 'g', 'pair', 'set', 'm', 'box', 'bag', 'liter', 'bundle']));
+    const colors = ['Natural', 'Black', 'White', 'Green', 'Yellow', 'Blue', 'Red', 'Brown', 'Gold', 'Silver', 'Mixed', 'Custom'];
+
+    addNamedList('CategoryIds', catalogCategories.map(category => category.id));
+    addNamedList('StockTypes', ['finite', 'infinite', 'on_demand']);
+    addNamedList('YesNo', ['yes', 'no']);
+    addNamedList('Units', units);
+    addNamedList('Colors', colors);
+    addNamedList('BlankList', ['']);
+
+    for (const category of catalogCategories) {
+      const categoryFields = [...category.variantAxes, ...category.attributes];
+      for (const field of dropdownFields) {
+        const fieldForCategory = categoryFields.find(candidate => candidate.key === field.key);
+        let values: string[] = [''];
+        if (fieldForCategory?.type === 'boolean') {
+          values = ['yes', 'no'];
+        } else if (fieldForCategory?.type === 'color') {
+          values = colors;
+        } else if (fieldForCategory?.options?.length) {
+          values = fieldForCategory.options;
+        }
+        addNamedList(safeDefinedName(`${category.id}_${field.key}`), values);
+      }
+    }
+
+    type TemplateColumn = {
+      header: string;
+      key: string;
+      width: number;
+      required?: boolean;
+      validation?: string;
+      dependentField?: CatalogField;
+      note: string;
+    };
+
+    const productColumns: TemplateColumn[] = [
+      { header: 'Name', key: 'name', width: 28, required: true, note: 'Required. Rows with the same Name become variants of one product.' },
+      { header: 'Description', key: 'description', width: 42, required: true, note: 'What buyers should know before ordering.' },
+      { header: 'Category', key: 'category', width: 18, required: true, validation: '=CategoryIds', note: 'Choose a category id. This drives the dependent dropdowns.' },
+      { header: 'Price', key: 'price', width: 14, required: true, note: 'RWF unit price. Keep numbers only.' },
+      { header: 'Unit', key: 'unit', width: 12, validation: '=Units', note: 'Pricing unit shown to buyers.' },
+      { header: 'Stock', key: 'stock', width: 12, required: true, note: 'Available quantity. Use 0 for made-to-order if StockType is on_demand.' },
+      { header: 'StockType', key: 'stockType', width: 15, validation: '=StockTypes', note: 'finite tracks stock, infinite stays available, on_demand is made after order.' },
+      { header: 'MadeInRwanda', key: 'madeInRwanda', width: 18, validation: '=YesNo', note: 'Use yes or no.' },
+      { header: 'Images', key: 'images', width: 48, required: true, note: 'Required. One or more public image URLs, separated by comma, semicolon, or new line.' },
+      { header: 'SKU', key: 'sku', width: 18, note: 'Optional seller SKU. Variant rows can use different SKUs.' },
+      ...variantFields.map(field => ({
+        header: field.key,
+        key: field.key,
+        width: 16,
+        dependentField: field,
+        note: `${field.label}. Options change by Category when that category supports this variant.`
+      })),
+      ...attributeFields.map(field => ({
+        header: `Attr: ${field.key}`,
+        key: `attr.${field.key}`,
+        width: 22,
+        dependentField: field,
+        note: `${field.label}${field.required ? ' (required for its category)' : ''}.`
+      })),
+      { header: 'Attributes JSON', key: 'attributes', width: 36, note: 'Optional advanced override, e.g. {"brand":"Acme"}. Attribute columns are easier and preferred.' },
     ];
 
-    const wsProducts = XLSX.utils.json_to_sheet(sampleRows, { header: productHeaders });
-    XLSX.utils.book_append_sheet(wb, wsProducts, 'Products');
+    products.mergeCells('A1:H1');
+    products.mergeCells('A2:H2');
+    products.mergeCells('A3:H3');
+    products.getCell('A1').value = 'RMF bulk product import';
+    products.getCell('A2').value = 'Fill product rows below. Category controls the dropdowns for sizes, package options, and category-specific attributes.';
+    products.getCell('A3').value = 'Keep the header row unchanged. Delete sample rows before a real upload, or replace them with your own products.';
+    products.getCell('A1').font = { bold: true, size: 20, color: { argb: darkGreen } };
+    products.getCell('A2').font = { size: 11, color: { argb: 'FF38564A' } };
+    products.getCell('A3').font = { size: 10, color: { argb: 'FF61746B' } };
 
-    const referenceData = [
-      { Parameter: 'Category', 'Allowed Values': 'grocery, fashion, handicrafts, home, electronics, other', Description: 'The category matching your product. Custom entries resolve to "other" schema.' },
-      { Parameter: 'StockType', 'Allowed Values': 'finite, infinite, on_demand', Description: 'How stock availability is managed.' },
-      { Parameter: 'MadeInRwanda', 'Allowed Values': 'yes, no', Description: 'Is this product made or produced in Rwanda?' },
-      { Parameter: 'Unit', 'Allowed Values': 'pcs, kg, pair, set', Description: 'The pricing unit for the inventory listing.' },
-      { Parameter: 'Variants (Size, Color, Flavor, PackageSize, Capacity, SKU)', 'Allowed Values': 'Text / standard codes', Description: 'Group rows with the SAME "Name" to declare variants (e.g. red/blue or small/medium/large).' }
+    const headerRow = products.getRow(headerRowNumber);
+    headerRow.values = productColumns.map(column => column.header);
+    headerRow.height = 26;
+    headerRow.eachCell(cell => {
+      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: darkGreen } };
+      cell.font = { bold: true, color: { argb: 'FFFFFFFF' }, size: 10 };
+      cell.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
+      cell.border = { top: border, bottom: border, left: border, right: border };
+    });
+
+    productColumns.forEach((column, index) => {
+      const excelColumn = products.getColumn(index + 1);
+      excelColumn.width = column.width;
+      const headerCell = products.getCell(headerRowNumber, index + 1);
+      if (column.required) {
+        headerCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF005E45' } };
+      }
+      headerCell.note = column.note;
+    });
+
+    products.autoFilter = {
+      from: { row: headerRowNumber, column: 1 },
+      to: { row: headerRowNumber, column: productColumns.length },
+    };
+
+    const samples: Record<string, string | number>[] = [
+      {
+        name: 'Handwoven Agaseke Basket',
+        description: 'Traditional handwoven Rwandan basket with high quality sisal fibers.',
+        category: 'handicrafts',
+        price: 25000,
+        unit: 'pcs',
+        stock: 10,
+        stockType: 'finite',
+        madeInRwanda: 'yes',
+        images: 'https://images.unsplash.com/photo-1607344645866-009c320b63e0',
+        sku: 'AGA-S-RED',
+        size: 'Small',
+        color: 'Red',
+        'attr.material': 'Sisal',
+        'attr.artisanDistrict': 'Kigali',
+        'attr.handmade': 'yes',
+        'attr.productionDays': 4,
+        'attr.dimensions': '25cm x 18cm',
+      },
+      {
+        name: 'Handwoven Agaseke Basket',
+        description: 'Traditional handwoven Rwandan basket with high quality sisal fibers.',
+        category: 'handicrafts',
+        price: 28000,
+        unit: 'pcs',
+        stock: 15,
+        stockType: 'finite',
+        madeInRwanda: 'yes',
+        images: 'https://images.unsplash.com/photo-1607344645866-009c320b63e0',
+        sku: 'AGA-M-BLU',
+        size: 'Medium',
+        color: 'Blue',
+        'attr.material': 'Sisal',
+        'attr.artisanDistrict': 'Kigali',
+        'attr.handmade': 'yes',
+        'attr.productionDays': 5,
+        'attr.dimensions': '32cm x 21cm',
+      },
+      {
+        name: 'Rwandan Specialty Coffee',
+        description: 'High-altitude Arabica beans from Gisenyi.',
+        category: 'grocery',
+        price: 12000,
+        unit: 'kg',
+        stock: 100,
+        stockType: 'finite',
+        madeInRwanda: 'yes',
+        images: 'https://images.unsplash.com/photo-1559056199-641a0ac8b55e',
+        sku: 'COF-1KG',
+        packageSize: '1kg',
+        'attr.originDistrict': 'Rubavu',
+        'attr.freshnessGrade': 'A',
+        'attr.organic': 'yes',
+        'attr.shelfLifeDays': 180,
+      },
+      {
+        name: 'Kitenge Wrap Dress',
+        description: 'Locally tailored cotton kitenge wrap dress.',
+        category: 'fashion',
+        price: 32000,
+        unit: 'pcs',
+        stock: 8,
+        stockType: 'finite',
+        madeInRwanda: 'yes',
+        images: 'https://images.unsplash.com/photo-1515886657613-9f3515b0c78f',
+        sku: 'KIT-M-GRN',
+        size: 'M',
+        color: 'Green',
+        'attr.material': 'Kitenge',
+        'attr.gender': 'Women',
+        'attr.fit': 'Regular',
+        'attr.lengthMeters': 2,
+        'attr.care': 'Cold wash, shade dry',
+      },
     ];
 
-    const wsRef = XLSX.utils.json_to_sheet(referenceData);
-    XLSX.utils.book_append_sheet(wb, wsRef, 'Validation Reference');
+    samples.forEach((sample, offset) => {
+      const row = products.getRow(firstDataRow + offset);
+      row.values = productColumns.map(column => sample[column.key] ?? '');
+      row.height = 28;
+    });
 
-    return XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
-  }
+    for (let rowIndex = firstDataRow; rowIndex <= lastDataRow; rowIndex++) {
+      const row = products.getRow(rowIndex);
+      productColumns.forEach((column, index) => {
+        const cell = row.getCell(index + 1);
+        cell.border = { top: border, bottom: border, left: border, right: border };
+        cell.alignment = { vertical: 'middle', wrapText: true };
+        if (rowIndex % 2 === 0) {
+          cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFBFDFC' } };
+        }
 
-  async debugInspect(): Promise<any> {
-    const sellers = await this.sellerModel.find().lean().exec();
-    const products = await this.productModel.find().populate(['sellerId', 'marketId']).lean().exec();
-    return { sellers, products };
+        if ('validation' in column && column.validation) {
+          cell.dataValidation = {
+            type: 'list',
+            allowBlank: !column.required,
+            formulae: [column.validation],
+            showErrorMessage: true,
+            errorTitle: 'Choose a valid option',
+            error: 'Please choose a value from the dropdown list.',
+          };
+        }
+
+        if ('dependentField' in column && column.dependentField) {
+          const field = column.dependentField;
+          const shouldValidate = field.type === 'select' || field.type === 'multi_select' || field.type === 'boolean' || field.type === 'color';
+          if (shouldValidate) {
+            cell.dataValidation = {
+              type: 'list',
+              allowBlank: true,
+              formulae: [`=INDIRECT($C${rowIndex}&"_${field.key}")`],
+              showErrorMessage: true,
+              errorTitle: 'Choose a category option',
+              error: 'Choose an option supported by this row category, or leave blank if the field is not relevant.',
+            };
+          }
+        }
+
+        if (column.key === 'price') {
+          cell.dataValidation = {
+            type: 'decimal',
+            operator: 'greaterThan',
+            allowBlank: false,
+            formulae: [0],
+            showErrorMessage: true,
+            errorTitle: 'Invalid price',
+            error: 'Price must be a number greater than 0.',
+          };
+        }
+
+        if (column.key === 'stock') {
+          cell.dataValidation = {
+            type: 'whole',
+            operator: 'greaterThanOrEqual',
+            allowBlank: false,
+            formulae: [0],
+            showErrorMessage: true,
+            errorTitle: 'Invalid stock',
+            error: 'Stock must be a whole number of 0 or more.',
+          };
+        }
+      });
+    }
+
+    products.getColumn(4).numFmt = '#,##0';
+    products.getColumn(6).numFmt = '#,##0';
+    products.getRow(firstDataRow + samples.length).height = 24;
+
+    const guide = workbook.addWorksheet('Category Guide', {
+      views: [{ state: 'frozen', ySplit: 1 }],
+    });
+    guide.columns = [
+      { header: 'Category ID', key: 'id', width: 18 },
+      { header: 'Category', key: 'label', width: 30 },
+      { header: 'Default Unit', key: 'unit', width: 14 },
+      { header: 'Variant columns', key: 'variants', width: 36 },
+      { header: 'Required attributes', key: 'required', width: 45 },
+      { header: 'Optional attributes', key: 'optional', width: 55 },
+    ];
+    catalogCategories.forEach(category => {
+      guide.addRow({
+        id: category.id,
+        label: category.label,
+        unit: category.defaultUnit,
+        variants: category.variantAxes.map(axis => axis.key).join(', ') || 'none',
+        required: category.attributes.filter(field => field.required).map(field => `Attr: ${field.key}`).join(', ') || 'none',
+        optional: category.attributes.filter(field => !field.required).map(field => `Attr: ${field.key}`).join(', ') || 'none',
+      });
+    });
+    guide.getRow(1).eachCell(cell => {
+      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: green } };
+      cell.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+      cell.alignment = { vertical: 'middle', wrapText: true };
+    });
+    guide.eachRow((row, rowNumber) => {
+      row.eachCell(cell => {
+        cell.border = { top: border, bottom: border, left: border, right: border };
+        cell.alignment = { vertical: 'top', wrapText: true };
+        if (rowNumber > 1 && rowNumber % 2 === 0) {
+          cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: paleGreen } };
+        }
+      });
+    });
+
+    const instructions = workbook.addWorksheet('Instructions');
+    instructions.columns = [
+      { header: 'Step', key: 'step', width: 20 },
+      { header: 'What to do', key: 'detail', width: 90 },
+    ];
+    [
+      ['1. Choose category', 'Use the Category dropdown on each product row. The category controls dropdowns such as size, packageSize, flavor, material, condition, and other attributes.'],
+      ['2. Add required basics', 'Name, Category, Price, Stock, and Images are required. Images must be public http/https URLs.'],
+      ['3. Use variants', 'Use the same Name on multiple rows to create variants of one product. Change size, color, packageSize, SKU, price, or stock per row.'],
+      ['4. Fill attributes', 'Columns starting with Attr: are category-specific. The Category Guide sheet shows which ones are required for each category.'],
+      ['5. Upload', 'Save as .xlsx and upload it from the RMF bulk operation screen. Keep the Products sheet name and header row intact.'],
+    ].forEach(([step, detail]) => instructions.addRow({ step, detail }));
+    instructions.getRow(1).eachCell(cell => {
+      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: darkGreen } };
+      cell.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+    });
+    instructions.eachRow((row, rowNumber) => {
+      row.eachCell(cell => {
+        cell.border = { top: border, bottom: border, left: border, right: border };
+        cell.alignment = { vertical: 'top', wrapText: true };
+        if (rowNumber > 1) {
+          cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: rowNumber === 2 ? paleYellow : 'FFFFFFFF' } };
+        }
+      });
+    });
+
+    products.views = [{ state: 'frozen', ySplit: headerRowNumber }];
+    workbook.views = [{ x: 0, y: 0, width: 16000, height: 9000, firstSheet: 0, activeTab: 0, visibility: 'visible' }];
+
+    const buffer = await workbook.xlsx.writeBuffer();
+    return Buffer.from(buffer);
   }
 }

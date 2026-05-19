@@ -19,11 +19,17 @@ import { useRouter } from 'next/navigation';
 const TrackingMap = dynamic(() => import('@/components/ui/TrackingMap').then(mod => mod.TrackingMap), { ssr: false });
 const RiderMap = dynamic(() => import('@/components/ui/RiderMap').then(mod => mod.RiderMap), { ssr: false });
 
-const ChatCard = ({ deliveryId, userName }: { deliveryId?: string, userName: string }) => {
+const ChatCard = ({ deliveryId, userId, userName }: { deliveryId?: string, userId?: string, userName: string }) => {
   const { t } = useLanguage();
   const [message, setMessage] = useState('');
   const [chatHistory, setChatHistory] = useState<any[]>([]);
-  const { data: socketMsg, emit } = useSocket(process.env.NEXT_PUBLIC_DELIVERY_SERVICE_URL || 'http://localhost:3008', `delivery:${deliveryId}:chat`);
+  const { data: socketMsg, isConnected, emit } = useSocket(process.env.NEXT_PUBLIC_DELIVERY_SERVICE_URL || 'http://localhost:3008', deliveryId ? `delivery:${deliveryId}:chat` : '');
+
+  useEffect(() => {
+    if (isConnected && deliveryId) {
+      emit('join:delivery', deliveryId);
+    }
+  }, [deliveryId, emit, isConnected]);
 
   useEffect(() => {
     if (socketMsg) {
@@ -32,10 +38,10 @@ const ChatCard = ({ deliveryId, userName }: { deliveryId?: string, userName: str
   }, [socketMsg]);
 
   const sendMessage = () => {
-    if (!message.trim() || !deliveryId) return;
+    if (!message.trim() || !deliveryId || !userId) return;
     emit('chat:message', {
       deliveryId,
-      senderId: userName.toLowerCase().includes('rider') ? 'rider' : 'buyer',
+      senderId: userId,
       senderName: userName,
       text: message
     });
@@ -70,7 +76,7 @@ const ChatCard = ({ deliveryId, userName }: { deliveryId?: string, userName: str
           placeholder={t('chat_type_message')} 
           className="flex-1 bg-background-surface border border-border rounded-lg px-3 py-2 text-sm focus:ring-1 focus:ring-primary outline-none"
         />
-        <Button size="sm" onClick={sendMessage} disabled={!deliveryId}>{t('confirm')}</Button>
+        <Button size="sm" onClick={sendMessage} disabled={!deliveryId || !userId}>{t('confirm')}</Button>
       </div>
     </Card>
   );
@@ -107,7 +113,13 @@ export default function OrderTrackingPage({ params }: { params: { orderId: strin
   }, [order?.deliveryId]);
 
   const { data: statusUpdate } = useSocket(process.env.NEXT_PUBLIC_DELIVERY_SERVICE_URL || 'http://localhost:3008', `order:${params.orderId}:status`);
-  const { data: riderGps } = useSocket(process.env.NEXT_PUBLIC_DELIVERY_SERVICE_URL || 'http://localhost:3008', `delivery:${order?.deliveryId}:tracking`);
+  const { data: riderGps, isConnected: trackingConnected, emit: emitTrackingSocket } = useSocket(process.env.NEXT_PUBLIC_DELIVERY_SERVICE_URL || 'http://localhost:3008', order?.deliveryId ? `delivery:${order.deliveryId}:tracking` : '');
+
+  useEffect(() => {
+    if (trackingConnected && order?.deliveryId) {
+      emitTrackingSocket('join:delivery', order.deliveryId);
+    }
+  }, [emitTrackingSocket, order?.deliveryId, trackingConnected]);
 
   useEffect(() => {
     if (statusUpdate) {
@@ -399,6 +411,7 @@ export default function OrderTrackingPage({ params }: { params: { orderId: strin
             {currentStatus !== 'delivered' && (
               <ChatCard 
                 deliveryId={order.deliveryId} 
+                userId={user?.id}
                 userName={user?.fullName || t('buyer')} 
               />
             )}
