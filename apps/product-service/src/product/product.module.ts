@@ -1,9 +1,11 @@
 import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
-import { productSchema, sellerProfileSchema, marketSchema, promotionSchema, taxonomyCategorySchema } from '@rmf/database';
+import { productSchema, sellerProfileSchema, marketSchema, promotionSchema, taxonomyCategorySchema, sellerVideoSchema, userSchema } from '@rmf/database';
 import { AuthGuardModule } from '@rmf/auth';
 import { ProductService } from './product.service';
 import { ProductController } from './product.controller';
+import { SellerVideoController } from '../seller-video/seller-video.controller';
+import { SellerVideoService } from '../seller-video/seller-video.service';
 import { CacheModule } from '@nestjs/cache-manager';
 import KeyvRedis, { createClient } from '@keyv/redis';
 import { Keyv } from 'keyv';
@@ -26,7 +28,10 @@ const createRedisCache = (namespace: string) => {
     namespace,
     throwOnConnectError: false,
     throwErrors: false,
-    connectionTimeout: 1500,
+    // Dev machines can be busy while Docker Redis is waking up. A 1.5s timeout
+    // closes the client while node-redis can still receive replies, which can
+    // crash cache-backed services. Keep cache optional but give Redis time to connect.
+    connectionTimeout: 10000,
   });
   const cache = new Keyv(adapter, { namespace, useKeyPrefix: false });
 
@@ -51,11 +56,13 @@ const createRedisCache = (namespace: string) => {
       { name: 'SellerProfile', schema: sellerProfileSchema },
       { name: 'Market', schema: marketSchema },
       { name: 'Promotion', schema: promotionSchema },
-      { name: 'TaxonomyCategory', schema: taxonomyCategorySchema }
+      { name: 'TaxonomyCategory', schema: taxonomyCategorySchema },
+      { name: 'SellerVideo', schema: sellerVideoSchema },
+      { name: 'User', schema: userSchema }
     ]),
   ],
-  providers: [ProductService],
-  controllers: [ProductController],
+  providers: [ProductService, SellerVideoService],
+  controllers: [ProductController, SellerVideoController],
   exports: [ProductService],
 })
 export class ProductModule {}

@@ -1,6 +1,6 @@
 import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
-import { riderProfileSchema, userSchema, deliverySchema } from '@rmf/database';
+import { riderProfileSchema, userSchema, deliverySchema, profileChangeRequestSchema } from '@rmf/database';
 import { AuthGuardModule } from '@rmf/auth';
 import { RiderService } from './rider.service';
 import { RiderController } from './rider.controller';
@@ -11,6 +11,7 @@ import { RiderController } from './rider.controller';
       { name: 'RiderProfile', schema: riderProfileSchema },
       { name: 'User', schema: userSchema },
       { name: 'Delivery', schema: deliverySchema },
+      { name: 'ProfileChangeRequest', schema: profileChangeRequestSchema },
     ]),
     AuthGuardModule.forRoot(),
   ],

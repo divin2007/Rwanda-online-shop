@@ -1,313 +1,184 @@
-import React, { useState, useEffect } from 'react';
-import { StyleSheet, Text, View, ScrollView, Image, TouchableOpacity, ActivityIndicator, Dimensions } from 'react-native';
+import React, { useMemo, useState } from 'react';
+import { Alert, Image, Linking, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useCart } from '../_layout';
-import { Check, Heart, ShoppingBag, ShieldCheck } from 'lucide-react-native';
-
-const BASE_PRODUCT_API = 'http://localhost:3003/api/v1';
-
-const MOCK_PRODUCTS = [
-  {
-    _id: '6a0b6bf6df45118d6914fd26',
-    name: 'Nike J1 low',
-    price: 20000,
-    unit: 'pair',
-    description: 'Premium custom sneaker with vibrant colorways and verified authentic local craftsmanship.',
-    inStock: true,
-    stockQuantity: 40,
-    stockType: 'finite',
-    isMadeInRwanda: false,
-    isNegotiable: true,
-    categoryLabel: 'Shoes & Footwear',
-    sellerId: 'seller_123',
-    sellerName: 'murekatete Stall',
-    images: ['https://images.unsplash.com/photo-1595950653106-6c9ebd614d3a?w=500'],
-    variants: [
-      { id: 'v1', sku: 'NJL-WP', title: 'Purple', price: 5000, inStock: true, stockQuantity: 15, images: ['https://images.unsplash.com/photo-1595950653106-6c9ebd614d3a?w=500'] },
-      { id: 'v2', sku: 'NJL-RB', title: 'Royal Blue', price: 10000, inStock: true, stockQuantity: 15, images: ['https://images.unsplash.com/photo-1549298916-b41d501d3772?w=500'] },
-      { id: 'v3', sku: 'NJL-CH', title: 'Chicago', price: 15000, inStock: true, stockQuantity: 10, images: ['https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=500'] }
-    ]
-  },
-  {
-    _id: 'prod_2',
-    name: 'Rwanda Organic Coffee',
-    price: 8500,
-    unit: 'bag',
-    description: 'Single-origin Bourbon Arabica, light roast with honey and fruit notes.',
-    inStock: true,
-    stockQuantity: 120,
-    stockType: 'finite',
-    isMadeInRwanda: true,
-    isNegotiable: false,
-    categoryLabel: 'Groceries & Foods',
-    sellerId: 'seller_123',
-    sellerName: 'murekatete Stall',
-    images: ['https://images.unsplash.com/photo-1559056199-641a0ac8b55e?w=500']
-  },
-  {
-    _id: 'prod_3',
-    name: 'Imigongo Art Panel',
-    price: 45000,
-    unit: 'piece',
-    description: 'Traditional Rwandan geometric artwork crafted using organic materials.',
-    inStock: true,
-    stockQuantity: 5,
-    stockType: 'on_demand',
-    isMadeInRwanda: true,
-    isNegotiable: true,
-    categoryLabel: 'Art & Collectibles',
-    sellerId: 'seller_456',
-    sellerName: 'Kigali Craft Sanctuary',
-    images: ['https://images.unsplash.com/photo-1579783900882-c0d3dad7b119?w=500']
-  }
-];
-
-const screenWidth = Dimensions.get('window').width;
+import { Check, Heart, Minus, Play, Plus, ShieldCheck, ShoppingBag, Store } from 'lucide-react-native';
+import { EmptyBlock, ErrorBlock, LoadingBlock } from '../../src/components/StateView';
+import { useCart } from '../../src/context/CartContext';
+import { api } from '../../src/lib/api';
+import { money, safeText } from '../../src/lib/format';
+import { asArray, imageOf, productToCartItem, sellerProfileOf } from '../../src/lib/normalize';
+import { colors } from '../../src/theme';
+import { OrderMessage, Product, ProductVariant } from '../../src/types';
+import { useRemote } from '../../src/hooks/useRemote';
 
 export default function ProductDetailScreen() {
-  const { productId } = useLocalSearchParams();
   const router = useRouter();
-  const { addToCart } = useCart();
-
-  const [product, setProduct] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
-  const [selectedVariantIndex, setSelectedVariantIndex] = useState(0);
-  const [qty, setQty] = useState(1);
+  const { productId } = useLocalSearchParams<{ productId: string }>();
+  const { addItem } = useCart();
+  const [quantity, setQuantity] = useState(1);
+  const [variantIndex, setVariantIndex] = useState(-1);
   const [wishlisted, setWishlisted] = useState(false);
 
-  useEffect(() => {
-    setLoading(true);
-    fetch(`${BASE_PRODUCT_API}/products/${productId}`)
-      .then(res => res.json())
-      .then(res => {
-        if (res?.data) {
-          setProduct(res.data);
-        } else {
-          const match = MOCK_PRODUCTS.find(p => p._id === productId);
-          setProduct(match || MOCK_PRODUCTS[0]);
-        }
-      })
-      .catch(() => {
-        const match = MOCK_PRODUCTS.find(p => p._id === productId);
-        setProduct(match || MOCK_PRODUCTS[0]);
-      })
-      .finally(() => setLoading(false));
-  }, [productId]);
+  const { data: product, loading, error, refresh } = useRemote<Product>(
+    () => api.get<Product>('product', `/products/${productId}`, { auth: false }),
+    [productId],
+  );
 
-  if (loading) {
-    return (
-      <View style={styles.loaderContainer}>
-        <ActivityIndicator size="large" color="#ff6b00" />
-      </View>
-    );
-  }
+  const variants = useMemo(() => asArray<ProductVariant>(product?.variants).filter(item => item.isActive !== false), [product?.variants]);
+  const selectedVariant = variantIndex >= 0 ? variants[variantIndex] : undefined;
+  const seller = product ? sellerProfileOf(product) : null;
+  const image = selectedVariant?.images?.[0] || imageOf(product);
+  const price = Number(product?.price || 0) + Number(selectedVariant?.price || 0);
+  const stockQuantity = selectedVariant?.stockQuantity ?? product?.stockQuantity;
+  const inStock = selectedVariant?.inStock ?? product?.inStock;
 
-  if (!product) {
-    return (
-      <View style={styles.loaderContainer}>
-        <Text style={styles.errorText}>Product not found.</Text>
-      </View>
-    );
-  }
+  React.useEffect(() => {
+    if (!product?._id) return;
+    api.post('product', `/products/${product._id}/interactions`, { action: 'product_view' }).catch(() => undefined);
+  }, [product?._id]);
 
-  const variants = Array.isArray(product.variants)
-    ? product.variants.filter((v: any) => v.isActive !== false)
-    : [];
-
-  const selectedVariant = variants[selectedVariantIndex] || null;
-  const effectivePrice = (product.price || 0) + (selectedVariant?.price || 0);
-  const effectiveUnit = selectedVariant?.unit || product.unit || 'piece';
-  const effectiveStockType = selectedVariant?.stockType || product.stockType || 'finite';
-  const effectiveStockQuantity = selectedVariant?.stockQuantity ?? product.stockQuantity;
-
-  const rawImages = selectedVariant?.images?.length ? selectedVariant.images : (product.images || []);
-  const displayedImage = rawImages[0] || 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=500';
-
-  const handleAddToCart = () => {
-    const item = {
-      id: product._id,
-      name: product.name,
-      price: effectivePrice,
-      quantity: qty,
-      unit: effectiveUnit,
-      category: product.categoryLabel || 'General',
-      image: displayedImage,
-      variantId: selectedVariant?.id || selectedVariant?.sku || undefined,
-      variantTitle: selectedVariant?.title || undefined,
-      sellerSku: selectedVariant?.sku || undefined,
-      sellerId: product.sellerId || 'seller_123',
-      sellerName: product.sellerName || 'Murekatete Stall',
-      stallId: 'stall_123',
-      marketId: 'market_123'
-    };
-
-    addToCart(item);
-    router.push('/cart');
+  const addToCart = () => {
+    if (!product) return;
+    try {
+      addItem(productToCartItem(product, quantity, variantIndex));
+      api.post('product', `/products/${product._id}/interactions`, { action: 'add_to_cart' }).catch(() => undefined);
+      router.push('/cart');
+    } catch (err) {
+      Alert.alert('Cannot add item', err instanceof Error ? err.message : 'This product is not orderable yet.');
+    }
   };
+
+  const toggleWishlist = async () => {
+    if (!product) return;
+    setWishlisted(current => !current);
+    try {
+      await api.post('user', wishlisted ? '/users/wishlist/remove' : '/users/wishlist', { productId: product._id });
+      if (!wishlisted) api.post('product', `/products/${product._id}/interactions`, { action: 'wishlist' }).catch(() => undefined);
+    } catch (err) {
+      setWishlisted(current => !current);
+      Alert.alert('Wishlist unavailable', err instanceof Error ? err.message : 'Please sign in and try again.');
+    }
+  };
+
+  if (loading && !product) return <LoadingBlock />;
+  if (error && !product) return <ErrorBlock message={error} onRetry={refresh} />;
+  if (!product) return <EmptyBlock title="Product not found" body="The product service did not return this item." />;
 
   return (
     <View style={styles.container}>
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
-        {/* ── Image Gallery ── */}
-        <View style={styles.imageContainer}>
-          <Image source={{ uri: displayedImage }} style={styles.mainImage} />
-          
-          {/* Wishlist Button */}
-          <TouchableOpacity
-            style={[styles.floatingCircle, styles.wishlistBtn]}
-            onPress={() => setWishlisted(!wishlisted)}
-            activeOpacity={0.8}
-          >
-            <Heart color={wishlisted ? '#ff6b00' : '#414844'} fill={wishlisted ? '#ff6b00' : 'none'} size={20} />
+      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+        <View style={styles.imagePanel}>
+          {image ? <Image source={{ uri: image }} style={StyleSheet.absoluteFillObject} resizeMode="cover" /> : (
+            <View style={styles.imageFallback}><Text style={styles.imageFallbackText}>{product.name.slice(0, 2).toUpperCase()}</Text></View>
+          )}
+          <TouchableOpacity style={styles.wishlist} onPress={toggleWishlist} activeOpacity={0.85}>
+            <Heart color={wishlisted ? colors.orange : colors.ink} fill={wishlisted ? colors.orange : 'transparent'} size={20} />
           </TouchableOpacity>
         </View>
 
-        {/* ── Product Specifications ── */}
-        <View style={styles.specContainer}>
-          <View style={styles.categoryRow}>
-            <View style={styles.categoryBadge}>
-              <Text style={styles.categoryTxt}>{product.categoryLabel || 'General'}</Text>
+        <View style={styles.body}>
+          <View style={styles.badgeRow}>
+            <View style={styles.badge}><Text style={styles.badgeText}>{product.categoryLabel || product.category || 'Product'}</Text></View>
+            {product.isMadeInRwanda ? <View style={styles.localBadge}><Text style={styles.localBadgeText}>Made in Rwanda</Text></View> : null}
+          </View>
+          <Text style={styles.title}>{product.name}</Text>
+
+          <View style={styles.priceCard}>
+            <Text style={styles.label}>Live price</Text>
+            <Text style={styles.price}>{money(price)}</Text>
+            <Text style={styles.priceMeta}>per {selectedVariant?.unit || product.unit || 'unit'}</Text>
+          </View>
+
+          <TouchableOpacity
+            style={styles.sellerCard}
+            onPress={() => seller?._id && router.push(`/market/${seller.marketId || product.marketId}`)}
+            activeOpacity={0.85}
+          >
+            <View style={styles.sellerIcon}><Store color={colors.orange} size={18} /></View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.label}>Verified seller</Text>
+              <Text style={styles.sellerName}>{seller?.shopDetails?.name || seller?.stallName || 'Seller profile pending'}</Text>
             </View>
-            {product.isMadeInRwanda && (
-              <View style={styles.localSpecBadge}>
-                <Text style={styles.localSpecBadgeTxt}>🇷🇼 locally crafted</Text>
+            <ShieldCheck color={colors.success} size={18} />
+          </TouchableOpacity>
+
+          {product.description ? (
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Details from seller</Text>
+              <Text style={styles.description}>{product.description}</Text>
+            </View>
+          ) : null}
+
+          {Object.keys(product.attributes || {}).length ? (
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Product characteristics</Text>
+              <View style={styles.attributes}>
+                {Object.entries(product.attributes || {}).map(([key, value]) => (
+                  <View key={key} style={styles.attributeRow}>
+                    <Text style={styles.attributeKey}>{key}</Text>
+                    <Text style={styles.attributeValue}>{String(value)}</Text>
+                  </View>
+                ))}
               </View>
-            )}
-          </View>
-
-          <Text style={styles.productTitle}>{product.name}</Text>
-
-          {/* Pricing Box */}
-          <View style={styles.priceContainer}>
-            <Text style={styles.priceLabel}>Product Price</Text>
-            <View style={styles.priceRow}>
-              <Text style={styles.priceVal}>{effectivePrice?.toLocaleString()}</Text>
-              <Text style={styles.currencyVal}>RWF</Text>
-              <View style={styles.unitBadge}>
-                <Text style={styles.unitBadgeTxt}>per {effectiveUnit}</Text>
-              </View>
             </View>
-          </View>
+          ) : null}
 
-          {/* Stalls Trust Badge */}
-          <View style={styles.stallBox}>
-            <View style={styles.stallLogo}>
-              <Text style={styles.stallLogoTxt}>S</Text>
-            </View>
-            <View style={styles.stallMeta}>
-              <Text style={styles.stallTitle}>Verified Local Partner</Text>
-              <Text style={styles.stallSubtitle}>{product.sellerName || 'murekatete Stall'}</Text>
-            </View>
-            <View style={styles.stallComplianceBadge}>
-              <ShieldCheck color="#22c55e" size={16} />
-              <Text style={styles.complianceTxt}>Verifiable Partner</Text>
-            </View>
-          </View>
-
-          {/* Story & Description */}
-          <View style={styles.descBox}>
-            <Text style={styles.descTitle}>Description</Text>
-            <Text style={styles.descTxt}>{product.description}</Text>
-          </View>
-
-          {/* Variant Selector */}
-          {variants.length > 0 && (
-            <View style={styles.variantSection}>
-              <View style={styles.variantHeader}>
-                <Text style={styles.variantLabel}>Choose Option / Variant</Text>
-                <View style={styles.variantCountBadge}>
-                  <Text style={styles.variantCountTxt}>{variants.length} Choices</Text>
-                </View>
-              </View>
-
-              <View style={styles.variantList}>
-                {variants.map((v: any, index: number) => {
-                  const isSelected = selectedVariantIndex === index;
+          {variants.length ? (
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Choose variant</Text>
+              <View style={styles.variants}>
+                {variants.map((variant, index) => {
+                  const active = variantIndex === index;
                   return (
-                    <TouchableOpacity
-                      key={v.id || v.sku || index}
-                      style={[styles.variantCard, isSelected && styles.variantCardActive]}
-                      onPress={() => setSelectedVariantIndex(index)}
-                      activeOpacity={0.8}
-                    >
-                      <View style={styles.variantMain}>
-                        <View style={[styles.variantCircle, isSelected && styles.variantCircleActive]}>
-                          {isSelected && <Check color="#ffffff" size={12} />}
-                        </View>
-                        <View style={styles.variantInfo}>
-                          <Text style={[styles.variantTitle, isSelected && styles.variantTitleActive]}>{v.title}</Text>
-                          {v.sku && <Text style={styles.variantSku}>SKU: {v.sku}</Text>}
-                        </View>
+                    <TouchableOpacity key={variant.sku || variant.id || index} style={[styles.variant, active && styles.variantActive]} onPress={() => setVariantIndex(index)} activeOpacity={0.85}>
+                      <View style={[styles.radio, active && styles.radioActive]}>{active ? <Check color={colors.card} size={12} /> : null}</View>
+                      <View style={{ flex: 1 }}>
+                        <Text style={styles.variantTitle}>{safeText(variant.title, 'Variant')}</Text>
+                        {variant.sku ? <Text style={styles.variantMeta}>{variant.sku}</Text> : null}
                       </View>
-
-                      <View style={styles.variantPricing}>
-                        <Text style={styles.variantPriceTotal}>
-                          {((product.price || 0) + (v.price || 0))?.toLocaleString()} RWF
-                        </Text>
-                        {v.price !== 0 && (
-                          <View style={styles.variantMarkupBadge}>
-                            <Text style={styles.variantMarkupTxt}>
-                              {v.price > 0 ? `+${v.price?.toLocaleString()} RWF` : `${v.price?.toLocaleString()} RWF`}
-                            </Text>
-                          </View>
-                        )}
-                      </View>
+                      <Text style={styles.variantPrice}>{money(Number(product.price || 0) + Number(variant.price || 0))}</Text>
                     </TouchableOpacity>
                   );
                 })}
               </View>
             </View>
-          )}
+          ) : null}
 
-          {/* Stock Status */}
-          <View style={styles.statusBox}>
-            <View style={styles.statusCol}>
-              <Text style={styles.statusLabel}>Status</Text>
-              <View style={styles.statusIndicatorRow}>
-                <View style={[styles.statusDot, { backgroundColor: product.inStock ? '#22c55e' : '#ef4444' }]} />
-                <Text style={styles.statusValue}>{product.inStock ? 'in stock' : 'sold out'}</Text>
+          {selectedVariant?.videoUrl ? (
+            <TouchableOpacity style={styles.videoCard} activeOpacity={0.9} onPress={() => Linking.openURL(selectedVariant.videoUrl as string)}>
+              {selectedVariant.thumbnailUrl || image ? (
+                <Image source={{ uri: selectedVariant.thumbnailUrl || image }} style={StyleSheet.absoluteFillObject} resizeMode="cover" />
+              ) : null}
+              <View style={styles.videoOverlay}>
+                <View style={styles.videoPlay}><Play color={colors.card} fill={colors.card} size={18} /></View>
+                <Text style={styles.videoTitle}>Watch this variant</Text>
+                <Text style={styles.videoMeta}>{selectedVariant.title || product.name}</Text>
               </View>
-            </View>
+            </TouchableOpacity>
+          ) : null}
 
-            <View style={styles.statusColRight}>
-              <Text style={styles.statusLabel}>Stock Level</Text>
-              <Text style={styles.stockLevelTxt}>
-                {effectiveStockType === 'on_demand'
-                  ? 'Custom Crafted'
-                  : `${effectiveStockQuantity || 'Multiple'} ${effectiveUnit} available`}
-              </Text>
-            </View>
+          <View style={styles.stockCard}>
+            <Text style={styles.sectionTitle}>{inStock ? 'Available now' : 'Currently unavailable'}</Text>
+            <Text style={styles.description}>
+              {product.stockType === 'on_demand'
+                ? 'Prepared after seller confirmation.'
+                : stockQuantity !== undefined
+                  ? `${stockQuantity} ${selectedVariant?.unit || product.unit || 'unit'} available`
+                  : 'Stock quantity is managed by the seller.'}
+            </Text>
           </View>
         </View>
       </ScrollView>
 
-      {/* ── Footer Purchase bar ── */}
       <View style={styles.footer}>
-        <View style={styles.quantityContainer}>
-          <TouchableOpacity
-            style={styles.qtyBtn}
-            onPress={() => setQty(prev => Math.max(1, prev - 1))}
-            activeOpacity={0.8}
-          >
-            <Text style={styles.qtyBtnTxt}>−</Text>
-          </TouchableOpacity>
-          <Text style={styles.qtyTxt}>{qty}</Text>
-          <TouchableOpacity
-            style={styles.qtyBtn}
-            onPress={() => setQty(prev => prev + 1)}
-            activeOpacity={0.8}
-          >
-            <Text style={styles.qtyBtnTxt}>+</Text>
-          </TouchableOpacity>
+        <View style={styles.qty}>
+          <TouchableOpacity style={styles.qtyButton} onPress={() => setQuantity(value => Math.max(1, value - 1))}><Minus color={colors.ink} size={16} /></TouchableOpacity>
+          <Text style={styles.qtyText}>{quantity}</Text>
+          <TouchableOpacity style={styles.qtyButton} onPress={() => setQuantity(value => value + 1)}><Plus color={colors.ink} size={16} /></TouchableOpacity>
         </View>
-
-        <TouchableOpacity
-          style={styles.buyBtn}
-          onPress={handleAddToCart}
-          activeOpacity={0.9}
-        >
-          <ShoppingBag color="#012d1d" size={18} style={styles.buyIcon} />
-          <Text style={styles.buyBtnTxt}>Add to Cart</Text>
+        <TouchableOpacity style={[styles.cartButton, !inStock && styles.cartButtonDisabled]} onPress={addToCart} disabled={!inStock} activeOpacity={0.9}>
+          <ShoppingBag color={colors.greenDark} size={18} />
+          <Text style={styles.cartButtonText}>Add to cart</Text>
         </TouchableOpacity>
       </View>
     </View>
@@ -315,431 +186,62 @@ export default function ProductDetailScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#fcf9f8',
-  },
-  loaderContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#fcf9f8',
-  },
-  errorText: {
-    fontSize: 16,
-    color: '#ef4444',
-    fontWeight: 'bold',
-  },
-  scrollContent: {
-    paddingBottom: 120,
-  },
-  imageContainer: {
-    width: screenWidth,
-    height: screenWidth * 0.75,
-    backgroundColor: '#ffffff',
-    position: 'relative',
-  },
-  mainImage: {
-    width: '100%',
-    height: '100%',
-    resizeMode: 'cover',
-  },
-  floatingCircle: {
+  container: { flex: 1, backgroundColor: colors.paper },
+  content: { paddingBottom: 120 },
+  imagePanel: { height: 310, backgroundColor: colors.orangeSoft },
+  imageFallback: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.greenDark },
+  imageFallbackText: { color: colors.orange, fontSize: 42, fontWeight: '900' },
+  wishlist: {
     position: 'absolute',
+    top: 18,
+    right: 18,
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: '#ffffff',
+    backgroundColor: colors.card,
+    alignItems: 'center',
     justifyContent: 'center',
-    alignItems: 'center',
-    elevation: 6,
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.1,
-    shadowRadius: 6,
   },
-  wishlistBtn: {
-    top: 20,
-    right: 20,
-  },
-  specContainer: {
-    padding: 24,
-  },
-  categoryRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  categoryBadge: {
-    backgroundColor: '#ff6b00',
-    paddingHorizontal: 12,
-    paddingVertical: 5,
-    borderRadius: 8,
-  },
-  categoryTxt: {
-    fontSize: 9,
-    fontWeight: '900',
-    color: '#ffffff',
-    textTransform: 'uppercase',
-    letterSpacing: 1.5,
-  },
-  localSpecBadge: {
-    backgroundColor: '#e05300',
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 8,
-    marginLeft: 8,
-  },
-  localSpecBadgeTxt: {
-    fontSize: 9,
-    fontWeight: '950',
-    color: '#ffffff',
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-  },
-  productTitle: {
-    fontSize: 26,
-    fontWeight: 'bold',
-    color: '#1b1c1c',
-    letterSpacing: -0.5,
-    marginBottom: 20,
-  },
-  priceContainer: {
-    backgroundColor: '#ffffff',
-    borderWidth: 1,
-    borderColor: '#e0e0e0',
-    padding: 16,
-    borderRadius: 16,
-    marginBottom: 20,
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.02,
-    shadowRadius: 6,
-  },
-  priceLabel: {
-    fontSize: 9,
-    fontWeight: '900',
-    color: '#8e9e95',
-    textTransform: 'uppercase',
-    letterSpacing: 1.5,
-    marginBottom: 6,
-  },
-  priceRow: {
-    flexDirection: 'row',
-    alignItems: 'baseline',
-  },
-  priceVal: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: '#1b1c1c',
-  },
-  currencyVal: {
-    fontSize: 14,
-    fontWeight: '900',
-    color: '#ff6b00',
-    marginLeft: 4,
-  },
-  unitBadge: {
-    backgroundColor: '#fcf9f8',
-    borderWidth: 1,
-    borderColor: '#e0e0e0',
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 6,
-    marginLeft: 12,
-  },
-  unitBadgeTxt: {
-    fontSize: 9,
-    fontWeight: '900',
-    color: '#8e9e95',
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-  },
-  stallBox: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#ffffff',
-    borderWidth: 1,
-    borderColor: '#e0e0e0',
-    padding: 16,
-    borderRadius: 12, // Reduced rounded corners from 24 to 12
-    marginBottom: 20,
-  },
-  stallLogo: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: '#012d1d',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  stallLogoTxt: {
-    fontSize: 15,
-    fontWeight: 'bold',
-    color: '#ff6b00',
-  },
-  stallMeta: {
-    flex: 1,
-    marginLeft: 12,
-  },
-  stallTitle: {
-    fontSize: 10,
-    fontWeight: '900',
-    color: '#8e9e95',
-    textTransform: 'uppercase',
-    letterSpacing: 1,
-  },
-  stallSubtitle: {
-    fontSize: 13,
-    fontWeight: 'bold',
-    color: '#1b1c1c',
-    marginTop: 2,
-  },
-  stallComplianceBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#f0fdf4',
-    borderWidth: 1,
-    borderColor: '#bbf7d0',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 6,
-  },
-  complianceTxt: {
-    fontSize: 8,
-    fontWeight: '950',
-    color: '#16a34a',
-    marginLeft: 4,
-    textTransform: 'uppercase',
-  },
-  descBox: {
-    marginBottom: 24,
-  },
-  descTitle: {
-    fontSize: 14,
-    fontWeight: 'bold',
-    color: '#1b1c1c',
-    marginBottom: 8,
-  },
-  descTxt: {
-    fontSize: 13,
-    color: '#414844',
-    lineHeight: 20,
-    fontWeight: '550',
-  },
-  variantSection: {
-    marginBottom: 24,
-    paddingTop: 16,
-    borderTopWidth: 1,
-    borderTopColor: '#e0e0e0',
-  },
-  variantHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  variantLabel: {
-    fontSize: 11,
-    fontWeight: '950',
-    color: '#414844',
-    textTransform: 'uppercase',
-    letterSpacing: 1,
-  },
-  variantCountBadge: {
-    backgroundColor: '#ffedd5',
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 6,
-  },
-  variantCountTxt: {
-    fontSize: 9,
-    fontWeight: '900',
-    color: '#ff6b00',
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-  },
-  variantList: {
-    gap: 12,
-  },
-  variantCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: '#ffffff',
-    borderWidth: 1,
-    borderColor: '#e0e0e0',
-    padding: 16,
-    borderRadius: 16,
-  },
-  variantCardActive: {
-    borderColor: '#ff6b00',
-    backgroundColor: '#fff7ed',
-  },
-  variantMain: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  variantCircle: {
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-    borderWidth: 2,
-    borderColor: '#e0e0e0',
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#ffffff',
-  },
-  variantCircleActive: {
-    borderColor: '#ff6b00',
-    backgroundColor: '#ff6b00',
-  },
-  variantInfo: {
-    marginLeft: 12,
-  },
-  variantTitle: {
-    fontSize: 13,
-    fontWeight: 'bold',
-    color: '#1b1c1c',
-  },
-  variantTitleActive: {
-    color: '#ff6b00',
-  },
-  variantSku: {
-    fontSize: 9,
-    fontWeight: '900',
-    color: '#8e9e95',
-    marginTop: 2,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-  },
-  variantPricing: {
-    alignItems: 'flex-end',
-  },
-  variantPriceTotal: {
-    fontSize: 13,
-    fontWeight: 'bold',
-    color: '#1b1c1c',
-  },
-  variantMarkupBadge: {
-    backgroundColor: '#ffedd5',
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 4,
-    marginTop: 4,
-  },
-  variantMarkupTxt: {
-    fontSize: 8,
-    fontWeight: '950',
-    color: '#ff6b00',
-  },
-  statusBox: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingTop: 16,
-    borderTopWidth: 1,
-    borderTopColor: '#e0e0e0',
-  },
-  statusCol: {
-    flex: 1,
-  },
-  statusColRight: {
-    alignItems: 'flex-end',
-  },
-  statusLabel: {
-    fontSize: 9,
-    fontWeight: '900',
-    color: '#8e9e95',
-    textTransform: 'uppercase',
-    letterSpacing: 1,
-    marginBottom: 6,
-  },
-  statusIndicatorRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  statusDot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-  },
-  statusValue: {
-    fontSize: 11,
-    fontWeight: 'bold',
-    color: '#1b1c1c',
-    textTransform: 'uppercase',
-    letterSpacing: 1,
-    marginLeft: 6,
-  },
-  stockLevelTxt: {
-    fontSize: 12,
-    fontWeight: 'bold',
-    color: '#1b1c1c',
-    textTransform: 'uppercase',
-  },
-  footer: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    height: 88,
-    backgroundColor: '#ffffff',
-    borderTopWidth: 1,
-    borderTopColor: '#e0e0e0',
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 24,
-    justifyContent: 'space-between',
-  },
-  quantityContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#fcf9f8',
-    borderWidth: 1,
-    borderColor: '#e0e0e0',
-    borderRadius: 12,
-    height: 48,
-    paddingHorizontal: 8,
-  },
-  qtyBtn: {
-    width: 32,
-    height: 32,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  qtyBtnTxt: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#1b1c1c',
-  },
-  qtyTxt: {
-    fontSize: 15,
-    fontWeight: 'bold',
-    color: '#1b1c1c',
-    paddingHorizontal: 16,
-  },
-  buyBtn: {
-    flex: 1,
-    marginLeft: 20,
-    backgroundColor: '#ff6b00',
-    borderRadius: 12,
-    height: 48,
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: '#ff6b00',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
-  },
-  buyIcon: {
-    marginRight: 8,
-  },
-  buyBtnTxt: {
-    fontSize: 13,
-    fontWeight: 'bold',
-    color: '#012d1d',
-    textTransform: 'uppercase',
-    letterSpacing: 1.5,
-  },
+  body: { padding: 18, gap: 16 },
+  badgeRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  badge: { backgroundColor: colors.orange, borderRadius: 8, paddingHorizontal: 10, paddingVertical: 5 },
+  badgeText: { color: colors.greenDark, fontSize: 10, fontWeight: '900', textTransform: 'uppercase' },
+  localBadge: { backgroundColor: colors.greenSoft, borderRadius: 8, paddingHorizontal: 10, paddingVertical: 5 },
+  localBadgeText: { color: colors.greenDark, fontSize: 10, fontWeight: '900', textTransform: 'uppercase' },
+  title: { color: colors.ink, fontSize: 29, lineHeight: 34, fontWeight: '900' },
+  priceCard: { backgroundColor: colors.card, borderRadius: 12, borderWidth: 1, borderColor: colors.line, padding: 16 },
+  label: { color: colors.muted, fontSize: 10, fontWeight: '900', textTransform: 'uppercase', letterSpacing: 0.9 },
+  price: { color: colors.greenDark, fontSize: 28, fontWeight: '900', marginTop: 4 },
+  priceMeta: { color: colors.orangeDark, fontSize: 12, fontWeight: '800' },
+  sellerCard: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: colors.card, borderRadius: 12, borderWidth: 1, borderColor: colors.line, padding: 14 },
+  sellerIcon: { width: 40, height: 40, borderRadius: 20, backgroundColor: colors.orangeSoft, alignItems: 'center', justifyContent: 'center' },
+  sellerName: { color: colors.ink, fontSize: 15, fontWeight: '900', marginTop: 2 },
+  section: { gap: 10 },
+  sectionTitle: { color: colors.ink, fontSize: 17, fontWeight: '900' },
+  description: { color: colors.muted, fontSize: 13, lineHeight: 20, fontWeight: '600' },
+  attributes: { borderWidth: 1, borderColor: colors.line, borderRadius: 12, overflow: 'hidden', backgroundColor: colors.card },
+  attributeRow: { flexDirection: 'row', justifyContent: 'space-between', gap: 12, padding: 12, borderBottomWidth: 1, borderBottomColor: colors.line },
+  attributeKey: { flex: 1, color: colors.muted, fontSize: 12, fontWeight: '800', textTransform: 'capitalize' },
+  attributeValue: { flex: 1, color: colors.ink, fontSize: 12, fontWeight: '800', textAlign: 'right' },
+  variants: { gap: 10 },
+  variant: { flexDirection: 'row', alignItems: 'center', gap: 12, borderRadius: 12, borderWidth: 1, borderColor: colors.line, backgroundColor: colors.card, padding: 12 },
+  variantActive: { borderColor: colors.orange, backgroundColor: colors.orangeSoft },
+  radio: { width: 22, height: 22, borderRadius: 11, borderWidth: 2, borderColor: colors.line, alignItems: 'center', justifyContent: 'center' },
+  radioActive: { backgroundColor: colors.orange, borderColor: colors.orange },
+  variantTitle: { color: colors.ink, fontSize: 14, fontWeight: '900' },
+  variantMeta: { color: colors.muted, fontSize: 10, fontWeight: '700', marginTop: 2 },
+  variantPrice: { color: colors.greenDark, fontSize: 12, fontWeight: '900' },
+  stockCard: { backgroundColor: colors.greenSoft, borderRadius: 12, borderWidth: 1, borderColor: '#fed7aa', padding: 14, gap: 6 },
+  videoCard: { height: 210, borderRadius: 14, overflow: 'hidden', backgroundColor: colors.greenDark },
+  videoOverlay: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.34)', alignItems: 'center', justifyContent: 'center', gap: 8, padding: 18 },
+  videoPlay: { width: 48, height: 48, borderRadius: 24, backgroundColor: colors.orange, alignItems: 'center', justifyContent: 'center' },
+  videoTitle: { color: colors.card, fontSize: 15, fontWeight: '900', textTransform: 'uppercase' },
+  videoMeta: { color: 'rgba(255,255,255,0.78)', fontSize: 12, fontWeight: '800', textAlign: 'center' },
+  footer: { position: 'absolute', left: 0, right: 0, bottom: 0, height: 88, backgroundColor: colors.card, borderTopWidth: 1, borderTopColor: colors.line, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, gap: 14 },
+  qty: { height: 48, borderRadius: 10, borderWidth: 1, borderColor: colors.line, backgroundColor: colors.paper, flexDirection: 'row', alignItems: 'center' },
+  qtyButton: { width: 42, height: 48, alignItems: 'center', justifyContent: 'center' },
+  qtyText: { minWidth: 28, textAlign: 'center', color: colors.ink, fontSize: 16, fontWeight: '900' },
+  cartButton: { flex: 1, height: 50, borderRadius: 10, backgroundColor: colors.orange, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 },
+  cartButtonDisabled: { opacity: 0.45 },
+  cartButtonText: { color: colors.greenDark, fontSize: 13, fontWeight: '900', textTransform: 'uppercase', letterSpacing: 1 },
 });

@@ -26,6 +26,16 @@ export default function LoginPage() {
     return '/dashboard';
   }, []);
 
+  const routeAfterLogin = React.useCallback(async (role?: string) => {
+    if (role !== 'BUYER') return routeForRole(role);
+    try {
+      const res = await userApi.get('/users/preferences/discovery');
+      return res.data?.data?.onboardingCompleted ? '/dashboard' : '/preferences';
+    } catch {
+      return '/dashboard';
+    }
+  }, [routeForRole]);
+
   useEffect(() => {
     if (!authLoading && user) {
       router.replace(routeForRole(user.role));
@@ -66,14 +76,14 @@ export default function LoginPage() {
     window.history.replaceState({}, '', '/login');
 
     userApi.get('/auth/me', { headers: { Authorization: `Bearer ${token}` } })
-      .then((res) => {
+      .then(async (res) => {
         if (res.data?.success) {
           login(res.data.data, token!, refreshToken || undefined);
-          router.replace(routeForRole(res.data.data.role));
+          router.replace(await routeAfterLogin(res.data.data.role));
         }
       })
       .catch(() => toast.error('Google sign-in failed. Please try again.'));
-  }, [login, routeForRole, router]);
+  }, [login, routeAfterLogin, router]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -84,7 +94,7 @@ export default function LoginPage() {
         const { accessToken, refreshToken, user } = res.data.data;
         login(user, accessToken, refreshToken);
         toast.success('Welcome back!');
-        router.push(routeForRole(user.role));
+        router.push(await routeAfterLogin(user.role));
       } else {
         toast.error(res.data?.error || 'Login failed');
       }

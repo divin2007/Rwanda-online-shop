@@ -20,6 +20,7 @@ const DELIVERY_TRANSITIONS: Record<string, string[]> = {
 export class DeliveryService {
   private locationService: LocationService;
   private routeService: RouteService;
+  private readonly dispatchTimers = new Map<string, NodeJS.Timeout>();
 
   constructor(
     @InjectModel('Delivery') private deliveryModel: Model<any>,
@@ -55,6 +56,135 @@ export class DeliveryService {
     return { fee, route };
   }
 
+  private radiusSearchSurcharge(radiusMeters: number): number {
+    if (radiusMeters <= 1000) return 0;
+    if (radiusMeters <= 8000) return 500;
+    if (radiusMeters <= 16000) return 800;
+    return 800 + Math.ceil((radiusMeters - 16000) / 8000) * 800;
+  }
+
+  private async syncOrderDeliveryFee(orderId: any, deliveryFee: number, searchSurcharge: number, radiusMeters: number) {
+    if (!orderId) return;
+    try {
+      const axios = require('axios');
+      const orderUrl = process.env.ORDER_SERVICE_URL || 'http://localhost:3006/api/v1';
+      const internalSecret = process.env.INTERNAL_SERVICE_SECRET;
+      await axios.patch(
+        `${orderUrl}/orders/${orderId}/delivery-dispatch-fee`,
+        {
+          deliveryFee,
+          searchSurcharge,
+          radiusMeters,
+          userId: 'delivery-service',
+        },
+        {
+          headers: internalSecret ? { 'x-internal-service-key': internalSecret } : {},
+          timeout: 2500,
+        }
+      );
+    } catch (error: any) {
+      console.error(`Failed to sync adaptive delivery fee to order ${orderId}:`, error?.response?.data || error?.message);
+    }
+  }
+
+  private clearDispatchTimer(deliveryId: string) {
+    const timer = this.dispatchTimers.get(deliveryId);
+    if (timer) clearTimeout(timer);
+    this.dispatchTimers.delete(deliveryId);
+  }
+
+  private scheduleAdaptiveBroadcast(deliveryId: string, delayMs = 0) {
+    this.clearDispatchTimer(deliveryId);
+    const timer = setTimeout(() => {
+      this.runAdaptiveBroadcast(deliveryId).catch(err => console.error('Adaptive rider broadcast failed', err));
+    }, delayMs);
+    this.dispatchTimers.set(deliveryId, timer);
+  }
+
+  private async runAdaptiveBroadcast(deliveryId: string) {
+    const delivery = await this.deliveryModel.findById(deliveryId);
+    if (!delivery) {
+      this.clearDispatchTimer(deliveryId);
+      return;
+    }
+
+    const hasAssignedRider = Boolean(delivery.rider?.riderId);
+    if (hasAssignedRider || delivery.status !== DeliveryStatus.ASSIGNED) {
+      this.clearDispatchTimer(deliveryId);
+      return;
+    }
+
+    const coords = delivery.pickup?.coordinates;
+    if (!coords || !Number.isFinite(coords.lat) || !Number.isFinite(coords.lng)) {
+      this.clearDispatchTimer(deliveryId);
+      return;
+    }
+
+    const stepMeters = Number(delivery.dispatch?.stepMeters || process.env.RIDER_BROADCAST_STEP_METERS || 50);
+    const maxRadiusMeters = Number(delivery.dispatch?.maxRadiusMeters || process.env.RIDER_BROADCAST_MAX_RADIUS_METERS || 24000);
+    const currentRadiusMeters = Math.min(
+      maxRadiusMeters,
+      Number(delivery.dispatch?.currentRadiusMeters || process.env.RIDER_BROADCAST_INITIAL_RADIUS_METERS || 150)
+    );
+    const baseDeliveryFee = Number(
+      delivery.financials?.baseDeliveryFee
+      || delivery.financials?.deliveryFee
+      || process.env.MIN_DELIVERY_FEE
+      || 500
+    );
+    const searchSurcharge = this.radiusSearchSurcharge(currentRadiusMeters);
+    const deliveryFee = baseDeliveryFee + searchSurcharge;
+
+    const payload = delivery.toObject ? delivery.toObject() : delivery;
+    const result = this.deliveryGateway.broadcastToNearbyRiders(payload, coords.lat, coords.lng, {
+      radiusMeters: currentRadiusMeters,
+      searchSurcharge,
+      deliveryFee,
+    });
+
+    const existingNotified = new Set((delivery.dispatch?.notifiedRiderIds || []).map((id: any) => String(id)));
+    const newRiderIds = result.riderIds.filter(id => !existingNotified.has(String(id)));
+
+    const nextRadiusMeters = Math.min(maxRadiusMeters, currentRadiusMeters + stepMeters);
+    await this.deliveryModel.findByIdAndUpdate(deliveryId, {
+      $set: {
+        'financials.baseDeliveryFee': baseDeliveryFee,
+        'financials.deliveryFee': deliveryFee,
+        'financials.searchSurcharge': searchSurcharge,
+        'dispatch.strategy': 'ADAPTIVE_RADIUS',
+        'dispatch.initialRadiusMeters': delivery.dispatch?.initialRadiusMeters || 150,
+        'dispatch.currentRadiusMeters': nextRadiusMeters,
+        'dispatch.nextRadiusMeters': Math.min(maxRadiusMeters, nextRadiusMeters + stepMeters),
+        'dispatch.stepMeters': stepMeters,
+        'dispatch.maxRadiusMeters': maxRadiusMeters,
+        'dispatch.lastBroadcastAt': new Date(),
+      },
+      $inc: { 'dispatch.broadcastCount': 1 },
+      ...(newRiderIds.length ? { $addToSet: { 'dispatch.notifiedRiderIds': { $each: newRiderIds } } } : {}),
+    });
+
+    if (searchSurcharge !== Number(delivery.financials?.searchSurcharge || 0)) {
+      this.syncOrderDeliveryFee(delivery.orderId, deliveryFee, searchSurcharge, currentRadiusMeters).catch(() => {});
+    }
+
+    for (const riderId of newRiderIds) {
+      this.triggerNotification(riderId, 'order.placed', {
+        orderNumber: delivery.orderNumber,
+        orderId: delivery.orderId,
+        referenceId: delivery._id,
+        referenceType: 'Delivery',
+        radiusMeters: currentRadiusMeters,
+        deliveryFee,
+      });
+    }
+
+    if (currentRadiusMeters < maxRadiusMeters) {
+      this.scheduleAdaptiveBroadcast(deliveryId, Number(process.env.RIDER_BROADCAST_INTERVAL_MS || 10000));
+    } else {
+      this.clearDispatchTimer(deliveryId);
+    }
+  }
+
   async createDelivery(data: any): Promise<any> {
     const existing = await this.deliveryModel.findOne({ orderId: data.orderId });
     if (existing) {
@@ -85,28 +215,34 @@ export class DeliveryService {
       }
     }
 
+    const baseDeliveryFee = Number(data.financials?.deliveryFee || process.env.MIN_DELIVERY_FEE || 500);
     const delivery = new this.deliveryModel({
       ...data,
+      financials: {
+        ...(data.financials || {}),
+        baseDeliveryFee,
+        deliveryFee: baseDeliveryFee,
+        searchSurcharge: 0,
+      },
+      dispatch: {
+        strategy: 'ADAPTIVE_RADIUS',
+        initialRadiusMeters: Number(process.env.RIDER_BROADCAST_INITIAL_RADIUS_METERS || 150),
+        currentRadiusMeters: Number(process.env.RIDER_BROADCAST_INITIAL_RADIUS_METERS || 150),
+        nextRadiusMeters: Number(process.env.RIDER_BROADCAST_INITIAL_RADIUS_METERS || 150) + Number(process.env.RIDER_BROADCAST_STEP_METERS || 50),
+        stepMeters: Number(process.env.RIDER_BROADCAST_STEP_METERS || 50),
+        maxRadiusMeters: Number(process.env.RIDER_BROADCAST_MAX_RADIUS_METERS || 24000),
+        broadcastCount: 0,
+        notifiedRiderIds: [],
+      },
       route,
       status: DeliveryStatus.ASSIGNED
     });
 
     const saved = await delivery.save();
     
-    // Notify all active riders via Socket.io AND permanent in-app notifications
+    // Adaptive dispatch starts at 150m around the pickup stall and expands until a rider accepts.
     try {
-      this.deliveryGateway.emitAssignment(saved.toObject());
-      
-      // Create permanent logs for all riders so it shows in their "bell"
-      const riders = await this.riderModel.find({ isActive: true }).exec();
-      for (const rider of riders) {
-        this.triggerNotification(rider.userId, 'order.placed', { 
-          orderNumber: saved.orderNumber, 
-          orderId: saved.orderId,
-          referenceId: saved._id,
-          referenceType: 'Delivery'
-        });
-      }
+      this.scheduleAdaptiveBroadcast(String(saved._id), 0);
     } catch (e) {
       console.error('Failed to broadcast delivery request', e);
     }
@@ -335,13 +471,15 @@ export class DeliveryService {
           'rider.userId': riderProfile.userId,
           'rider.fullName': 'Rider',
           'rider.phone': '',
-          'rider.plateNumber': riderProfile.plateNumber
+          'rider.plateNumber': riderProfile.plateNumber,
+          'dispatch.acceptedAt': new Date(),
         }
       },
       { new: true }
     );
 
     if (updatedDelivery) {
+      this.clearDispatchTimer(id);
       this.triggerNotification(riderProfile.userId, 'delivery.assigned', { 
         orderNumber: updatedDelivery.orderNumber, 
         orderId: updatedDelivery.orderId,
@@ -423,7 +561,7 @@ export class DeliveryService {
 
     // Notify other available riders that the delivery is available again
     try {
-      this.deliveryGateway.emitAssignment(delivery.toObject());
+      this.scheduleAdaptiveBroadcast(String(delivery._id), 0);
     } catch (e) {
       console.error('Failed to rebroadcast delivery request after rejection', e);
     }

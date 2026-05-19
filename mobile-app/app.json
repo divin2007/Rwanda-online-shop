@@ -7,13 +7,28 @@
     "userInterfaceStyle": "light",
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.rmf.mobile"
+      "bundleIdentifier": "com.rmf.mobile",
+      "infoPlist": {
+        "NSCameraUsageDescription": "RMF riders and sellers use the camera to upload product, document, and pickup proof photos.",
+        "NSPhotoLibraryUsageDescription": "RMF uses your photo library when you choose product or verification images.",
+        "NSLocationWhenInUseUsageDescription": "RMF uses your location to calculate delivery fees and stream rider progress during active deliveries."
+      }
     },
     "android": {
-      "package": "com.rmf.mobile"
+      "package": "com.rmf.mobile",
+      "permissions": [
+        "CAMERA",
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_COARSE_LOCATION",
+        "READ_MEDIA_IMAGES"
+      ]
     },
     "plugins": [
-      "expo-router"
+      "expo-router",
+      "expo-secure-store",
+      "expo-location",
+      "expo-image-picker",
+      "expo-document-picker"
     ],
     "scheme": "rmf"
   }

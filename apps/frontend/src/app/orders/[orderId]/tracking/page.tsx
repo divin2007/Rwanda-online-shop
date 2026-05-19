@@ -82,7 +82,8 @@ const ChatCard = ({ deliveryId, userId, userName }: { deliveryId?: string, userI
   );
 };
 
-export default function OrderTrackingPage({ params }: { params: { orderId: string } }) {
+export default function OrderTrackingPage({ params }: { params: Promise<{ orderId: string }> }) {
+  const { orderId } = React.use(params);
   const { t } = useLanguage();
   const { user, isLoading } = useAuth();
   const router = useRouter();
@@ -92,7 +93,7 @@ export default function OrderTrackingPage({ params }: { params: { orderId: strin
   // MD9 fix: controlled textarea state instead of imperative document.getElementById
   const [disputeReason, setDisputeReason] = useState('');
 
-  const { data: order, loading, execute: fetchOrder } = useApi(orderApi, 'get', `/orders/${params.orderId}`, { refreshInterval: 5000 });
+  const { data: order, loading, execute: fetchOrder } = useApi(orderApi, 'get', `/orders/${orderId}`, { refreshInterval: 5000 });
 
   useEffect(() => {
     if (!isLoading && !user) {
@@ -112,7 +113,7 @@ export default function OrderTrackingPage({ params }: { params: { orderId: strin
     }
   }, [order?.deliveryId]);
 
-  const { data: statusUpdate } = useSocket(process.env.NEXT_PUBLIC_DELIVERY_SERVICE_URL || 'http://localhost:3008', `order:${params.orderId}:status`);
+  const { data: statusUpdate } = useSocket(process.env.NEXT_PUBLIC_DELIVERY_SERVICE_URL || 'http://localhost:3008', `order:${orderId}:status`);
   const { data: riderGps, isConnected: trackingConnected, emit: emitTrackingSocket } = useSocket(process.env.NEXT_PUBLIC_DELIVERY_SERVICE_URL || 'http://localhost:3008', order?.deliveryId ? `delivery:${order.deliveryId}:tracking` : '');
 
   useEffect(() => {
@@ -130,7 +131,7 @@ export default function OrderTrackingPage({ params }: { params: { orderId: strin
   useEffect(() => {
     setIsClient(true);
     fetchOrder();
-  }, [params.orderId, fetchOrder]);
+  }, [orderId, fetchOrder]);
 
   const currentStatus = order?.status === 'delivered' ? 'delivered' : (statusUpdate?.status || order?.status || 'placed');
   const showTrackingMap = currentStatus === 'in_transit' || currentStatus === 'picked_up' || 
@@ -177,7 +178,7 @@ export default function OrderTrackingPage({ params }: { params: { orderId: strin
     <Layout>
       <div className="max-w-4xl mx-auto py-8 px-4">
         <h1 className="text-3xl font-heading font-bold text-text-primary mb-2">{t('track_title')}</h1>
-        <p className="text-text-secondary mb-8">{t('order')} #{params.orderId.substring(0, 8).toUpperCase()}</p>
+        <p className="text-text-secondary mb-8">{t('order')} #{orderId.substring(0, 8).toUpperCase()}</p>
 
         <Card className="mb-8">
           <OrderStatusTimeline currentStatus={currentStatus} />
@@ -224,7 +225,7 @@ export default function OrderTrackingPage({ params }: { params: { orderId: strin
                 <span className="text-brand-primary">💬</span> {t('track_negotiation')}
               </h3>
               <OrderChat
-                orderId={params.orderId}
+                orderId={orderId}
                 initialMessages={(order as any).messages || []}
                 recipientName={order.seller?.fullName || t('seller')}
                 userRole="BUYER"
@@ -292,7 +293,7 @@ export default function OrderTrackingPage({ params }: { params: { orderId: strin
                       btn.disabled = true;
                       btn.innerHTML = t('loading');
                       try {
-                        await orderApi.put(`/orders/${params.orderId}/status`, { status: 'delivered', userId: order.buyer.userId });
+                        await orderApi.put(`/orders/${orderId}/status`, { status: 'delivered', userId: order.buyer.userId });
                         toast.success(t('payment_released_thanks'));
                         fetchOrder();
                       } catch (err) {
@@ -522,7 +523,7 @@ export default function OrderTrackingPage({ params }: { params: { orderId: strin
                        onClick={async () => {
                          if (!disputeReason.trim()) return toast.error(t('track_dispute_error'));
                          try {
-                           await orderApi.post(`/orders/${params.orderId}/dispute`, { reason: disputeReason });
+                           await orderApi.post(`/orders/${orderId}/dispute`, { reason: disputeReason });
                            toast.success(t('track_dispute_success'));
                            setDisputeReason('');
                            fetchOrder();

@@ -7,7 +7,7 @@ import toast from 'react-hot-toast';
 import { Layout } from '@/components/layout/Layout';
 import { useAuth } from '@/context/AuthContext';
 import { useLanguage } from '@/context/LanguageContext';
-import { notificationApi, userApi } from '@/lib/api';
+import { notificationApi, riderApi, sellerApi, userApi } from '@/lib/api';
 
 type SettingsState = {
   language: 'en' | 'fr' | 'kin';
@@ -111,6 +111,9 @@ export default function SettingsPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [testing, setTesting] = useState(false);
+  const [sellerRequest, setSellerRequest] = useState({ stallName: '', tagline: '', description: '', categories: '' });
+  const [riderRequest, setRiderRequest] = useState({ plateNumber: '', licenseUrl: '', vehiclePhotoUrl: '', insuranceUrl: '' });
+  const [requestingReview, setRequestingReview] = useState(false);
 
   useEffect(() => {
     if (!isLoading && !user && typeof window !== 'undefined') {
@@ -176,6 +179,45 @@ export default function SettingsPage() {
       toast.error(error?.response?.data?.message || 'Failed to save settings');
     } finally {
       setSaving(false);
+    }
+  };
+
+  const submitSellerSettingsReview = async () => {
+    setRequestingReview(true);
+    try {
+      await sellerApi.post('/sellers/settings/change-request', {
+        stallName: sellerRequest.stallName,
+        description: sellerRequest.description,
+        shopDetails: {
+          name: sellerRequest.stallName,
+          tagline: sellerRequest.tagline,
+          description: sellerRequest.description,
+          categories: sellerRequest.categories.split(',').map(item => item.trim()).filter(Boolean),
+        },
+        market: {
+          name: sellerRequest.stallName,
+          description: sellerRequest.description,
+        },
+      });
+      toast.success('Seller settings sent for admin approval');
+      setSellerRequest({ stallName: '', tagline: '', description: '', categories: '' });
+    } catch (error: any) {
+      toast.error(error?.response?.data?.message || 'Could not submit seller settings for review');
+    } finally {
+      setRequestingReview(false);
+    }
+  };
+
+  const submitRiderSettingsReview = async () => {
+    setRequestingReview(true);
+    try {
+      await riderApi.post('/riders/settings/change-request', riderRequest);
+      toast.success('Rider settings sent for admin approval');
+      setRiderRequest({ plateNumber: '', licenseUrl: '', vehiclePhotoUrl: '', insuranceUrl: '' });
+    } catch (error: any) {
+      toast.error(error?.response?.data?.message || 'Could not submit rider settings for review');
+    } finally {
+      setRequestingReview(false);
     }
   };
 
@@ -376,6 +418,27 @@ export default function SettingsPage() {
                 />
               </section>
             )}
+
+            {canUseSellerSettings && (
+              <section className="rounded-lg border border-[#e0e0e0] bg-[#fcf9f8] p-5">
+                <div className="mb-4 flex items-center gap-3">
+                  <ShieldCheck className="text-[#ff6b00]" size={20} />
+                  <div>
+                    <h2 className="text-xl font-black text-[#1b1c1c]">Seller market settings review</h2>
+                    <p className="mt-1 text-xs font-semibold text-[#5f7569]">Shop and market changes are reviewed by admins before going live. The public slug stays locked.</p>
+                  </div>
+                </div>
+                <div className="grid gap-3 md:grid-cols-2">
+                  <input className="h-11 rounded-md border border-[#d9e0db] bg-white px-3 text-sm font-bold outline-none focus:border-[#ff6b00]" placeholder="Shop / market name" value={sellerRequest.stallName} onChange={event => setSellerRequest(current => ({ ...current, stallName: event.target.value }))} />
+                  <input className="h-11 rounded-md border border-[#d9e0db] bg-white px-3 text-sm font-bold outline-none focus:border-[#ff6b00]" placeholder="Tagline" value={sellerRequest.tagline} onChange={event => setSellerRequest(current => ({ ...current, tagline: event.target.value }))} />
+                  <input className="h-11 rounded-md border border-[#d9e0db] bg-white px-3 text-sm font-bold outline-none focus:border-[#ff6b00] md:col-span-2" placeholder="Categories, comma separated" value={sellerRequest.categories} onChange={event => setSellerRequest(current => ({ ...current, categories: event.target.value }))} />
+                  <textarea className="min-h-24 rounded-md border border-[#d9e0db] bg-white p-3 text-sm font-semibold outline-none focus:border-[#ff6b00] md:col-span-2" placeholder="Updated shop and market description" value={sellerRequest.description} onChange={event => setSellerRequest(current => ({ ...current, description: event.target.value }))} />
+                </div>
+                <button type="button" onClick={submitSellerSettingsReview} disabled={requestingReview} className="mt-4 inline-flex h-11 items-center justify-center rounded-md bg-[#ff6b00] px-5 text-xs font-black uppercase tracking-widest text-white disabled:opacity-60">
+                  Submit for admin approval
+                </button>
+              </section>
+            )}
           </main>
 
           <aside className="space-y-5">
@@ -442,6 +505,22 @@ export default function SettingsPage() {
                     />
                   </label>
                 </div>
+              </section>
+            )}
+
+            {canUseRiderSettings && (
+              <section className="rounded-lg border border-[#e0e0e0] bg-white p-5 shadow-sm">
+                <h2 className="text-lg font-black text-[#1b1c1c]">Rider profile review</h2>
+                <p className="mt-2 text-sm font-semibold leading-6 text-[#5f7569]">Vehicle and document changes go to admin review before they replace your approved profile.</p>
+                <div className="mt-4 space-y-3">
+                  <input className="h-11 w-full rounded-md border border-[#d9e0db] bg-white px-3 text-sm font-bold outline-none focus:border-[#ff6b00]" placeholder="Plate number" value={riderRequest.plateNumber} onChange={event => setRiderRequest(current => ({ ...current, plateNumber: event.target.value }))} />
+                  <input className="h-11 w-full rounded-md border border-[#d9e0db] bg-white px-3 text-sm font-bold outline-none focus:border-[#ff6b00]" placeholder="License URL" value={riderRequest.licenseUrl} onChange={event => setRiderRequest(current => ({ ...current, licenseUrl: event.target.value }))} />
+                  <input className="h-11 w-full rounded-md border border-[#d9e0db] bg-white px-3 text-sm font-bold outline-none focus:border-[#ff6b00]" placeholder="Vehicle photo URL" value={riderRequest.vehiclePhotoUrl} onChange={event => setRiderRequest(current => ({ ...current, vehiclePhotoUrl: event.target.value }))} />
+                  <input className="h-11 w-full rounded-md border border-[#d9e0db] bg-white px-3 text-sm font-bold outline-none focus:border-[#ff6b00]" placeholder="Insurance URL" value={riderRequest.insuranceUrl} onChange={event => setRiderRequest(current => ({ ...current, insuranceUrl: event.target.value }))} />
+                </div>
+                <button type="button" onClick={submitRiderSettingsReview} disabled={requestingReview} className="mt-4 inline-flex h-10 items-center justify-center rounded-md bg-[#ff6b00] px-4 text-xs font-black uppercase tracking-widest text-white disabled:opacity-60">
+                  Submit for review
+                </button>
               </section>
             )}
           </aside>

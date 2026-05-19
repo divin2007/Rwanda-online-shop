@@ -37,6 +37,24 @@ export const deliverySchema = new Schema({
     actualMinutes: Number,
     geometry: [[Number]] // Array of [lat, lng] pairs
   },
+  financials: {
+    deliveryFee: { type: Number, default: 500 },
+    baseDeliveryFee: { type: Number, default: 500 },
+    searchSurcharge: { type: Number, default: 0 },
+    totalAmount: { type: Number }
+  },
+  dispatch: {
+    strategy: { type: String, default: 'ADAPTIVE_RADIUS' },
+    initialRadiusMeters: { type: Number, default: 150 },
+    currentRadiusMeters: { type: Number, default: 150 },
+    nextRadiusMeters: { type: Number, default: 200 },
+    stepMeters: { type: Number, default: 50 },
+    maxRadiusMeters: { type: Number, default: 24000 },
+    broadcastCount: { type: Number, default: 0 },
+    notifiedRiderIds: [{ type: Schema.Types.ObjectId, ref: 'User' }],
+    lastBroadcastAt: Date,
+    acceptedAt: Date
+  },
   tracking: [{
     lat: Number,
     lng: Number,

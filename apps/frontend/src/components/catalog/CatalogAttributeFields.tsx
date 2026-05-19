@@ -143,6 +143,8 @@ export function CatalogAttributeFields({ category, attributes, onAttributesChang
                   <option value="on_demand">Made to order</option>
                 </select>
                 <input className={fieldClass} type="number" min="0" placeholder="Variant stock" value={variant.stockQuantity || ''} onChange={event => updateVariant(index, { stockQuantity: event.target.value })} />
+                <input className={fieldClass} placeholder="Variant video URL (optional)" value={variant.videoUrl || ''} onChange={event => updateVariant(index, { videoUrl: event.target.value })} />
+                <input className={fieldClass} placeholder="Variant video thumbnail URL (optional)" value={variant.thumbnailUrl || ''} onChange={event => updateVariant(index, { thumbnailUrl: event.target.value })} />
                 <label className="block sm:col-span-2">
                   <span className="mb-1.5 block text-[10px] font-black uppercase tracking-[0.16em] text-[#405046]">Variant image URLs</span>
                   <textarea

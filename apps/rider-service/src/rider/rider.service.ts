@@ -10,9 +10,26 @@ export class RiderService {
 
   constructor(
     @InjectModel('RiderProfile') private riderModel: Model<any>,
-    @InjectModel('Delivery') private deliveryModel: Model<any>
+    @InjectModel('Delivery') private deliveryModel: Model<any>,
+    @InjectModel('ProfileChangeRequest') private changeRequestModel: Model<any>
   ) {
     this.locationService = new LocationService();
+  }
+
+  private cleanString(value: any, max = 500): string | undefined {
+    const cleaned = String(value ?? '').replace(/[\u0000-\u001f\u007f]/g, ' ').replace(/\s+/g, ' ').trim();
+    return cleaned ? cleaned.slice(0, max) : undefined;
+  }
+
+  private sanitizeRiderSettings(input: any) {
+    const changes: any = {};
+    const plateNumber = this.cleanString(input?.plateNumber, 32);
+    if (plateNumber) changes.plateNumber = plateNumber.toUpperCase();
+    for (const key of ['licenseUrl', 'vehiclePhotoUrl', 'idCardUrl', 'insuranceUrl'] as const) {
+      const value = this.cleanString(input?.[key], 600);
+      if (value) changes[key] = value;
+    }
+    return changes;
   }
 
   async create(riderData: any): Promise<any> {
@@ -115,6 +132,63 @@ export class RiderService {
     }
 
     return updated;
+  }
+
+  async createSettingsChangeRequest(userId: string, data: any): Promise<any> {
+    const rider = await this.findByUserId(userId);
+    const requestedChanges = this.sanitizeRiderSettings(data);
+    if (!Object.keys(requestedChanges).length) {
+      throw new BadRequestException('No editable rider settings were provided');
+    }
+    const existing = await this.changeRequestModel.findOne({
+      targetType: 'RIDER',
+      targetId: rider._id,
+      status: 'PENDING',
+    }).exec();
+    if (existing) {
+      throw new ConflictException('A rider settings change request is already awaiting admin review');
+    }
+    return this.changeRequestModel.create({
+      targetType: 'RIDER',
+      targetId: rider._id,
+      userId: rider.userId,
+      requestedChanges,
+      auditTrail: [{ action: 'created', actorId: userId, note: 'rider_settings_change_requested', at: new Date() }],
+    });
+  }
+
+  async listSettingsChangeRequests(status = 'PENDING'): Promise<any[]> {
+    const query: any = { targetType: 'RIDER' };
+    if (status) query.status = status;
+    return this.changeRequestModel.find(query).sort({ createdAt: -1 }).exec();
+  }
+
+  async approveSettingsChangeRequest(id: string, adminId: string, notes?: string): Promise<any> {
+    const request = await this.changeRequestModel.findOne({ _id: id, targetType: 'RIDER', status: 'PENDING' }).exec();
+    if (!request) throw new NotFoundException('Rider settings change request not found');
+    await this.riderModel.findByIdAndUpdate(request.targetId, { $set: request.requestedChanges || {} }).exec();
+    request.status = 'APPROVED';
+    request.reviewedBy = /^[0-9a-fA-F]{24}$/.test(String(adminId || '')) ? adminId : undefined;
+    request.reviewNotes = this.cleanString(notes, 500);
+    request.reviewedAt = new Date();
+    request.appliedAt = new Date();
+    request.auditTrail.push({ action: 'approved', actorId: adminId, note: request.reviewNotes, at: new Date() });
+    await request.save();
+    this.triggerNotification(request.userId, 'Your rider settings update was approved and applied.');
+    return request;
+  }
+
+  async rejectSettingsChangeRequest(id: string, adminId: string, notes?: string): Promise<any> {
+    const request = await this.changeRequestModel.findOne({ _id: id, targetType: 'RIDER', status: 'PENDING' }).exec();
+    if (!request) throw new NotFoundException('Rider settings change request not found');
+    request.status = 'REJECTED';
+    request.reviewedBy = /^[0-9a-fA-F]{24}$/.test(String(adminId || '')) ? adminId : undefined;
+    request.reviewNotes = this.cleanString(notes, 500);
+    request.reviewedAt = new Date();
+    request.auditTrail.push({ action: 'rejected', actorId: adminId, note: request.reviewNotes, at: new Date() });
+    await request.save();
+    this.triggerNotification(request.userId, request.reviewNotes || 'Your rider settings update needs changes before approval.');
+    return request;
   }
 
   async updateLocation(userId: string, location: Coordinates): Promise<any> {

@@ -59,7 +59,7 @@ export default function CartPage() {
             {/* ── Cart Items ── */}
             <div className="lg:col-span-8 space-y-6">
               {items.map((item) => (
-                <div key={item.id} className="flex flex-col sm:flex-row gap-6 sm:gap-8 group border border-border-light bg-white rounded-2xl p-4 sm:p-6 shadow-sm hover:shadow-md transition-shadow">
+                <div key={`${item.id}:${item.variantId || 'base'}:${item.customization || ''}`} className="flex flex-col sm:flex-row gap-6 sm:gap-8 group border border-border-light bg-white rounded-2xl p-4 sm:p-6 shadow-sm hover:shadow-md transition-shadow">
                   
                   {/* Image */}
                   <div className="w-full sm:w-40 h-40 bg-background-surface rounded-xl overflow-hidden flex-shrink-0 relative group-hover:border-primary/20 transition-colors">
@@ -72,10 +72,11 @@ export default function CartPage() {
                       <div className="space-y-2">
                         <p className="text-[10px] font-bold text-accent-premium uppercase tracking-widest">Verified Seller</p>
                         <h3 className="text-2xl font-bold text-text-primary tracking-tight leading-tight transition-colors group-hover:text-primary">{item.name}</h3>
+                        {item.variantTitle && <p className="text-xs font-black uppercase tracking-widest text-primary">{item.variantTitle}</p>}
                         <p className="text-lg font-bold text-text-muted">{formatCurrency(item.price)}</p>
                       </div>
                       <button 
-                        onClick={() => removeFromCart(item.id)} 
+                        onClick={() => removeFromCart(item.id, item.variantId)} 
                         className="w-10 h-10 rounded-full border border-border-light bg-background-surface flex items-center justify-center text-text-muted hover:bg-red-50 hover:text-red-600 hover:border-red-200 transition-all"
                         aria-label="Remove item"
                       >
@@ -86,9 +87,9 @@ export default function CartPage() {
                     <div className="flex flex-wrap justify-between items-end mt-8 gap-6">
                       {/* Quantity Control */}
                       <div className="flex items-center rounded-xl border border-border-light bg-white shadow-sm overflow-hidden h-12">
-                        <button className="w-12 h-full flex items-center justify-center text-lg font-medium text-text-primary hover:bg-primary/5 transition-colors" onClick={() => updateQuantity(item.id, Math.max(1, item.quantity - 1))}>-</button>
+                        <button className="w-12 h-full flex items-center justify-center text-lg font-medium text-text-primary hover:bg-primary/5 transition-colors" onClick={() => updateQuantity(item.id, Math.max(1, item.quantity - 1), item.variantId)}>-</button>
                         <span className="w-12 text-center font-bold text-base text-text-primary border-x border-border-light h-full flex items-center justify-center bg-background-surface/50">{item.quantity}</span>
-                        <button className="w-12 h-full flex items-center justify-center text-lg font-medium text-text-primary hover:bg-primary/5 transition-colors" onClick={() => updateQuantity(item.id, item.quantity + 1)}>+</button>
+                        <button className="w-12 h-full flex items-center justify-center text-lg font-medium text-text-primary hover:bg-primary/5 transition-colors" onClick={() => updateQuantity(item.id, item.quantity + 1, item.variantId)}>+</button>
                       </div>
                       
                       {/* Subtotal */}

@@ -3,6 +3,7 @@ import {
   Get,
   Post,
   Put,
+  Patch,
   Body,
   Param,
   Query,
@@ -257,6 +258,24 @@ export class OrderController {
   async updateDeliveryAddress(@Param('id') id: string, @Body() body: { address: string; coordinates: { lat: number; lng: number } }, @Req() req: any) {
     const userId = req.user.userId;
     const order = await this.orderService.updateDeliveryAddress(id, body.address, body.coordinates, userId);
+    return { success: true, data: order };
+  }
+
+  @Public()
+  @Patch(':id/delivery-dispatch-fee')
+  async updateDeliveryDispatchFee(
+    @Param('id') id: string,
+    @Body() body: { deliveryFee: number; searchSurcharge?: number; radiusMeters?: number; userId?: string },
+    @Req() req: any
+  ) {
+    const userId = verifyInternalOrJwt(req);
+    const order = await this.orderService.updateDeliveryDispatchFee(
+      id,
+      Number(body.deliveryFee),
+      Number(body.searchSurcharge || 0),
+      Number(body.radiusMeters || 0),
+      userId,
+    );
     return { success: true, data: order };
   }
 

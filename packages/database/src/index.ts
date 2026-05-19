@@ -8,6 +8,8 @@ export * from './schemas/market.schema';
 export * from './schemas/product.schema';
 export * from './schemas/taxonomy-category.schema';
 export * from './schemas/promotion.schema';
+export * from './schemas/seller-video.schema';
+export * from './schemas/profile-change-request.schema';
 export * from './schemas/transaction.schema';
 export * from './schemas/delivery.schema';
 export * from './schemas/audit-log.schema';

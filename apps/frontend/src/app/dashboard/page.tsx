@@ -25,7 +25,7 @@ export default function DashboardPage() {
   const { data: ordersData, loading: ordersLoading } = useApi(orderApi, 'get', `/orders?buyerId=${user?.id}&status=placed,confirmed,preparing,ready_for_pickup,picked_up,in_transit`);
   const { data: walletData, loading: walletLoading } = useApi(walletApi, 'get', `/wallets/me?userId=${user?.id}`);
   const { data: transactionsData } = useApi(walletApi, 'get', `/wallets/me/transactions?userId=${user?.id}`);
-  const { data: recommendedData } = useApi(productApi, 'get', '/products?limit=4');
+  const { data: recommendedData } = useApi(productApi, 'get', '/products/recommendations/for-me?limit=8');
 
   const orders = ordersData || [];
   const wallet = walletData || { balance: 0 };

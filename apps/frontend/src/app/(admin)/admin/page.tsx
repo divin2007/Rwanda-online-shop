@@ -92,6 +92,37 @@ function AdminDashboardContent() {
 
   const [payoutRequests, setPayoutRequests] = useState<any[]>([]);
   const [payoutsLoading, setPayoutsLoading] = useState(false);
+  const [sellerChangeRequests, setSellerChangeRequests] = useState<any[]>([]);
+  const [riderChangeRequests, setRiderChangeRequests] = useState<any[]>([]);
+  const [profileChangesLoading, setProfileChangesLoading] = useState(false);
+
+  const fetchProfileChangeRequests = async () => {
+    setProfileChangesLoading(true);
+    try {
+      const [sellerRes, riderRes] = await Promise.all([
+        sellerApi.get('/sellers/settings/change-requests?status=PENDING'),
+        riderApi.get('/riders/settings/change-requests?status=PENDING'),
+      ]);
+      setSellerChangeRequests(sellerRes.data?.data || []);
+      setRiderChangeRequests(riderRes.data?.data || []);
+    } catch (e) {
+      toast.error('Failed to load profile change requests');
+    } finally {
+      setProfileChangesLoading(false);
+    }
+  };
+
+  const reviewProfileChange = async (type: 'seller' | 'rider', id: string, action: 'approve' | 'reject') => {
+    try {
+      const api = type === 'seller' ? sellerApi : riderApi;
+      const root = type === 'seller' ? '/sellers' : '/riders';
+      await api.post(`${root}/settings/change-requests/${id}/${action}`, { notes: action === 'approve' ? 'Approved from admin portal' : 'Rejected from admin portal' });
+      toast.success(`Change request ${action}d`);
+      fetchProfileChangeRequests();
+    } catch (e: any) {
+      toast.error(e.response?.data?.message || `Failed to ${action} change request`);
+    }
+  };
 
   const fetchPayoutRequests = async () => {
     setPayoutsLoading(true);
@@ -159,6 +190,7 @@ function AdminDashboardContent() {
     if (activeTab === 'disputes') fetchDisputes();
     if (activeTab === 'markets') fetchMarkets();
     if (activeTab === 'payouts') fetchPayoutRequests();
+    if (activeTab === 'profile-changes') fetchProfileChangeRequests();
     if (activeTab === 'taxonomy') {
       fetchTaxonomy();
       fetchGovernance();
@@ -886,6 +918,48 @@ function AdminDashboardContent() {
                   )}
                 </tbody>
               </table>
+            </div>
+          )}
+
+          {activeTab === 'profile-changes' && (
+            <div className="space-y-6 animate-reveal">
+              <div className="grid gap-4 md:grid-cols-2">
+                {[
+                  { title: 'Seller market changes', type: 'seller' as const, items: sellerChangeRequests },
+                  { title: 'Rider profile changes', type: 'rider' as const, items: riderChangeRequests },
+                ].map(group => (
+                  <section key={group.type} className="rounded-lg border border-[#e0e0e0] bg-white p-6 shadow-sm">
+                    <div className="mb-5 flex items-center justify-between border-b border-[#e0e0e0] pb-4">
+                      <div>
+                        <p className="text-[10px] font-black uppercase tracking-[0.18em] text-[#ff6b00]">Admin review</p>
+                        <h2 className="mt-1 text-xl font-black text-[#1b1c1c]">{group.title}</h2>
+                      </div>
+                      <span className="rounded-full bg-[#ffedd5] px-3 py-1 text-xs font-black text-[#9a3412]">{group.items.length}</span>
+                    </div>
+                    {profileChangesLoading ? (
+                      <div className="h-40 animate-pulse rounded-md bg-[#fcf9f8]" />
+                    ) : group.items.length === 0 ? (
+                      <p className="rounded-md border border-dashed border-[#e0e0e0] p-8 text-center text-sm font-semibold text-[#5f7569]">No pending requests.</p>
+                    ) : (
+                      <div className="space-y-4">
+                        {group.items.map((request: any) => (
+                          <article key={request._id} className="rounded-md border border-[#e0e0e0] bg-[#fcf9f8] p-4">
+                            <div className="mb-3 flex items-center justify-between gap-3">
+                              <p className="text-xs font-black uppercase tracking-widest text-[#1b1c1c]">{request.targetId}</p>
+                              <p className="text-[10px] font-bold text-[#5f7569]">{new Date(request.createdAt).toLocaleString()}</p>
+                            </div>
+                            <pre className="max-h-56 overflow-auto rounded-md bg-white p-3 text-xs text-[#1b1c1c]">{JSON.stringify(request.requestedChanges, null, 2)}</pre>
+                            <div className="mt-4 flex justify-end gap-2">
+                              <button onClick={() => reviewProfileChange(group.type, request._id, 'reject')} className="rounded-md border border-red-200 bg-red-50 px-4 py-2 text-[10px] font-black uppercase tracking-widest text-red-600">Reject</button>
+                              <button onClick={() => reviewProfileChange(group.type, request._id, 'approve')} className="rounded-md bg-[#ff6b00] px-4 py-2 text-[10px] font-black uppercase tracking-widest text-white">Approve</button>
+                            </div>
+                          </article>
+                        ))}
+                      </div>
+                    )}
+                  </section>
+                ))}
+              </div>
             </div>
           )}
 

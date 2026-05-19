@@ -1279,6 +1279,58 @@ export class OrderService implements OnModuleInit, OnModuleDestroy {
     return updated;
   }
 
+  async updateDeliveryDispatchFee(id: string, deliveryFee: number, searchSurcharge = 0, radiusMeters = 0, userId = 'internal-service'): Promise<any> {
+    if (!Number.isFinite(deliveryFee) || deliveryFee < 0) {
+      throw new BadRequestException('Delivery fee must be a valid non-negative number');
+    }
+
+    const order = await this.orderModel.findById(id);
+    if (!order) throw new NotFoundException('Order not found');
+
+    const subtotal = Number(order.financials?.subtotal || 0);
+    const platformCommission = Number(order.financials?.platformCommission || Math.max(subtotal * 0.015, 100));
+    const gatewayFee = Math.ceil((subtotal + deliveryFee) * 0.02);
+    const updatedFinancials = {
+      subtotal,
+      deliveryFee,
+      platformCommission,
+      gatewayFee,
+      totalAmount: subtotal + deliveryFee + gatewayFee,
+      sellerPayout: Number(order.financials?.sellerPayout || subtotal - platformCommission),
+      riderPayout: Math.ceil(deliveryFee * 0.9),
+    };
+
+    const updated = await this.orderModel.findByIdAndUpdate(
+      id,
+      {
+        $set: {
+          financials: updatedFinancials,
+          'attributes.dispatchRadiusMeters': String(Math.round(radiusMeters || 0)),
+          'attributes.dispatchSearchSurcharge': String(Math.round(searchSurcharge || 0)),
+        },
+        $push: {
+          statusHistory: {
+            status: order.status,
+            changedBy: /^[0-9a-fA-F]{24}$/.test(String(userId || '')) ? userId : null,
+            changedAt: new Date(),
+            note: `Adaptive rider search radius ${Math.round(radiusMeters || 0)}m, delivery fee ${deliveryFee} RWF`,
+          },
+        },
+      },
+      { returnDocument: 'after' }
+    );
+
+    this.orderGateway.sendOrderUpdate({
+      type: 'DELIVERY_FEE_UPDATE',
+      orderId: id,
+      deliveryFee,
+      searchSurcharge,
+      radiusMeters,
+    });
+
+    return updated;
+  }
+
   onModuleDestroy() {
     // Clean up all payment polling intervals to prevent stale callbacks
     for (const [orderNumber, interval] of this.paymentPollingIntervals.entries()) {

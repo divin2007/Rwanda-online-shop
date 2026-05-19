@@ -15,6 +15,7 @@ export class ProductService implements OnModuleInit {
     @InjectModel('Market') private marketModel: Model<any>,
     @InjectModel('Promotion') private promotionModel: Model<any>,
     @InjectModel('TaxonomyCategory') private taxonomyModel: Model<any>,
+    @InjectModel('User') private userModel: Model<any>,
     @Inject(CACHE_MANAGER) private cacheManager: Cache
   ) { }
 
@@ -46,6 +47,15 @@ export class ProductService implements OnModuleInit {
     }
 
     return images;
+  }
+
+  private cleanOptionalUrl(value: any, field: string): string | undefined {
+    const url = String(value || '').trim();
+    if (!url) return undefined;
+    if (!/^https?:\/\//i.test(url)) {
+      throw new BadRequestException(`${field} must be a public http(s) URL.`);
+    }
+    return url.slice(0, 600);
   }
 
   private parseBooleanFlag(value: any): boolean | undefined {
@@ -200,9 +210,17 @@ export class ProductService implements OnModuleInit {
   }
 
   private async seedCatalogCategoriesIfNeeded(): Promise<void> {
+    const existingRows = await this.taxonomyModel
+      .find({ id: { $in: catalogCategories.map(category => this.normalizeCategoryId(category.id)) }, deletedAt: null })
+      .select('id version auditTrail')
+      .lean()
+      .exec();
+    const existingById = new Map(existingRows.map((row: any) => [row.id, row]));
+    const operations = [];
+
     for (const category of catalogCategories) {
       const id = this.normalizeCategoryId(category.id);
-      const existing = await this.taxonomyModel.findOne({ id, deletedAt: null }).lean().exec();
+      const existing = existingById.get(id);
       const sanitized = this.sanitizeCatalogCategory(category, existing);
 
       const payload = {
@@ -216,11 +234,17 @@ export class ProductService implements OnModuleInit {
           : [{ action: 'seeded', reason: 'default_catalog_bootstrap', at: new Date() }],
       };
 
-      await this.taxonomyModel.findOneAndUpdate(
-        { id },
-        { $set: payload },
-        { upsert: true, returnDocument: 'after' }
-      ).exec();
+      operations.push({
+        updateOne: {
+          filter: { id },
+          update: { $set: payload },
+          upsert: true,
+        },
+      });
+    }
+
+    if (operations.length) {
+      await this.taxonomyModel.bulkWrite(operations, { ordered: false });
     }
     await this.safeCacheDel('catalog:categories');
     await this.safeCacheDel('catalog:categories:all');
@@ -458,6 +482,8 @@ export class ProductService implements OnModuleInit {
         stockQuantity,
         inStock: variant.inStock === undefined ? stockType !== 'finite' || stockQuantity > 0 : this.parseBooleanFlag(variant.inStock) !== false,
         images: Array.isArray(variant.images) ? variant.images.filter((url: any) => /^https?:\/\//i.test(String(url))).slice(0, 6) : [],
+        videoUrl: this.cleanOptionalUrl(variant.videoUrl, `Variant ${index + 1} videoUrl`),
+        thumbnailUrl: this.cleanOptionalUrl(variant.thumbnailUrl, `Variant ${index + 1} thumbnailUrl`),
         attributes: this.sanitizeAttributes(category, variant.attributes || {}, false),
         isActive: variant.isActive === undefined ? true : this.parseBooleanFlag(variant.isActive) !== false,
       };
@@ -564,6 +590,137 @@ export class ProductService implements OnModuleInit {
         return { ...product, searchScore: this.calculateSearchScore(product, term, category) };
       })
       .sort((a, b) => Number(b.searchScore || 0) - Number(a.searchScore || 0));
+  }
+
+  private scoreMap(items: any[] | undefined, keyName: 'key' | 'refId') {
+    const map = new Map<string, number>();
+    for (const item of Array.isArray(items) ? items : []) {
+      const key = String(item?.[keyName] || '');
+      if (key) map.set(key, Number(item.score || 0));
+    }
+    return map;
+  }
+
+  private recommendationScore(product: any, user: any): number {
+    const discovery = user?.preferences?.discovery || {};
+    const profile = user?.recommendationProfile || {};
+    const categoryScores = this.scoreMap(profile.categoryScores, 'key');
+    const marketScores = this.scoreMap(profile.marketScores, 'refId');
+    const sellerScores = this.scoreMap(profile.sellerScores, 'refId');
+    const productScores = this.scoreMap(profile.productScores, 'refId');
+    const selectedCategories = new Set((discovery.categoryIds || []).map((item: any) => String(item)));
+    const selectedMarkets = new Set((discovery.marketIds || []).map((item: any) => String(item)));
+    const categoryId = String(product.categoryId || product.productType || product.category || '');
+    const marketId = String(product.marketId?._id || product.marketId || '');
+    const sellerId = String(product.sellerId?._id || product.sellerId || '');
+    const productId = String(product._id || '');
+
+    return (
+      (selectedCategories.has(categoryId) ? 18 : 0)
+      + (selectedMarkets.has(marketId) ? 12 : 0)
+      + (categoryScores.get(categoryId) || 0)
+      + (marketScores.get(marketId) || 0)
+      + (sellerScores.get(sellerId) || 0)
+      + (productScores.get(productId) || 0)
+      + Number(product.totalOrders || 0) * 0.04
+      + Number(product.rating || 0) * 1.5
+      + (product.promotion ? 4 : 0)
+      + (product.isMadeInRwanda ? 1.5 : 0)
+    );
+  }
+
+  private async applyRecommendationRanking(products: any[], userId?: string) {
+    if (!userId || !Types.ObjectId.isValid(userId)) {
+      return products.sort((a, b) =>
+        Number(b.totalOrders || 0) - Number(a.totalOrders || 0)
+        || Number(b.rating || 0) - Number(a.rating || 0),
+      );
+    }
+
+    const user = await this.userModel.findById(userId).lean().exec();
+    if (!user) return products;
+
+    return products
+      .map(product => ({
+        ...product,
+        recommendationScore: this.recommendationScore(product, user),
+      }))
+      .sort((a, b) =>
+        Number(b.recommendationScore || 0) - Number(a.recommendationScore || 0)
+        || Number(b.totalOrders || 0) - Number(a.totalOrders || 0)
+        || Number(b.rating || 0) - Number(a.rating || 0),
+      );
+  }
+
+  async getRecommendedProducts(userId: string | undefined, query: any = {}): Promise<any[]> {
+    const limit = Math.min(Math.max(Number(query.limit || 24), 1), 60);
+    const products = await this.findAll({
+      approvedOnly: true,
+      isActive: true,
+      limit: Math.max(limit * 4, 80),
+      search: query.search,
+      marketId: query.marketId,
+      categoryId: query.categoryId,
+    });
+    const ranked = await this.applyRecommendationRanking(products, userId);
+    return ranked.slice(0, limit);
+  }
+
+  async recordProductInteraction(userId: string, productId: string, action = 'product_view'): Promise<any> {
+    if (!Types.ObjectId.isValid(userId) || !Types.ObjectId.isValid(productId)) {
+      throw new BadRequestException('Invalid recommendation interaction');
+    }
+    const product = await this.productModel.findOne({ _id: productId, deletedAt: null }).lean().exec();
+    if (!product) throw new NotFoundException('Product not found');
+
+    const weights: Record<string, number> = {
+      view: 1,
+      product_view: 2,
+      wishlist: 6,
+      like: 6,
+      add_to_cart: 8,
+      purchase: 12,
+      dislike: -4,
+    };
+    const delta = weights[String(action)] ?? 1;
+    const user = await this.userModel.findById(userId).exec();
+    if (!user) throw new NotFoundException('User not found');
+    const profile = user.recommendationProfile || {};
+    const upsert = (items: any[], keyName: 'key' | 'refId', key: string) => {
+      if (!key) return items || [];
+      const current = Array.isArray(items) ? [...items] : [];
+      const found = current.find(item => String(item?.[keyName]) === key);
+      if (found) {
+        found.score = Math.max(-20, Math.min(1000, Number(found.score || 0) + delta));
+        found.lastSeenAt = new Date();
+      } else {
+        current.push({
+          [keyName]: keyName === 'refId' ? new Types.ObjectId(key) : key,
+          score: Math.max(-20, delta),
+          lastSeenAt: new Date(),
+        });
+      }
+      return current.filter(item => Number(item.score || 0) > -20).sort((a, b) => Number(b.score || 0) - Number(a.score || 0)).slice(0, 80);
+    };
+
+    const categoryId = String(product.categoryId || product.productType || product.category || '').toLowerCase();
+    const marketId = String(product.marketId || '');
+    const sellerId = String(product.sellerId || '');
+
+    const nextProfile = {
+      categoryScores: upsert(profile.categoryScores || [], 'key', categoryId),
+      marketScores: Types.ObjectId.isValid(marketId) ? upsert(profile.marketScores || [], 'refId', marketId) : profile.marketScores || [],
+      sellerScores: Types.ObjectId.isValid(sellerId) ? upsert(profile.sellerScores || [], 'refId', sellerId) : profile.sellerScores || [],
+      productScores: upsert(profile.productScores || [], 'refId', productId),
+      recentProductIds: [
+        new Types.ObjectId(productId),
+        ...(Array.isArray(profile.recentProductIds) ? profile.recentProductIds.filter((id: any) => String(id) !== productId) : []),
+      ].slice(0, 60),
+      lastInteractionAt: new Date(),
+    };
+
+    await this.userModel.findByIdAndUpdate(userId, { $set: { recommendationProfile: nextProfile } }).exec();
+    return { recorded: true, action, categoryId, marketId, sellerId };
   }
 
   async onModuleInit() {
@@ -1404,6 +1561,8 @@ export class ProductService implements OnModuleInit {
                 const variantStockType = String(row['stocktype'] || row['inventorytype'] || stockTypeVal).toLowerCase().trim();
                 const variantSku = String(row['sku'] || row['variantcode'] || '').trim();
                 const variantImages = this.parseImageList(row['imageurl'] || row['images'] || row['image'] || imagesVal);
+                const variantVideoUrl = row['variantvideourl'] || row['videourl'] || row['video'];
+                const variantThumbnailUrl = row['variantthumbnailurl'] || row['thumbnailurl'] || row['posterurl'];
 
                 const optionLabels = Object.values(options).filter(Boolean);
                 const variantTitle = optionLabels.length > 0
@@ -1420,6 +1579,8 @@ export class ProductService implements OnModuleInit {
                   unit: row['unit'] || baseRow['unit'] || unitVal,
                   inStock: variantStockType !== 'finite' || variantStock > 0,
                   images: variantImages,
+                  videoUrl: variantVideoUrl || undefined,
+                  thumbnailUrl: variantThumbnailUrl || undefined,
                   isActive: true
                 });
               }
@@ -1644,6 +1805,8 @@ export class ProductService implements OnModuleInit {
       { header: 'MadeInRwanda', key: 'madeInRwanda', width: 18, validation: '=YesNo', note: 'Use yes or no.' },
       { header: 'Images', key: 'images', width: 48, required: true, note: 'Required. One or more public image URLs, separated by comma, semicolon, or new line.' },
       { header: 'SKU', key: 'sku', width: 18, note: 'Optional seller SKU. Variant rows can use different SKUs.' },
+      { header: 'VariantVideoUrl', key: 'variantVideoUrl', width: 38, note: 'Optional public product/variant demo video URL. When a row becomes a variant, this video stays on that variant.' },
+      { header: 'VariantThumbnailUrl', key: 'variantThumbnailUrl', width: 38, note: 'Optional public thumbnail/poster image URL for the variant video.' },
       ...variantFields.map(field => ({
         header: field.key,
         key: field.key,

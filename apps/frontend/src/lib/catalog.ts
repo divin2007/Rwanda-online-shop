@@ -32,6 +32,8 @@ export type ProductVariantDraft = {
   stockType: 'finite' | 'infinite' | 'on_demand';
   stockQuantity?: string;
   images?: string[];
+  videoUrl?: string;
+  thumbnailUrl?: string;
   isActive?: boolean;
 };
 

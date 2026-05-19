@@ -46,6 +46,7 @@ export class RiderController {
   }
 
   // FIX [RIDER-ME]: Removed queryUserId fallback — prevents IDOR.
+  @UseGuards(JwtAuthGuard)
   @Get('me')
   async findMe(@Request() req: any) {
     try {
@@ -59,6 +60,7 @@ export class RiderController {
   }
 
   // FIX [RIDER-STATUS]: Removed body.userId fallback — only JWT identity used.
+  @UseGuards(JwtAuthGuard)
   @Patch('me/status')
   async updateMyStatus(@Request() req: any, @Body() data: { isActive: boolean; location?: Coordinates }) {
     const userId = req.user?.userId;
@@ -68,12 +70,44 @@ export class RiderController {
   }
 
   // FIX [RIDER-LOCATION]: Removed body.userId fallback.
+  @UseGuards(JwtAuthGuard)
   @Patch('me/location')
   async updateMyLocation(@Request() req: any, @Body() data: { lat: number; lng: number }) {
     const userId = req.user?.userId;
     if (!userId) throw new ForbiddenException('Authentication required');
     const rider = await this.riderService.updateLocation(userId, data);
     return { success: true, data: rider };
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Post('settings/change-request')
+  async createSettingsChangeRequest(@Request() req: any, @Body() body: any) {
+    const request = await this.riderService.createSettingsChangeRequest(req.user.userId, body || {});
+    return { success: true, data: request };
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Roles(UserRole.ADMIN)
+  @Get('settings/change-requests')
+  async listSettingsChangeRequests(@Query('status') status?: string) {
+    const requests = await this.riderService.listSettingsChangeRequests(status || 'PENDING');
+    return { success: true, data: requests };
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Roles(UserRole.ADMIN)
+  @Post('settings/change-requests/:id/approve')
+  async approveSettingsChangeRequest(@Param('id') id: string, @Request() req: any, @Body() body?: { notes?: string }) {
+    const request = await this.riderService.approveSettingsChangeRequest(id, req.user.userId, body?.notes);
+    return { success: true, data: request };
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Roles(UserRole.ADMIN)
+  @Post('settings/change-requests/:id/reject')
+  async rejectSettingsChangeRequest(@Param('id') id: string, @Request() req: any, @Body() body?: { notes?: string }) {
+    const request = await this.riderService.rejectSettingsChangeRequest(id, req.user.userId, body?.notes);
+    return { success: true, data: request };
   }
 
   @Get('stats/:userId')

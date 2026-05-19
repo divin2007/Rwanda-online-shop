@@ -40,6 +40,7 @@ export class DeliveryController {
   }
 
   // FIX [DELIVERY-ACTIVE]: Removed queryUserId fallback — prevents IDOR.
+  @UseGuards(JwtAuthGuard)
   @Get('active')
   async getActive(@Request() req: any) {
     const userId = req.user?.userId;
@@ -49,6 +50,7 @@ export class DeliveryController {
   }
 
   // FIX [DELIVERY-HISTORY]: Removed queryUserId fallback — prevents IDOR.
+  @UseGuards(JwtAuthGuard)
   @Get('history')
   async getHistory(@Request() req: any) {
     const userId = req.user?.userId;

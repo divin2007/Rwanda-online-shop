@@ -8,7 +8,7 @@ import * as z from 'zod';
 import { Bike, ShieldCheck, ShoppingCart, Store, Truck } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useLanguage } from '@/context/LanguageContext';
-import { userApi } from '@/lib/api';
+import { productApi, userApi } from '@/lib/api';
 
 type ApiError = { response?: { data?: { error?: string; message?: string } } };
 
@@ -39,6 +39,8 @@ function RegisterContent() {
   const preRole = getRoleFromQuery(searchParams.get('role'));
   const [isLoading, setIsLoading] = useState(false);
   const [selectedRole, setSelectedRole] = useState<Role>(preRole);
+  const [categories, setCategories] = useState<Array<{ id: string; label: string; isActive?: boolean }>>([]);
+  const [preferredCategoryIds, setPreferredCategoryIds] = useState<string[]>([]);
   const { t, language, setLanguage } = useLanguage();
 
   const { register, handleSubmit, setValue, formState: { errors } } = useForm<RegisterFormValues>({
@@ -51,6 +53,21 @@ function RegisterContent() {
     setValue('role', role);
   };
 
+  React.useEffect(() => {
+    productApi.get('/products/catalog/categories')
+      .then(res => {
+        const list = Array.isArray(res.data?.data) ? res.data.data : [];
+        setCategories(list.filter((category: any) => category.isActive !== false).slice(0, 16));
+      })
+      .catch(() => setCategories([]));
+  }, []);
+
+  const togglePreferredCategory = (id: string) => {
+    setPreferredCategoryIds(current => current.includes(id)
+      ? current.filter(item => item !== id)
+      : [...current, id].slice(0, 10));
+  };
+
   const onSubmit = async (data: RegisterFormValues) => {
     setIsLoading(true);
     try {
@@ -61,6 +78,7 @@ function RegisterContent() {
         password: data.password,
         role: data.role,
         referredBy: data.referredBy,
+        preferredCategoryIds: data.role === 'BUYER' ? preferredCategoryIds : [],
       };
       const res = await userApi.post('/users/register', payload);
       if (res.data?.success) {
@@ -165,6 +183,33 @@ function RegisterContent() {
                 })}
               </div>
             </div>
+
+            {selectedRole === 'BUYER' && categories.length > 0 ? (
+              <div className="space-y-3 rounded-md border border-[#eaded4] bg-[#fff7ed] p-4">
+                <div className="flex items-end justify-between gap-3">
+                  <div>
+                    <p className="text-[10px] font-black uppercase tracking-[0.28em] text-[#e05300]">Personalize RMF</p>
+                    <p className="mt-1 text-xs font-semibold leading-5 text-[#7c2d12]">Choose what you want to see more often. You can change this later.</p>
+                  </div>
+                  <span className="text-[10px] font-black uppercase text-[#7c2d12]">{preferredCategoryIds.length} chosen</span>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {categories.map(category => {
+                    const active = preferredCategoryIds.includes(category.id);
+                    return (
+                      <button
+                        key={category.id}
+                        type="button"
+                        onClick={() => togglePreferredCategory(category.id)}
+                        className={`rounded-md border px-3 py-2 text-xs font-black transition ${active ? 'border-[#ff6b00] bg-[#ff6b00] text-white' : 'border-[#fed7aa] bg-white text-[#7c2d12] hover:border-[#ff6b00]'}`}
+                      >
+                        {category.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            ) : null}
 
             <div className="space-y-2">
               <label className="block text-[10px] font-black uppercase tracking-[0.28em] text-[#1b1c1c]" htmlFor="fullName">

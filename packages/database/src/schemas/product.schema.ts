@@ -41,6 +41,8 @@ export const productSchema = new Schema({
     stockQuantity: { type: Number, default: 0 },
     inStock: { type: Boolean, default: true },
     images: [{ type: String }],
+    videoUrl: { type: String },
+    thumbnailUrl: { type: String },
     attributes: { type: Map, of: Schema.Types.Mixed },
     isActive: { type: Boolean, default: true }
   }],

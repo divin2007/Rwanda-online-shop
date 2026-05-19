@@ -11,9 +11,94 @@ export class SellerService {
 
   constructor(
     @InjectModel('SellerProfile') private sellerModel: Model<any>,
-    @InjectModel('Market') private marketModel: Model<any>
+    @InjectModel('Market') private marketModel: Model<any>,
+    @InjectModel('ProfileChangeRequest') private changeRequestModel: Model<any>
   ) {
     this.locationService = new LocationService();
+  }
+
+  private cleanString(value: any, max = 500): string | undefined {
+    const cleaned = String(value ?? '').replace(/[\u0000-\u001f\u007f]/g, ' ').replace(/\s+/g, ' ').trim();
+    return cleaned ? cleaned.slice(0, max) : undefined;
+  }
+
+  private flatten(prefix: string, value: Record<string, any>, output: Record<string, any> = {}) {
+    for (const [key, item] of Object.entries(value || {})) {
+      if (item === undefined) continue;
+      const path = prefix ? `${prefix}.${key}` : key;
+      if (item && typeof item === 'object' && !Array.isArray(item)) {
+        this.flatten(path, item, output);
+      } else {
+        output[path] = item;
+      }
+    }
+    return output;
+  }
+
+  private sanitizeSellerSettings(input: any) {
+    const seller: any = {};
+    const market: any = {};
+    const shopDetails = input?.shopDetails || input?.shop || {};
+    const marketDetails = input?.market || input?.marketDetails || {};
+
+    const stallName = this.cleanString(input?.stallName || input?.shopName || shopDetails.name, 120);
+    if (stallName) {
+      seller.stallName = stallName;
+      seller.shopDetails = { ...(seller.shopDetails || {}), name: stallName };
+      market.name = stallName;
+    }
+    const description = this.cleanString(input?.description || shopDetails.description, 1200);
+    if (description) {
+      seller.description = description;
+      seller.shopDetails = { ...(seller.shopDetails || {}), description };
+      market.description = description;
+    }
+
+    for (const key of ['logoUrl', 'bannerUrl', 'imageUrl', 'hubImageUrl', 'tagline'] as const) {
+      const value = this.cleanString(shopDetails[key], key.endsWith('Url') ? 600 : 180);
+      if (value) seller.shopDetails = { ...(seller.shopDetails || {}), [key]: value };
+    }
+    if (Array.isArray(shopDetails.categories)) {
+      seller.shopDetails = {
+        ...(seller.shopDetails || {}),
+        categories: shopDetails.categories.map((item: any) => this.cleanString(item, 80)).filter(Boolean).slice(0, 20),
+      };
+    }
+    if (shopDetails.operatingHours && typeof shopDetails.operatingHours === 'object') {
+      seller.shopDetails = {
+        ...(seller.shopDetails || {}),
+        operatingHours: {
+          open: this.cleanString(shopDetails.operatingHours.open, 8),
+          close: this.cleanString(shopDetails.operatingHours.close, 8),
+          daysOpen: Array.isArray(shopDetails.operatingHours.daysOpen) ? shopDetails.operatingHours.daysOpen.map((day: any) => this.cleanString(day, 12)).filter(Boolean).slice(0, 7) : undefined,
+        },
+      };
+      market.operatingHours = seller.shopDetails.operatingHours;
+    }
+    if (input?.capabilities && typeof input.capabilities === 'object') {
+      seller.capabilities = {};
+      for (const key of ['delivery', 'bulk', 'custom', 'returns']) {
+        if (input.capabilities[key] !== undefined) seller.capabilities[key] = Boolean(input.capabilities[key]);
+      }
+    }
+    if (input?.isOnVacation !== undefined) seller.isOnVacation = Boolean(input.isOnVacation);
+    const vacationMessage = this.cleanString(input?.vacationMessage, 240);
+    if (vacationMessage) seller.vacationMessage = vacationMessage;
+
+    for (const key of ['imageUrl'] as const) {
+      const value = this.cleanString(marketDetails[key], 600);
+      if (value) market[key] = value;
+    }
+    if (marketDetails.location?.address) {
+      market['location.address'] = this.cleanString(marketDetails.location.address, 240);
+    }
+    if (marketDetails.location?.coordinates && Array.isArray(marketDetails.location.coordinates)) {
+      const [lng, lat] = marketDetails.location.coordinates.map(Number);
+      if (Number.isFinite(lng) && Number.isFinite(lat)) market['location.coordinates'] = [lng, lat];
+    }
+
+    // Slugs are intentionally ignored; they are stable public URLs.
+    return { seller, market };
   }
 
   async findAll(filter: any = {}): Promise<any[]> {
@@ -133,6 +218,83 @@ export class SellerService {
     }
 
     return updated;
+  }
+
+  async createSettingsChangeRequest(userId: string, data: any): Promise<any> {
+    const seller = await this.findByUserId(userId);
+    const requestedChanges = this.sanitizeSellerSettings(data);
+    if (!Object.keys(requestedChanges.seller).length && !Object.keys(requestedChanges.market).length) {
+      throw new BadRequestException('No editable seller or market settings were provided');
+    }
+
+    const existing = await this.changeRequestModel.findOne({
+      targetType: 'SELLER',
+      targetId: seller._id,
+      status: 'PENDING',
+    }).exec();
+    if (existing) {
+      throw new ConflictException('A seller settings change request is already awaiting admin review');
+    }
+
+    const request = await this.changeRequestModel.create({
+      targetType: 'SELLER',
+      targetId: seller._id,
+      userId: seller.userId,
+      requestedChanges,
+      auditTrail: [{ action: 'created', actorId: userId, note: 'seller_settings_change_requested', at: new Date() }],
+    });
+    this.notifyAdminsNewApplication(userId, `${seller.stallName || 'Seller'} settings change`).catch(() => {});
+    return request;
+  }
+
+  async listSettingsChangeRequests(status = 'PENDING'): Promise<any[]> {
+    const query: any = { targetType: 'SELLER' };
+    if (status) query.status = status;
+    return this.changeRequestModel.find(query).sort({ createdAt: -1 }).exec();
+  }
+
+  async approveSettingsChangeRequest(id: string, adminId: string, notes?: string): Promise<any> {
+    const request = await this.changeRequestModel.findOne({ _id: id, targetType: 'SELLER', status: 'PENDING' }).exec();
+    if (!request) throw new NotFoundException('Seller settings change request not found');
+
+    const changes = request.requestedChanges || {};
+    const sellerUpdates = this.flatten('', changes.seller || {});
+    if (Object.keys(sellerUpdates).length) {
+      await this.sellerModel.findByIdAndUpdate(request.targetId, { $set: sellerUpdates }).exec();
+    }
+    if (Object.keys(changes.market || {}).length) {
+      const seller = await this.sellerModel.findById(request.targetId).exec();
+      if (seller?.marketId) {
+        const market = await this.marketModel.findById(seller.marketId).exec();
+        const sellerOwnsMarket = market?.type === MarketType.INDIVIDUAL || String(market?.ownerId || '') === String(seller.userId || '');
+        if (sellerOwnsMarket) {
+          await this.marketModel.findByIdAndUpdate(seller.marketId, { $set: changes.market }).exec();
+        }
+      }
+    }
+
+    request.status = 'APPROVED';
+    request.reviewedBy = /^[0-9a-fA-F]{24}$/.test(String(adminId || '')) ? adminId : undefined;
+    request.reviewNotes = this.cleanString(notes, 500);
+    request.reviewedAt = new Date();
+    request.appliedAt = new Date();
+    request.auditTrail.push({ action: 'approved', actorId: adminId, note: request.reviewNotes, at: new Date() });
+    await request.save();
+    this.triggerNotification(request.userId, 'Your seller settings update was approved and applied.');
+    return request;
+  }
+
+  async rejectSettingsChangeRequest(id: string, adminId: string, notes?: string): Promise<any> {
+    const request = await this.changeRequestModel.findOne({ _id: id, targetType: 'SELLER', status: 'PENDING' }).exec();
+    if (!request) throw new NotFoundException('Seller settings change request not found');
+    request.status = 'REJECTED';
+    request.reviewedBy = /^[0-9a-fA-F]{24}$/.test(String(adminId || '')) ? adminId : undefined;
+    request.reviewNotes = this.cleanString(notes, 500);
+    request.reviewedAt = new Date();
+    request.auditTrail.push({ action: 'rejected', actorId: adminId, note: request.reviewNotes, at: new Date() });
+    await request.save();
+    this.triggerNotification(request.userId, request.reviewNotes || 'Your seller settings update needs changes before approval.');
+    return request;
   }
 
   async approve(sellerId: string): Promise<any> {

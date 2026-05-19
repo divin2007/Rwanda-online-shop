@@ -159,23 +159,48 @@ export class DeliveryGateway implements OnGatewayConnection, OnGatewayDisconnect
     return R * c;
   }
 
-  // Broadcast to all active riders (radius check removed per user request)
-  broadcastToNearbyRiders(deliveryReq: any, marketLat: number, marketLng: number) {
+  // Broadcast only to currently connected riders inside the adaptive pickup radius.
+  broadcastToNearbyRiders(
+    deliveryReq: any,
+    marketLat: number,
+    marketLng: number,
+    options: { radiusMeters?: number; searchSurcharge?: number; deliveryFee?: number } = {}
+  ): { notifiedCount: number; riderIds: string[] } {
+    const radiusMeters = Math.max(50, Number(options.radiusMeters || 150));
+    const maxLocationAgeMs = Number(process.env.RIDER_LOCATION_MAX_AGE_MS || 120000);
     let notifiedCount = 0;
-    this.logger.log(`Starting broadcast for delivery ${deliveryReq.orderNumber}. Active riders: ${this.activeRiders.size}`);
+    const riderIds: string[] = [];
+    this.logger.log(`Starting ${radiusMeters}m broadcast for delivery ${deliveryReq.orderNumber}. Active riders: ${this.activeRiders.size}`);
     
     for (const [riderId, data] of this.activeRiders.entries()) {
       try {
+        if (!Number.isFinite(data.lat) || !Number.isFinite(data.lng)) continue;
+        if (Date.now() - Number(data.updatedAt || 0) > maxLocationAgeMs) continue;
+        const distanceMeters = this.getDistanceMeters(marketLat, marketLng, data.lat, data.lng);
+        if (distanceMeters > radiusMeters) continue;
         this.server.to(data.socketId).emit('delivery:assigned', {
           ...deliveryReq,
-          distanceFromMarket: `${Math.round(this.getDistanceMeters(marketLat, marketLng, data.lat, data.lng))}m`
+          dispatch: {
+            ...(deliveryReq.dispatch || {}),
+            radiusMeters,
+            searchSurcharge: options.searchSurcharge || 0,
+            deliveryFee: options.deliveryFee,
+          },
+          financials: {
+            ...(deliveryReq.financials || {}),
+            deliveryFee: options.deliveryFee ?? deliveryReq.financials?.deliveryFee,
+            searchSurcharge: options.searchSurcharge || 0,
+          },
+          distanceMeters: Math.round(distanceMeters),
+          distanceFromMarket: `${Math.round(distanceMeters)}m`
         });
         notifiedCount++;
+        riderIds.push(riderId);
       } catch (err) {
         this.logger.error(`Failed to emit to rider ${riderId} on socket ${data.socketId}`, err);
       }
     }
-    this.logger.log(`Broadcasted delivery request to ${notifiedCount} active riders.`);
-    return notifiedCount;
+    this.logger.log(`Broadcasted delivery request to ${notifiedCount} rider(s) inside ${radiusMeters}m.`);
+    return { notifiedCount, riderIds };
   }
 }

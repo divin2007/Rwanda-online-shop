@@ -10,6 +10,7 @@ import { useWishlist } from '@/context/WishlistContext';
 import { useAuth } from '@/context/AuthContext';
 import { formatCurrency } from '@/lib/format';
 import { getProductUrl } from '@/lib/urls';
+import { trackProductSignal } from '@/lib/recommendations';
 import toast from 'react-hot-toast';
 
 interface ProductCardProps {
@@ -56,6 +57,7 @@ export const ProductCard = ({ product, isCompact = false }: ProductCardProps) =>
   const handleBuyNow = async (e: React.MouseEvent) => {
     e.preventDefault();
     if (!user) return toast.error('Please log in to negotiate with the seller');
+    trackProductSignal(product, 'add_to_cart');
 
     const sellerProfile = typeof product.sellerId === 'object' ? product.sellerId : null;
     const sellerId = sellerProfile?._id || product.sellerId;
@@ -145,7 +147,7 @@ export const ProductCard = ({ product, isCompact = false }: ProductCardProps) =>
   return (
     <div className="group flex h-full flex-col overflow-hidden rounded-xl border border-border-light bg-white shadow-sm transition-all duration-300 hover:-translate-y-1 hover:border-primary/20 hover:shadow-xl cinematic-shadow">
       <div className="relative aspect-[4/3] overflow-hidden bg-background-surface">
-        <Link href={productUrl} className="relative block h-full w-full">
+        <Link href={productUrl} onClick={() => trackProductSignal(product, 'product_view')} className="relative block h-full w-full">
           <Image
             src={normalizedImages[0]}
             alt={product.name}
@@ -177,6 +179,7 @@ export const ProductCard = ({ product, isCompact = false }: ProductCardProps) =>
         <button
           onClick={(e) => {
             e.preventDefault();
+            if (!isInWishlist(product._id)) trackProductSignal(product, 'wishlist');
             toggleWishlist(product._id);
           }}
           aria-label="Toggle wishlist"
@@ -195,7 +198,7 @@ export const ProductCard = ({ product, isCompact = false }: ProductCardProps) =>
         </div>
 
         <h3 className={`line-clamp-2 font-bold leading-snug tracking-tight text-text-primary transition-colors group-hover:text-primary ${isCompact ? 'text-base' : 'text-lg'}`}>
-          <Link href={productUrl}>{product.name}</Link>
+          <Link href={productUrl} onClick={() => trackProductSignal(product, 'product_view')}>{product.name}</Link>
         </h3>
 
         <div className={`grid ${isCompact ? 'mt-3 gap-2' : 'mt-4 gap-3'}`}>
@@ -224,7 +227,10 @@ export const ProductCard = ({ product, isCompact = false }: ProductCardProps) =>
             </button>
           ) : (
             <button
-              onClick={() => addToCart(product)}
+              onClick={() => {
+                trackProductSignal(product, 'add_to_cart');
+                addToCart(product);
+              }}
               className={`inline-flex w-full items-center justify-center gap-2 rounded-xl bg-primary font-bold uppercase tracking-widest text-white shadow-md shadow-primary/20 transition-all hover:-translate-y-0.5 hover:shadow-lg hover:shadow-primary/30 ${isCompact ? 'h-9 px-3 text-[10px]' : 'h-11 px-4 text-xs'}`}
             >
               <ShoppingCart size={isCompact ? 14 : 18} />

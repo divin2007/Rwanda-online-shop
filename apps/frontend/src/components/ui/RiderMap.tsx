@@ -56,6 +56,7 @@ const MapViewUpdater = ({ centerLat, centerLng }: { centerLat: number; centerLng
 };
 
 export const RiderMap = ({ marketId, centerLat = -1.9441, centerLng = 30.0619, marketName }: { marketId: string, centerLat?: number, centerLng?: number, marketName?: string }) => {
+  const instanceId = React.useId();
   const { data } = useSocket<RiderLocation>(process.env.NEXT_PUBLIC_DELIVERY_SERVICE_URL || 'http://localhost:3008', 'rider:public:locations');
   const [riders, setRiders] = useState<Record<string, RiderLocation>>({});
   const [profiles, setProfiles] = useState<Record<string, RiderProfile>>({});
@@ -69,13 +70,16 @@ export const RiderMap = ({ marketId, centerLat = -1.9441, centerLng = 30.0619, m
 
   useEffect(() => {
     setIsClient(true);
-    setMapInstanceKey(`rider-map-${Date.now()}`);
+    const randomKey = typeof crypto !== 'undefined' && 'randomUUID' in crypto
+      ? crypto.randomUUID()
+      : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    setMapInstanceKey(`rider-map-${instanceId}-${randomKey}`);
     if (isAdmin) {
       marketApi.get('/markets').then(res => {
         if (res.data?.success) setMarkets(res.data.data);
       }).catch(err => console.error('Failed to fetch markets for map:', err));
     }
-  }, [isAdmin]);
+  }, [instanceId, isAdmin]);
 
   useEffect(() => {
     if (data) {

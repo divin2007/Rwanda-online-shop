@@ -1,74 +1,92 @@
 import React from 'react';
 import { Tabs } from 'expo-router';
-import { Home, ShoppingCart, Bell, Store } from 'lucide-react-native';
+import { Bike, BriefcaseBusiness, Home, MapPinned, ReceiptText, ShieldCheck, ShoppingCart, UserCircle } from 'lucide-react-native';
+import { AppHeaderSearch } from '../../src/components/AppHeader';
+import { colors } from '../../src/theme';
+import { useCart } from '../../src/context/CartContext';
+import { useAuth } from '../../src/context/AuthContext';
 
 export default function TabsLayout() {
+  const { totalQuantity } = useCart();
+  const { user, isAuthenticated } = useAuth();
+  const roleLabel = user?.role === 'SELLER' ? 'Seller' : user?.role === 'RIDER' ? 'Rider' : user?.role === 'ADMIN' ? 'Admin' : 'Buyer';
+  const RoleIcon = user?.role === 'RIDER' ? Bike : user?.role === 'SELLER' || user?.role === 'ADMIN' ? BriefcaseBusiness : ShieldCheck;
+
   return (
     <Tabs
       screenOptions={{
-        tabBarActiveTintColor: '#ff6b00',
-        tabBarInactiveTintColor: '#8e9e95',
+        tabBarActiveTintColor: colors.orange,
+        tabBarInactiveTintColor: colors.faint,
         tabBarStyle: {
-          backgroundColor: '#ffffff',
+          backgroundColor: colors.card,
           borderTopWidth: 1,
-          borderTopColor: '#e0e0e0',
-          height: 64,
+          borderTopColor: colors.line,
+          height: 68,
           paddingBottom: 10,
           paddingTop: 8,
-          elevation: 8,
-          shadowColor: '#000000',
-          shadowOffset: { width: 0, height: -2 },
-          shadowOpacity: 0.05,
-          shadowRadius: 10,
         },
         tabBarLabelStyle: {
           fontSize: 10,
-          fontWeight: 'bold',
-          textTransform: 'uppercase',
-          letterSpacing: 0.5,
+          fontWeight: '800',
         },
         headerStyle: {
-          backgroundColor: '#012d1d',
+          backgroundColor: colors.card,
         },
-        headerTintColor: '#ffffff',
-        headerTitleStyle: {
-          fontWeight: '900',
-          fontSize: 18,
-          textTransform: 'uppercase',
-          letterSpacing: 1.5,
-        },
+        headerTintColor: colors.ink,
+        headerTitle: () => <AppHeaderSearch />,
+        headerTitleAlign: 'left',
+        headerTitleContainerStyle: { left: 16, right: 10 },
+        headerShadowVisible: true,
       }}
     >
       <Tabs.Screen
         name="index"
         options={{
+          title: 'RMF',
+          tabBarLabel: 'Shop',
+          tabBarIcon: ({ color, size }) => <Home color={color} size={size - 2} />,
+        }}
+      />
+      <Tabs.Screen
+        name="markets"
+        options={{
           title: 'Markets',
           tabBarLabel: 'Markets',
-          tabBarIcon: ({ color, size }) => <Home color={color} size={size - 2} />,
+          tabBarIcon: ({ color, size }) => <MapPinned color={color} size={size - 2} />,
         }}
       />
       <Tabs.Screen
         name="cart"
         options={{
-          title: 'My Cart',
+          title: 'Cart',
           tabBarLabel: 'Cart',
+          tabBarBadge: totalQuantity > 0 ? totalQuantity : undefined,
           tabBarIcon: ({ color, size }) => <ShoppingCart color={color} size={size - 2} />,
+        }}
+      />
+      <Tabs.Screen
+        name="orders"
+        options={{
+          title: 'Orders',
+          tabBarLabel: 'Orders',
+          tabBarIcon: ({ color, size }) => <ReceiptText color={color} size={size - 2} />,
         }}
       />
       <Tabs.Screen
         name="seller"
         options={{
-          title: 'My Store',
-          tabBarLabel: 'Seller',
-          tabBarIcon: ({ color, size }) => <Store color={color} size={size - 2} />,
+          title: roleLabel,
+          tabBarLabel: roleLabel,
+          href: isAuthenticated ? '/seller' : null,
+          tabBarIcon: ({ color, size }) => <RoleIcon color={color} size={size - 2} />,
         }}
       />
       <Tabs.Screen
-        name="notifications"
+        name="account"
         options={{
-          title: 'Alerts',
-          tabBarLabel: 'Alerts',
-          tabBarIcon: ({ color, size }) => <Bell color={color} size={size - 2} />,
+          title: 'Account',
+          tabBarLabel: 'Account',
+          tabBarIcon: ({ color, size }) => <UserCircle color={color} size={size - 2} />,
         }}
       />
     </Tabs>

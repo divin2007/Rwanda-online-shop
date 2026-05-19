@@ -116,6 +116,13 @@ export class ProductController {
     return { success: true, data: facets };
   }
 
+  @UseGuards(JwtAuthGuard)
+  @Get('recommendations/for-me')
+  async getRecommendations(@Request() req: any, @Query() query: any) {
+    const products = await this.productService.getRecommendedProducts(req.user?.userId, query || {});
+    return { success: true, data: products };
+  }
+
   // FIX [PRODUCT-GOVERNANCE]: Was unauthenticated admin report.
   @UseGuards(JwtAuthGuard)
   @Roles(UserRole.ADMIN)
@@ -148,6 +155,13 @@ export class ProductController {
   async findById(@Param('id') id: string) {
     const product = await this.productService.findById(id);
     return { success: true, data: product };
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Post(':id/interactions')
+  async recordProductInteraction(@Param('id') id: string, @Body() body: { action?: string } = {}, @Request() req: any) {
+    const result = await this.productService.recordProductInteraction(req.user.userId, id, body.action || 'product_view');
+    return { success: true, data: result };
   }
 
   // FIX [PRODUCT-UPDATE]: Was unauthenticated — anyone could modify any product.

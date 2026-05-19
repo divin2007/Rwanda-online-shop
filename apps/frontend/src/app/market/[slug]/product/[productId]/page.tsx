@@ -26,20 +26,22 @@ import {
   ChevronRight,
   ChevronLeft,
   Maximize2,
-  X
+  X,
+  PlayCircle
 } from 'lucide-react';
 
 type ApiError = { response?: { data?: { message?: string } } };
 
-export default function ProductDetailPage({ params }: { params: { slug: string, productId: string } }) {
+export default function ProductDetailPage({ params }: { params: Promise<{ slug: string, productId: string }> }) {
+  const { slug, productId } = React.use(params);
   const { t } = useLanguage();
   const { user } = useAuth();
   const router = useRouter();
   const { addToCart } = useCart();
   const { wishlist, toggleWishlist } = useWishlist();
 
-  const { data: product, loading, execute: fetchProduct } = useApi(productApi, 'get', `/products/${params.productId}`);
-  const { data: reviewsData } = useApi(reviewApi, 'get', `/reviews/target/product/${params.productId}`);
+  const { data: product, loading, execute: fetchProduct } = useApi(productApi, 'get', `/products/${productId}`);
+  const { data: reviewsData } = useApi(reviewApi, 'get', `/reviews/target/product/${productId}`);
   const [activeImageIndex, setActiveImageIndex] = React.useState(0);
   const [isLightboxOpen, setIsLightboxOpen] = React.useState(false);
   const [customization, setCustomization] = React.useState('');
@@ -88,7 +90,7 @@ export default function ProductDetailPage({ params }: { params: { slug: string, 
 
   useEffect(() => {
     fetchProduct();
-  }, [params.productId, fetchProduct]);
+  }, [productId, fetchProduct]);
 
   // Premium auto-slideshow: Cycles through images smoothly and resets timer on manual interaction
   useEffect(() => {
@@ -248,8 +250,8 @@ export default function ProductDetailPage({ params }: { params: { slug: string, 
           <span className="text-[#e0e0e0] font-light">/</span>
           <Link href="/markets" className="hover:text-[#ff6b00] transition-colors">Markets</Link>
           <span className="text-[#e0e0e0] font-light">/</span>
-          <Link href={getMarketUrl(params.slug)} className="hover:text-[#ff6b00] transition-colors capitalize text-[#1b1c1c]">
-            {params.slug.replace(/-/g, ' ')}
+          <Link href={getMarketUrl(slug)} className="hover:text-[#ff6b00] transition-colors capitalize text-[#1b1c1c]">
+            {slug.replace(/-/g, ' ')}
           </Link>
           <span className="text-[#e0e0e0] font-light">/</span>
           <span className="text-[#ff6b00] tracking-normal font-bold lowercase truncate max-w-[200px]">{product.name}</span>
@@ -395,6 +397,26 @@ export default function ProductDetailPage({ params }: { params: { slug: string, 
                     <ChevronRight size={16} />
                   </button>
                 </div>
+              </div>
+            )}
+
+            {selectedVariant?.videoUrl && (
+              <div className="overflow-hidden rounded-3xl border border-[#e0e0e0] bg-white shadow-xl">
+                <div className="flex items-center justify-between border-b border-[#e0e0e0]/60 px-6 py-4">
+                  <div>
+                    <p className="text-[10px] font-black uppercase tracking-[0.2em] text-[#ff6b00]">Variant video</p>
+                    <h3 className="mt-1 text-lg font-black text-[#1b1c1c]">{selectedVariant.title || product.name}</h3>
+                  </div>
+                  <PlayCircle size={24} className="text-[#ff6b00]" />
+                </div>
+                <video
+                  src={selectedVariant.videoUrl}
+                  poster={selectedVariant.thumbnailUrl || displayedImages[0]}
+                  controls
+                  playsInline
+                  preload="metadata"
+                  className="aspect-video w-full bg-black object-cover"
+                />
               </div>
             )}
 
@@ -684,11 +706,11 @@ export default function ProductDetailPage({ params }: { params: { slug: string, 
                   {product.seller?.name || 'Verifiable Partner'}
                 </p>
                 <p className="text-[9px] text-white/50 uppercase tracking-widest mt-0.5 truncate flex items-center gap-2">
-                  <Store size={10} /> {params.slug.replace(/-/g, ' ')} Stall
+                  <Store size={10} /> {slug.replace(/-/g, ' ')} Stall
                 </p>
               </div>
               <Link
-                href={getMarketUrl(params.slug)}
+                href={getMarketUrl(slug)}
                 className="flex items-center justify-center w-10 h-10 rounded-full bg-white/5 text-[#ff6b00] hover:bg-[#ff6b00] hover:text-white transition-all border border-white/10"
               >
                 <ArrowLeft size={16} className="rotate-180" />

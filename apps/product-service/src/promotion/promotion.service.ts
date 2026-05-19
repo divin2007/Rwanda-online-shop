@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, BadRequestException, ConflictException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, ConflictException, ForbiddenException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { PromotionType } from '@rmf/shared-types';
@@ -104,10 +104,17 @@ export class PromotionService {
     });
   }
 
-  async deletePromotion(id: string): Promise<any> {
+  async deletePromotion(id: string, actorUserId?: string, actorRole?: string): Promise<any> {
     const promo = await this.promotionModel.findById(id);
     if (!promo) {
       throw new NotFoundException('Promotion not found');
+    }
+
+    if (actorRole !== 'ADMIN' && actorUserId) {
+      const seller = await this.productModel.db.model('SellerProfile').findOne({ userId: actorUserId }).exec();
+      if (!seller || String(promo.sellerId) !== String(seller._id)) {
+        throw new ForbiddenException('You can only delete your own promotions');
+      }
     }
     
     // Soft delete

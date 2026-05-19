@@ -1,6 +1,6 @@
 import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
-import { sellerProfileSchema, marketSchema } from '@rmf/database';
+import { sellerProfileSchema, marketSchema, profileChangeRequestSchema } from '@rmf/database';
 import { AuthGuardModule } from '@rmf/auth';
 import { SellerService } from './seller.service';
 import { SellerController } from './seller.controller';
@@ -9,7 +9,8 @@ import { SellerController } from './seller.controller';
   imports: [
     MongooseModule.forFeature([
       { name: 'SellerProfile', schema: sellerProfileSchema },
-      { name: 'Market', schema: marketSchema }
+      { name: 'Market', schema: marketSchema },
+      { name: 'ProfileChangeRequest', schema: profileChangeRequestSchema }
     ]),
     AuthGuardModule.forRoot(),
   ],

@@ -1,6 +1,18 @@
 import { Schema, model } from 'mongoose';
 import { UserRole } from '@rmf/shared-types';
 
+const recommendationSignalSchema = new Schema({
+  key: { type: String, required: true, trim: true },
+  score: { type: Number, default: 0 },
+  lastSeenAt: { type: Date, default: Date.now },
+}, { _id: false });
+
+const recommendationObjectSignalSchema = new Schema({
+  refId: { type: Schema.Types.ObjectId, required: true },
+  score: { type: Number, default: 0 },
+  lastSeenAt: { type: Date, default: Date.now },
+}, { _id: false });
+
 export const userSchema = new Schema({
   fullName: { type: String, required: true },
   email: { type: String, required: true, unique: true },
@@ -50,7 +62,21 @@ export const userSchema = new Schema({
     rider: {
       autoAcceptNearby: { type: Boolean, default: false },
       maxPickupDistanceKm: { type: Number, default: 8 }
+    },
+    discovery: {
+      categoryIds: [{ type: String, trim: true, lowercase: true }],
+      marketIds: [{ type: Schema.Types.ObjectId, ref: 'Market' }],
+      onboardingCompleted: { type: Boolean, default: false },
+      updatedAt: Date
     }
+  },
+  recommendationProfile: {
+    categoryScores: [recommendationSignalSchema],
+    marketScores: [recommendationObjectSignalSchema],
+    sellerScores: [recommendationObjectSignalSchema],
+    productScores: [recommendationObjectSignalSchema],
+    recentProductIds: [{ type: Schema.Types.ObjectId, ref: 'Product' }],
+    lastInteractionAt: Date
   },
   security: {
     lastLoginAt: Date,
@@ -62,5 +88,8 @@ export const userSchema = new Schema({
   },
   deletedAt: { type: Date, default: null } // Soft delete
 }, { timestamps: true });
+
+userSchema.index({ 'preferences.discovery.categoryIds': 1 });
+userSchema.index({ 'recommendationProfile.categoryScores.key': 1 });
 
 export const User = model('User', userSchema);

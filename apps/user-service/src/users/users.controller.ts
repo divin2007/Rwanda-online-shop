@@ -61,6 +61,27 @@ export class UsersController {
   }
 
   @UseGuards(JwtAuthGuard)
+  @Get('preferences/discovery')
+  async getDiscoveryPreferences(@Request() req: any) {
+    const preferences = await this.usersService.getDiscoveryPreferences(req.user.userId);
+    return { success: true, data: preferences };
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Put('preferences/discovery')
+  async updateDiscoveryPreferences(@Request() req: any, @Body() body: any) {
+    const preferences = await this.usersService.updateDiscoveryPreferences(req.user.userId, body || {});
+    return { success: true, data: preferences };
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Post('recommendations/interactions')
+  async recordRecommendationInteraction(@Request() req: any, @Body() body: any) {
+    const result = await this.usersService.recordRecommendationInteraction(req.user.userId, body || {});
+    return { success: true, data: result };
+  }
+
+  @UseGuards(JwtAuthGuard)
   @Post('wishlist')
   async addToWishlist(@Request() req: any, @Body('productId') productId: string) {
     const user = await this.usersService.addToWishlist(req.user.userId, productId);

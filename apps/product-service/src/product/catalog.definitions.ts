@@ -1,3 +1,5 @@
+import { shopifyExtendedCatalogCategories } from './catalog.shopify-extended';
+
 export type CatalogFieldType = 'text' | 'number' | 'select' | 'multi_select' | 'boolean' | 'date' | 'color';
 
 export type CatalogField = {
@@ -27,7 +29,7 @@ export type CatalogCategory = {
   attributes: CatalogField[];
 };
 
-export const catalogCategories: CatalogCategory[] = [
+const rmfCoreCatalogCategories: CatalogCategory[] = [
   {
     id: 'grocery',
     label: 'Fresh Produce & Groceries',
@@ -184,11 +186,23 @@ export const catalogCategories: CatalogCategory[] = [
   },
 ];
 
+export const catalogCategories: CatalogCategory[] = [
+  ...rmfCoreCatalogCategories,
+  ...shopifyExtendedCatalogCategories,
+];
+
 const aliasMap = new Map<string, CatalogCategory>();
+const addAlias = (key: string, category: CatalogCategory) => {
+  const normalized = key.toLowerCase();
+  if (!aliasMap.has(normalized)) {
+    aliasMap.set(normalized, category);
+  }
+};
+
 for (const category of catalogCategories) {
-  aliasMap.set(category.id.toLowerCase(), category);
-  aliasMap.set(category.label.toLowerCase(), category);
-  category.aliases.forEach(alias => aliasMap.set(alias.toLowerCase(), category));
+  addAlias(category.id, category);
+  addAlias(category.label, category);
+  category.aliases.forEach(alias => addAlias(alias, category));
 }
 
 export const resolveCatalogCategory = (value: unknown): CatalogCategory => {

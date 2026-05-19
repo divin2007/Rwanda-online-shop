@@ -26,7 +26,10 @@ const createRedisCache = (namespace: string) => {
     namespace,
     throwOnConnectError: false,
     throwErrors: false,
-    connectionTimeout: 1500,
+    // Dev machines can be busy while Docker Redis is waking up. A 1.5s timeout
+    // closes the client while node-redis can still receive replies, which can
+    // crash the market service. Keep cache optional but give Redis time to connect.
+    connectionTimeout: 10000,
   });
   const cache = new Keyv(adapter, { namespace, useKeyPrefix: false });
 

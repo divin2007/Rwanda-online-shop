@@ -59,15 +59,16 @@ type DeliveryInfo = {
   pickup?: { sellerConfirmed?: boolean; qrScannedAt?: string };
 };
 
-export default function SellerOrderDetailPage({ params }: { params: { orderId: string } }) {
+export default function SellerOrderDetailPage({ params }: { params: Promise<{ orderId: string }> }) {
+  const { orderId: routeOrderId } = React.use(params);
   const { user } = useAuth();
-  const { data: order, loading, execute: fetchOrder } = useApi<SellerOrder>(orderApi, 'get', `/orders/${params.orderId}`);
+  const { data: order, loading, execute: fetchOrder } = useApi<SellerOrder>(orderApi, 'get', `/orders/${routeOrderId}`);
   const [delivery, setDelivery] = useState<DeliveryInfo | null>(null);
   const [showReceipt, setShowReceipt] = useState(false);
 
   useEffect(() => {
     fetchOrder();
-  }, [params.orderId, fetchOrder]);
+  }, [routeOrderId, fetchOrder]);
 
   useEffect(() => {
     if (order?.deliveryId) {
@@ -79,7 +80,7 @@ export default function SellerOrderDetailPage({ params }: { params: { orderId: s
 
   const updateStatus = async (status: string) => {
     try {
-      await orderApi.put(`/orders/${params.orderId}/status`, { status, userId: user?.id });
+      await orderApi.put(`/orders/${routeOrderId}/status`, { status, userId: user?.id });
       toast.success(`Order updated to ${status.replace(/_/g, ' ')}`);
       fetchOrder();
     } catch (e) {
@@ -127,7 +128,7 @@ export default function SellerOrderDetailPage({ params }: { params: { orderId: s
       : [];
 
   const totalQty = productsList.reduce((s: number, p: OrderLine) => s + (p.quantity || 1), 0);
-  const orderId = order._id || params.orderId;
+  const orderId = order._id || routeOrderId;
   const orderNumber = order.orderNumber || `#${orderId.slice(0, 8).toUpperCase()}`;
   const financials: ReceiptOrder['financials'] = {
     subtotal: 0,

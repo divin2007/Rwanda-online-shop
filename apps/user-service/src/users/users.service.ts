@@ -30,6 +30,12 @@ type UserPreferences = {
     autoAcceptNearby: boolean;
     maxPickupDistanceKm: number;
   };
+  discovery: {
+    categoryIds: string[];
+    marketIds: string[];
+    onboardingCompleted: boolean;
+    updatedAt?: Date;
+  };
 };
 
 const preferenceDefaults: UserPreferences = {
@@ -58,6 +64,11 @@ const preferenceDefaults: UserPreferences = {
     autoAcceptNearby: false,
     maxPickupDistanceKm: 8,
   },
+  discovery: {
+    categoryIds: [],
+    marketIds: [],
+    onboardingCompleted: false,
+  },
 };
 
 const asBoolean = (value: unknown, fallback: boolean) => (typeof value === 'boolean' ? value : fallback);
@@ -70,12 +81,29 @@ const safeText = (value: unknown, maxLength: number) => {
   if (typeof value !== 'string') return '';
   return value.replace(/[\u0000-\u001f\u007f]/g, '').trim().slice(0, maxLength);
 };
+const normalizeCategoryId = (value: unknown) => String(value || '')
+  .trim()
+  .toLowerCase()
+  .replace(/[^a-z0-9_-]+/g, '-')
+  .replace(/^-+|-+$/g, '')
+  .slice(0, 80);
+const uniqueCleanCategories = (value: unknown) => Array.from(new Set(
+  (Array.isArray(value) ? value : String(value || '').split(','))
+    .map(normalizeCategoryId)
+    .filter(Boolean),
+)).slice(0, 30);
+const uniqueObjectIds = (value: unknown) => Array.from(new Set(
+  (Array.isArray(value) ? value : String(value || '').split(','))
+    .map(item => String(item || '').trim())
+    .filter(item => Types.ObjectId.isValid(item)),
+)).slice(0, 30);
 const sanitizePreferences = (raw: any): UserPreferences => {
   const current = raw || {};
   const notifications = current.notifications || {};
   const privacy = current.privacy || {};
   const seller = current.seller || {};
   const rider = current.rider || {};
+  const discovery = current.discovery || {};
   const language = ['en', 'fr', 'kin'].includes(current.language) ? current.language : preferenceDefaults.language;
   const currency = ['RWF', 'USD', 'EUR'].includes(current.currency) ? current.currency : preferenceDefaults.currency;
 
@@ -105,7 +133,49 @@ const sanitizePreferences = (raw: any): UserPreferences => {
       autoAcceptNearby: asBoolean(rider.autoAcceptNearby, preferenceDefaults.rider.autoAcceptNearby),
       maxPickupDistanceKm: clampNumber(rider.maxPickupDistanceKm, preferenceDefaults.rider.maxPickupDistanceKm, 1, 40),
     },
+    discovery: {
+      categoryIds: uniqueCleanCategories(discovery.categoryIds),
+      marketIds: uniqueObjectIds(discovery.marketIds),
+      onboardingCompleted: asBoolean(discovery.onboardingCompleted, false),
+      updatedAt: discovery.updatedAt ? new Date(discovery.updatedAt) : undefined,
+    },
   };
+};
+
+const interactionWeights: Record<string, number> = {
+  view: 1,
+  product_view: 2,
+  market_view: 1.5,
+  video_view: 1.25,
+  video_like: 4,
+  video_comment: 5,
+  wishlist: 6,
+  like: 6,
+  add_to_cart: 8,
+  purchase: 12,
+  dislike: -4,
+  dismiss: -2,
+};
+
+const upsertSignal = (items: any[], keyName: 'key' | 'refId', key: string, delta: number) => {
+  if (!key) return items;
+  const normalized = keyName === 'key' ? normalizeCategoryId(key) : key;
+  const current = Array.isArray(items) ? [...items] : [];
+  const found = current.find(item => String(item?.[keyName]) === normalized);
+  if (found) {
+    found.score = Math.max(-20, Math.min(1000, Number(found.score || 0) + delta));
+    found.lastSeenAt = new Date();
+  } else {
+    current.push({
+      [keyName]: keyName === 'refId' ? new Types.ObjectId(normalized) : normalized,
+      score: Math.max(-20, Math.min(1000, delta)),
+      lastSeenAt: new Date(),
+    });
+  }
+  return current
+    .filter(item => Number(item.score || 0) > -20)
+    .sort((a, b) => Number(b.score || 0) - Number(a.score || 0))
+    .slice(0, 80);
 };
 
 @Injectable()
@@ -171,12 +241,32 @@ export class UsersService {
       }
     }
 
+    const requestedCategoryIds = uniqueCleanCategories(userData.preferredCategoryIds || userData.categoryIds);
+    const requestedMarketIds = uniqueObjectIds(userData.preferredMarketIds || userData.marketIds);
+    const initialPreferences = sanitizePreferences({
+      ...(userData.preferences || {}),
+      discovery: {
+        ...(userData.preferences?.discovery || {}),
+        categoryIds: requestedCategoryIds,
+        marketIds: requestedMarketIds,
+        onboardingCompleted: requestedCategoryIds.length > 0 || requestedMarketIds.length > 0,
+        updatedAt: new Date(),
+      },
+    });
+
     const newUser = new this.userModel({
       ...userData,
       passwordHash,
       role: userData.role || UserRole.BUYER,
       referralCode,
-      referredBy: userData.referredBy || null
+      referredBy: userData.referredBy || null,
+      preferences: initialPreferences,
+      recommendationProfile: {
+        categoryScores: requestedCategoryIds.map((key: string) => ({ key, score: 20, lastSeenAt: new Date() })),
+        marketScores: requestedMarketIds.map((refId: string) => ({ refId: new Types.ObjectId(refId), score: 12, lastSeenAt: new Date() })),
+        recentProductIds: [],
+        lastInteractionAt: requestedCategoryIds.length || requestedMarketIds.length ? new Date() : undefined,
+      },
     });
 
     const savedUser = await newUser.save();
@@ -285,7 +375,7 @@ export class UsersService {
     }
     
     try {
-      const user = await this.userModel.findById(userId).exec();
+      const user = await this.userModel.findById(userId).populate('wishlist').exec();
       if (!user) throw new NotFoundException('User not found');
       return user.wishlist || [];
     } catch (error) {
@@ -306,7 +396,17 @@ export class UsersService {
       throw new BadRequestException('Invalid user ID');
     }
 
-    const sanitized = sanitizePreferences(preferences);
+    const existing = await this.findById(userId);
+    const currentPreferences = existing.preferences?.toObject ? existing.preferences.toObject() : existing.preferences || {};
+    const sanitized = sanitizePreferences({
+      ...currentPreferences,
+      ...(preferences || {}),
+      notifications: { ...(currentPreferences.notifications || {}), ...(preferences?.notifications || {}) },
+      privacy: { ...(currentPreferences.privacy || {}), ...(preferences?.privacy || {}) },
+      seller: { ...(currentPreferences.seller || {}), ...(preferences?.seller || {}) },
+      rider: { ...(currentPreferences.rider || {}), ...(preferences?.rider || {}) },
+      discovery: { ...(currentPreferences.discovery || {}), ...(preferences?.discovery || {}) },
+    });
 
     const updated = await this.userModel.findByIdAndUpdate(
       userId,
@@ -316,6 +416,108 @@ export class UsersService {
 
     if (!updated) throw new NotFoundException('User not found');
     return sanitizePreferences(updated.preferences);
+  }
+
+  async getDiscoveryPreferences(userId: string): Promise<any> {
+    const user = await this.findById(userId);
+    const preferences = sanitizePreferences(user.preferences);
+    return {
+      ...preferences.discovery,
+      recommendationProfile: {
+        categoryScores: (user.recommendationProfile?.categoryScores || []).slice(0, 20),
+        marketScores: (user.recommendationProfile?.marketScores || []).slice(0, 20),
+        productScores: (user.recommendationProfile?.productScores || []).slice(0, 20),
+      },
+    };
+  }
+
+  async updateDiscoveryPreferences(userId: string, data: any): Promise<any> {
+    if (!Types.ObjectId.isValid(userId)) {
+      throw new BadRequestException('Invalid user ID');
+    }
+    const user = await this.findById(userId);
+    const categoryIds = uniqueCleanCategories(data?.categoryIds);
+    const marketIds = uniqueObjectIds(data?.marketIds);
+    if (categoryIds.length === 0 && marketIds.length === 0) {
+      throw new BadRequestException('Choose at least one category or market preference');
+    }
+
+    const currentPreferences = user.preferences?.toObject ? user.preferences.toObject() : user.preferences || {};
+    const sanitized = sanitizePreferences({
+      ...currentPreferences,
+      discovery: {
+        categoryIds,
+        marketIds,
+        onboardingCompleted: true,
+        updatedAt: new Date(),
+      },
+    });
+
+    const categoryScores = categoryIds.map((key: string) => ({ key, score: 20, lastSeenAt: new Date() }));
+    const marketScores = marketIds.map((refId: string) => ({ refId: new Types.ObjectId(refId), score: 12, lastSeenAt: new Date() }));
+
+    const updated = await this.userModel.findByIdAndUpdate(
+      userId,
+      {
+        $set: {
+          preferences: sanitized,
+          'recommendationProfile.categoryScores': categoryScores,
+          'recommendationProfile.marketScores': marketScores,
+          'recommendationProfile.lastInteractionAt': new Date(),
+        },
+      },
+      { new: true },
+    ).exec();
+    if (!updated) throw new NotFoundException('User not found');
+    return this.getDiscoveryPreferences(userId);
+  }
+
+  async recordRecommendationInteraction(userId: string, data: any): Promise<any> {
+    if (!Types.ObjectId.isValid(userId)) {
+      throw new BadRequestException('Invalid user ID');
+    }
+    const user = await this.findById(userId);
+    const action = safeText(data?.action || 'view', 40);
+    const delta = interactionWeights[action] ?? 1;
+    const profile = user.recommendationProfile || {};
+    const nextProfile: any = {
+      categoryScores: profile.categoryScores || [],
+      marketScores: profile.marketScores || [],
+      sellerScores: profile.sellerScores || [],
+      productScores: profile.productScores || [],
+      recentProductIds: Array.isArray(profile.recentProductIds) ? [...profile.recentProductIds] : [],
+      lastInteractionAt: new Date(),
+    };
+
+    const categoryId = normalizeCategoryId(data?.categoryId || data?.category);
+    if (categoryId) nextProfile.categoryScores = upsertSignal(nextProfile.categoryScores, 'key', categoryId, delta);
+
+    for (const [field, collection] of [
+      ['marketId', 'marketScores'],
+      ['sellerId', 'sellerScores'],
+      ['productId', 'productScores'],
+    ] as const) {
+      const value = String(data?.[field] || '').trim();
+      if (Types.ObjectId.isValid(value)) {
+        nextProfile[collection] = upsertSignal(nextProfile[collection], 'refId', value, delta);
+      }
+    }
+
+    const productId = String(data?.productId || '').trim();
+    if (Types.ObjectId.isValid(productId)) {
+      nextProfile.recentProductIds = [
+        new Types.ObjectId(productId),
+        ...nextProfile.recentProductIds.filter((id: any) => String(id) !== productId),
+      ].slice(0, 60);
+    }
+
+    await this.userModel.findByIdAndUpdate(userId, { $set: { recommendationProfile: nextProfile } }).exec();
+    return {
+      recorded: true,
+      action,
+      weight: delta,
+      categoryId: categoryId || null,
+    };
   }
 
   // 3F fix: update user role (called by seller-service / rider-service after admin approval)

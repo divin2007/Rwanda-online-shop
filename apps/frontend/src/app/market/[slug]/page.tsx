@@ -1,11 +1,12 @@
 'use client';
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
-import { useEffect, useMemo, useState } from 'react';
+import { use, useEffect, useMemo, useState } from 'react';
 import dynamic from 'next/dynamic';
 import { ArrowRight, BadgeCheck, Clock3, MapPin, PackageCheck, Search, ShieldCheck, SlidersHorizontal, Star, Store, Truck } from 'lucide-react';
 import { Layout } from '@/components/layout/Layout';
 import { ProductCard } from '@/components/ui/ProductCard';
+import { SellerVideoFeed } from '@/components/ui/SellerVideoFeed';
 import { useApi } from '@/hooks/useApi';
 import { marketApi, productApi, reviewApi } from '@/lib/api';
 
@@ -96,16 +97,17 @@ const ProductRail = ({
   );
 };
 
-export default function MarketPage({ params }: { params: { slug: string } }) {
+export default function MarketPage({ params }: { params: Promise<{ slug: string }> }) {
+  const { slug } = use(params);
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [minPrice, setMinPrice] = useState('');
   const [maxPrice, setMaxPrice] = useState('');
   const [isFullMap, setIsFullMap] = useState(false);
   const [attributeFilters, setAttributeFilters] = useState<Record<string, string>>({});
-  const [activeTab, setActiveTab] = useState<'shop' | 'about' | 'reviews'>('shop');
+  const [activeTab, setActiveTab] = useState<'shop' | 'videos' | 'about' | 'reviews'>('shop');
 
-  const { data: market, loading: marketLoading, execute: fetchMarket } = useApi(marketApi, 'get', `/markets/slug/${params.slug}`);
+  const { data: market, loading: marketLoading, execute: fetchMarket } = useApi(marketApi, 'get', `/markets/slug/${slug}`);
   const { data: marketReviewsData } = useApi(reviewApi, 'get', market?._id ? `/reviews/target/market/${market._id}` : '');
 
   const [allProducts, setAllProducts] = useState<any[]>([]);
@@ -115,7 +117,7 @@ export default function MarketPage({ params }: { params: { slug: string } }) {
 
   useEffect(() => {
     fetchMarket();
-  }, [params.slug, fetchMarket]);
+  }, [slug, fetchMarket]);
 
   useEffect(() => {
     if (!market?._id) return;
@@ -288,6 +290,7 @@ export default function MarketPage({ params }: { params: { slug: string } }) {
         <div className="flex border-b border-border-light pb-px overflow-x-auto gap-8 text-sm font-bold uppercase tracking-wider scrollbar-hide pt-4">
           {[
             { id: 'shop', label: 'Shop Products', count: filteredProducts.length },
+            { id: 'videos', label: 'Seller Videos' },
             { id: 'about', label: 'About the Market' },
             { id: 'reviews', label: 'Reviews & Feedback', count: marketReviews.length },
           ].map(tab => (
@@ -432,6 +435,16 @@ export default function MarketPage({ params }: { params: { slug: string } }) {
                 )}
               </section>
             </main>
+          </section>
+        )}
+
+        {activeTab === 'videos' && (
+          <section className="animate-reveal [animation-delay:200ms]">
+            <SellerVideoFeed
+              marketId={market._id}
+              title={`${market.name} seller videos`}
+              description="Watch product demos and shop adverts from sellers inside this market."
+            />
           </section>
         )}
 

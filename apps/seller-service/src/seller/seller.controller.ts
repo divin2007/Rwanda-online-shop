@@ -115,6 +115,37 @@ export class SellerController {
   // FIX [SELLER-APPROVE]: Was unauthenticated — anyone could approve seller applications.
   // Now requires ADMIN role.
   @UseGuards(JwtAuthGuard)
+  @Post('settings/change-request')
+  async createSettingsChangeRequest(@Request() req: any, @Body() body: any) {
+    const request = await this.sellerService.createSettingsChangeRequest(req.user.userId, body || {});
+    return { success: true, data: request };
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Roles(UserRole.ADMIN)
+  @Get('settings/change-requests')
+  async listSettingsChangeRequests(@Query('status') status?: string) {
+    const requests = await this.sellerService.listSettingsChangeRequests(status || 'PENDING');
+    return { success: true, data: requests };
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Roles(UserRole.ADMIN)
+  @Post('settings/change-requests/:id/approve')
+  async approveSettingsChangeRequest(@Param('id') id: string, @Request() req: any, @Body() body?: { notes?: string }) {
+    const request = await this.sellerService.approveSettingsChangeRequest(id, req.user.userId, body?.notes);
+    return { success: true, data: request };
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Roles(UserRole.ADMIN)
+  @Post('settings/change-requests/:id/reject')
+  async rejectSettingsChangeRequest(@Param('id') id: string, @Request() req: any, @Body() body?: { notes?: string }) {
+    const request = await this.sellerService.rejectSettingsChangeRequest(id, req.user.userId, body?.notes);
+    return { success: true, data: request };
+  }
+
+  @UseGuards(JwtAuthGuard)
   @Roles(UserRole.ADMIN)
   @Post(':id/approve')
   async approve(@Param('id') id: string) {
