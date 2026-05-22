@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Work+Sans:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@500&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "on-surface": "#1b1c1c",
+                    "surface-container-low": "#f5f3f3",
+                    "primary-fixed": "#ffdbcc",
+                    "secondary-fixed-dim": "#ffb598",
+                    "on-secondary": "#ffffff",
+                    "background": "#fbf9f8",
+                    "on-primary-fixed": "#351000",
+                    "surface-container": "#efeded",
+                    "on-tertiary-container": "#002f6b",
+                    "surface-container-highest": "#e3e2e2",
+                    "on-background": "#1b1c1c",
+                    "on-secondary-fixed": "#370e00",
+                    "surface-tint": "#a04100",
+                    "inverse-surface": "#303030",
+                    "surface-container-high": "#e9e8e7",
+                    "tertiary-fixed": "#d8e2ff",
+                    "tertiary-fixed-dim": "#adc6ff",
+                    "surface-container-lowest": "#ffffff",
+                    "on-secondary-fixed-variant": "#7f2b00",
+                    "secondary": "#a63b00",
+                    "surface": "#fbf9f8",
+                    "on-primary-fixed-variant": "#7a3000",
+                    "on-primary-container": "#572000",
+                    "on-primary": "#ffffff",
+                    "surface-bright": "#fbf9f8",
+                    "tertiary": "#005ac2",
+                    "primary-container": "#ff6b00",
+                    "inverse-on-surface": "#f2f0f0",
+                    "outline": "#8e7164",
+                    "primary": "#a04100",
+                    "inverse-primary": "#ffb693",
+                    "secondary-fixed": "#ffdbce",
+                    "on-tertiary-fixed-variant": "#004395",
+                    "error": "#ba1a1a",
+                    "error-container": "#ffdad6",
+                    "on-tertiary": "#ffffff",
+                    "on-error": "#ffffff",
+                    "tertiary-container": "#5f97ff",
+                    "on-error-container": "#93000a",
+                    "on-surface-variant": "#5a4136",
+                    "secondary-container": "#fc671d",
+                    "surface-dim": "#dbdad9",
+                    "surface-variant": "#e3e2e2",
+                    "on-secondary-container": "#561b00",
+                    "outline-variant": "#e2bfb0",
+                    "primary-fixed-dim": "#ffb693",
+                    "on-tertiary-fixed": "#001a42"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.125rem",
+                    "lg": "0.25rem",
+                    "xl": "0.5rem",
+                    "full": "0.75rem"
+            },
+            "spacing": {
+                    "sm": "8px",
+                    "margin-mobile": "16px",
+                    "xs": "4px",
+                    "md": "16px",
+                    "gutter": "16px",
+                    "base": "4px",
+                    "lg": "24px",
+                    "margin-desktop": "32px",
+                    "xl": "40px"
+            },
+            "fontFamily": {
+                    "headline-lg": ["Work Sans"],
+                    "body-sm": ["Work Sans"],
+                    "headline-md": ["Work Sans"],
+                    "table-data": ["Work Sans"],
+                    "body-lg": ["Work Sans"],
+                    "headline-lg-mobile": ["Work Sans"],
+                    "body-md": ["Work Sans"],
+                    "label-md": ["JetBrains Mono"]
+            },
+            "fontSize": {
+                    "headline-lg": ["30px", {"lineHeight": "38px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                    "body-sm": ["12px", {"lineHeight": "16px", "fontWeight": "400"}],
+                    "headline-md": ["20px", {"lineHeight": "28px", "fontWeight": "600"}],
+                    "table-data": ["13px", {"lineHeight": "18px", "fontWeight": "500"}],
+                    "body-lg": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                    "headline-lg-mobile": ["24px", {"lineHeight": "30px", "letterSpacing": "-0.01em", "fontWeight": "700"}],
+                    "body-md": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                    "label-md": ["12px", {"lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "500"}]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+            display: inline-block;
+            line-height: 1;
+            text-transform: none;
+            letter-spacing: normal;
+            word-wrap: normal;
+            white-space: nowrap;
+            direction: ltr;
+        }
+        .ghost-border { border: 1px solid #ebdcd0; }
+        .tab-active { position: relative; }
+        .tab-active::after {
+            content: '';
+            position: absolute;
+            bottom: -2px;
+            left: 0;
+            width: 100%;
+            height: 2px;
+            background-color: var(--primary);
+        }
+    </style>
+</head>
+<body class="bg-background text-on-surface font-body-md selection:bg-primary-fixed selection:text-on-primary-fixed">
+<!-- Top Navigation Shell -->
+<header class="fixed top-0 left-0 w-full z-50 flex justify-between items-center px-margin-mobile md:px-margin-desktop h-16 bg-surface border-b border-outline-variant">
+<div class="flex items-center gap-md">
+<span class="text-headline-md font-headline-md font-bold text-primary">RMF</span>
+<div class="hidden md:flex gap-lg ml-xl">
+<a class="font-label-md text-label-md text-on-surface-variant hover:bg-surface-container-low transition-colors px-xs py-base" href="#">Home</a>
+<a class="font-label-md text-label-md text-on-surface-variant hover:bg-surface-container-low transition-colors px-xs py-base" href="#">Marketplace</a>
+<a class="font-label-md text-label-md text-primary border-b-2 border-primary px-xs py-base" href="#">Cart</a>
+</div>
+</div>
+<div class="flex items-center gap-md">
+<button class="material-symbols-outlined text-on-surface-variant p-base hover:bg-surface-container-low transition-colors" data-icon="location_on">location_on</button>
+<button class="material-symbols-outlined text-on-surface-variant p-base hover:bg-surface-container-low transition-colors" data-icon="language">language</button>
+<button class="material-symbols-outlined text-on-surface-variant p-base hover:bg-surface-container-low transition-colors" data-icon="notifications">notifications</button>
+<div class="relative">
+<button class="material-symbols-outlined text-primary p-base hover:bg-surface-container-low transition-colors" data-icon="shopping_cart">shopping_cart</button>
+<span class="absolute -top-1 -right-1 bg-secondary text-white text-[10px] w-4 h-4 flex items-center justify-center rounded-full">3</span>
+</div>
+</div>
+</header>
+<main class="pt-24 pb-32 px-margin-mobile md:px-margin-desktop max-w-[1280px] mx-auto min-h-screen">
+<div class="mb-lg">
+<h1 class="font-headline-lg text-headline-lg-mobile md:text-headline-lg text-on-surface">Shopping Cart</h1>
+<p class="font-body-md text-body-md text-on-surface-variant">Review your orders from various Rwandan sellers.</p>
+</div>
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-gutter" id="cart-content">
+<!-- Items Section -->
+<div class="lg:col-span-8 space-y-md">
+<!-- Market Group 1 -->
+<section class="ghost-border bg-surface-container-lowest overflow-hidden">
+<header class="bg-[#ffedd5] px-md py-sm border-b border-outline-variant flex justify-between items-center">
+<div class="flex items-center gap-sm">
+<span class="material-symbols-outlined text-primary" data-icon="storefront">storefront</span>
+<span class="font-label-md text-label-md uppercase tracking-wider text-on-primary-container">Kigali Central Market • Seller: Agasaro Farm</span>
+</div>
+<span class="flex items-center gap-xs text-[11px] font-bold text-[#3b82f6]">
+<span class="material-symbols-outlined text-[14px]" data-icon="verified" style="font-variation-settings: 'FILL' 1;">verified</span>
+                            VERIFIED SELLER
+                        </span>
+</header>
+<div class="divide-y divide-outline-variant">
+<!-- Item 1 -->
+<div class="p-md flex flex-col md:flex-row gap-md items-start">
+<div class="w-full md:w-24 h-24 bg-surface-container rounded ghost-border overflow-hidden flex-shrink-0">
+<img class="w-full h-full object-cover" data-alt="A macro photograph of vibrant, freshly harvested Rwandan red bird's eye chili peppers. The peppers are glossy and arranged neatly in a woven artisanal basket. The lighting is natural and warm, highlighting the rich textures and deep red hues. The overall aesthetic is rustic yet professional, reflecting high-quality agricultural trade in a modern light-mode setting." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAiTAwp6ThqfyVnJ2MHpUU5jAiEE_q71J4Ri0lq_Wvr3L0dJHKHnd4Gf6cdCr39AZd937OvtAn5XXcrP05e0K-QHx-NGfr_cOB2NyCyb8ydUC9TutHXzK9I7dppsAgKETRKXKbb01pcYIl0j3dahYqujOLjphjrmf92w1RQg-jWmRKGStCGT9PlVOMt46CehhV49PGq_ccI-iOu_HYWenXCCfYy8SFK0-58Bt2iDhdBptd9orcwMMjZFdVok6Mgiubm3Iqw2ASd_WN3"/>
+</div>
+<div class="flex-grow space-y-xs">
+<div class="flex justify-between">
+<h3 class="font-headline-md text-body-lg">Premium Red Bird's Eye Chili</h3>
+<span class="font-headline-md text-body-lg text-primary">RWF 12,500</span>
+</div>
+<p class="text-body-sm text-on-surface-variant">Variant: Grade A Dried (5kg Sack)</p>
+<div class="flex items-center gap-lg pt-sm">
+<div class="flex items-center border border-outline rounded-lg overflow-hidden h-8">
+<button class="px-sm hover:bg-surface-container transition-colors text-primary">-</button>
+<span class="px-md font-label-md text-label-md border-x border-outline">02</span>
+<button class="px-sm hover:bg-surface-container transition-colors text-primary">+</button>
+</div>
+<button class="text-error font-label-md text-label-md flex items-center gap-xs hover:opacity-80 transition-opacity">
+<span class="material-symbols-outlined text-[18px]" data-icon="delete">delete</span>
+                                        Remove
+                                    </button>
+</div>
+</div>
+</div>
+<!-- Item 2 -->
+<div class="p-md flex flex-col md:flex-row gap-md items-start">
+<div class="w-full md:w-24 h-24 bg-surface-container rounded ghost-border overflow-hidden flex-shrink-0">
+<img class="w-full h-full object-cover" data-alt="Close-up shot of raw, organic Rwandan coffee beans piled in a wooden bowl. The beans are light green and tan, showing their natural texture before roasting. The background is a soft-focus wooden surface with warm, earthy tones. The image captures a sense of reliability and grounded commerce, with bright, even studio lighting consistent with a clean corporate UI." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBwU60Pxvd69CBu4-EYh1__34vA-38LsNVty18v-ZHf8HDTVgH0IBRjSxO3TwyK00hQ110lNMto7ezGShg0XdmsRkvqIA6E4ewdIUXpwwkpYm3E_xUzpkJWWVJPF2lLvyWU0IsY2Qo8xrB2RtJHcRiGtGihTqNmVFRIllCHP0AU4Te7CIAzSlgYqE_UPrVduZo9wWgr6Ow1c3AE6lk0YtP26AEsZGLQvLbz-YZIz2F3wW624lmA5hL41w0eheX5pGmpXKyrCc3lZXk1"/>
+</div>
+<div class="flex-grow space-y-xs">
+<div class="flex justify-between">
+<h3 class="font-headline-md text-body-lg">Bourbon Arabica Green Beans</h3>
+<span class="font-headline-md text-body-lg text-primary">RWF 45,000</span>
+</div>
+<p class="text-body-sm text-on-surface-variant">Variant: Fully Washed (10kg)</p>
+<div class="flex items-center gap-lg pt-sm">
+<div class="flex items-center border border-outline rounded-lg overflow-hidden h-8">
+<button class="px-sm hover:bg-surface-container transition-colors text-primary">-</button>
+<span class="px-md font-label-md text-label-md border-x border-outline">01</span>
+<button class="px-sm hover:bg-surface-container transition-colors text-primary">+</button>
+</div>
+<button class="text-error font-label-md text-label-md flex items-center gap-xs hover:opacity-80 transition-opacity">
+<span class="material-symbols-outlined text-[18px]" data-icon="delete">delete</span>
+                                        Remove
+                                    </button>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- Market Group 2 -->
+<section class="ghost-border bg-surface-container-lowest overflow-hidden">
+<header class="bg-[#ffedd5] px-md py-sm border-b border-outline-variant flex justify-between items-center">
+<div class="flex items-center gap-sm">
+<span class="material-symbols-outlined text-primary" data-icon="storefront">storefront</span>
+<span class="font-label-md text-label-md uppercase tracking-wider text-on-primary-container">Rubavu Hub • Seller: Lake Kivu Cooperatives</span>
+</div>
+</header>
+<div class="p-md flex flex-col md:flex-row gap-md items-start">
+<div class="w-full md:w-24 h-24 bg-surface-container rounded ghost-border overflow-hidden flex-shrink-0">
+<img class="w-full h-full object-cover" data-alt="A detailed shot of freshly caught Tilapia fish from Lake Kivu, displayed on a bed of crushed ice. The fish scales shimmer with a silvery-blue light. The environment is a clean, modern fish market stall. The image is captured with high clarity and natural daylight, emphasizing freshness and operational transparency. Earthy background tones maintain the brand's grounded personality." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBJkHiyKMWNGo2SXBc9DRkkcMrjPEwNf7kDECk37JjH6-3R_AGsOD61yfFMbi9m250Cs1J9uduAJWefIVUQlo30eUdyYnHZgULPOV4pK3sv_dYmFkUBjDj88r1Al9oiAzqi2zXc_PSIhWDQvIK2zKwoyRenUxgm8MAdqtJIeOzlnw4YUNHWxFQuQVVrUJ3b9ZBjtFLY0lA3scF6puYZ3mf68STUUxfW4-nNTVe2a3nrdPxHTKvFLiBIPNf1sP4FBT27P-gwmjaa5gG0"/>
+</div>
+<div class="flex-grow space-y-xs">
+<div class="flex justify-between">
+<h3 class="font-headline-md text-body-lg">Fresh Lake Kivu Tilapia</h3>
+<span class="font-headline-md text-body-lg text-primary">RWF 8,200</span>
+</div>
+<p class="text-body-sm text-on-surface-variant">Variant: Whole Gutted (Per kg)</p>
+<div class="flex items-center gap-lg pt-sm">
+<div class="flex items-center border border-outline rounded-lg overflow-hidden h-8">
+<button class="px-sm hover:bg-surface-container transition-colors text-primary">-</button>
+<span class="px-md font-label-md text-label-md border-x border-outline">05</span>
+<button class="px-sm hover:bg-surface-container transition-colors text-primary">+</button>
+</div>
+<button class="text-error font-label-md text-label-md flex items-center gap-xs hover:opacity-80 transition-opacity">
+<span class="material-symbols-outlined text-[18px]" data-icon="delete">delete</span>
+                                    Remove
+                                </button>
+</div>
+</div>
+</div>
+</section>
+<!-- Optional Empty State Link (Mock) -->
+<div class="text-center py-lg opacity-50">
+<button class="text-body-sm underline hover:text-primary transition-colors" onclick="toggleEmptyState()">Preview Empty State</button>
+</div>
+</div>
+<!-- Summary Sidebar -->
+<div class="lg:col-span-4">
+<div class="sticky top-24 space-y-md">
+<section class="ghost-border bg-surface-container-lowest p-md space-y-md">
+<h2 class="font-headline-md text-headline-md border-b border-outline-variant pb-sm">Order Summary</h2>
+<div class="space-y-sm">
+<div class="flex justify-between text-body-md text-on-surface-variant">
+<span>Subtotal (8 items)</span>
+<span>RWF 111,000</span>
+</div>
+<div class="flex justify-between text-body-md text-on-surface-variant">
+<span>Estimated Delivery</span>
+<span>RWF 3,500</span>
+</div>
+<div class="flex justify-between text-body-md text-on-surface-variant">
+<span>Service Fee (Escrow)</span>
+<span>RWF 1,200</span>
+</div>
+<div class="pt-sm border-t border-outline-variant flex justify-between font-bold text-headline-md text-primary">
+<span>Total</span>
+<span>RWF 115,700</span>
+</div>
+</div>
+<!-- Trust Indicator -->
+<div class="bg-surface-container-low p-sm rounded flex items-start gap-sm">
+<span class="material-symbols-outlined text-primary text-[20px]" data-icon="security" style="font-variation-settings: 'FILL' 1;">security</span>
+<div>
+<p class="text-[11px] font-bold text-on-surface uppercase tracking-tight">Secure Payment Guaranteed</p>
+<p class="text-[10px] text-on-surface-variant leading-tight">Funds held in RMF Escrow until you confirm delivery quality.</p>
+</div>
+</div>
+<button class="w-full bg-primary text-white py-md font-headline-md text-headline-md hover:opacity-90 active:scale-95 transition-all">
+                            Proceed to Checkout
+                        </button>
+<div class="flex items-center justify-center gap-xs text-body-sm text-on-surface-variant">
+<span class="material-symbols-outlined text-[16px]" data-icon="timer">timer</span>
+<span>Est. Delivery: 24 - 48 Hours</span>
+</div>
+</section>
+<!-- Promotion Code -->
+<div class="ghost-border bg-surface-container-lowest p-md">
+<label class="block font-label-md text-label-md text-on-surface-variant mb-xs">PROMO CODE</label>
+<div class="flex gap-xs">
+<input class="flex-grow bg-surface border border-outline px-sm py-base focus:border-primary outline-none text-body-md" placeholder="Enter code" type="text"/>
+<button class="px-md bg-surface-container-high border border-outline font-label-md text-label-md hover:bg-surface-container-highest transition-colors">APPLY</button>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Empty Cart State (Hidden by Default) -->
+<div class="hidden flex-col items-center justify-center py-xl space-y-md" id="empty-state">
+<div class="w-48 h-48 bg-surface-container rounded-full flex items-center justify-center">
+<span class="material-symbols-outlined text-outline text-[80px]" data-icon="shopping_basket">shopping_basket</span>
+</div>
+<div class="text-center max-w-md">
+<h2 class="font-headline-lg text-headline-lg text-on-surface">Your cart is empty</h2>
+<p class="text-body-lg text-on-surface-variant mt-sm">Looks like you haven't added any market produce or livestock products yet. Start exploring our verified Rwandan sellers.</p>
+</div>
+<button class="border-2 border-primary text-primary px-xl py-md font-headline-md hover:bg-primary-fixed transition-colors" onclick="toggleEmptyState()">
+                Explore Marketplace
+            </button>
+</div>
+</main>
+<!-- Bottom Navigation Shell (Mobile Only) -->
+<nav class="lg:hidden fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-4 py-2 bg-surface shadow-lg rounded-t-xl border-t border-outline-variant">
+<button class="flex flex-col items-center justify-center text-on-surface-variant">
+<span class="material-symbols-outlined" data-icon="home">home</span>
+<span class="font-label-md text-[10px]">Home</span>
+</button>
+<button class="flex flex-col items-center justify-center text-on-surface-variant">
+<span class="material-symbols-outlined" data-icon="search">search</span>
+<span class="font-label-md text-[10px]">Search</span>
+</button>
+<button class="flex flex-col items-center justify-center text-on-surface-variant">
+<span class="material-symbols-outlined" data-icon="receipt_long">receipt_long</span>
+<span class="font-label-md text-[10px]">Orders</span>
+</button>
+<button class="flex flex-col items-center justify-center bg-secondary-container text-on-secondary-container rounded-full px-4 py-1 scale-90">
+<span class="material-symbols-outlined" data-icon="shopping_cart" style="font-variation-settings: 'FILL' 1;">shopping_cart</span>
+<span class="font-label-md text-[10px]">Cart</span>
+</button>
+<button class="flex flex-col items-center justify-center text-on-surface-variant">
+<span class="material-symbols-outlined" data-icon="person">person</span>
+<span class="font-label-md text-[10px]">Account</span>
+</button>
+</nav>
+<script>
+        function toggleEmptyState() {
+            const content = document.getElementById('cart-content');
+            const empty = document.getElementById('empty-state');
+            if(content.classList.contains('hidden')) {
+                content.classList.remove('hidden');
+                content.classList.add('grid');
+                empty.classList.add('hidden');
+                empty.classList.remove('flex');
+            } else {
+                content.classList.add('hidden');
+                content.classList.remove('grid');
+                empty.classList.remove('hidden');
+                empty.classList.add('flex');
+            }
+        }
+
+        // Add small interaction effects to quantity buttons
+        document.querySelectorAll('button').forEach(btn => {
+            btn.addEventListener('click', function() {
+                if (this.innerText === '+' || this.innerText === '-') {
+                    const span = this.parentElement.querySelector('span');
+                    let val = parseInt(span.innerText);
+                    if (this.innerText === '+') val++;
+                    else if (val > 0) val--;
+                    span.innerText = val.toString().padStart(2, '0');
+                }
+            });
+        });
+    </script>
+</body></html>

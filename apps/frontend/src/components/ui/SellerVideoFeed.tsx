@@ -58,6 +58,7 @@ export function SellerVideoFeed({
   compact = false,
   placement,
   search,
+  onTagClick,
 }: {
   marketId?: string;
   sellerId?: string;
@@ -66,11 +67,20 @@ export function SellerVideoFeed({
   compact?: boolean;
   placement?: 'PRODUCT_AD' | 'SHOP_AD';
   search?: string;
+  onTagClick?: (tag: string) => void;
 }) {
   const { user } = useAuth();
   const [videos, setVideos] = React.useState<SellerVideo[]>([]);
   const [loading, setLoading] = React.useState(true);
   const [commentDrafts, setCommentDrafts] = React.useState<Record<string, string>>({});
+
+  const handleTagClick = (tag: string) => {
+    if (onTagClick) {
+      onTagClick(tag);
+    } else {
+      window.location.href = `/videos?search=${encodeURIComponent(tag)}`;
+    }
+  };
 
   const fetchVideos = React.useCallback(async () => {
     setLoading(true);
@@ -164,6 +174,16 @@ export function SellerVideoFeed({
                     preload="metadata"
                     className="h-full w-full object-cover"
                   />
+                  {/* Floating Market Account Badge */}
+                  {video.marketId?.slug && (
+                    <Link 
+                      href={getMarketUrl(video.marketId.slug)}
+                      className="absolute left-3 top-3 z-20 flex items-center gap-1.5 rounded-full bg-black/60 hover:bg-[#ff6b00] transition-all duration-300 border border-white/20 px-3 py-1.5 text-[10px] font-black uppercase tracking-wider text-white backdrop-blur-md cursor-pointer hover:scale-[1.05]"
+                    >
+                      <Store size={12} className="text-[#ffb26b]" />
+                      <span>{video.marketId.name || 'Shop'}</span>
+                    </Link>
+                  )}
                   <div className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 to-transparent p-4 text-white">
                     <p className="line-clamp-1 text-sm font-black">{shopName}</p>
                     <p className="line-clamp-2 text-xs font-semibold text-white/75">
@@ -182,7 +202,13 @@ export function SellerVideoFeed({
                     <h3 className="line-clamp-2 text-lg font-black leading-tight text-[#1b1c1c]">{video.title}</h3>
                     <div className="mt-2 flex flex-wrap gap-2">
                       {video.tags?.slice(0, 4).map(tag => (
-                        <span key={tag} className="rounded-full bg-[#fff7ed] px-2.5 py-1 text-[10px] font-black uppercase tracking-wider text-[#c2410c]">#{tag}</span>
+                        <button
+                          key={tag}
+                          onClick={() => handleTagClick(tag)}
+                          className="rounded-full bg-[#fff7ed] px-2.5 py-1 text-[10px] font-black uppercase tracking-wider text-[#c2410c] hover:bg-[#ff6b00] hover:text-white transition-colors"
+                        >
+                          #{tag}
+                        </button>
                       ))}
                     </div>
                   </div>

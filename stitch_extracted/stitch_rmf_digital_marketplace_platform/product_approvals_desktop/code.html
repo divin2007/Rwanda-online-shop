@@ -1,0 +1,432 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>RMF Admin Product Approval</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Work+Sans:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@500&amp;family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "tertiary": "#005ac2",
+                        "primary-container": "#ff6b00",
+                        "on-secondary-container": "#561b00",
+                        "on-primary-fixed": "#351000",
+                        "surface-variant": "#e3e2e2",
+                        "on-primary-fixed-variant": "#7a3000",
+                        "secondary-container": "#fc671d",
+                        "on-primary-container": "#572000",
+                        "on-tertiary-fixed-variant": "#004395",
+                        "outline-variant": "#e2bfb0",
+                        "on-tertiary-fixed": "#001a42",
+                        "surface-container-low": "#f5f3f3",
+                        "on-background": "#1b1c1c",
+                        "on-tertiary-container": "#002f6b",
+                        "error-container": "#ffdad6",
+                        "on-surface-variant": "#5a4136",
+                        "surface-container-highest": "#e3e2e2",
+                        "on-secondary": "#ffffff",
+                        "surface-dim": "#dbdad9",
+                        "secondary": "#a63b00",
+                        "on-error-container": "#93000a",
+                        "surface-container": "#efeded",
+                        "on-tertiary": "#ffffff",
+                        "secondary-fixed": "#ffdbce",
+                        "on-error": "#ffffff",
+                        "inverse-primary": "#ffb693",
+                        "secondary-fixed-dim": "#ffb598",
+                        "surface": "#fbf9f8",
+                        "tertiary-fixed": "#d8e2ff",
+                        "inverse-on-surface": "#f2f0f0",
+                        "inverse-surface": "#303030",
+                        "error": "#ba1a1a",
+                        "primary-fixed-dim": "#ffb693",
+                        "tertiary-fixed-dim": "#adc6ff",
+                        "surface-container-high": "#e9e8e7",
+                        "primary-fixed": "#ffdbcc",
+                        "outline": "#8e7164",
+                        "primary": "#a04100",
+                        "on-surface": "#1b1c1c",
+                        "on-secondary-fixed": "#370e00",
+                        "tertiary-container": "#5f97ff",
+                        "surface-bright": "#fbf9f8",
+                        "on-primary": "#ffffff",
+                        "background": "#fbf9f8",
+                        "surface-container-lowest": "#ffffff",
+                        "surface-tint": "#a04100",
+                        "on-secondary-fixed-variant": "#7f2b00"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.125rem",
+                        "lg": "0.25rem",
+                        "xl": "0.5rem",
+                        "full": "0.75rem"
+                    },
+                    "spacing": {
+                        "gutter": "16px",
+                        "base": "4px",
+                        "margin-mobile": "16px",
+                        "margin-desktop": "32px",
+                        "xs": "4px",
+                        "lg": "24px",
+                        "xl": "40px",
+                        "sm": "8px",
+                        "md": "16px"
+                    },
+                    "fontFamily": {
+                        "table-data": ["Work Sans"],
+                        "body-md": ["Work Sans"],
+                        "label-md": ["JetBrains Mono"],
+                        "body-sm": ["Work Sans"],
+                        "headline-lg": ["Work Sans"],
+                        "headline-lg-mobile": ["Work Sans"],
+                        "body-lg": ["Work Sans"],
+                        "headline-md": ["Work Sans"]
+                    },
+                    "fontSize": {
+                        "table-data": ["13px", {"lineHeight": "18px", "fontWeight": "500"}],
+                        "body-md": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                        "label-md": ["12px", {"lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "500"}],
+                        "body-sm": ["12px", {"lineHeight": "16px", "fontWeight": "400"}],
+                        "headline-lg": ["30px", {"lineHeight": "38px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                        "headline-lg-mobile": ["24px", {"lineHeight": "30px", "letterSpacing": "-0.01em", "fontWeight": "700"}],
+                        "body-lg": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                        "headline-md": ["20px", {"lineHeight": "28px", "fontWeight": "600"}]
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .review-pane-transition {
+            transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .glass-blur {
+            backdrop-filter: blur(8px);
+            background: rgba(251, 249, 248, 0.8);
+        }
+    </style>
+</head>
+<body class="bg-background text-on-surface font-body-md overflow-hidden h-screen flex">
+<!-- SideNavBar (Execution from JSON) -->
+<aside class="fixed left-0 top-0 h-full w-64 hidden md:flex flex-col bg-surface-container-low border-r border-outline-variant p-md gap-sm z-50">
+<div class="mb-lg">
+<h1 class="font-headline-md text-headline-md font-bold text-primary">RMF Portal</h1>
+<p class="font-label-md text-label-md text-on-surface-variant">Market Facilitator</p>
+</div>
+<nav class="flex-1 flex flex-col gap-xs">
+<div class="flex items-center gap-sm px-md py-sm cursor-pointer text-on-surface-variant hover:bg-surface-container-high transition-all duration-200">
+<span class="material-symbols-outlined">dashboard</span>
+<span class="font-label-md">Dashboard</span>
+</div>
+<div class="flex items-center gap-sm px-md py-sm cursor-pointer bg-primary-container text-on-primary-container rounded-xl font-bold duration-200">
+<span class="material-symbols-outlined">inventory_2</span>
+<span class="font-label-md">Inventory</span>
+</div>
+<div class="flex items-center gap-sm px-md py-sm cursor-pointer text-on-surface-variant hover:bg-surface-container-high transition-all duration-200">
+<span class="material-symbols-outlined">storefront</span>
+<span class="font-label-md">Marketplace</span>
+</div>
+<div class="flex items-center gap-sm px-md py-sm cursor-pointer text-on-surface-variant hover:bg-surface-container-high transition-all duration-200">
+<span class="material-symbols-outlined">receipt_long</span>
+<span class="font-label-md">Orders</span>
+</div>
+<div class="flex items-center gap-sm px-md py-sm cursor-pointer text-on-surface-variant hover:bg-surface-container-high transition-all duration-200">
+<span class="material-symbols-outlined">local_shipping</span>
+<span class="font-label-md">Logistics</span>
+</div>
+<div class="flex items-center gap-sm px-md py-sm cursor-pointer text-on-surface-variant hover:bg-surface-container-high transition-all duration-200">
+<span class="material-symbols-outlined">analytics</span>
+<span class="font-label-md">Analytics</span>
+</div>
+</nav>
+<div class="mt-auto border-t border-outline-variant pt-md flex flex-col gap-xs">
+<div class="flex items-center gap-sm px-md py-sm cursor-pointer text-on-surface-variant hover:bg-surface-container-high transition-all duration-200">
+<span class="material-symbols-outlined">settings</span>
+<span class="font-label-md">Settings</span>
+</div>
+<div class="flex items-center gap-sm px-md py-sm cursor-pointer text-on-surface-variant hover:bg-surface-container-high transition-all duration-200">
+<span class="material-symbols-outlined">help</span>
+<span class="font-label-md">Support</span>
+</div>
+</div>
+</aside>
+<!-- Main Canvas -->
+<main class="flex-1 md:ml-64 flex flex-col h-full relative overflow-hidden">
+<!-- TopAppBar (Execution from JSON) -->
+<header class="fixed top-0 right-0 left-0 md:left-64 z-40 bg-surface border-b border-outline-variant flex justify-between items-center px-margin-desktop h-16">
+<div class="flex items-center gap-md flex-1">
+<div class="relative w-full max-w-md">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant">search</span>
+<input class="w-full bg-surface-container-low border-none rounded-full pl-10 pr-4 py-2 text-body-md focus:ring-2 focus:ring-primary" placeholder="Search approvals..." type="text"/>
+</div>
+</div>
+<div class="flex items-center gap-lg">
+<div class="flex gap-md text-primary">
+<span class="material-symbols-outlined cursor-pointer active:opacity-80">notifications</span>
+<span class="material-symbols-outlined cursor-pointer active:opacity-80">chat</span>
+<span class="material-symbols-outlined cursor-pointer active:opacity-80">account_circle</span>
+</div>
+</div>
+</header>
+<!-- Content Area -->
+<section class="mt-16 p-margin-desktop overflow-y-auto h-full pb-32">
+<div class="max-w-7xl mx-auto">
+<header class="mb-lg flex justify-between items-end">
+<div>
+<h2 class="font-headline-lg text-headline-lg text-on-surface">Product Approval Gallery</h2>
+<p class="text-on-surface-variant font-body-md mt-xs">Reviewing 24 pending submissions from local sellers</p>
+</div>
+<div class="flex gap-sm">
+<button class="bg-surface border border-outline px-md py-sm rounded flex items-center gap-xs font-label-md text-primary hover:bg-surface-container-low transition-colors">
+<span class="material-symbols-outlined">filter_list</span> Filter
+                        </button>
+</div>
+</header>
+<!-- Bento Grid Gallery -->
+<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-md">
+<!-- Product Card 1 (Missing Attributes) -->
+<div class="group relative bg-surface border border-error-container rounded cursor-pointer transition-all hover:border-error hover:shadow-lg overflow-hidden flex flex-col" onclick="toggleReviewPane()">
+<div class="absolute top-2 left-2 z-10">
+<span class="bg-error-container text-on-error-container px-2 py-1 text-[10px] font-bold rounded flex items-center gap-xs">
+<span class="material-symbols-outlined text-[14px]">warning</span> MISSING ATTRIBUTES
+                            </span>
+</div>
+<div class="aspect-square bg-surface-container overflow-hidden">
+<img class="w-full h-full object-cover transition-transform group-hover:scale-105" data-alt="A professional studio product shot of a hand-woven Rwandan basket with intricate geometric patterns in black and natural sisal fibers. The lighting is soft and directional, highlighting the tactile texture of the weave. The background is a clean, neutral stone grey, maintaining a high-utility and corporate aesthetic. The overall mood is authentic, emphasizing artisanal craftsmanship and reliability." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCTE-IduqUPGiQMuJjuAdQEaP8ZWaqBQrbahm311JE6GQy_kxSjFFu_aN4bXS55_godsA_fN9juRta8XuPPhqjpDnTtDkYMkdU3ubLs6ztkoue24w1wJKzNe_JqTKqxjF1Ytt6dICo5dBRVbTVf8qt-xMma_G5zxNTIozJQUKUm9EpZ3Dn5SONh5FIN4M3bwhbbzpL3qnlXC8rvVySYPn8Kl36ZMgOjY_LuP9Lw-bx8-LmfG7AGbGml7pB_lpbdBPK6Hq0zgmFVkg9_"/>
+</div>
+<div class="p-md flex flex-col gap-xs bg-white">
+<div class="flex justify-between items-start">
+<span class="font-label-md text-on-surface-variant">Home &amp; Decor</span>
+<span class="font-bold text-primary font-label-md">RWF 15,000</span>
+</div>
+<h3 class="font-headline-md text-headline-md truncate">Agaseke Peace Basket</h3>
+<div class="flex items-center gap-sm">
+<div class="w-6 h-6 rounded-full bg-secondary-container flex items-center justify-center text-[10px] text-white font-bold">MK</div>
+<span class="text-body-sm text-on-surface-variant">Mutoni K. Crafts</span>
+</div>
+<div class="mt-md pt-md border-t border-outline-variant flex items-center gap-xs text-[#3b82f6]">
+<span class="material-symbols-outlined text-[18px]" style="font-variation-settings: 'FILL' 1;">verified</span>
+<span class="font-label-md">Made in Rwanda</span>
+</div>
+</div>
+</div>
+<!-- Product Card 2 -->
+<div class="group relative bg-surface border border-outline-variant rounded cursor-pointer transition-all hover:border-primary hover:shadow-lg overflow-hidden flex flex-col" onclick="toggleReviewPane()">
+<div class="aspect-square bg-surface-container overflow-hidden">
+<img class="w-full h-full object-cover transition-transform group-hover:scale-105" data-alt="A high-contrast commercial photograph of vibrant red athletic sneakers placed on a matte black surface. The lighting is crisp with sharp highlights, reflecting a modern and functional commercial style. The background is a minimal, soft-toned gradient that aligns with the Rwandan Market Facilitator earth-toned palette. The image conveys energy, durability, and operational clarity." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDNdXC1fUSCgQYOprzjg6gw6uSGI9VUYVd_nbq96d7DPxeyD2rbQqQUO9gejr94KnzvmFRZzWRtbYhwgFx1x-ZCLBkwaPWNBdG9gMrFnW2endf_iDsjaDkHie38vdqgDuueUkX4r4x0qO3eCIcXnVKQQBn-or6Iy-p2z4d3PaEwQ71QZbfMKGEqakMxECKhXfqWDwOj4MVWLBhnnWjz72B1VTPsXDIQKEbRMokoMKzhHGwZdXpSrVIGV0eVrjfFgNZyIe8ahVrgX4GS"/>
+</div>
+<div class="p-md flex flex-col gap-xs bg-white">
+<div class="flex justify-between items-start">
+<span class="font-label-md text-on-surface-variant">Apparel</span>
+<span class="font-bold text-primary font-label-md">RWF 45,000</span>
+</div>
+<h3 class="font-headline-md text-headline-md truncate">Kigali Runner X1</h3>
+<div class="flex items-center gap-sm">
+<div class="w-6 h-6 rounded-full bg-tertiary flex items-center justify-center text-[10px] text-white font-bold">IS</div>
+<span class="text-body-sm text-on-surface-variant">Inyambo Shoes</span>
+</div>
+<div class="mt-md pt-md border-t border-outline-variant flex items-center gap-xs text-[#3b82f6]">
+<span class="material-symbols-outlined text-[18px]" style="font-variation-settings: 'FILL' 1;">verified</span>
+<span class="font-label-md">Made in Rwanda</span>
+</div>
+</div>
+</div>
+<!-- Product Card 3 -->
+<div class="group relative bg-surface border border-outline-variant rounded cursor-pointer transition-all hover:border-primary hover:shadow-lg overflow-hidden flex flex-col" onclick="toggleReviewPane()">
+<div class="aspect-square bg-surface-container overflow-hidden">
+<img class="w-full h-full object-cover transition-transform group-hover:scale-105" data-alt="A detailed close-up of organic Rwandan coffee beans in a rustic burlap sack. The lighting is warm and golden, evoking the rich agricultural heritage of the region. The focus is sharp on the texture of the roasted beans, while the background falls into a soft blur. The color palette is composed of deep browns and earthy tans, reinforcing a sense of reliability and grounded commerce." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCxjev6wBav-YD9lLkgFg4swQ7HBchuf-HOBKSLz4V1bon-eYGAG5cSuV2w70jQKLfRDphjYtVG1apu1lf9yJOEOu0dOyaB0OE6oIsZU40axqaRKHV31Vnhz8RAabyvisRizBwLJVMsa7oouGskJkV6WTRwOmrlulEO9B1W8M4f6NQwIBPhT750Yc0b0yQadMhWczVBWyQHq4krd1bRfzLa2khKdjBFS3UuG3xkAcr2u7nB-UPlpHnLZRfifVoQbYhputOrl5iNEsR5"/>
+</div>
+<div class="p-md flex flex-col gap-xs bg-white">
+<div class="flex justify-between items-start">
+<span class="font-label-md text-on-surface-variant">Agriculture</span>
+<span class="font-bold text-primary font-label-md">RWF 8,500</span>
+</div>
+<h3 class="font-headline-md text-headline-md truncate">Virunga Dark Roast</h3>
+<div class="flex items-center gap-sm">
+<div class="w-6 h-6 rounded-full bg-primary flex items-center justify-center text-[10px] text-white font-bold">VC</div>
+<span class="text-body-sm text-on-surface-variant">Virunga Coffee Co.</span>
+</div>
+<div class="mt-md pt-md border-t border-outline-variant flex items-center gap-xs text-[#3b82f6]">
+<span class="material-symbols-outlined text-[18px]" style="font-variation-settings: 'FILL' 1;">verified</span>
+<span class="font-label-md">Made in Rwanda</span>
+</div>
+</div>
+</div>
+<!-- Product Card 4 (Missing Attributes) -->
+<div class="group relative bg-surface border border-error-container rounded cursor-pointer transition-all hover:border-error hover:shadow-lg overflow-hidden flex flex-col" onclick="toggleReviewPane()">
+<div class="absolute top-2 left-2 z-10">
+<span class="bg-error-container text-on-error-container px-2 py-1 text-[10px] font-bold rounded flex items-center gap-xs">
+<span class="material-symbols-outlined text-[14px]">warning</span> MISSING ATTRIBUTES
+                            </span>
+</div>
+<div class="aspect-square bg-surface-container overflow-hidden">
+<img class="w-full h-full object-cover transition-transform group-hover:scale-105" data-alt="A minimalist tech accessory, a sleek smartwatch with a white silicone strap and a dark circular face, displayed on a cool grey surface. The lighting is even and high-key, creating a clean, modern aesthetic. The focus is sharp on the device's clean lines and high-quality build. The background is a solid, neutral tone, emphasizing functional clarity and operational trust." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBGY789rEQbsUkFS4PpSbtT4FN0FhrFy44rywiyYyvXkJiJf_C8kLLt3_Gl9_kHifdv8P1J6db3y8n0Ut0DsUTp66fEDcPRinEbzkost_Tp3NtZphM7ThpBCvJSlCPMXpj0tLxx-YWXK0PUnSiEC1qg2Efg_BDy_w8tLYeUxBrg4ICpgSavMRNvxFNBVf52ZQrLZFW78LzpY8GywQLYuxIWLZ6OdXGLuu2pPC95McQxbhowsjECwUpYgO6ch5osm_hP53JTMBWvewMn"/>
+</div>
+<div class="p-md flex flex-col gap-xs bg-white">
+<div class="flex justify-between items-start">
+<span class="font-label-md text-on-surface-variant">Electronics</span>
+<span class="font-bold text-primary font-label-md">RWF 120,000</span>
+</div>
+<h3 class="font-headline-md text-headline-md truncate">SmartWatch Gen 2</h3>
+<div class="flex items-center gap-sm">
+<div class="w-6 h-6 rounded-full bg-on-tertiary-container flex items-center justify-center text-[10px] text-white font-bold">RT</div>
+<span class="text-body-sm text-on-surface-variant">Rwanda Tech Ltd.</span>
+</div>
+<div class="mt-md pt-md border-t border-outline-variant flex items-center gap-xs text-on-surface-variant">
+<span class="material-symbols-outlined text-[18px]">verified</span>
+<span class="font-label-md">Imported</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- BottomNavBar (Execution from JSON) -->
+<nav class="fixed bottom-0 w-full md:hidden z-50 bg-surface border-t border-outline-variant h-16 flex justify-around items-center px-margin-mobile">
+<div class="flex flex-col items-center justify-center text-on-surface-variant active:bg-surface-variant transition-transform duration-100 scale-95">
+<span class="material-symbols-outlined">home</span>
+<span class="font-label-md">Home</span>
+</div>
+<div class="flex flex-col items-center justify-center bg-secondary-container text-on-secondary-container rounded-full px-4 py-1 active:bg-surface-variant transition-transform duration-100 scale-95">
+<span class="material-symbols-outlined">inventory_2</span>
+<span class="font-label-md">Trades</span>
+</div>
+<div class="flex flex-col items-center justify-center text-on-surface-variant active:bg-surface-variant transition-transform duration-100 scale-95">
+<span class="material-symbols-outlined">map</span>
+<span class="font-label-md">Map</span>
+</div>
+<div class="flex flex-col items-center justify-center text-on-surface-variant active:bg-surface-variant transition-transform duration-100 scale-95">
+<span class="material-symbols-outlined">forum</span>
+<span class="font-label-md">Chat</span>
+</div>
+<div class="flex flex-col items-center justify-center text-on-surface-variant active:bg-surface-variant transition-transform duration-100 scale-95">
+<span class="material-symbols-outlined">person</span>
+<span class="font-label-md">Account</span>
+</div>
+</nav>
+</main>
+<!-- Review Side Pane (Overlay) -->
+<div class="fixed inset-y-0 right-0 w-full md:w-[600px] bg-surface z-[60] border-l border-outline review-pane-transition translate-x-full shadow-2xl flex flex-col" id="reviewPane">
+<header class="p-md border-b border-outline-variant flex justify-between items-center bg-surface-container-low">
+<div>
+<h3 class="font-headline-md text-headline-md">Review: Agaseke Peace Basket</h3>
+<p class="font-label-md text-on-surface-variant">ID: PROD-9921-RW</p>
+</div>
+<button class="p-sm rounded-full hover:bg-surface-variant transition-colors" onclick="toggleReviewPane()">
+<span class="material-symbols-outlined">close</span>
+</button>
+</header>
+<div class="flex-1 overflow-y-auto p-md space-y-lg">
+<!-- Alert for Missing Attributes -->
+<div class="bg-error-container text-on-error-container p-md rounded-lg flex gap-md">
+<span class="material-symbols-outlined">report</span>
+<div>
+<h4 class="font-bold">Missing Required Attributes</h4>
+<ul class="font-body-sm mt-xs list-disc list-inside">
+<li>Materials list not provided</li>
+<li>HS Code missing (Required for export)</li>
+<li>Weight and dimensions are zero</li>
+</ul>
+</div>
+</div>
+<!-- Specs & Info -->
+<div class="space-y-md">
+<div class="grid grid-cols-2 gap-md">
+<div class="bg-surface-container-low p-md rounded border border-outline-variant">
+<span class="font-label-md text-on-surface-variant uppercase text-[10px]">Seller Grade</span>
+<div class="flex items-center gap-xs mt-xs text-secondary font-bold">
+<span class="material-symbols-outlined text-[18px]">grade</span> Tier 1 Preferred
+                        </div>
+</div>
+<div class="bg-surface-container-low p-md rounded border border-outline-variant">
+<span class="font-label-md text-on-surface-variant uppercase text-[10px]">Escrow Ready</span>
+<div class="flex items-center gap-xs mt-xs text-[#166534] font-bold">
+<span class="material-symbols-outlined text-[18px]">verified_user</span> YES
+                        </div>
+</div>
+</div>
+<div class="p-md bg-white border border-outline-variant rounded">
+<h4 class="font-headline-md mb-md">Technical Specifications</h4>
+<table class="w-full text-table-data font-table-data">
+<tbody><tr class="border-b border-surface-variant">
+<td class="py-sm text-on-surface-variant">Material</td>
+<td class="py-sm text-right text-error">NOT SPECIFIED</td>
+</tr>
+<tr class="border-b border-surface-variant">
+<td class="py-sm text-on-surface-variant">Height</td>
+<td class="py-sm text-right">30cm</td>
+</tr>
+<tr class="border-b border-surface-variant">
+<td class="py-sm text-on-surface-variant">Base Diameter</td>
+<td class="py-sm text-right">15cm</td>
+</tr>
+<tr>
+<td class="py-sm text-on-surface-variant">Coloring</td>
+<td class="py-sm text-right">Natural dyes (Organic)</td>
+</tr>
+</tbody></table>
+</div>
+<!-- Variants Gallery -->
+<div class="p-md bg-white border border-outline-variant rounded">
+<h4 class="font-headline-md mb-md">Product Variants</h4>
+<div class="grid grid-cols-3 gap-sm">
+<div class="aspect-square rounded border-2 border-primary overflow-hidden relative">
+<img class="w-full h-full object-cover" data-alt="Close up of a Rwandan basket weave." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCChk_YaV8NHIE6bxEr97yRQ1CG-JhwM2eY8Tob2s2dirAA_E-07WBlur3m_xcBfCE9rGFAxmbczJMqNLIh5Mk6ZvqVGmuQ-YJgQcy1htQyx3my-eAf2d2lNeaSfXm0cEnlh1twUlpmtPXVoMi2ndqVp3NgHx1AvzIlPZJ36l_IAKZ8JnGZ2WW55hqvn5JmGYMumaapWvOdh9POfPGzR9fu6qhVgljTFXoJUlTI0N30cuk3NrMuFv_jhQdJOkAON9UeJWVslH685_Ld"/>
+<div class="absolute bottom-0 left-0 right-0 bg-primary/80 text-white text-[10px] text-center p-xs font-bold">Small (Natural)</div>
+</div>
+<div class="aspect-square rounded border border-outline-variant overflow-hidden relative">
+<img class="w-full h-full object-cover" data-alt="Close up of a Rwandan basket weave." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAFKVC4HT1JFB-vBG_xN7dm3oiJw0rdmZkjHzBN0grsp6W5__ExFCGmewqf0rPJAuxn3M5IaKBISgMq2o90NBdipM2FnQ_DpP-peBZ_xoRCBiRskw7M4DQQAe6vBwUdnXNMuInKlgzA8cGu4AjO_DeEFh3ZbCPn17K7WaN14gQlG7Sx226220nUNMdliHoSGUKDg3zdt5DEV9Y9oL_Rng96U_ouxlqhRJwbMCYMROUEfFVH43wMhesE3CCoVR0NiKDPgtmH8vQW7waQ"/>
+<div class="absolute bottom-0 left-0 right-0 bg-black/40 text-white text-[10px] text-center p-xs">Medium (Red)</div>
+</div>
+<div class="aspect-square rounded border border-outline-variant overflow-hidden relative">
+<img class="w-full h-full object-cover" data-alt="Close up of a Rwandan basket weave." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBnKQllYoS_nPfOOG8_p8zP_JAIycsi-Ey7uEZhqDm57LpNE961yzlr72iKKz5H3q3Zo0fqlcFmECjqGrbF-qqRi2rycBnrZmYqGX5AF5mPCeLFNw2YGFXncihBSYIXPxe1JjLY59gBxNe3LSs80QWxJFU-Fgx5KYnFREWZYWNsT_VenjuFtll2_6z1989-sHO9zzDdRWb8YcopsWhYbOeus1WZ52t0H-YF6xneIlXJhFTrcoheY5fEOriBV3YR_B_Q3mNpgrODqNeh"/>
+<div class="absolute bottom-0 left-0 right-0 bg-black/40 text-white text-[10px] text-center p-xs">Large (Black)</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Sticky Actions -->
+<footer class="p-md border-t border-outline-variant glass-blur mt-auto grid grid-cols-3 gap-md">
+<button class="flex flex-col items-center justify-center gap-xs p-md rounded border border-error text-error hover:bg-error-container transition-colors">
+<span class="material-symbols-outlined">block</span>
+<span class="font-label-md">Reject</span>
+</button>
+<button class="flex flex-col items-center justify-center gap-xs p-md rounded border border-primary text-primary hover:bg-primary-fixed transition-colors">
+<span class="material-symbols-outlined">edit_note</span>
+<span class="font-label-md">Request Edit</span>
+</button>
+<button class="flex flex-col items-center justify-center gap-xs p-md rounded bg-primary text-white hover:opacity-90 transition-opacity">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+<span class="font-label-md">Approve</span>
+</button>
+</footer>
+</div>
+<!-- Backdrop for Side Pane -->
+<div class="fixed inset-0 bg-black/50 z-[55] hidden transition-opacity opacity-0" id="paneBackdrop" onclick="toggleReviewPane()"></div>
+<script>
+        function toggleReviewPane() {
+            const pane = document.getElementById('reviewPane');
+            const backdrop = document.getElementById('paneBackdrop');
+            
+            if (pane.classList.contains('translate-x-full')) {
+                pane.classList.remove('translate-x-full');
+                backdrop.classList.remove('hidden');
+                setTimeout(() => backdrop.classList.add('opacity-100'), 10);
+            } else {
+                pane.classList.add('translate-x-full');
+                backdrop.classList.remove('opacity-100');
+                setTimeout(() => backdrop.classList.add('hidden'), 300);
+            }
+        }
+    </script>
+</body></html>

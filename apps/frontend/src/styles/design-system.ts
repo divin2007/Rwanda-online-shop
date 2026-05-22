@@ -1,54 +1,62 @@
-// RMF Operational Commerce design system - Cinematic Gateway Edition (Orange Brand Variant)
+// RMF Operational Commerce design system - Stitch reference rebuild.
 export const designSystem = {
   colors: {
     primary: {
       DEFAULT: '#ff6b00',
       hover: '#e05300',
       light: '#ffedd5',
-      cinematic: '#9a3412',
+      dark: '#a04100',
+      fixed: '#ffdbcc',
     },
     accent: {
       DEFAULT: '#f59e0b', // Rich amber
       hover: '#d97706',
       light: '#fef3c7',
-      premium: '#f59e0b', 
+      premium: '#f59e0b',
     },
     secondary: {
-      DEFAULT: '#ea580c',
-      hover: '#c2410c',
-      light: '#ffedd5',
+      DEFAULT: '#a63b00',
+      hover: '#7f2b00',
+      light: '#ffdbce',
+    },
+    tertiary: {
+      DEFAULT: '#3b82f6',
+      hover: '#005ac2',
+      light: '#d8e2ff',
     },
     background: {
-      main: '#fdfaf7', // Elegant beige with warm undertones
+      main: '#fbf9f8',
       card: '#FFFFFF',
-      surface: '#fcfcfc',
-      muted: '#f5ebe4',
-      glass: 'rgba(255, 255, 255, 0.7)',
+      surface: '#f5f3f3',
+      muted: '#efeded',
+      high: '#e9e8e7',
+      highest: '#e3e2e2',
     },
     status: {
-      success: '#ea580c',
+      success: '#12805c',
       error: '#ba1a1a',
       warning: '#f59e0b',
-      info: '#3B82F6',    
+      info: '#3B82F6',
     },
     text: {
-      primary: '#17201a',
+      primary: '#1b1c1c',
       secondary: '#574e47',
-      muted: '#80756c',
+      muted: '#8e7164',
       inverse: '#FFFFFF',
     },
     border: {
       DEFAULT: '#ebdcd0',
-      light: '#f2e8e0',
-      dark: '#d2bca8',
-      premium: 'rgba(255, 107, 0, 0.1)',
+      light: '#e2bfb0',
+      dark: '#8e7164',
+      premium: '#e2bfb0',
     }
   },
   typography: {
     fontFamilies: {
-      sans: ['Inter', 'system-ui', 'sans-serif'],
-      serif: ['Inter', 'system-ui', 'sans-serif'],
-      heading: ['Inter', 'system-ui', 'sans-serif'],
+      sans: ['var(--font-work-sans)', 'Work Sans', 'system-ui', 'sans-serif'],
+      serif: ['var(--font-work-sans)', 'Work Sans', 'system-ui', 'sans-serif'],
+      heading: ['var(--font-work-sans)', 'Work Sans', 'system-ui', 'sans-serif'],
+      mono: ['var(--font-jetbrains-mono)', 'JetBrains Mono', 'ui-monospace', 'monospace'],
     },
   },
   spacing: {
@@ -63,17 +71,17 @@ export const designSystem = {
   borderRadius: {
     sm: '0.125rem',
     DEFAULT: '0.25rem',
-    md: '0.4rem',
-    lg: '0.75rem',
-    xl: '1.25rem',
-    '2xl': '1.75rem',
+    md: '0.375rem',
+    lg: '0.5rem',
+    xl: '0.75rem',
+    '2xl': '0.75rem',
     full: '9999px',
   },
   shadows: {
     sm: '0 1px 2px 0 rgba(0, 0, 0, 0.05)',
-    DEFAULT: '0 2px 4px rgba(0,0,0,0.02)',
-    md: '0 8px 16px rgba(0, 0, 0, 0.04)',
-    lg: '0 16px 48px rgba(0, 0, 0, 0.08)',
-    xl: '0 24px 64px rgba(217, 86, 11, 0.12)', // Burnt orange-tinted premium shadow
+    DEFAULT: '0 1px 3px rgba(27, 28, 28, 0.04)',
+    md: '0 6px 14px rgba(27, 28, 28, 0.06)',
+    lg: '0 12px 28px rgba(27, 28, 28, 0.08)',
+    xl: '0 18px 48px rgba(27, 28, 28, 0.10)',
   }
 };

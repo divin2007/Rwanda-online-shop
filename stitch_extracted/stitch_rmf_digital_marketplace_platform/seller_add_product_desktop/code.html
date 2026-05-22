@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Add New Product - RMF Marketplace</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Work+Sans:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@500&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+            display: inline-block;
+            line-height: 1;
+            text-transform: none;
+            letter-spacing: normal;
+            word-wrap: normal;
+            white-space: nowrap;
+            direction: ltr;
+        }
+        body { font-family: 'Work Sans', sans-serif; }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    </style>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "inverse-surface": "#303030",
+                        "secondary-fixed-dim": "#ffb598",
+                        "outline-variant": "#e2bfb0",
+                        "background": "#fbf9f8",
+                        "on-secondary-container": "#561b00",
+                        "on-primary-fixed": "#351000",
+                        "on-surface": "#1b1c1c",
+                        "surface": "#fbf9f8",
+                        "tertiary": "#005ac2",
+                        "secondary": "#a63b00",
+                        "on-secondary-fixed-variant": "#7f2b00",
+                        "error-container": "#ffdad6",
+                        "tertiary-container": "#5f97ff",
+                        "on-tertiary-fixed": "#001a42",
+                        "on-surface-variant": "#5a4136",
+                        "surface-container-lowest": "#ffffff",
+                        "tertiary-fixed-dim": "#adc6ff",
+                        "on-error-container": "#93000a",
+                        "on-tertiary-container": "#002f6b",
+                        "on-tertiary": "#ffffff",
+                        "on-secondary": "#ffffff",
+                        "secondary-container": "#fc671d",
+                        "on-background": "#1b1c1c",
+                        "primary-fixed": "#ffdbcc",
+                        "surface-bright": "#fbf9f8",
+                        "surface-container-low": "#f5f3f3",
+                        "on-tertiary-fixed-variant": "#004395",
+                        "on-primary-fixed-variant": "#7a3000",
+                        "secondary-fixed": "#ffdbce",
+                        "surface-container": "#efeded",
+                        "on-primary-container": "#572000",
+                        "error": "#ba1a1a",
+                        "tertiary-fixed": "#d8e2ff",
+                        "primary-fixed-dim": "#ffb693",
+                        "surface-container-high": "#e9e8e7",
+                        "on-secondary-fixed": "#370e00",
+                        "primary-container": "#ff6b00",
+                        "surface-tint": "#a04100",
+                        "surface-dim": "#dbdad9",
+                        "surface-variant": "#e3e2e2",
+                        "inverse-primary": "#ffb693",
+                        "primary": "#a04100",
+                        "surface-container-highest": "#e3e2e2",
+                        "on-primary": "#ffffff",
+                        "outline": "#8e7164",
+                        "on-error": "#ffffff",
+                        "inverse-on-surface": "#f2f0f0"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.125rem",
+                        "lg": "0.25rem",
+                        "xl": "0.5rem",
+                        "full": "0.75rem"
+                    },
+                    "spacing": {
+                        "md": "16px",
+                        "gutter": "16px",
+                        "margin-desktop": "32px",
+                        "sm": "8px",
+                        "base": "4px",
+                        "xl": "40px",
+                        "xs": "4px",
+                        "margin-mobile": "16px",
+                        "lg": "24px"
+                    },
+                    "fontFamily": {
+                        "headline-md": ["Work Sans"],
+                        "headline-lg": ["Work Sans"],
+                        "label-md": ["JetBrains Mono"],
+                        "body-md": ["Work Sans"],
+                        "body-lg": ["Work Sans"]
+                    },
+                    "fontSize": {
+                        "headline-md": ["20px", {"lineHeight": "28px", "fontWeight": "600"}],
+                        "headline-lg": ["30px", {"lineHeight": "38px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                        "label-md": ["12px", {"lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "500"}],
+                        "body-md": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                        "body-lg": ["16px", {"lineHeight": "24px", "fontWeight": "400"}]
+                    }
+                },
+            },
+        }
+    </script>
+</head>
+<body class="bg-background text-on-surface min-h-screen">
+<!-- Top Navigation Bar (Shared Component Reference) -->
+<header class="fixed top-0 left-0 w-full z-50 flex justify-between items-center px-margin-desktop h-16 bg-surface border-b border-outline-variant">
+<div class="flex items-center gap-md">
+<span class="text-headline-md font-headline-md font-bold text-primary">RMF</span>
+<div class="h-6 w-px bg-outline-variant mx-sm hidden md:block"></div>
+<h1 class="hidden md:block font-headline-md text-headline-md text-on-surface-variant">Add New Product</h1>
+</div>
+<div class="flex items-center gap-md">
+<button class="material-symbols-outlined text-on-surface-variant hover:bg-surface-container-low p-base rounded transition-colors">notifications</button>
+<button class="material-symbols-outlined text-on-surface-variant hover:bg-surface-container-low p-base rounded transition-colors">language</button>
+<div class="w-8 h-8 rounded-full bg-primary-fixed overflow-hidden border border-outline-variant">
+<img alt="User Account" data-alt="Professional portrait of a Rwandan male entrepreneur in business casual attire, smiling confidently. The lighting is soft and natural, with a clean, light-colored architectural background that aligns with a modern business aesthetic. The image uses warm, earth-toned colors and sharp focus to project reliability and professional trust in an e-commerce context." src="https://lh3.googleusercontent.com/aida-public/AB6AXuA_Cbe5hXML5xav5EWlSNO5vkC7R1Jlz5YAoSLLgBPQHn7uw66iOyHl4RkaWhgyukJGBsDHFpUZ4t-L79aQYqdAmw5pUDlnZqf8V12YN2QF0Do_iPNRmGRfAIefF3ZuzmAfdp6Z-mVnMKdzRjWjR9j6E8BtHSZGCL5Bm9qiwkd61jX_fZafttKl0W_JSrYcWHz_w_Nbz1eAMzXlAxg-WZkZHNgTp_D-dTowu5dBm4KOpZoP3cTN9S1Pa9gCDoNGMgjgGoWEmoS9gZle"/>
+</div>
+</div>
+</header>
+<main class="pt-24 pb-32 px-margin-mobile md:px-margin-desktop max-w-[1280px] mx-auto">
+<!-- Progress Bar -->
+<div class="mb-xl">
+<div class="flex justify-between items-center mb-sm">
+<span class="font-label-md text-label-md text-primary uppercase">Step 2 of 4: Specifications</span>
+<span class="font-label-md text-label-md text-on-surface-variant">50% Complete</span>
+</div>
+<div class="w-full h-2 bg-surface-container rounded-full overflow-hidden">
+<div class="h-full bg-primary w-1/2 transition-all duration-500 ease-out"></div>
+</div>
+</div>
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-gutter">
+<!-- Main Form Canvas -->
+<div class="lg:col-span-8 space-y-gutter">
+<!-- Section 1: Category Drilldown -->
+<section class="bg-surface-container-lowest border border-outline-variant p-md rounded-lg">
+<div class="flex items-center gap-sm mb-md">
+<span class="material-symbols-outlined text-primary">category</span>
+<h2 class="font-headline-md text-headline-md">Product Classification</h2>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-3 gap-base">
+<!-- Parent -->
+<div class="space-y-xs">
+<label class="font-label-md text-label-md text-on-surface-variant">Department</label>
+<div class="border border-outline-variant rounded p-sm bg-surface-container-low cursor-default flex justify-between items-center">
+<span class="font-body-md text-body-md">Apparel &amp; Textiles</span>
+<span class="material-symbols-outlined text-xs text-on-surface-variant">check_circle</span>
+</div>
+</div>
+<!-- Child -->
+<div class="space-y-xs">
+<label class="font-label-md text-label-md text-on-surface-variant">Category</label>
+<div class="border border-outline-variant rounded p-sm bg-surface-container-low cursor-default flex justify-between items-center">
+<span class="font-body-md text-body-md">Footwear</span>
+<span class="material-symbols-outlined text-xs text-on-surface-variant">check_circle</span>
+</div>
+</div>
+<!-- Grandchild -->
+<div class="space-y-xs">
+<label class="font-label-md text-label-md text-on-surface-variant">Sub-Category</label>
+<div class="border border-primary rounded p-sm bg-surface-bright ring-1 ring-primary flex justify-between items-center">
+<span class="font-body-md text-body-md">Handcrafted Boots</span>
+<button class="material-symbols-outlined text-on-surface-variant text-body-md">edit</button>
+</div>
+</div>
+</div>
+</section>
+<!-- Section 2: Dynamic Attributes -->
+<section class="bg-surface-container-lowest border border-outline-variant p-md rounded-lg">
+<div class="flex items-center justify-between mb-md">
+<div class="flex items-center gap-sm">
+<span class="material-symbols-outlined text-primary">tune</span>
+<h2 class="font-headline-md text-headline-md">Technical Specifications</h2>
+</div>
+<span class="bg-surface-container px-sm py-xs rounded font-label-md text-label-md text-on-surface-variant">Dynamic for Footwear</span>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-md">
+<div class="space-y-xs">
+<label class="font-label-md text-label-md text-on-surface-variant">Primary Material</label>
+<select class="w-full border border-outline-variant rounded p-sm bg-background font-body-md text-body-md focus:border-primary focus:ring-0">
+<option>Full Grain Leather</option>
+<option>Suede</option>
+<option>Recycled Rubber</option>
+<option>Cotton Canvas</option>
+</select>
+</div>
+<div class="space-y-xs">
+<label class="font-label-md text-label-md text-on-surface-variant">Target Gender</label>
+<div class="flex gap-base">
+<button class="flex-1 border border-primary bg-primary-fixed text-on-primary-fixed py-sm rounded font-body-md text-body-md">Unisex</button>
+<button class="flex-1 border border-outline-variant py-sm rounded font-body-md text-body-md hover:bg-surface-container-low">Men</button>
+<button class="flex-1 border border-outline-variant py-sm rounded font-body-md text-body-md hover:bg-surface-container-low">Women</button>
+</div>
+</div>
+</div>
+</section>
+<!-- Section 3: Variant Builder -->
+<section class="bg-surface-container-lowest border border-outline-variant p-md rounded-lg">
+<div class="flex items-center justify-between mb-md">
+<div class="flex items-center gap-sm">
+<span class="material-symbols-outlined text-primary">layers</span>
+<h2 class="font-headline-md text-headline-md">Inventory Variants</h2>
+</div>
+<button class="flex items-center gap-xs font-label-md text-label-md text-primary border border-primary px-md py-xs rounded hover:bg-primary-fixed transition-all">
+<span class="material-symbols-outlined text-sm">add</span> Add Variant
+                        </button>
+</div>
+<div class="overflow-x-auto">
+<table class="w-full text-left border-collapse">
+<thead class="bg-surface-container-low border-b border-outline-variant">
+<tr>
+<th class="p-sm font-label-md text-label-md">Size</th>
+<th class="p-sm font-label-md text-label-md">Color</th>
+<th class="p-sm font-label-md text-label-md">Stock (RWF)</th>
+<th class="p-sm font-label-md text-label-md">Price</th>
+<th class="p-sm font-label-md text-label-md">SKU</th>
+<th class="p-sm"></th>
+</tr>
+</thead>
+<tbody class="font-body-md text-body-md">
+<tr class="border-b border-outline-variant hover:bg-surface-container-low transition-colors">
+<td class="p-sm">EU 42</td>
+<td class="p-sm">Umber Brown</td>
+<td class="p-sm"><input class="w-16 border border-outline-variant rounded p-xs bg-background" type="number" value="12"/></td>
+<td class="p-sm"><input class="w-24 border border-outline-variant rounded p-xs bg-background" type="text" value="45,000"/></td>
+<td class="p-sm text-on-surface-variant font-label-md">SHOE-BR-42</td>
+<td class="p-sm text-right"><button class="material-symbols-outlined text-on-surface-variant hover:text-error">delete</button></td>
+</tr>
+<tr class="border-b border-outline-variant bg-surface-container-low/30 hover:bg-surface-container-low transition-colors">
+<td class="p-sm">EU 43</td>
+<td class="p-sm">Umber Brown</td>
+<td class="p-sm"><input class="w-16 border border-outline-variant rounded p-xs bg-background" type="number" value="8"/></td>
+<td class="p-sm"><input class="w-24 border border-outline-variant rounded p-xs bg-background" type="text" value="45,000"/></td>
+<td class="p-sm text-on-surface-variant font-label-md">SHOE-BR-43</td>
+<td class="p-sm text-right"><button class="material-symbols-outlined text-on-surface-variant hover:text-error">delete</button></td>
+</tr>
+</tbody>
+</table>
+</div>
+</section>
+</div>
+<!-- Sidebar / Contextual Controls -->
+<div class="lg:col-span-4 space-y-gutter">
+<!-- Media Upload -->
+<section class="bg-surface-container-lowest border border-outline-variant p-md rounded-lg">
+<div class="flex items-center gap-sm mb-md">
+<span class="material-symbols-outlined text-primary">photo_library</span>
+<h2 class="font-headline-md text-headline-md">Product Media</h2>
+</div>
+<div class="grid grid-cols-2 gap-sm mb-md">
+<div class="aspect-square bg-surface-container rounded-lg border border-dashed border-outline flex flex-col items-center justify-center cursor-pointer hover:bg-surface-container-high transition-colors">
+<span class="material-symbols-outlined text-on-surface-variant">add_a_photo</span>
+<span class="font-label-md text-label-md mt-xs">Upload</span>
+</div>
+<div class="relative aspect-square rounded-lg border border-outline-variant overflow-hidden group">
+<img alt="Product Preview" data-alt="Close-up shot of a high-quality leather boot with intricate stitching, showcasing the tactile texture of full-grain brown leather. The product is shot in a professional studio setting with sharp, clean lighting and a neutral grey background. The color palette is rich in warm earth tones like umber and tan, emphasizing the 'Made in Rwanda' craftsmanship and reliability." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCnghcVCmSh3xJH_18eGu13pLdhY-qJUtPB_IjE56tr05GynPwYoUPgGtAPRZDr29WDmh3wKLY8joP9PrVJMq5LgU3uM8FE4njI2uRSzDpMCd07wZeV55XHBOy15J5sXLa5MhcZkQLMWuK4Trr4d6DSi9bG7QEGiN7Kdf6zQyb9tsXPcL7VxWGEZg2t0Tm_foUaWFE550h37cR2Crtk-PMtiJKtg-JdXK-GxWuzq0KNTtHs0ItLCRhrRIuqSIDth-ka7U38nOtarhhY"/>
+<div class="absolute inset-0 bg-on-surface/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-sm">
+<button class="p-xs bg-surface rounded-full material-symbols-outlined text-on-surface">visibility</button>
+<button class="p-xs bg-surface rounded-full material-symbols-outlined text-error">delete</button>
+</div>
+</div>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant mb-md">Recommended: 1:1 Aspect Ratio. JPG or PNG up to 5MB.</p>
+</section>
+<!-- Status & Badges -->
+<section class="bg-surface-container-lowest border border-outline-variant p-md rounded-lg space-y-md">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-sm">
+<span class="material-symbols-outlined text-primary">verified</span>
+<span class="font-body-md text-body-md font-bold">Made in Rwanda</span>
+</div>
+<label class="relative inline-flex items-center cursor-pointer">
+<input checked="" class="sr-only peer" type="checkbox"/>
+<div class="w-11 h-6 bg-surface-container peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
+</label>
+</div>
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-sm">
+<span class="material-symbols-outlined text-primary">payments</span>
+<span class="font-body-md text-body-md font-bold">Negotiable Price</span>
+</div>
+<label class="relative inline-flex items-center cursor-pointer">
+<input class="sr-only peer" type="checkbox"/>
+<div class="w-11 h-6 bg-surface-container peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
+</label>
+</div>
+<div class="pt-md border-t border-outline-variant">
+<div class="flex items-start gap-sm">
+<span class="material-symbols-outlined text-tertiary text-lg">info</span>
+<p class="font-body-sm text-body-sm text-on-surface-variant italic">
+                                "Made in Rwanda" products undergo additional verification to receive the certification badge on the storefront.
+                            </p>
+</div>
+</div>
+</section>
+<!-- Trust Indicator -->
+<div class="bg-surface-container p-md rounded-lg flex items-center gap-md border border-outline-variant">
+<div class="bg-surface-container-lowest p-sm rounded-full">
+<span class="material-symbols-outlined text-secondary">security</span>
+</div>
+<div>
+<h4 class="font-label-md text-label-md text-on-surface font-bold">Secure Escrow Enabled</h4>
+<p class="font-body-sm text-body-sm text-on-surface-variant">RMF ensures funds are held safely until buyer confirms delivery.</p>
+</div>
+</div>
+</div>
+</div>
+</main>
+<!-- Sticky Footer Actions -->
+<footer class="fixed bottom-0 left-0 w-full bg-surface border-t border-outline-variant px-margin-mobile md:px-margin-desktop py-md z-50">
+<div class="max-w-[1280px] mx-auto flex justify-between items-center">
+<button class="flex items-center gap-xs font-body-md text-body-md text-on-surface-variant hover:text-on-surface transition-colors">
+<span class="material-symbols-outlined">arrow_back</span> Back to Dash
+            </button>
+<div class="flex gap-md">
+<button class="px-lg py-sm border border-outline rounded font-body-md text-body-md hover:bg-surface-container transition-colors">Save as Draft</button>
+<button class="px-xl py-sm bg-primary text-on-primary rounded font-body-md text-body-md font-bold shadow-md hover:opacity-90 transition-all active:scale-95" onclick="alert('Proceeding to next step...')">
+                    Next: Shipping Details
+                </button>
+</div>
+</div>
+</footer>
+<!-- Bottom Navigation Bar (Mobile only suppression check - shown as it's a top-level flow) -->
+<nav class="lg:hidden fixed bottom-0 left-0 w-full z-40 flex justify-around items-center px-4 py-2 bg-surface border-t border-outline-variant shadow-lg hidden">
+<!-- BottomNavBar would normally be here, but suppressed for Transactional Workflow as per rules -->
+</nav>
+<script>
+        // Micro-interaction for the progress bar or interactive elements
+        document.addEventListener('DOMContentLoaded', () => {
+            const inputs = document.querySelectorAll('input, select');
+            inputs.forEach(input => {
+                input.addEventListener('focus', () => {
+                    input.parentElement.classList.add('ring-primary/20');
+                });
+                input.addEventListener('blur', () => {
+                    input.parentElement.classList.remove('ring-primary/20');
+                });
+            });
+        });
+    </script>
+</body></html>

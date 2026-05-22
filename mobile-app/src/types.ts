@@ -93,6 +93,7 @@ export type CatalogAttribute = {
 export type CatalogCategory = {
   id: string;
   label: string;
+  parentId?: string;
   productType?: string;
   aliases?: string[];
   synonyms?: string[];
@@ -219,8 +220,10 @@ export type Order = {
   financials?: Record<string, any>;
   payment?: Record<string, any>;
   messages?: OrderMessage[];
+  notes?: string;
   statusHistory?: Record<string, any>[];
   delivery?: Record<string, any>;
+  deliveryId?: string;
   createdAt?: string;
 };
 

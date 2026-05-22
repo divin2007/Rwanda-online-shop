@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Work+Sans:wght@400;500;600;700;900&amp;family=JetBrains+Mono:wght@500&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "surface": "#fbf9f8",
+                    "on-secondary-container": "#561b00",
+                    "on-primary-fixed": "#351000",
+                    "on-surface": "#1b1c1c",
+                    "secondary-fixed-dim": "#ffb598",
+                    "outline-variant": "#ebdcd0",
+                    "background": "#fbf9f8",
+                    "inverse-surface": "#303030",
+                    "tertiary-container": "#5f97ff",
+                    "on-tertiary-fixed": "#001a42",
+                    "secondary": "#a63b00",
+                    "on-secondary-fixed-variant": "#7f2b00",
+                    "error-container": "#ffdad6",
+                    "tertiary": "#005ac2",
+                    "on-tertiary-container": "#002f6b",
+                    "on-tertiary": "#ffffff",
+                    "on-secondary": "#ffffff",
+                    "surface-container-lowest": "#ffffff",
+                    "tertiary-fixed-dim": "#adc6ff",
+                    "on-error-container": "#93000a",
+                    "on-surface-variant": "#5a4136",
+                    "primary-fixed": "#ffdbcc",
+                    "surface-bright": "#fbf9f8",
+                    "on-background": "#1b1c1c",
+                    "secondary-container": "#fc671d",
+                    "on-tertiary-fixed-variant": "#004395",
+                    "on-primary-fixed-variant": "#7a3000",
+                    "secondary-fixed": "#ffdbce",
+                    "surface-container-low": "#f5f3f3",
+                    "tertiary-fixed": "#d8e2ff",
+                    "primary-fixed-dim": "#ffb693",
+                    "error": "#ba1a1a",
+                    "surface-container": "#efeded",
+                    "on-primary-container": "#572000",
+                    "primary-container": "#ff6b00",
+                    "surface-tint": "#a04100",
+                    "surface-dim": "#dbdad9",
+                    "surface-container-high": "#e9e8e7",
+                    "on-secondary-fixed": "#370e00",
+                    "outline": "#8e7164",
+                    "on-error": "#ffffff",
+                    "inverse-on-surface": "#f2f0f0",
+                    "surface-container-highest": "#e3e2e2",
+                    "on-primary": "#ffffff",
+                    "surface-variant": "#e3e2e2",
+                    "inverse-primary": "#ffb693",
+                    "primary": "#a04100"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.125rem",
+                    "lg": "0.25rem",
+                    "xl": "0.5rem",
+                    "full": "0.75rem"
+            },
+            "spacing": {
+                    "xs": "4px",
+                    "margin-mobile": "16px",
+                    "lg": "24px",
+                    "margin-desktop": "32px",
+                    "sm": "8px",
+                    "md": "16px",
+                    "gutter": "16px",
+                    "xl": "40px",
+                    "base": "4px"
+            },
+            "fontFamily": {
+                    "table-data": ["Work Sans"],
+                    "body-sm": ["Work Sans"],
+                    "label-md": ["JetBrains Mono"],
+                    "headline-md": ["Work Sans"],
+                    "headline-lg": ["Work Sans"],
+                    "headline-lg-mobile": ["Work Sans"],
+                    "body-md": ["Work Sans"],
+                    "body-lg": ["Work Sans"]
+            },
+            "fontSize": {
+                    "table-data": ["13px", {"lineHeight": "18px", "fontWeight": "500"}],
+                    "body-sm": ["12px", {"lineHeight": "16px", "fontWeight": "400"}],
+                    "label-md": ["12px", {"lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "500"}],
+                    "headline-md": ["20px", {"lineHeight": "28px", "fontWeight": "600"}],
+                    "headline-lg": ["30px", {"lineHeight": "38px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                    "headline-lg-mobile": ["24px", {"lineHeight": "30px", "letterSpacing": "-0.01em", "fontWeight": "700"}],
+                    "body-md": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                    "body-lg": ["16px", {"lineHeight": "24px", "fontWeight": "400"}]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .flat-border { border: 1px solid #ebdcd0; }
+        .zebra-striping tr:nth-child(even) { background-color: #fdfaf7; }
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: #fbf9f8; }
+        ::-webkit-scrollbar-thumb { background: #ebdcd0; border-radius: 10px; }
+    </style>
+</head>
+<body class="bg-surface text-on-surface font-body-md selection:bg-primary-fixed selection:text-on-primary-fixed">
+<!-- Top Navigation Bar -->
+<header class="bg-surface sticky top-0 z-50 border-b border-outline-variant">
+<div class="flex justify-between items-center w-full px-margin-desktop h-16 max-w-[1280px] mx-auto">
+<div class="flex items-center gap-xl">
+<span class="font-headline-md text-headline-md font-black text-primary">RMF Facilitator</span>
+<nav class="hidden md:flex items-center gap-lg h-full">
+<a class="text-on-surface-variant font-medium hover:text-primary transition-colors h-16 flex items-center" href="#">Marketplace</a>
+<a class="text-on-surface-variant font-medium hover:text-primary transition-colors h-16 flex items-center" href="#">Orders</a>
+<a class="text-on-surface-variant font-medium hover:text-primary transition-colors h-16 flex items-center" href="#">Logistics</a>
+<a class="text-on-surface-variant font-medium hover:text-primary transition-colors h-16 flex items-center" href="#">Analytics</a>
+</nav>
+</div>
+<div class="flex items-center gap-md">
+<div class="hidden md:flex items-center gap-sm">
+<button class="p-2 text-on-surface-variant hover:bg-surface-container-high rounded-full transition-all">
+<span class="material-symbols-outlined">notifications</span>
+</button>
+<button class="p-2 text-primary font-bold bg-primary-fixed hover:opacity-80 rounded-full transition-all">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">account_balance_wallet</span>
+</button>
+</div>
+<img alt="User profile" class="w-8 h-8 rounded-full border border-outline-variant" data-alt="A professional headshot of a Rwandan entrepreneur with a warm, confident expression. The lighting is soft and natural, emphasizing a bright, trustworthy aesthetic. The background is a clean, minimalist office setting with earth-toned wooden accents, reflecting the Rwandan Market Facilitator brand reliability and corporate modern style." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBWGaoieVlZIzGenvuhAD5MQz736IK5oSOt4LwQNtorP-Fq1mL-vaPdC1Zq4cbzPrb3YRhHZdLAapLyFesZ7fdcs3Jvgk1Deg5Pn7PxoguzP6Ax64prx5yVutJh3jNcJo2oam8dF3fLtDRdY0EErmjpxkiBT_PsPSJtdEyzY2ZQWK77Zivqztm4D2jfEVIJfYAs7_T9XPy3CvOG0fgc0EdTXMsyr9d9QhlQo2WYBq2qowDrI7INLk7OlLNBHVRByc27aCogPEpj77qc"/>
+</div>
+</div>
+</header>
+<main class="max-w-[1280px] mx-auto px-margin-mobile md:px-margin-desktop py-lg space-y-lg">
+<!-- Dashboard Header & Actions -->
+<div class="flex flex-col md:flex-row md:items-end justify-between gap-md">
+<div>
+<h1 class="font-headline-lg text-headline-lg text-on-surface">Rider Wallet</h1>
+<p class="text-on-surface-variant font-body-md">Manage your earnings, view transaction history, and request payouts.</p>
+</div>
+<button class="bg-primary text-on-primary font-label-md px-lg py-md rounded hover:opacity-90 transition-all flex items-center justify-center gap-sm shadow-sm">
+<span class="material-symbols-outlined text-[18px]">payments</span>
+                Request Payout
+            </button>
+</div>
+<!-- Balance Bento Grid -->
+<div class="grid grid-cols-1 md:grid-cols-3 gap-gutter">
+<!-- Available -->
+<div class="flat-border p-lg bg-surface-container-lowest rounded-lg flex flex-col justify-between">
+<div>
+<span class="text-label-md font-label-md text-on-surface-variant uppercase tracking-wider">Available for Withdrawal</span>
+<div class="mt-xs flex items-baseline gap-xs">
+<span class="text-headline-lg font-headline-lg text-primary">RWF 142,500</span>
+</div>
+</div>
+<div class="mt-lg flex items-center gap-sm text-green-700 bg-green-50 p-sm rounded-sm">
+<span class="material-symbols-outlined text-[18px]">check_circle</span>
+<span class="text-body-sm font-medium">Ready to transfer to MoMo</span>
+</div>
+</div>
+<!-- Pending -->
+<div class="flat-border p-lg bg-surface-container-lowest rounded-lg flex flex-col justify-between">
+<div>
+<span class="text-label-md font-label-md text-on-surface-variant uppercase tracking-wider">Pending Escrow</span>
+<div class="mt-xs flex items-baseline gap-xs">
+<span class="text-headline-lg font-headline-lg text-on-surface">RWF 28,400</span>
+</div>
+</div>
+<div class="mt-lg flex items-center gap-sm text-on-surface-variant bg-surface-container-low p-sm rounded-sm">
+<span class="material-symbols-outlined text-[18px]">history</span>
+<span class="text-body-sm">Unlocks in ~48 hours</span>
+</div>
+</div>
+<!-- Total Earned -->
+<div class="flat-border p-lg bg-secondary-container text-on-secondary-container rounded-lg flex flex-col justify-between">
+<div>
+<span class="text-label-md font-label-md opacity-80 uppercase tracking-wider">Total Lifetime Earnings</span>
+<div class="mt-xs flex items-baseline gap-xs">
+<span class="text-headline-lg font-headline-lg">RWF 1,842,000</span>
+</div>
+</div>
+<div class="mt-lg flex items-center justify-between">
+<span class="text-body-sm font-medium">Performance: Top 5%</span>
+<span class="material-symbols-outlined">trending_up</span>
+</div>
+</div>
+</div>
+<!-- Main Layout with Ledger and Details -->
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-gutter items-start">
+<!-- Detailed Ledger Table -->
+<div class="lg:col-span-2 flat-border rounded-lg bg-surface-container-lowest overflow-hidden">
+<div class="px-lg py-md border-b border-outline-variant bg-[#ffedd5]/30 flex justify-between items-center">
+<h2 class="font-headline-md text-headline-md text-on-surface">Transaction Ledger</h2>
+<button class="text-primary font-label-md text-label-md flex items-center gap-xs">
+<span class="material-symbols-outlined text-[16px]">filter_list</span> Filter
+                    </button>
+</div>
+<div class="overflow-x-auto">
+<table class="w-full text-left zebra-striping">
+<thead class="bg-surface-container-low border-b border-outline-variant">
+<tr class="text-on-surface-variant font-label-md text-label-md">
+<th class="px-lg py-md">Date</th>
+<th class="px-lg py-md">Type</th>
+<th class="px-lg py-md">Delivery ID</th>
+<th class="px-lg py-md">Amount</th>
+<th class="px-lg py-md">Status</th>
+</tr>
+</thead>
+<tbody class="font-table-data text-table-data">
+<tr class="hover:bg-primary-fixed/20 cursor-pointer transition-colors" onclick="showDetails('DLV-9821')">
+<td class="px-lg py-md">Oct 24, 14:20</td>
+<td class="px-lg py-md">Delivery Fee</td>
+<td class="px-lg py-md text-primary font-bold">#DLV-9821</td>
+<td class="px-lg py-md font-bold">RWF 4,500</td>
+<td class="px-lg py-md"><span class="bg-green-100 text-green-800 px-2 py-0.5 rounded-full text-[11px]">Completed</span></td>
+</tr>
+<tr class="hover:bg-primary-fixed/20 cursor-pointer transition-colors">
+<td class="px-lg py-md">Oct 24, 12:15</td>
+<td class="px-lg py-md">Distance Bonus</td>
+<td class="px-lg py-md text-primary font-bold">#DLV-9818</td>
+<td class="px-lg py-md font-bold">RWF 1,200</td>
+<td class="px-lg py-md"><span class="bg-green-100 text-green-800 px-2 py-0.5 rounded-full text-[11px]">Completed</span></td>
+</tr>
+<tr class="hover:bg-primary-fixed/20 cursor-pointer transition-colors">
+<td class="px-lg py-md">Oct 23, 09:45</td>
+<td class="px-lg py-md">Adjustment</td>
+<td class="px-lg py-md text-primary font-bold">#ADJ-042</td>
+<td class="px-lg py-md font-bold text-error">-RWF 500</td>
+<td class="px-lg py-md"><span class="bg-surface-variant text-on-surface-variant px-2 py-0.5 rounded-full text-[11px]">Reconciled</span></td>
+</tr>
+<tr class="hover:bg-primary-fixed/20 cursor-pointer transition-colors">
+<td class="px-lg py-md">Oct 23, 18:30</td>
+<td class="px-lg py-md">Delivery Fee</td>
+<td class="px-lg py-md text-primary font-bold">#DLV-9799</td>
+<td class="px-lg py-md font-bold">RWF 3,800</td>
+<td class="px-lg py-md"><span class="bg-blue-100 text-blue-800 px-2 py-0.5 rounded-full text-[11px]">Pending</span></td>
+</tr>
+<tr class="hover:bg-primary-fixed/20 cursor-pointer transition-colors">
+<td class="px-lg py-md">Oct 22, 11:20</td>
+<td class="px-lg py-md">Delivery Fee</td>
+<td class="px-lg py-md text-primary font-bold">#DLV-9780</td>
+<td class="px-lg py-md font-bold">RWF 5,200</td>
+<td class="px-lg py-md"><span class="bg-green-100 text-green-800 px-2 py-0.5 rounded-full text-[11px]">Completed</span></td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<!-- Right Sidebar: Payout Dest & Delivery Detail -->
+<div class="space-y-gutter">
+<!-- Payout Destination Card -->
+<div class="flat-border rounded-lg bg-surface-container-lowest p-lg">
+<h3 class="font-headline-md text-headline-md mb-md">Payout Destination</h3>
+<div class="flex items-center gap-md p-md bg-surface rounded-lg flat-border">
+<div class="w-10 h-10 bg-[#ffcc00] rounded flex items-center justify-center font-bold text-black text-xs">MoMo</div>
+<div>
+<p class="font-body-md font-bold text-on-surface">MTN Mobile Money</p>
+<p class="font-label-md text-on-surface-variant">078 •••• 421</p>
+</div>
+<button class="ml-auto text-primary font-label-md hover:underline">Edit</button>
+</div>
+<div class="mt-md flex items-center gap-xs text-on-surface-variant">
+<span class="material-symbols-outlined text-[16px]">lock</span>
+<span class="text-body-sm">Secure Payment. Verified by RMF Escrow.</span>
+</div>
+</div>
+<!-- Transparency Breakdown Card -->
+<div class="flat-border rounded-lg bg-surface-container-lowest p-lg transition-all duration-300" id="breakdown-card">
+<div class="flex justify-between items-center mb-md">
+<h3 class="font-headline-md text-headline-md">Fee Breakdown</h3>
+<span class="font-label-md text-primary">#DLV-9821</span>
+</div>
+<div class="space-y-sm">
+<div class="flex justify-between text-body-md">
+<span class="text-on-surface-variant">Base Fare (5km)</span>
+<span class="font-medium">RWF 2,500</span>
+</div>
+<div class="flex justify-between text-body-md">
+<span class="text-on-surface-variant">Extra Distance (4.2km)</span>
+<span class="font-medium">RWF 1,200</span>
+</div>
+<div class="flex justify-between text-body-md">
+<span class="text-on-surface-variant">Peak Hour Surge</span>
+<span class="font-medium">RWF 800</span>
+</div>
+<div class="border-t border-outline-variant pt-sm mt-sm flex justify-between">
+<span class="font-bold text-on-surface">Net Earnings</span>
+<span class="font-bold text-primary">RWF 4,500</span>
+</div>
+</div>
+<div class="mt-lg p-md bg-blue-50 border border-blue-100 rounded-lg">
+<div class="flex gap-sm">
+<span class="material-symbols-outlined text-blue-600">info</span>
+<div>
+<p class="text-body-sm font-bold text-blue-900">Transparency Audit</p>
+<p class="text-body-sm text-blue-800 leading-tight">This fee includes a 15% distance bonus based on verified GPS logistics data.</p>
+</div>
+</div>
+</div>
+</div>
+<!-- Support CTA -->
+<div class="p-lg bg-on-surface text-surface rounded-lg">
+<h4 class="font-headline-md text-headline-md mb-xs">Payment Issues?</h4>
+<p class="text-body-sm opacity-80 mb-md">Our escrow team is available 24/7 to resolve disputes or delayed transfers.</p>
+<button class="w-full bg-surface text-on-surface font-label-md py-sm rounded hover:bg-surface-container-highest transition-all">
+                        Contact Support
+                    </button>
+</div>
+</div>
+</div>
+</main>
+<!-- Floating Action Button (Mobile Only) -->
+<button class="md:hidden fixed bottom-20 right-4 w-14 h-14 bg-primary text-on-primary rounded-full shadow-lg flex items-center justify-center z-40">
+<span class="material-symbols-outlined">add_card</span>
+</button>
+<!-- Bottom Navigation Bar (Mobile) -->
+<nav class="md:hidden fixed bottom-0 left-0 w-full flex justify-around items-center px-4 py-2 pb-safe bg-surface border-t border-outline-variant z-50">
+<a class="flex flex-col items-center justify-center text-on-surface-variant" href="#">
+<span class="material-symbols-outlined">home</span>
+<span class="text-label-md text-[10px]">Home</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant" href="#">
+<span class="material-symbols-outlined">map</span>
+<span class="text-label-md text-[10px]">Track</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant" href="#">
+<span class="material-symbols-outlined">mail</span>
+<span class="text-label-md text-[10px]">Inbox</span>
+</a>
+<a class="flex flex-col items-center justify-center bg-primary-container text-on-primary-container rounded-xl px-4 py-1" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">account_balance_wallet</span>
+<span class="text-label-md text-[10px]">Wallet</span>
+</a>
+</nav>
+<script>
+        function showDetails(id) {
+            const card = document.getElementById('breakdown-card');
+            card.classList.add('scale-105', 'ring-2', 'ring-primary');
+            setTimeout(() => {
+                card.classList.remove('scale-105', 'ring-2', 'ring-primary');
+            }, 600);
+            
+            // In a real app, this would update content based on ID
+            console.log("Loading details for: " + id);
+        }
+
+        // Simple micro-interaction for balance cards
+        document.querySelectorAll('.grid > div').forEach(card => {
+            card.addEventListener('mouseenter', () => {
+                card.style.transform = 'translateY(-2px)';
+                card.style.transition = 'transform 0.2s ease-out';
+            });
+            card.addEventListener('mouseleave', () => {
+                card.style.transform = 'translateY(0)';
+            });
+        });
+    </script>
+</body></html>

@@ -10,27 +10,46 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 
 export default function DashboardPage() {
-  const { user } = useAuth();
+  const { user, isLoading } = useAuth();
   const { t } = useLanguage();
   const { wishlist } = useWishlist();
   const router = useRouter();
+  const isBuyer = user?.role === 'BUYER';
 
   useEffect(() => {
-    if (user?.role === 'SELLER') {
-      router.push('/seller/dashboard');
+    if (isLoading) return;
+
+    if (!user) {
+      router.replace('/login');
+    } else if (user.role === 'SELLER') {
+      router.replace('/seller/dashboard');
+    } else if (user.role === 'RIDER') {
+      router.replace('/rider/dashboard');
+    } else if (user.role === 'ADMIN') {
+      router.replace('/admin');
     }
-  }, [user, router]);
+  }, [user, isLoading, router]);
 
   // Fetch Real Data
-  const { data: ordersData, loading: ordersLoading } = useApi(orderApi, 'get', `/orders?buyerId=${user?.id}&status=placed,confirmed,preparing,ready_for_pickup,picked_up,in_transit`);
-  const { data: walletData, loading: walletLoading } = useApi(walletApi, 'get', `/wallets/me?userId=${user?.id}`);
-  const { data: transactionsData } = useApi(walletApi, 'get', `/wallets/me/transactions?userId=${user?.id}`);
-  const { data: recommendedData } = useApi(productApi, 'get', '/products/recommendations/for-me?limit=8');
+  const { data: ordersData, loading: ordersLoading } = useApi(orderApi, 'get', isBuyer && user?.id ? `/orders?buyerId=${user.id}&status=placed,confirmed,preparing,ready_for_pickup,picked_up,in_transit` : '');
+  const { data: walletData, loading: walletLoading } = useApi(walletApi, 'get', isBuyer && user?.id ? `/wallets/me?userId=${user.id}` : '');
+  const { data: transactionsData } = useApi(walletApi, 'get', isBuyer && user?.id ? `/wallets/me/transactions?userId=${user.id}` : '');
+  const { data: recommendedData } = useApi(productApi, 'get', isBuyer ? '/products/recommendations/for-me?limit=8' : '');
 
   const orders = ordersData || [];
   const wallet = walletData || { balance: 0 };
   const transactions = transactionsData?.slice(0, 3) || [];
   const recommended = recommendedData || [];
+
+  if (isLoading || !user || !isBuyer) {
+    return (
+      <Layout>
+        <div className="flex min-h-[70vh] items-center justify-center">
+          <div className="h-10 w-10 animate-spin rounded-full border-4 border-[#ff6b00] border-t-transparent" />
+        </div>
+      </Layout>
+    );
+  }
 
   return (
     <Layout>

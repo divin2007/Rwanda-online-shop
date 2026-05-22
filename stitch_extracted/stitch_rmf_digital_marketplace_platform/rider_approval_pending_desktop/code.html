@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>RMF Facilitator - Registration Status</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Work+Sans:wght@400;500;600;700;900&amp;family=JetBrains+Mono:wght@500&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<style>
+    .material-symbols-outlined {
+      font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+    }
+    .stepper-line {
+      position: relative;
+    }
+    .stepper-line::before {
+      content: '';
+      position: absolute;
+      left: 11px;
+      top: 24px;
+      bottom: -8px;
+      width: 2px;
+      background-color: #e2bfb0;
+    }
+    .stepper-line-last::before {
+      display: none;
+    }
+    .stepper-line-active::before {
+      background-color: #a04100;
+    }
+  </style>
+<script id="tailwind-config">
+    tailwind.config = {
+      darkMode: "class",
+      theme: {
+        extend: {
+          "colors": {
+            "surface": "#fbf9f8",
+            "on-secondary-container": "#561b00",
+            "on-primary-fixed": "#351000",
+            "on-surface": "#1b1c1c",
+            "secondary-fixed-dim": "#ffb598",
+            "outline-variant": "#e2bfb0",
+            "background": "#fbf9f8",
+            "inverse-surface": "#303030",
+            "tertiary-container": "#5f97ff",
+            "on-tertiary-fixed": "#001a42",
+            "secondary": "#a63b00",
+            "on-secondary-fixed-variant": "#7f2b00",
+            "error-container": "#ffdad6",
+            "tertiary": "#005ac2",
+            "on-tertiary-container": "#002f6b",
+            "on-tertiary": "#ffffff",
+            "on-secondary": "#ffffff",
+            "surface-container-lowest": "#ffffff",
+            "tertiary-fixed-dim": "#adc6ff",
+            "on-error-container": "#93000a",
+            "on-surface-variant": "#5a4136",
+            "primary-fixed": "#ffdbcc",
+            "surface-bright": "#fbf9f8",
+            "on-background": "#1b1c1c",
+            "secondary-container": "#fc671d",
+            "on-tertiary-fixed-variant": "#004395",
+            "on-primary-fixed-variant": "#7a3000",
+            "secondary-fixed": "#ffdbce",
+            "surface-container-low": "#f5f3f3",
+            "tertiary-fixed": "#d8e2ff",
+            "primary-fixed-dim": "#ffb693",
+            "error": "#ba1a1a",
+            "surface-container": "#efeded",
+            "on-primary-container": "#572000",
+            "primary-container": "#ff6b00",
+            "surface-tint": "#a04100",
+            "surface-dim": "#dbdad9",
+            "surface-container-high": "#e9e8e7",
+            "on-secondary-fixed": "#370e00",
+            "outline": "#8e7164",
+            "on-error": "#ffffff",
+            "inverse-on-surface": "#f2f0f0",
+            "surface-container-highest": "#e3e2e2",
+            "on-primary": "#ffffff",
+            "surface-variant": "#e3e2e2",
+            "inverse-primary": "#ffb693",
+            "primary": "#a04100"
+          },
+          "borderRadius": {
+            "DEFAULT": "0.125rem",
+            "lg": "0.25rem",
+            "xl": "0.5rem",
+            "full": "0.75rem"
+          },
+          "spacing": {
+            "xs": "4px",
+            "margin-mobile": "16px",
+            "lg": "24px",
+            "margin-desktop": "32px",
+            "sm": "8px",
+            "md": "16px",
+            "gutter": "16px",
+            "xl": "40px",
+            "base": "4px"
+          },
+          "fontFamily": {
+            "table-data": ["Work Sans"],
+            "body-sm": ["Work Sans"],
+            "label-md": ["JetBrains Mono"],
+            "headline-md": ["Work Sans"],
+            "headline-lg": ["Work Sans"],
+            "headline-lg-mobile": ["Work Sans"],
+            "body-md": ["Work Sans"],
+            "body-lg": ["Work Sans"]
+          },
+          "fontSize": {
+            "table-data": ["13px", {"lineHeight": "18px", "fontWeight": "500"}],
+            "body-sm": ["12px", {"lineHeight": "16px", "fontWeight": "400"}],
+            "label-md": ["12px", {"lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "500"}],
+            "headline-md": ["20px", {"lineHeight": "28px", "fontWeight": "600"}],
+            "headline-lg": ["30px", {"lineHeight": "38px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+            "headline-lg-mobile": ["24px", {"lineHeight": "30px", "letterSpacing": "-0.01em", "fontWeight": "700"}],
+            "body-md": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+            "body-lg": ["16px", {"lineHeight": "24px", "fontWeight": "400"}]
+          }
+        }
+      }
+    }
+  </script>
+</head>
+<body class="bg-surface text-on-surface font-body-md min-h-screen flex flex-col">
+<!-- Suppression of Nav Shell as this is a transactional/focused screen -->
+<main class="flex-grow flex flex-col items-center px-margin-mobile md:px-margin-desktop py-lg">
+<div class="max-w-[1280px] w-full grid grid-cols-1 md:grid-cols-12 gap-gutter">
+<!-- Hero Section / Status Header -->
+<section class="md:col-span-12 flex flex-col items-center text-center mb-lg">
+<div class="w-24 h-24 bg-surface-container-high rounded-full flex items-center justify-center mb-md border border-outline-variant">
+<span class="material-symbols-outlined text-[48px] text-outline" style="font-variation-settings: 'FILL' 1;">pending_actions</span>
+</div>
+<h1 class="font-headline-lg-mobile md:font-headline-lg text-headline-lg-mobile md:text-headline-lg text-on-surface mb-xs">Account Under Review</h1>
+<p class="font-body-lg text-body-lg text-on-surface-variant max-w-xl">
+          We are currently verifying your documentation to ensure the highest standards for the Rwandan Market Facilitator network.
+        </p>
+</section>
+<!-- Bento Grid Layout -->
+<div class="md:col-span-5 flex flex-col gap-gutter">
+<!-- Progress Stepper Card -->
+<div class="bg-surface-container-lowest p-md border border-outline-variant rounded-xl shadow-sm">
+<h2 class="font-headline-md text-headline-md text-on-surface mb-md">Application Progress</h2>
+<div class="space-y-md">
+<!-- Step 1 -->
+<div class="flex gap-md stepper-line stepper-line-active">
+<div class="z-10 bg-primary w-6 h-6 rounded-full flex items-center justify-center">
+<span class="material-symbols-outlined text-[14px] text-on-primary">check</span>
+</div>
+<div>
+<p class="font-label-md text-label-md text-primary">Identity Verified</p>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Confirmed via National ID database</p>
+</div>
+</div>
+<!-- Step 2 -->
+<div class="flex gap-md stepper-line stepper-line-active">
+<div class="z-10 bg-primary w-6 h-6 rounded-full flex items-center justify-center">
+<span class="material-symbols-outlined text-[14px] text-on-primary">check</span>
+</div>
+<div>
+<p class="font-label-md text-label-md text-primary">Vehicle Details Submitted</p>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Moto registration validated</p>
+</div>
+</div>
+<!-- Step 3 -->
+<div class="flex gap-md stepper-line-last">
+<div class="z-10 bg-surface-container-highest w-6 h-6 border-2 border-primary rounded-full flex items-center justify-center">
+<div class="w-2 h-2 bg-primary rounded-full animate-pulse"></div>
+</div>
+<div>
+<p class="font-label-md text-label-md text-on-surface font-bold">Document Review</p>
+<p class="font-body-sm text-body-sm text-secondary font-medium">In Progress • Expert manual check</p>
+</div>
+</div>
+</div>
+</div>
+<!-- Expected Review Time -->
+<div class="bg-primary-container text-on-primary-container p-md rounded-xl border border-primary flex items-center gap-md">
+<span class="material-symbols-outlined text-[32px]">schedule</span>
+<div>
+<p class="font-label-md text-label-md">EXPECTED REVIEW TIME</p>
+<p class="font-headline-md text-headline-md">24 - 48 Hours</p>
+</div>
+</div>
+</div>
+<div class="md:col-span-7 flex flex-col gap-gutter">
+<!-- Submitted Information Details -->
+<div class="bg-surface-container-lowest border border-outline-variant rounded-xl overflow-hidden">
+<div class="bg-secondary-fixed p-sm px-md border-b border-outline-variant">
+<h3 class="font-label-md text-label-md text-on-secondary-fixed">SUBMITTED REGISTRATION DETAILS</h3>
+</div>
+<div class="p-md space-y-md">
+<div class="grid grid-cols-2 gap-md">
+<div>
+<p class="font-body-sm text-body-sm text-on-surface-variant">National ID Number</p>
+<p class="font-table-data text-table-data text-on-surface uppercase tracking-wider">1 1992 8 0123456 0 12</p>
+</div>
+<div>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Moto Plate Number</p>
+<p class="font-table-data text-table-data text-on-surface uppercase tracking-wider">RE 450B</p>
+</div>
+</div>
+<div class="border-t border-outline-variant pt-md">
+<p class="font-body-sm text-body-sm text-on-surface-variant mb-sm">Uploaded Documents</p>
+<div class="grid grid-cols-1 sm:grid-cols-2 gap-sm">
+<div class="flex items-center justify-between p-sm bg-surface-container rounded-lg border border-outline-variant">
+<div class="flex items-center gap-sm">
+<span class="material-symbols-outlined text-on-surface-variant">description</span>
+<span class="font-body-md text-body-md">Driving License</span>
+</div>
+<span class="font-label-md text-label-md text-primary flex items-center gap-xs">
+<span class="material-symbols-outlined text-[16px]" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+                        UPLOADED
+                    </span>
+</div>
+<div class="flex items-center justify-between p-sm bg-surface-container rounded-lg border border-outline-variant">
+<div class="flex items-center gap-sm">
+<span class="material-symbols-outlined text-on-surface-variant">verified_user</span>
+<span class="font-body-md text-body-md">Insurance Certificate</span>
+</div>
+<span class="font-label-md text-label-md text-primary flex items-center gap-xs">
+<span class="material-symbols-outlined text-[16px]" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+                        UPLOADED
+                    </span>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Action / CTA Section -->
+<div class="flex flex-col gap-sm">
+<button class="w-full h-14 bg-surface-dim text-on-surface-variant font-headline-md text-headline-md rounded-xl cursor-not-allowed flex items-center justify-center gap-md grayscale border border-outline-variant" disabled="">
+<span class="material-symbols-outlined">power_settings_new</span>
+                Go Online
+            </button>
+<p class="text-center font-body-sm text-body-sm text-on-surface-variant italic">
+              "Go Online" will be enabled once your documents are verified.
+            </p>
+<div class="grid grid-cols-2 gap-md mt-md">
+<button class="flex items-center justify-center gap-sm border border-primary text-primary font-label-md text-label-md p-md rounded-xl hover:bg-primary-fixed transition-colors">
+<span class="material-symbols-outlined">headset_mic</span>
+                    CONTACT SUPPORT
+                </button>
+<button class="flex items-center justify-center gap-sm border border-outline text-on-surface-variant font-label-md text-label-md p-md rounded-xl hover:bg-surface-container transition-colors">
+<span class="material-symbols-outlined">help_center</span>
+                    FAQ
+                </button>
+</div>
+</div>
+</div>
+</div>
+</main>
+<!-- Atmospheric Background Image (Low Opacity Texture) -->
+<div class="fixed inset-0 -z-10 opacity-5 pointer-events-none">
+<img class="w-full h-full object-cover" data-alt="A macro close-up of a traditional Rwandan woven basket pattern with intricate geometric lines and earthy tones like ochre, brown, and cream. The lighting is soft and diffuse, emphasizing the tactile texture of the natural fibers. The overall aesthetic is grounded, authentic, and calm, reflecting a modern corporate take on local heritage." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBvhOduiUIfjJbcqR97eHZZmmH-32ADqjyBDSt5cbvqJDr4Y0quoy_yAfDO1REE5AvGcCf50d50bi6aG10AERln0AcqgBHfWOtlOEqTWOKMFYgitKI_Pk1rmrofY1LTR10o9kUfEhggQwHusNiKmRYMLTJwtoz50rgFGXfwpGSlRSJcDrUh-2xfRQzUqAH3hZcjU3u8f8IlWZ2VN4eg7KTQLJCYstCoBsmWyS-lJoT1SvtwSoUTHBTTIFPD1n91agaBEafI6tNJ3Ay0"/>
+</div>
+<footer class="p-lg mt-auto flex flex-col items-center gap-sm">
+<div class="flex items-center gap-md text-on-surface-variant">
+<span class="material-symbols-outlined text-primary" style="font-variation-settings: 'FILL' 1;">security</span>
+<span class="font-label-md text-label-md uppercase tracking-widest">Secure Facilitator Portal</span>
+</div>
+<p class="font-body-sm text-body-sm text-outline">© 2024 Rwandan Market Facilitator. All rights reserved.</p>
+</footer>
+<script>
+    // Micro-interaction for the pulse effect on the active step
+    document.addEventListener('DOMContentLoaded', () => {
+      console.log('RMF Rider Approval Dashboard Initialized');
+    });
+  </script>
+</body></html>

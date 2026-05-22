@@ -2,7 +2,7 @@
 import React, { ReactNode, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import { ChevronDown, LocateFixed, LogOut, MapPin, Menu, Search, ShoppingCart, SlidersHorizontal, Sparkles, UserCircle, UserPlus, Video, X } from 'lucide-react';
+import { ChevronDown, LocateFixed, LogOut, MapPin, Menu, Search, ShoppingBag, ShoppingCart, SlidersHorizontal, Sparkles, UserCircle, UserPlus, Video, X } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useLanguage } from '@/context/LanguageContext';
 import { useCart } from '@/components/cart/CartContext';
@@ -68,6 +68,7 @@ const LayoutContent = ({ children }: LayoutProps) => {
   const buyerNav = [
     { label: t('nav_home') || 'Home', icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>, href: '/', hidden: !isSubdomain },
     { label: t('nav_hub') || 'Markets', icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg>, href: '/markets' },
+    { label: 'Products', icon: <ShoppingBag size={18} />, href: '/products' },
     { label: 'Videos', icon: <Video size={18} />, href: '/videos' },
     { label: 'For You', icon: <Sparkles size={18} />, href: '/preferences', auth: true },
     { label: t('nav_dashboard') || 'My Account', icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>, href: '/dashboard', auth: true },
@@ -96,12 +97,10 @@ const LayoutContent = ({ children }: LayoutProps) => {
     { label: 'Platform Analytics', icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>, href: '/admin?tab=analytics' },
     { label: 'Accounting', icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>, href: '/admin?tab=accounting' },
     { label: 'Live Operations', icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>, href: '/admin?tab=live-map' },
-    { label: 'Seller Approvals', icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><polyline points="17 11 19 13 23 9"/></svg>, href: '/admin?tab=sellers' },
+    { label: 'Approvals', icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><polyline points="17 11 19 13 23 9"/></svg>, href: '/admin?tab=approvals' },
     { label: 'Markets Directory', icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>, href: '/admin?tab=markets' },
     { label: 'Product Approvals', icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><polyline points="7.5 4.21 12 6.81 16.5 4.21"/><polyline points="7.5 19.79 7.5 14.6 3 12"/><polyline points="21 12 16.5 14.6 16.5 19.79"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>, href: '/admin?tab=products' },
     { label: 'Taxonomy', icon: <SlidersHorizontal size={18} />, href: '/admin?tab=taxonomy' },
-    { label: 'Profile Changes', icon: <UserCircle size={18} />, href: '/admin?tab=profile-changes' },
-    { label: 'Rider Approvals', icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="1" y="3" width="15" height="13"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>, href: '/admin?tab=riders' },
     { label: 'Disputes & Refunds', icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>, href: '/admin?tab=disputes' },
     { label: 'Fraud Alerts', icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M12 8v4"/><path d="M12 16h.01"/></svg>, href: '/admin?tab=fraud' },
     { label: 'Payout Approvals', icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/><rect x="2" y="4" width="20" height="16" rx="2"/></svg>, href: '/admin?tab=payouts' },
@@ -207,8 +206,8 @@ const LayoutContent = ({ children }: LayoutProps) => {
   return (
     <div className="min-h-screen bg-[#fdfaf7] font-sans selection:bg-[#ff6b00] selection:text-white flex flex-col">
       {/* Main Header */}
-      <header className="sticky top-0 z-50 border-b border-[#ebdcd0] bg-white/95 shadow-sm backdrop-blur">
-        <div className="mx-auto flex min-h-14 max-w-[1440px] items-center gap-3 px-3 md:px-4">
+      <header className="sticky top-0 z-50 border-b border-[#ebdcd0] bg-white">
+        <div className="mx-auto flex min-h-16 max-w-[1440px] items-center gap-3 px-3 md:px-6">
           <div className="flex min-w-0 items-center gap-2">
             <button
               type="button"
@@ -220,27 +219,39 @@ const LayoutContent = ({ children }: LayoutProps) => {
               {mobileMenuOpen ? <X size={21} /> : <Menu size={21} />}
             </button>
             <a href={apexHome} className="flex items-center gap-2">
-              <span className="text-2xl font-black tracking-normal text-[#ff6b00]">RMF</span>
+              <span className="text-2xl font-black tracking-normal text-[#a04100]">RMF</span>
             </a>
           </div>
 
-          {!isDashboard ? (
-            <form onSubmit={handleSearch} className="relative hidden flex-1 md:block">
-              <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-[#8b938d]" size={17} />
-              <input
-                type="text"
-                placeholder={t('home_search_placeholder') || 'Search markets or products...'}
-                value={globalSearch}
-                onChange={(e) => setGlobalSearch(e.target.value)}
-                className="h-10 w-full rounded-md border border-[#ebdcd0] bg-white pl-11 pr-4 text-sm font-semibold text-[#1b1c1c] outline-none transition placeholder:text-[#9da7a0] focus:border-[#ff6b00] focus:ring-2 focus:ring-[#ffedd5]"
-              />
-            </form>
-          ) : (
-            <div className="hidden flex-1 items-center px-4 md:flex">
-              <span className="text-sm font-bold text-[#414844]">
-                {user?.role === 'ADMIN' ? 'Admin portal' : user?.role === 'SELLER' ? 'Seller hub' : user?.role === 'RIDER' ? 'Rider hub' : 'My account'}
-              </span>
-            </div>
+          <form onSubmit={handleSearch} className="relative hidden w-[min(420px,42vw)] md:block">
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-[#5a4136]" size={19} />
+            <input
+              type="text"
+              placeholder={isDashboard ? 'Search orders or products...' : (t('home_search_placeholder') || 'Search markets or products...')}
+              value={globalSearch}
+              onChange={(e) => setGlobalSearch(e.target.value)}
+              className="h-11 w-full rounded border border-[#e2bfb0] bg-[#fbf9f8] pl-12 pr-4 text-sm font-medium text-[#1b1c1c] outline-none transition placeholder:text-[#8e7164] focus:border-[#ff6b00] focus:bg-white focus:ring-2 focus:ring-[#ffedd5]"
+            />
+          </form>
+
+          {!isDashboard && (
+            <nav className="hidden flex-1 items-center justify-center gap-8 lg:flex">
+              {[
+                { href: '/', label: 'Home' },
+                { href: '/markets', label: 'Explore' },
+                { href: '/orders', label: 'Orders' },
+              ].map(item => (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className={`border-b-2 px-1 py-5 text-sm font-medium transition-colors ${
+                    isNavActive(item.href) ? 'border-[#a04100] text-[#a04100]' : 'border-transparent text-[#574e47] hover:text-[#a04100]'
+                  }`}
+                >
+                  {item.label}
+                </Link>
+              ))}
+            </nav>
           )}
 
           <div className="ml-auto flex items-center gap-1.5">
@@ -458,16 +469,15 @@ const LayoutContent = ({ children }: LayoutProps) => {
       <div className="flex-grow flex relative">
         {/* Dashboard Side Navigation */}
         {isDashboard && (
-          <aside className="w-[16rem] bg-[#e05300] p-4 hidden md:block sticky top-20 h-[calc(100vh-5rem)] z-40 overflow-y-auto">
-            <div className="mb-6 rounded-lg border border-white/10 bg-white/5 p-4">
-               <h2 className="flex items-center gap-3 text-sm font-black text-white">
-                 <span className="h-2 w-2 rounded-full bg-[#ff9f1c]"></span>
-                  {user?.role === 'ADMIN' ? 'Admin Portal' : (user?.role === 'SELLER' ? 'Seller Hub' : 'Navigation')}
+          <aside className="hidden w-[20rem] shrink-0 border-r border-[#ebdcd0] bg-white p-6 md:block sticky top-16 h-[calc(100vh-4rem)] z-40 overflow-y-auto">
+            <div className="mb-8">
+               <h2 className="text-2xl font-black text-[#a04100]">
+                  {user?.role === 'ADMIN' ? 'Admin Portal' : (user?.role === 'SELLER' ? 'Marketplace Portal' : 'Navigation')}
                 </h2>
-               <p className="mt-2 text-xs font-semibold leading-5 text-white/60">Trusted marketplace operations</p>
+               <p className="mt-1 text-sm font-medium leading-5 text-[#574e47]">Operational View</p>
             </div>
             
-            <nav className="space-y-2">
+            <nav className="space-y-3">
               {visibleNavItems.map((item) => {
                 const isActive = isNavActive(item.href);
                 const NavComponent = item.absolute ? 'a' : Link;
@@ -475,14 +485,14 @@ const LayoutContent = ({ children }: LayoutProps) => {
                   <NavComponent 
                     key={item.href} 
                     href={item.href}
-                    className={`block w-full rounded-md border px-4 py-3 text-left text-sm font-bold transition-all ${
+                    className={`block w-full rounded px-4 py-3.5 text-left text-sm font-medium transition-colors ${
                       isActive 
-                        ? 'border-[#ffedd5] bg-white/[0.12] text-white shadow-[inset_4px_0_0_#ffedd5]' 
-                        : 'border-transparent text-white/65 hover:bg-white/5 hover:text-white'
+                        ? 'bg-[#ff6b00] text-[#351000]' 
+                        : 'text-[#3f2114] hover:bg-[#ffedd5] hover:text-[#a04100]'
                     }`}
                   >
                     <span className="flex items-center gap-3">
-                      <span className={`transition-transform duration-300 ${isActive ? 'text-[#ffedd5]' : 'text-white/35'}`}>
+                      <span className={isActive ? 'text-[#351000]' : 'text-[#5a4136]'}>
                         {item.icon}
                       </span>
                       {item.label}
@@ -491,10 +501,10 @@ const LayoutContent = ({ children }: LayoutProps) => {
                 );
               })}
               
-              <div className="mt-12 pt-6 border-t border-white/5">
+              <div className="mt-12 border-t border-[#ebdcd0] pt-6">
                 <button 
                   onClick={logout}
-                  className="flex w-full items-center gap-3 rounded-md px-4 py-3 text-left text-sm font-bold text-red-300/80 transition-all hover:bg-red-500/10 hover:text-red-200"
+                  className="flex w-full items-center gap-3 rounded px-4 py-3 text-left text-sm font-bold text-[#7a3000] transition-colors hover:bg-[#ffedd5]"
                 >
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
                   <span>{t('nav_logout') || 'Sign Out'}</span>

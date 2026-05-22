@@ -1,0 +1,433 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>RMF Seller Dashboard</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Work+Sans:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@500&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "inverse-surface": "#303030",
+                        "secondary-fixed-dim": "#ffb598",
+                        "outline-variant": "#e2bfb0",
+                        "background": "#fbf9f8",
+                        "on-secondary-container": "#561b00",
+                        "on-primary-fixed": "#351000",
+                        "on-surface": "#1b1c1c",
+                        "surface": "#fbf9f8",
+                        "tertiary": "#005ac2",
+                        "secondary": "#a63b00",
+                        "on-secondary-fixed-variant": "#7f2b00",
+                        "error-container": "#ffdad6",
+                        "tertiary-container": "#5f97ff",
+                        "on-tertiary-fixed": "#001a42",
+                        "on-surface-variant": "#5a4136",
+                        "surface-container-lowest": "#ffffff",
+                        "tertiary-fixed-dim": "#adc6ff",
+                        "on-error-container": "#93000a",
+                        "on-tertiary-container": "#002f6b",
+                        "on-tertiary": "#ffffff",
+                        "on-secondary": "#ffffff",
+                        "secondary-container": "#fc671d",
+                        "on-background": "#1b1c1c",
+                        "primary-fixed": "#ffdbcc",
+                        "surface-bright": "#fbf9f8",
+                        "surface-container-low": "#f5f3f3",
+                        "on-tertiary-fixed-variant": "#004395",
+                        "on-primary-fixed-variant": "#7a3000",
+                        "secondary-fixed": "#ffdbce",
+                        "surface-container": "#efeded",
+                        "on-primary-container": "#572000",
+                        "error": "#ba1a1a",
+                        "tertiary-fixed": "#d8e2ff",
+                        "primary-fixed-dim": "#ffb693",
+                        "surface-container-high": "#e9e8e7",
+                        "on-secondary-fixed": "#370e00",
+                        "primary-container": "#ff6b00",
+                        "surface-tint": "#a04100",
+                        "surface-dim": "#dbdad9",
+                        "surface-variant": "#e3e2e2",
+                        "inverse-primary": "#ffb693",
+                        "primary": "#a04100",
+                        "surface-container-highest": "#e3e2e2",
+                        "on-primary": "#ffffff",
+                        "outline": "#8e7164",
+                        "on-error": "#ffffff",
+                        "inverse-on-surface": "#f2f0f0"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.125rem",
+                        "lg": "0.25rem",
+                        "xl": "0.5rem",
+                        "full": "0.75rem"
+                    },
+                    "spacing": {
+                        "md": "16px",
+                        "gutter": "16px",
+                        "margin-desktop": "32px",
+                        "sm": "8px",
+                        "base": "4px",
+                        "xl": "40px",
+                        "xs": "4px",
+                        "margin-mobile": "16px",
+                        "lg": "24px"
+                    },
+                    "fontFamily": {
+                        "headline-md": ["Work Sans"],
+                        "headline-lg": ["Work Sans"],
+                        "table-data": ["Work Sans"],
+                        "body-sm": ["Work Sans"],
+                        "label-md": ["JetBrains Mono"],
+                        "body-md": ["Work Sans"],
+                        "body-lg": ["Work Sans"],
+                        "headline-lg-mobile": ["Work Sans"]
+                    },
+                    "fontSize": {
+                        "headline-md": ["20px", {"lineHeight": "28px", "fontWeight": "600"}],
+                        "headline-lg": ["30px", {"lineHeight": "38px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                        "table-data": ["13px", {"lineHeight": "18px", "fontWeight": "500"}],
+                        "body-sm": ["12px", {"lineHeight": "16px", "fontWeight": "400"}],
+                        "label-md": ["12px", {"lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "500"}],
+                        "body-md": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                        "body-lg": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                        "headline-lg-mobile": ["24px", {"lineHeight": "30px", "letterSpacing": "-0.01em", "fontWeight": "700"}]
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .custom-scrollbar::-webkit-scrollbar { width: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #ebdcd0; border-radius: 10px; }
+    </style>
+</head>
+<body class="bg-background text-on-surface font-body-md selection:bg-primary-container selection:text-on-primary-container">
+<!-- Top Navigation (Shell Only) -->
+<header class="fixed top-0 left-0 w-full z-50 flex justify-between items-center px-margin-desktop h-16 bg-surface border-b border-outline-variant">
+<div class="flex items-center gap-md">
+<span class="text-headline-md font-headline-md font-bold text-primary">RMF</span>
+<div class="hidden md:flex items-center bg-surface-container-low px-md py-base border border-outline-variant rounded-lg">
+<span class="material-symbols-outlined text-on-surface-variant mr-sm">search</span>
+<input class="bg-transparent border-none focus:ring-0 text-body-md w-64" placeholder="Search orders or products..." type="text"/>
+</div>
+</div>
+<div class="flex items-center gap-lg">
+<button class="material-symbols-outlined text-on-surface-variant hover:bg-surface-container-low p-base transition-colors rounded-lg">location_on</button>
+<button class="material-symbols-outlined text-on-surface-variant hover:bg-surface-container-low p-base transition-colors rounded-lg">language</button>
+<div class="relative">
+<button class="material-symbols-outlined text-on-surface-variant hover:bg-surface-container-low p-base transition-colors rounded-lg">notifications</button>
+<span class="absolute top-1 right-1 w-2 h-2 bg-primary rounded-full"></span>
+</div>
+<img alt="User Account" class="w-8 h-8 rounded-full border border-outline-variant" data-alt="A professional headshot of a Rwandan entrepreneur in a bright, modern office setting. The person is wearing a contemporary business-casual outfit. The lighting is soft and high-key, reflecting a light-mode corporate aesthetic. The background is slightly blurred, showing a clean, well-organized marketplace coordination center with warm wood accents and earthy tones." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCC7rjuOEoOIbc1xLwU6Q0Ux8AyXqlN54Q7mcmN2syPR0mYPP2QMNVUDigNSyCNf6WChsGrw2nWfRPCI0OFX1sFK7T7HMgdZpXLNKsPlNHlWYzQ1xNUgurxflGjT1-9ANW9C6-9WKywUrshpGdgWxcE0GiJZj5DhywOIKN-v7CZEcldgHtBO0GCDcjoGs0w_-NLqjXVExFEj2MHX4hH-zomy9l42a320qXRGQbHp-yx92c2uG5zNTYmyBlTDmwMJjYvTemr5lWlZm97"/>
+</div>
+</header>
+<div class="flex h-screen pt-16">
+<!-- Side Navigation Bar -->
+<aside class="hidden lg:flex flex-col w-64 h-full p-md space-y-base bg-surface-container-lowest border-r border-outline-variant">
+<div class="mb-lg px-base">
+<h2 class="font-headline-md text-headline-md font-bold text-primary">Marketplace Portal</h2>
+<p class="font-body-md text-body-md text-on-surface-variant">Operational View</p>
+</div>
+<nav class="flex-1 space-y-xs overflow-y-auto custom-scrollbar">
+<a class="flex items-center gap-md px-md py-sm bg-primary-container text-on-primary-container rounded-lg font-bold transition-transform scale-95" href="#">
+<span class="material-symbols-outlined">dashboard</span>
+<span class="font-label-md text-label-md">Dashboard</span>
+</a>
+<a class="flex items-center gap-md px-md py-sm text-on-surface-variant hover:bg-surface-container-high transition-all rounded-lg" href="#">
+<span class="material-symbols-outlined">inventory_2</span>
+<span class="font-label-md text-label-md">Orders</span>
+</a>
+<a class="flex items-center gap-md px-md py-sm text-on-surface-variant hover:bg-surface-container-high transition-all rounded-lg" href="#">
+<span class="material-symbols-outlined">inventory</span>
+<span class="font-label-md text-label-md">Inventory</span>
+</a>
+<a class="flex items-center gap-md px-md py-sm text-on-surface-variant hover:bg-surface-container-high transition-all rounded-lg" href="#">
+<span class="material-symbols-outlined">handshake</span>
+<span class="font-label-md text-label-md">Negotiations</span>
+</a>
+<a class="flex items-center gap-md px-md py-sm text-on-surface-variant hover:bg-surface-container-high transition-all rounded-lg" href="#">
+<span class="material-symbols-outlined">local_shipping</span>
+<span class="font-label-md text-label-md">Logistics</span>
+</a>
+<a class="flex items-center gap-md px-md py-sm text-on-surface-variant hover:bg-surface-container-high transition-all rounded-lg" href="#">
+<span class="material-symbols-outlined">analytics</span>
+<span class="font-label-md text-label-md">Analytics</span>
+</a>
+</nav>
+<button class="w-full mb-md py-sm px-md bg-secondary text-on-secondary rounded-lg font-bold text-label-md hover:opacity-90 transition-opacity">
+                Switch Role
+            </button>
+<div class="border-t border-outline-variant pt-md space-y-xs">
+<a class="flex items-center gap-md px-md py-sm text-on-surface-variant hover:bg-surface-container-high transition-all rounded-lg" href="#">
+<span class="material-symbols-outlined">settings</span>
+<span class="font-label-md text-label-md">Settings</span>
+</a>
+<a class="flex items-center gap-md px-md py-sm text-on-surface-variant hover:bg-surface-container-high transition-all rounded-lg" href="#">
+<span class="material-symbols-outlined">help</span>
+<span class="font-label-md text-label-md">Support</span>
+</a>
+</div>
+</aside>
+<!-- Main Content Area -->
+<main class="flex-1 overflow-y-auto bg-background p-margin-mobile md:p-margin-desktop custom-scrollbar pb-32 lg:pb-8">
+<!-- Header & Stats Grid -->
+<section class="max-w-[1280px] mx-auto space-y-lg">
+<div class="flex flex-col md:flex-row md:items-center justify-between gap-md">
+<div>
+<h1 class="font-headline-lg text-headline-lg">Seller Overview</h1>
+<p class="text-on-surface-variant">Last update: Today at 09:42 AM</p>
+</div>
+<div class="flex gap-sm">
+<button class="flex items-center gap-sm px-md py-sm bg-primary text-on-primary rounded-lg font-bold text-label-md transition-all hover:shadow-md">
+<span class="material-symbols-outlined text-[18px]">add</span> Add Product
+                        </button>
+<button class="flex items-center gap-sm px-md py-sm border border-primary text-primary rounded-lg font-bold text-label-md transition-all hover:bg-surface-container">
+<span class="material-symbols-outlined text-[18px]">payments</span> Withdraw
+                        </button>
+</div>
+</div>
+<!-- Bento Stats -->
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-gutter">
+<!-- Wallet Balance -->
+<div class="p-md bg-surface-container-lowest border border-outline-variant rounded-xl flex flex-col justify-between min-h-[120px]">
+<div class="flex justify-between items-start">
+<span class="font-label-md text-on-surface-variant">Wallet Balance</span>
+<span class="material-symbols-outlined text-primary">account_balance_wallet</span>
+</div>
+<div>
+<span class="font-headline-lg text-headline-lg text-primary">1,240,500</span>
+<span class="font-label-md ml-xs">RWF</span>
+</div>
+</div>
+<!-- Pending Quotes -->
+<div class="p-md bg-surface-container-lowest border border-outline-variant rounded-xl flex flex-col justify-between min-h-[120px]">
+<div class="flex justify-between items-start">
+<span class="font-label-md text-on-surface-variant">Pending Quotes</span>
+<span class="material-symbols-outlined text-secondary">request_quote</span>
+</div>
+<div>
+<span class="font-headline-lg text-headline-lg">14</span>
+<p class="font-body-sm text-on-surface-variant">Avg response: 45m</p>
+</div>
+</div>
+<!-- Active Orders -->
+<div class="p-md bg-surface-container-lowest border border-outline-variant rounded-xl flex flex-col justify-between min-h-[120px]">
+<div class="flex justify-between items-start">
+<span class="font-label-md text-on-surface-variant">Active Orders</span>
+<span class="material-symbols-outlined text-tertiary">inventory_2</span>
+</div>
+<div>
+<span class="font-headline-lg text-headline-lg">28</span>
+<p class="font-body-sm text-tertiary">8 Ready for logistics</p>
+</div>
+</div>
+<!-- Shop Rating -->
+<div class="p-md bg-surface-container-lowest border border-outline-variant rounded-xl flex flex-col justify-between min-h-[120px]">
+<div class="flex justify-between items-start">
+<span class="font-label-md text-on-surface-variant">Shop Rating</span>
+<span class="material-symbols-outlined text-[#facc15]" style="font-variation-settings: 'FILL' 1;">star</span>
+</div>
+<div class="flex items-end gap-sm">
+<span class="font-headline-lg text-headline-lg">4.92</span>
+<span class="font-label-md text-on-surface-variant pb-base">/ 5.0</span>
+</div>
+</div>
+</div>
+<!-- Main Grid Layout -->
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-gutter">
+<!-- Left: Revenue Trend & Activities -->
+<div class="lg:col-span-2 space-y-gutter">
+<!-- Revenue Trend Chart Placeholder -->
+<div class="bg-surface-container-lowest border border-outline-variant rounded-xl overflow-hidden">
+<div class="p-md border-b border-outline-variant flex justify-between items-center bg-[#ffedd5]">
+<h3 class="font-headline-md text-headline-md">Revenue Trend</h3>
+<select class="bg-transparent border-none text-label-md font-label-md focus:ring-0 cursor-pointer">
+<option>Weekly</option>
+<option>Monthly</option>
+</select>
+</div>
+<div class="p-xl flex items-end justify-between h-64 gap-sm bg-surface-container-lowest">
+<div class="w-full bg-primary-container/20 rounded-t-lg h-[40%] hover:bg-primary-container transition-colors relative group">
+<span class="absolute -top-8 left-1/2 -translate-x-1/2 bg-inverse-surface text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity">120k</span>
+</div>
+<div class="w-full bg-primary-container/20 rounded-t-lg h-[65%] hover:bg-primary-container transition-colors relative group"></div>
+<div class="w-full bg-primary-container/20 rounded-t-lg h-[55%] hover:bg-primary-container transition-colors relative group"></div>
+<div class="w-full bg-primary-container/20 rounded-t-lg h-[90%] hover:bg-primary-container transition-colors relative group"></div>
+<div class="w-full bg-primary-container/20 rounded-t-lg h-[75%] hover:bg-primary-container transition-colors relative group"></div>
+<div class="w-full bg-primary-container/20 rounded-t-lg h-[82%] hover:bg-primary-container transition-colors relative group"></div>
+<div class="w-full bg-primary-container rounded-t-lg h-[95%] relative group">
+<span class="absolute -top-8 left-1/2 -translate-x-1/2 bg-inverse-surface text-white text-xs px-2 py-1 rounded">Today</span>
+</div>
+</div>
+<div class="px-xl py-sm flex justify-between text-label-md text-on-surface-variant border-t border-outline-variant">
+<span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span><span>Sun</span>
+</div>
+</div>
+<!-- Pending Quotes Section -->
+<div class="bg-surface-container-lowest border border-outline-variant rounded-xl overflow-hidden">
+<div class="p-md border-b border-outline-variant flex justify-between items-center">
+<h3 class="font-headline-md text-headline-md">Recent Pending Quotes</h3>
+<a class="text-primary font-label-md text-label-md hover:underline" href="#">View All</a>
+</div>
+<div class="divide-y divide-outline-variant">
+<!-- Quote Item 1 -->
+<div class="p-md flex items-center justify-between hover:bg-surface-container-low transition-colors">
+<div class="flex items-center gap-md">
+<div class="w-10 h-10 rounded-lg bg-surface-container-high flex items-center justify-center">
+<span class="material-symbols-outlined text-secondary">shopping_bag</span>
+</div>
+<div>
+<p class="font-body-md font-bold">Grade A Arabica Beans (50kg)</p>
+<p class="font-body-sm text-on-surface-variant">Buyer: Gisenyi Trading Co.</p>
+</div>
+</div>
+<div class="text-right">
+<div class="flex items-center gap-xs text-error font-label-md text-label-md mb-xs">
+<span class="material-symbols-outlined text-[16px]">timer</span>
+<span class="countdown" data-expire="3600">00:59:59</span>
+</div>
+<button class="px-sm py-xs bg-surface border border-primary text-primary rounded text-label-md font-bold hover:bg-primary hover:text-on-primary transition-colors">Respond</button>
+</div>
+</div>
+<!-- Quote Item 2 -->
+<div class="p-md flex items-center justify-between hover:bg-surface-container-low transition-colors">
+<div class="flex items-center gap-md">
+<div class="w-10 h-10 rounded-lg bg-surface-container-high flex items-center justify-center">
+<span class="material-symbols-outlined text-secondary">agriculture</span>
+</div>
+<div>
+<p class="font-body-md font-bold">NPK 17-17-17 Fertilizer (200kg)</p>
+<p class="font-body-sm text-on-surface-variant">Buyer: Coopérative de Muhanga</p>
+</div>
+</div>
+<div class="text-right">
+<div class="flex items-center gap-xs text-error font-label-md text-label-md mb-xs">
+<span class="material-symbols-outlined text-[16px]">timer</span>
+<span class="countdown" data-expire="14400">03:59:59</span>
+</div>
+<button class="px-sm py-xs bg-surface border border-primary text-primary rounded text-label-md font-bold hover:bg-primary hover:text-on-primary transition-colors">Respond</button>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Right: Widgets & Actions -->
+<div class="space-y-gutter">
+<!-- Shop Health Widget -->
+<div class="bg-surface-container-lowest border border-outline-variant rounded-xl p-md">
+<div class="flex items-center gap-sm mb-md">
+<span class="material-symbols-outlined text-primary">health_and_safety</span>
+<h3 class="font-headline-md text-headline-md">Shop Health</h3>
+</div>
+<div class="space-y-md">
+<div class="p-sm bg-error-container rounded-lg border border-error/20">
+<div class="flex items-center gap-sm mb-xs text-on-error-container font-bold text-label-md">
+<span class="material-symbols-outlined text-[18px]">warning</span> Low Stock Alert
+                                    </div>
+<p class="text-body-sm text-on-error-container">Sunflower Oil (5L) is below 10 units. Restock suggested.</p>
+</div>
+<div class="flex flex-col gap-sm">
+<div class="flex justify-between text-body-sm mb-base">
+<span>Fulfillment Rate</span>
+<span class="font-bold">98.2%</span>
+</div>
+<div class="w-full bg-surface-container-high h-2 rounded-full overflow-hidden">
+<div class="bg-primary h-full w-[98%]"></div>
+</div>
+</div>
+<div class="flex items-center gap-sm p-sm bg-surface-container-low rounded-lg">
+<span class="material-symbols-outlined text-tertiary">verified_user</span>
+<div class="flex-1">
+<p class="text-label-md font-bold">Verified Seller</p>
+<p class="text-body-sm text-on-surface-variant italic">Escrow-ready status active</p>
+</div>
+</div>
+</div>
+</div>
+<!-- Quick Action: Upload Ad Video -->
+<div class="relative group cursor-pointer overflow-hidden rounded-xl h-48 border border-outline-variant">
+<img class="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" data-alt="A cinematic close-up of lush Rwandan coffee plantations on rolling green hills during the golden hour. The sunlight is warm and glowing, creating a rich, earthy atmosphere. The scene represents the high quality of Rwandan agriculture. The aesthetic is professional and high-utility, with deep greens and vibrant oranges in the lighting." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBq1iXPOzrKnvi-MMDC_SkRD1n2V6wXSVMpqE23-9PmXsR3hcNyDT44gz_mIoatm0dmLazoKbg2I2wMBKjSC2jkZbxdb6GCmqRNBCKXIgD9d7Ccrx1ETevd4bBLZ70pfLBSvKobhytyM2mVKkg55JokH1RZmR6dnAgeniDE3e1a_3d4keuCToSJIoL2CUT2KOyBTtXD1nlLkjdOBvhRefjUcvNm_oJBujOIhp1D-D-NxGrNFDILJU3K0GflOhFCVAAwPs5gMmPPVQhF"/>
+<div class="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent flex flex-col justify-end p-md">
+<h4 class="text-white font-headline-md">Boost Sales</h4>
+<p class="text-white/80 text-body-sm mb-sm">Upload a short product showcase video</p>
+<button class="flex items-center gap-sm px-md py-sm bg-primary-container text-on-primary-container rounded-lg font-bold text-label-md w-fit">
+<span class="material-symbols-outlined">upload_file</span> Upload Ad Video
+                                </button>
+</div>
+</div>
+<!-- Trust Indicator -->
+<div class="flex items-center justify-center gap-sm p-md bg-surface-container border border-outline-variant rounded-xl opacity-80">
+<span class="material-symbols-outlined text-on-surface-variant">security</span>
+<span class="text-label-md font-label-md text-on-surface-variant">SECURE PAYMENT COORDINATOR</span>
+</div>
+</div>
+</div>
+</section>
+</main>
+<!-- Bottom NavBar (Mobile Only) -->
+<nav class="lg:hidden fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-4 py-2 bg-surface shadow-lg border-t border-outline-variant rounded-t-xl">
+<a class="flex flex-col items-center justify-center bg-secondary-container text-on-secondary-container rounded-full px-4 py-1 scale-90" href="#">
+<span class="material-symbols-outlined">home</span>
+<span class="font-label-md text-label-md">Home</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant" href="#">
+<span class="material-symbols-outlined">search</span>
+<span class="font-label-md text-label-md">Search</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant" href="#">
+<span class="material-symbols-outlined">receipt_long</span>
+<span class="font-label-md text-label-md">Orders</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant" href="#">
+<span class="material-symbols-outlined">person</span>
+<span class="font-label-md text-label-md">Account</span>
+</a>
+</nav>
+</div>
+<!-- Micro-interactions Script -->
+<script>
+        // Simple Countdown Timer Logic
+        function startCountdowns() {
+            const timers = document.querySelectorAll('.countdown');
+            timers.forEach(timer => {
+                let seconds = parseInt(timer.dataset.expire);
+                const interval = setInterval(() => {
+                    if (seconds <= 0) {
+                        clearInterval(interval);
+                        timer.innerText = "EXPIRED";
+                        return;
+                    }
+                    seconds--;
+                    const h = Math.floor(seconds / 3600);
+                    const m = Math.floor((seconds % 3600) / 60);
+                    const s = seconds % 60;
+                    timer.innerText = `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+                }, 1000);
+            });
+        }
+
+        // Run countdowns
+        startCountdowns();
+
+        // Simple Card Hover Effect Logic
+        document.querySelectorAll('.group').forEach(item => {
+            item.addEventListener('mousedown', () => {
+                item.style.transform = 'scale(0.98)';
+            });
+            item.addEventListener('mouseup', () => {
+                item.style.transform = 'scale(1)';
+            });
+        });
+    </script>
+</body></html>

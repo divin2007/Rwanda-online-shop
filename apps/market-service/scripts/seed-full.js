@@ -4,7 +4,7 @@ const { existsSync, readFileSync } = require('fs');
 const { resolve } = require('path');
 
 // Load env from root
-const envPath = resolve(__dirname, '../../../../.env');
+const envPath = resolve(__dirname, '../../../.env');
 if (existsSync(envPath)) {
   const content = readFileSync(envPath, 'utf-8');
   content.split(/\r?\n/).forEach(line => {

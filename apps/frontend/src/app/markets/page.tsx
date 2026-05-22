@@ -7,8 +7,10 @@ import { Layout } from '@/components/layout/Layout';
 import { MarketCard } from '@/components/ui/MarketCard';
 import { ProductCard } from '@/components/ui/ProductCard';
 import { useApi } from '@/hooks/useApi';
-import { marketApi, productApi } from '@/lib/api';
+import { useSocket } from '@/hooks/useSocket';
+import { marketApi, productApi, userApi } from '@/lib/api';
 import { useLanguage } from '@/context/LanguageContext';
+import { useAuth } from '@/context/AuthContext';
 import { MapPin, PackageCheck, Search, ShieldCheck, SlidersHorizontal, Sparkles, WifiOff, Clock, TrendingUp, Star, BadgePercent } from 'lucide-react';
 
 const RiderMap = dynamic(() => import('@/components/ui/RiderMap').then(mod => mod.RiderMap), {
@@ -113,7 +115,7 @@ const getProductQueryPath = (searchQuery: string, productCategory: string, attri
     if (value) params.set(`attributes.${key}`, value);
   });
 
-  return `/products?${params.toString()}`;
+  return `/products/recommendations/for-me?${params.toString()}`;
 };
 
 const getFacetQueryPath = (searchQuery: string) => {
@@ -178,9 +180,46 @@ function MarketsContent() {
   const productQueryPath = useMemo(() => getProductQueryPath(searchQuery, selectedProductCategory, attributeFilters, priceRange), [attributeFilters, searchQuery, selectedProductCategory, priceRange]);
   const facetQueryPath = useMemo(() => getFacetQueryPath(searchQuery), [searchQuery]);
   
+  const { user } = useAuth();
+  const { data: profileData, execute: refetchProfile } = useApi<any>(userApi, 'get', user ? '/users/profile' : '');
   const { data: marketsData, loading, error, execute: fetchMarkets } = useApi<Market[]>(marketApi, 'get', '/markets?activeOnly=true');
-  const { data: productsData, loading: productsLoading, error: productsError } = useApi<Product[]>(productApi, 'get', productQueryPath);
-  const { data: facetsData } = useApi<any>(productApi, 'get', facetQueryPath);
+  const { data: productsData, loading: productsLoading, error: productsError, execute: refetchProducts } = useApi<Product[]>(productApi, 'get', productQueryPath);
+  const { data: facetsData, execute: refetchFacets } = useApi<any>(productApi, 'get', facetQueryPath);
+  const { data: promotionsData, execute: refetchPromotions } = useApi<any[]>(productApi, 'get', '/promotions/active');
+
+  // Real-time WebSocket synchronization
+  const orderSocketUrl = process.env.NEXT_PUBLIC_ORDER_SERVICE_URL || 'http://localhost:3006';
+  const { data: socketMessage } = useSocket(orderSocketUrl, 'order:seller:updates');
+
+  useEffect(() => {
+    if (socketMessage) {
+      console.log('[WebSocket] Order update received on Markets Page:', socketMessage);
+      if (socketMessage.type === 'STATUS_UPDATE' && (socketMessage.status === 'delivered' || socketMessage.status === 'confirmed')) {
+        fetchMarkets();
+        refetchProducts();
+        refetchFacets();
+        refetchPromotions();
+        if (user) refetchProfile();
+      }
+    }
+  }, [socketMessage, fetchMarkets, refetchProducts, refetchFacets, refetchPromotions, refetchProfile, user]);
+
+  const promotionsByMarket = useMemo(() => {
+    const map = new Map<string, number>();
+    const promos = Array.isArray(promotionsData) ? promotionsData : [];
+    promos.forEach(p => {
+      if (p.product) {
+        const mId = typeof p.product.marketId === 'object' ? p.product.marketId._id : p.product.marketId;
+        if (mId && p.discountPercentage) {
+          const currentMax = map.get(mId) || 0;
+          if (p.discountPercentage > currentMax) {
+            map.set(mId, p.discountPercentage);
+          }
+        }
+      }
+    });
+    return map;
+  }, [promotionsData]);
 
   useEffect(() => {
     fetchMarkets();
@@ -222,6 +261,29 @@ function MarketsContent() {
     });
   };
 
+  const recommendationProfile = useMemo(() => profileData?.data?.recommendationProfile, [profileData]);
+  const discovery = useMemo(() => profileData?.data?.preferences?.discovery, [profileData]);
+
+  const scoredMarketsMap = useMemo(() => {
+    const marketScores = new Map<string, number>();
+    if (recommendationProfile?.marketScores) {
+      recommendationProfile.marketScores.forEach((m: any) => {
+        marketScores.set(String(m.refId), Number(m.score || 0));
+      });
+    }
+    const selectedMarkets = new Set((discovery?.marketIds || []).map((id: any) => String(id)));
+    const map = new Map<string, number>();
+    allMarkets.forEach(market => {
+      let score = 0;
+      if (selectedMarkets.has(market._id)) score += 12;
+      score += marketScores.get(market._id) || 0;
+      score += (market.rating || 0) * 1.5;
+      score += (market.totalOrders || 0) * 0.04;
+      map.set(market._id, score);
+    });
+    return map;
+  }, [allMarkets, recommendationProfile, discovery]);
+
   const filteredMarkets = useMemo(() => {
     let results = allMarkets;
     
@@ -254,10 +316,14 @@ function MarketsContent() {
         getDistanceKm(requestedLat, requestedLng, a.location?.coordinates)
         - getDistanceKm(requestedLat, requestedLng, b.location?.coordinates)
       ));
+    } else {
+      results = [...results].sort((a, b) => (
+        (scoredMarketsMap.get(b._id) || 0) - (scoredMarketsMap.get(a._id) || 0)
+      ));
     }
 
     return results;
-  }, [allMarkets, hasCoordinateSearch, productMarketIds, requestedLat, requestedLng, searchQuery, selectedCategory, hasProductFiltersActive]);
+  }, [allMarkets, hasCoordinateSearch, productMarketIds, requestedLat, requestedLng, searchQuery, selectedCategory, hasProductFiltersActive, scoredMarketsMap]);
 
   const liveDataUnavailable = Boolean(error);
   const productDataUnavailable = Boolean(productsError);
@@ -307,6 +373,13 @@ function MarketsContent() {
     [marketsToRender, promotionalMarketIds]
   );
 
+  const recommendedMarkets = useMemo(
+    () => [...marketsToRender]
+      .sort((a, b) => (scoredMarketsMap.get(b._id) || 0) - (scoredMarketsMap.get(a._id) || 0))
+      .slice(0, 6),
+    [marketsToRender, scoredMarketsMap]
+  );
+
   // Helper to translate shortcut labels dynamically
   const getShortcutLabel = (value: string) => {
     switch (value) {
@@ -324,25 +397,37 @@ function MarketsContent() {
     const theme = useMemo(() => {
       if (isFullWidth) {
         return {
-          icon: <BadgePercent className="text-white shrink-0 animate-bounce" size={26} />,
-          bg: 'bg-primary text-white relative overflow-hidden',
-          border: 'border-2 border-primary shadow-xl shadow-primary/10',
-          badge: 'bg-white/20 text-white border border-white/30 backdrop-blur-md font-black',
-          glow: 'hover:scale-[1.01] hover:shadow-primary/20',
+          icon: <BadgePercent className="text-white shrink-0" size={24} />,
+          bg: 'bg-[#ff6b00] text-white relative overflow-hidden',
+          border: 'border border-[#e2bfb0]',
+          badge: 'bg-white/15 text-white border border-white/25 font-black',
+          glow: '',
           textTitle: 'text-white',
           textDesc: 'text-white/90 leading-relaxed text-sm font-semibold max-w-xl'
         };
       }
       switch (title) {
+        case 'Recommended for You':
+        case 'Recommandé pour vous':
+        case 'Ibyo twaguhitiyemo':
+          return {
+            icon: <Sparkles className="text-primary shrink-0" size={22} />,
+            bg: 'bg-white',
+            border: 'border border-[#e2bfb0]',
+            badge: 'bg-primary/10 text-primary border border-primary/20 font-bold',
+            glow: 'hover:border-[#ff6b00]',
+            textTitle: 'text-text-primary',
+            textDesc: 'text-sm font-semibold text-text-muted leading-relaxed max-w-sm'
+          };
         case 'New Markets':
         case 'Masoko Mashya':
         case 'Nouveaux Marchés':
           return {
-            icon: <Clock className="text-orange-500 animate-pulse shrink-0" size={22} />,
+            icon: <Clock className="text-orange-500 shrink-0" size={22} />,
             bg: 'bg-white',
-            border: 'border-2 border-orange-300 shadow-md shadow-orange-500/5',
-            badge: 'bg-orange-100 text-orange-800 border border-orange-200',
-            glow: 'hover:border-orange-400 hover:shadow-orange-500/10',
+            border: 'border border-[#e2bfb0]',
+            badge: 'bg-orange-100 text-orange-850 border border-orange-200',
+            glow: 'hover:border-orange-400',
             textTitle: 'text-text-primary',
             textDesc: 'text-sm font-semibold text-text-muted leading-relaxed max-w-sm'
           };
@@ -352,9 +437,9 @@ function MarketsContent() {
           return {
             icon: <TrendingUp className="text-red-500 shrink-0" size={22} />,
             bg: 'bg-white',
-            border: 'border-2 border-red-300 shadow-md shadow-red-500/5',
-            badge: 'bg-red-100 text-red-800 border border-red-200',
-            glow: 'hover:border-red-400 hover:shadow-red-500/10',
+            border: 'border border-[#e2bfb0]',
+            badge: 'bg-red-100 text-red-850 border border-red-200',
+            glow: 'hover:border-red-400',
             textTitle: 'text-text-primary',
             textDesc: 'text-sm font-semibold text-text-muted leading-relaxed max-w-sm'
           };
@@ -362,11 +447,11 @@ function MarketsContent() {
         case 'Ayashimagijwe cyane':
         case 'Les Plus Évalués':
           return {
-            icon: <Star className="text-amber-500 fill-amber-500 shrink-0 animate-bounce" size={22} />,
+            icon: <Star className="text-amber-500 fill-amber-500 shrink-0" size={22} />,
             bg: 'bg-white',
-            border: 'border-2 border-amber-300 shadow-md shadow-amber-500/5',
-            badge: 'bg-amber-100 text-amber-800 border border-amber-200',
-            glow: 'hover:border-amber-400 hover:shadow-amber-500/10',
+            border: 'border border-[#e2bfb0]',
+            badge: 'bg-amber-100 text-amber-850 border border-amber-200',
+            glow: 'hover:border-amber-400',
             textTitle: 'text-text-primary',
             textDesc: 'text-sm font-semibold text-text-muted leading-relaxed max-w-sm'
           };
@@ -374,68 +459,25 @@ function MarketsContent() {
           return {
             icon: <Sparkles className="text-primary shrink-0" size={22} />,
             bg: 'bg-white',
-            border: 'border-2 border-border-light shadow-sm',
-            badge: 'bg-primary-light text-primary-dark border border-primary/20',
-            glow: 'hover:border-primary hover:shadow-primary/10',
+            border: 'border border-[#e2bfb0]',
+            badge: 'bg-primary/10 text-primary border border-primary/20',
+            glow: 'hover:border-primary',
             textTitle: 'text-text-primary',
             textDesc: 'text-sm font-semibold text-text-muted leading-relaxed max-w-sm'
           };
       }
     }, [title, isFullWidth]);
 
-    useEffect(() => {
-      const container = containerRef.current;
-      if (!container || markets.length <= 1) return;
-
-      let animationFrameId: number;
-      let scrollSpeed = 0.4;
-      let direction = 1;
-
-      const animate = () => {
-        if (!container) return;
-        container.scrollLeft += scrollSpeed * direction;
-
-        const maxScroll = container.scrollWidth - container.clientWidth;
-        if (container.scrollLeft >= maxScroll - 1) {
-          direction = -1;
-        } else if (container.scrollLeft <= 1) {
-          direction = 1;
-        }
-        animationFrameId = requestAnimationFrame(animate);
-      };
-
-      let isPaused = false;
-      const handleMouseEnter = () => {
-        isPaused = true;
-        cancelAnimationFrame(animationFrameId);
-      };
-      const handleMouseLeave = () => {
-        isPaused = false;
-        animationFrameId = requestAnimationFrame(animate);
-      };
-
-      container.addEventListener('mouseenter', handleMouseEnter);
-      container.addEventListener('mouseleave', handleMouseLeave);
-
-      animationFrameId = requestAnimationFrame(animate);
-
-      return () => {
-        cancelAnimationFrame(animationFrameId);
-        container.removeEventListener('mouseenter', handleMouseEnter);
-        container.removeEventListener('mouseleave', handleMouseLeave);
-      };
-    }, [markets]);
-
     return (
-      <div className={`space-y-5 rounded-3xl p-8 transition-all duration-500 ${theme.bg} ${theme.border} ${theme.glow}`}>
+      <div className={`space-y-5 rounded-lg p-6 transition-colors ${theme.bg} ${theme.border} ${theme.glow} shadow-sm`}>
         <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
           <div className="space-y-1.5">
             <div className="flex items-center gap-2.5">
               {theme.icon}
-              <h3 className={`text-2xl sm:text-3xl font-extrabold tracking-tight ${theme.textTitle} flex items-center gap-2`}>
+              <h3 className={`text-xl sm:text-2xl font-black tracking-normal ${theme.textTitle} flex items-center gap-2`}>
                 {title}
                 {isFullWidth && (
-                  <span className="inline-flex items-center gap-1 rounded-md bg-white/20 px-2.5 py-0.5 text-xs font-black uppercase tracking-wider text-white border border-white/20 backdrop-blur-sm animate-pulse">
+                  <span className="inline-flex items-center gap-1 rounded-sm bg-white/20 px-2.5 py-0.5 font-mono text-[10px] font-black uppercase tracking-wider text-white border border-white/20">
                     🔥 {t('special_deals')}
                   </span>
                 )}
@@ -443,7 +485,7 @@ function MarketsContent() {
             </div>
             <p className={theme.textDesc}>{description}</p>
           </div>
-          <span className={`self-start rounded-full px-3.5 py-1 text-xs font-black uppercase tracking-wider ${theme.badge}`}>
+          <span className={`self-start rounded-sm px-3.5 py-1 font-mono text-[10px] font-black uppercase tracking-wider ${theme.badge}`}>
             {markets.length} {markets.length === 1 ? t('market') : t('markets_plural')}
           </span>
         </div>
@@ -453,11 +495,14 @@ function MarketsContent() {
             isFullWidth ? 'border-white/20 white-scrollbar' : 'scrollbar-hide border-border-light/40'
           }`}
         >
-          {markets.map((market, idx) => (
-            <div key={`${market._id}-${idx}`} className="min-w-[240px] max-w-[255px] flex-shrink-0 snap-start transition-all duration-300 hover:scale-[1.03] hover:-translate-y-1">
-              <MarketCard market={market} isCompact={true} />
-            </div>
-          ))}
+          {markets.map((market, idx) => {
+            const maxDiscount = promotionsByMarket.get(market._id) || 0;
+            return (
+              <div key={`${market._id}-${idx}`} className="min-w-[240px] max-w-[255px] flex-shrink-0 snap-start">
+                <MarketCard market={market} isCompact={true} maxDiscount={maxDiscount} />
+              </div>
+            );
+          })}
         </div>
       </div>
     );
@@ -465,28 +510,26 @@ function MarketsContent() {
 
   return (
     <Layout>
-      <div className="space-y-10 pb-20">
-        <section className="animate-reveal rounded-2xl border border-border-premium premium-gradient p-8 shadow-xl cinematic-shadow md:p-12 text-white">
-          <div className="flex flex-col justify-between gap-8 md:flex-row md:items-end">
-            <div>
-              <div className="mb-6 inline-flex items-center gap-2 rounded-full bg-white/10 px-4 py-2 text-sm font-bold tracking-wide text-primary-light backdrop-blur-md border border-white/10">
-                <ShieldCheck size={18} className="text-accent-premium" />
-                {t('verified_local_markets')}
-              </div>
-              <h1 className="max-w-4xl text-4xl font-bold leading-[1.1] tracking-tight text-white md:text-6xl">
-                {t('find_trusted_market_before')}
-              </h1>
-              <p className="mt-6 max-w-2xl text-base leading-relaxed text-white/70">
-                {t('markets_page_hero_description')}
-              </p>
+      <div className="mx-auto max-w-[1280px] px-4 py-6 md:px-8 md:py-10 space-y-10 pb-24">
+        {/* Cover Hero Section */}
+        <section className="relative h-[280px] w-full overflow-hidden rounded-xl border border-[#e2bfb0] shadow-md bg-[#ff6b00]">
+          <div className="absolute inset-0 bg-gradient-to-r from-black/85 via-black/40 to-transparent z-10"></div>
+          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-white/10 via-transparent to-transparent"></div>
+          <div className="relative z-20 h-full flex flex-col justify-end px-8 pb-8 space-y-4">
+            <div className="inline-flex items-center gap-2 rounded bg-white/15 px-3 py-1.5 font-mono text-[10px] font-bold uppercase tracking-wider text-white border border-white/20 self-start">
+              <ShieldCheck size={16} className="text-accent-premium animate-pulse" />
+              {t('verified_local_markets')}
             </div>
-            <div className="rounded-2xl border border-white/10 bg-white/5 backdrop-blur-sm px-6 py-5 min-w-[200px]">
-              <p className="text-5xl font-bold text-accent-premium">{marketsToRender.length}</p>
-              <p className="mt-1 text-sm font-medium text-white/60">{t('markets_shown')}</p>
-              {showCatalogResults && (
-                <p className="mt-3 text-[11px] font-bold uppercase tracking-[0.2em] text-primary-light">{matchingProducts.length} {t('products_plural')}</p>
-              )}
-            </div>
+            <h1 className="text-3xl md:text-5xl font-black text-white leading-tight max-w-2xl">
+              {t('find_trusted_market_before')}
+            </h1>
+            <p className="max-w-xl text-xs md:text-sm text-white/80 leading-relaxed">
+              {t('markets_page_hero_description')}
+            </p>
+          </div>
+          <div className="absolute top-6 right-8 hidden md:block bg-black/30 backdrop-blur-md border border-white/10 px-6 py-4 rounded text-white text-right">
+            <p className="text-4xl font-black text-[#ffd700]">{marketsToRender.length}</p>
+            <p className="text-[10px] font-mono uppercase tracking-wider opacity-85 mt-1">{t('markets_shown')}</p>
           </div>
         </section>
 
@@ -516,63 +559,35 @@ function MarketsContent() {
           </div>
         )}
 
-        {productDataUnavailable && showCatalogResults && (
-          <div className="animate-reveal [animation-delay:100ms] flex items-start gap-4 rounded-xl border border-accent-premium/30 bg-accent-premium/5 p-5 text-text-primary">
-            <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-lg bg-accent-premium/20 text-accent-premium">
-              <WifiOff size={24} />
-            </div>
-            <div>
-              <p className="text-xs font-bold uppercase tracking-widest text-accent-premium">{t('catalog_products_offline')}</p>
-              <p className="mt-1.5 text-sm font-medium leading-relaxed text-text-muted">{t('related_markets_shown_fallback')}</p>
-            </div>
-          </div>
-        )}
-
-        <section className="animate-reveal [animation-delay:200ms] rounded-2xl border border-border-light bg-white p-5 shadow-sm md:p-8">
-          <div className="mb-5 flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-text-primary">
-            <SlidersHorizontal size={18} className="text-primary" />
+        {/* Discovery Filter Shelf */}
+        <section className="bg-white border border-[#e2bfb0] p-6 rounded-lg shadow-sm space-y-6">
+          <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-text-primary">
+            <SlidersHorizontal size={18} className="text-primary animate-pulse" />
             {t('search_and_filters')}
           </div>
-          <div className="grid gap-6 lg:grid-cols-[1fr_0.62fr_0.68fr]">
+          <div className="grid gap-6 lg:grid-cols-[1.2fr_0.8fr_1fr]">
             <div className="space-y-3">
               <label className="text-xs font-bold text-text-muted">{t('search_markets_and_products')}</label>
               <div className="relative group">
-                  <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-text-muted" size={18} />
-                  <input 
-                    placeholder={t('home_search_placeholder') || "Search markets..."} 
-                    className="rmf-input pl-11 w-full" 
-                    type="text" 
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                  />
-                </div>
-              <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
+                <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-text-muted" size={18} />
+                <input 
+                  placeholder={t('home_search_placeholder') || "Search markets..."} 
+                  className="rmf-input pl-11 w-full text-xs" 
+                  type="text" 
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                />
+              </div>
+              <div className="flex gap-2 overflow-x-auto pb-1.5 scrollbar-hide">
                 {catalogShortcuts.map(shortcut => (
                   <button
                     key={shortcut.value}
                     onClick={() => setSearchQuery(shortcut.value)}
-                    className={`shrink-0 rounded-full border px-4 py-2 text-xs font-bold transition-all duration-300 ${
-                      searchQuery === shortcut.value ? 'border-primary bg-primary text-white shadow-md shadow-primary/20' : 'border-border-light bg-background-surface text-text-secondary hover:border-primary hover:text-primary'
+                    className={`shrink-0 rounded border px-3.5 py-1.5 font-mono text-[9px] font-bold uppercase tracking-wider transition-colors ${
+                      searchQuery === shortcut.value ? 'border-primary bg-primary text-white font-black' : 'border-[#ebdcd0] bg-background-surface text-text-secondary hover:border-primary hover:text-primary'
                     }`}
                   >
                     {getShortcutLabel(shortcut.label)}
-                  </button>
-                ))}
-              </div>
-              <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
-                <button
-                  onClick={() => { setSelectedProductCategory('all'); setAttributeFilters({}); }}
-                  className={`shrink-0 rounded-full border px-4 py-2 text-xs font-bold transition-all duration-300 ${selectedProductCategory === 'all' ? 'border-primary bg-primary text-white shadow-md shadow-primary/20' : 'border-border-light bg-white text-text-secondary hover:border-primary hover:text-primary'}`}
-                >
-                  {t('all_categories')}
-                </button>
-                {(facets.categories || []).map((category: any) => (
-                  <button
-                    key={category.id}
-                    onClick={() => { setSelectedProductCategory(category.id); setAttributeFilters({}); }}
-                    className={`shrink-0 rounded-full border px-4 py-2 text-xs font-bold transition-all duration-300 ${selectedProductCategory === category.id ? 'border-primary bg-primary text-white shadow-md shadow-primary/20' : 'border-border-light bg-white text-text-secondary hover:border-primary hover:text-primary'}`}
-                  >
-                    {category.label} ({category.count})
                   </button>
                 ))}
               </div>
@@ -581,61 +596,79 @@ function MarketsContent() {
             <div className="space-y-3">
               <label className="text-xs font-bold text-text-secondary">{t('price_range_rwf')}</label>
               <div className="grid grid-cols-2 gap-3">
-                  <input 
-                    placeholder="Min" 
-                    className="rmf-input" 
-                    type="number" 
-                    value={priceRange.min}
-                    onChange={(e) => setPriceRange(prev => ({ ...prev, min: e.target.value }))}
-                  />
-                  <input 
-                    placeholder="Max" 
-                    className="rmf-input" 
-                    type="number" 
-                    value={priceRange.max}
-                    onChange={(e) => setPriceRange(prev => ({ ...prev, max: e.target.value }))}
-                  />
+                <input 
+                  placeholder="Min" 
+                  className="rmf-input text-xs" 
+                  type="number" 
+                  value={priceRange.min}
+                  onChange={(e) => setPriceRange(prev => ({ ...prev, min: e.target.value }))}
+                />
+                <input 
+                  placeholder="Max" 
+                  className="rmf-input text-xs" 
+                  type="number" 
+                  value={priceRange.max}
+                  onChange={(e) => setPriceRange(prev => ({ ...prev, max: e.target.value }))}
+                />
               </div>
             </div>
 
             <div className="space-y-3">
               <label className="text-xs font-bold text-text-muted">{t('market_type')}</label>
-              <div className="grid grid-cols-3 gap-3">
-                  {[
-                    { key: 'ALL', label: t('all') },
-                    { key: 'PUBLIC', label: t('market_type_public') },
-                    { key: 'INDIVIDUAL', label: t('market_type_shops') },
-                  ].map(cat => (
-                    <button 
-                      key={cat.key}
-                      onClick={() => setSelectedCategory(cat.key)}
-                      className={`h-12 rounded-xl border text-xs font-bold transition-all duration-300 ${
-                        selectedCategory === cat.key ? 'border-primary bg-primary text-white shadow-md shadow-primary/20' : 'border-border-light bg-white text-text-secondary hover:border-primary hover:text-primary'
-                      }`}
-                    >
-                      {cat.label}
-                    </button>
-                  ))}
+              <div className="grid grid-cols-3 gap-2">
+                {[
+                  { key: 'ALL', label: t('all') },
+                  { key: 'PUBLIC', label: t('market_type_public') },
+                  { key: 'INDIVIDUAL', label: t('market_type_shops') },
+                ].map(cat => (
+                  <button 
+                    key={cat.key}
+                    onClick={() => setSelectedCategory(cat.key)}
+                    className={`h-11 rounded border font-mono text-[9px] font-bold uppercase tracking-wider transition-colors ${
+                      selectedCategory === cat.key ? 'border-primary bg-primary text-white font-black' : 'border-[#ebdcd0] bg-white text-text-secondary hover:border-primary hover:text-primary'
+                    }`}
+                  >
+                    {cat.label}
+                  </button>
+                ))}
               </div>
             </div>
           </div>
 
+          <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide pt-2 border-t border-border-light/40">
+            <button
+              onClick={() => { setSelectedProductCategory('all'); setAttributeFilters({}); }}
+              className={`shrink-0 rounded border px-3.5 py-1.5 font-mono text-[9px] font-bold uppercase tracking-wider transition-colors ${selectedProductCategory === 'all' ? 'border-primary bg-primary/10 text-primary font-black' : 'border-[#ebdcd0] bg-white text-text-secondary hover:border-primary hover:text-primary'}`}
+            >
+              {t('all_categories')}
+            </button>
+            {(facets.categories || []).map((category: any) => (
+              <button
+                key={category.id}
+                onClick={() => { setSelectedProductCategory(category.id); setAttributeFilters({}); }}
+                className={`shrink-0 rounded border px-3.5 py-1.5 font-mono text-[9px] font-bold uppercase tracking-wider transition-colors ${selectedProductCategory === category.id ? 'border-primary bg-primary/10 text-primary font-black' : 'border-[#ebdcd0] bg-white text-text-secondary hover:border-primary hover:text-primary'}`}
+              >
+                {category.label} ({category.count})
+              </button>
+            ))}
+          </div>
+
           {activeAttributeGroups.length > 0 && (
-            <div className="mt-5 grid gap-4 border-t border-border-light/50 pt-5 md:grid-cols-2 xl:grid-cols-4">
-              {activeAttributeGroups.flatMap((group: any) => group.fields || []).slice(0, 8).map((field: any) => (
-                <label key={`${field.key}-${field.label}`} className="block">
+            <div className="mt-5 grid gap-4 border-t border-border-light/40 pt-5 md:grid-cols-2 xl:grid-cols-4">
+              {activeAttributeGroups.flatMap((group: any) => group.fields || []).slice(0, 8).map((field: any, idx: number) => (
+                <label key={`${field.key}-${field.label}-${idx}`} className="block">
                   <span className="mb-2 block text-[10px] font-bold uppercase tracking-widest text-text-muted">{field.label}</span>
                   {field.type === 'boolean' ? (
-                    <select value={attributeFilters[field.key] || ''} onChange={e => updateAttributeFilter(field.key, e.target.value)} className="rmf-select w-full">
+                    <select value={attributeFilters[field.key] || ''} onChange={e => updateAttributeFilter(field.key, e.target.value)} className="rmf-select w-full text-xs">
                       <option value="">{t('any')}</option>
                       <option value="true">{t('yes')}</option>
                       <option value="false">{t('no')}</option>
                     </select>
                   ) : (
-                    <select value={attributeFilters[field.key] || ''} onChange={e => updateAttributeFilter(field.key, e.target.value)} className="rmf-select w-full">
+                    <select value={attributeFilters[field.key] || ''} onChange={e => updateAttributeFilter(field.key, e.target.value)} className="rmf-select w-full text-xs">
                       <option value="">{t('any')}</option>
-                      {((field.values?.length ? field.values.map((item: any) => item.value) : field.options) || []).map((value: string) => (
-                        <option key={value} value={value}>{value}</option>
+                      {((field.values?.length ? field.values.map((item: any) => item.value) : field.options) || []).map((value: string, oIdx: number) => (
+                        <option key={`${value}-${oIdx}`} value={value}>{value}</option>
                       ))}
                     </select>
                   )}
@@ -646,71 +679,63 @@ function MarketsContent() {
         </section>
 
         {showCatalogResults && (
-          <section className="animate-reveal [animation-delay:400ms] rounded-2xl border border-border-light bg-white p-6 shadow-sm md:p-8">
-            <div className="mb-8 flex flex-col justify-between gap-6 md:flex-row md:items-end">
+          <section className="bg-white border border-[#e2bfb0] p-6 md:p-8 rounded-lg shadow-sm space-y-6">
+            <div className="mb-4 flex flex-col justify-between gap-4 md:flex-row md:items-end pb-4 border-b border-border-light">
               <div>
                 <p className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-primary">
                   {madeInRwandaIntent ? <Sparkles size={18} /> : <PackageCheck size={18} />}
                   {madeInRwandaIntent ? t('origin_tagged_catalog') : t('product_results')}
                 </p>
-                <h2 className="mt-2 text-3xl font-bold tracking-tight text-text-primary md:text-4xl">
+                <h2 className="mt-2 text-2xl font-bold tracking-tight text-text-primary">
                   {madeInRwandaIntent ? t('made_in_rwanda_products') : t('products_matching_query', { query: searchQuery.trim() })}
                 </h2>
-                <p className="mt-3 max-w-2xl text-base leading-relaxed text-text-muted">
-                  {madeInRwandaIntent
-                    ? t('made_in_rwanda_desc')
-                    : t('product_search_desc')}
-                </p>
               </div>
-              <div className="rounded-xl border border-border-light bg-background-surface px-6 py-4 min-w-[160px]">
-                <p className="text-4xl font-bold text-primary">{matchingProducts.length}</p>
-                <p className="mt-1 text-[11px] font-bold uppercase tracking-widest text-text-muted">{t('products_found')}</p>
-              </div>
+              <span className="text-xs font-bold text-text-muted">{matchingProducts.length} {t('products_found')}</span>
             </div>
 
             {productsLoading ? (
-              <div className="grid grid-cols-[repeat(auto-fill,minmax(250px,1fr))] gap-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
                 {[1, 2, 3, 4].map(i => (
-                  <div key={i} className="h-[380px] animate-pulse rounded-2xl border border-border-light bg-background-surface" />
+                  <div key={i} className="h-72 animate-pulse rounded-lg border border-[#e2bfb0] bg-background-surface" />
                 ))}
               </div>
             ) : matchingProducts.length > 0 ? (
-              <div className="grid grid-cols-[repeat(auto-fill,minmax(250px,1fr))] gap-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
                 {matchingProducts.map(product => (
                   <ProductCard key={product._id} product={product} />
                 ))}
               </div>
             ) : (
-              <div className="rounded-2xl border border-dashed border-border-light bg-background-surface p-12 text-center">
+              <div className="rounded-lg border border-dashed border-[#e2bfb0] bg-background-surface p-12 text-center">
                 <p className="text-xs font-bold uppercase tracking-widest text-primary">{t('no_matching_products_yet')}</p>
-                <h3 className="mt-4 text-2xl font-bold text-text-primary">
+                <h3 className="mt-4 text-xl font-bold text-text-primary">
                   {madeInRwandaIntent ? t('mark_products_mir_prompt') : t('try_different_search_prompt')}
                 </h3>
-                <p className="mx-auto mt-4 max-w-xl text-base leading-relaxed text-text-muted">
-                  {t('catalog_connected_desc')}
-                </p>
               </div>
             )}
           </section>
         )}
 
         {!showCatalogResults && !loading && marketsToRender.length > 0 && (
-          <section className="animate-reveal [animation-delay:500ms] space-y-8">
-            {/* Top Row: Active Promotions (Full Width) */}
+          <section className="space-y-8">
             {promotionalMarkets.length > 0 && (
-              <div className="w-full">
-                <MarketShelf 
-                  title={t('active_promotions')} 
-                  description={t('active_promotions_desc')} 
-                  markets={promotionalMarkets} 
-                  isFullWidth={true}
-                />
-              </div>
+              <MarketShelf 
+                title={t('active_promotions')} 
+                description={t('active_promotions_desc')} 
+                markets={promotionalMarkets} 
+                isFullWidth={true}
+              />
             )}
  
-            {/* Bottom Row: Dynamic Grid for active shelves */}
-            {(newMarkets.length > 0 || topSellersMarkets.length > 0 || topRatedMarkets.length > 0) && (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            {(recommendedMarkets.length > 0 || newMarkets.length > 0 || topSellersMarkets.length > 0 || topRatedMarkets.length > 0) && (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {recommendedMarkets.length > 0 && (
+                  <MarketShelf 
+                    title={t('recommended_for_you')} 
+                    description={t('recommended_markets_desc')} 
+                    markets={recommendedMarkets} 
+                  />
+                )}
                 {newMarkets.length > 0 && (
                   <MarketShelf 
                     title={t('new_markets')} 
@@ -725,80 +750,81 @@ function MarketsContent() {
                     markets={topSellersMarkets} 
                   />
                 )}
-                {topRatedMarkets.length > 0 && (
-                  <MarketShelf 
-                    title={t('most_reviewed')} 
-                    description={t('most_reviewed_desc')} 
-                    markets={topRatedMarkets} 
-                  />
-                )}
               </div>
             )}
           </section>
         )}
 
-        <main className="animate-reveal [animation-delay:600ms] space-y-8 border-t border-border-light pt-8 mt-8">
+        <main className="space-y-6 pt-6 border-t border-[#e2bfb0]">
           <div className="flex flex-col justify-between gap-4 md:flex-row md:items-end">
             <div>
               <p className="text-xs font-bold uppercase tracking-widest text-primary">{t('marketplace_directory')}</p>
-              <h2 className="mt-2 text-3xl font-bold tracking-tight text-text-primary md:text-4xl">{t('markets_ready_browsing')}</h2>
+              <h2 className="mt-1 text-2xl font-bold tracking-tight text-text-primary">{t('markets_ready_browsing')}</h2>
             </div>
-            <p className="text-sm font-bold text-text-muted">{marketsToRender.length} {t('results_suffix')}</p>
+            <span className="text-xs font-bold text-text-muted">{marketsToRender.length} {t('results_suffix')}</span>
           </div>
- 
+  
           {loading ? (
-            <div className="grid grid-cols-[repeat(auto-fill,minmax(240px,1fr))] gap-6">
-              {[1, 2, 3, 4, 5, 6, 7, 8].map(i => (
-                <div key={i} className="aspect-[4/5] bg-background-surface animate-pulse border border-border-light rounded-xl"></div>
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-6">
+              {[1, 2, 3, 4, 5].map(i => (
+                <div key={i} className="aspect-[4/5] bg-background-surface animate-pulse border border-[#e2bfb0] rounded-lg"></div>
               ))}
             </div>
           ) : marketsToRender.length > 0 ? (
-            <div className="grid grid-cols-[repeat(auto-fill,minmax(240px,1fr))] gap-6">
-              {marketsToRender.map((market: Market, idx: number) => (
-                <MarketCard 
-                  key={market._id} 
-                  market={market} 
-                  index={idx} 
-                  isCompact={true}
-                />
-              ))}
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-6">
+              {marketsToRender.map((market: Market, idx: number) => {
+                const maxDiscount = promotionsByMarket.get(market._id) || 0;
+                return (
+                  <MarketCard 
+                    key={market._id} 
+                    market={market} 
+                    index={idx} 
+                    isCompact={true}
+                    maxDiscount={maxDiscount}
+                  />
+                );
+              })}
             </div>
           ) : (
-            <div className="rounded-2xl border border-dashed border-border-light bg-white p-12 text-center shadow-sm">
+            <div className="rounded-lg border border-dashed border-[#e2bfb0] bg-white p-12 text-center">
               <p className="text-xs font-bold uppercase tracking-widest text-primary">{t('no_matching_markets')}</p>
-              <h3 className="mt-4 text-2xl font-bold text-text-primary">{t('try_different_market_search_prompt')}</h3>
-              <p className="mx-auto mt-4 max-w-xl text-base leading-relaxed text-text-muted">
-                {t('live_markets_connected_desc')}
-              </p>
+              <h3 className="mt-4 text-xl font-bold text-text-primary">{t('try_different_market_search_prompt')}</h3>
             </div>
           )}
         </main>
 
-        <section className="animate-reveal [animation-delay:800ms] overflow-hidden rounded-2xl border border-border-light bg-white shadow-xl cinematic-shadow">
-          <div className="grid gap-0 lg:grid-cols-[0.38fr_0.62fr]">
-            <div className="flex flex-col justify-between gap-8 border-b border-border-light/50 bg-background-surface p-8 lg:border-b-0 lg:border-r md:p-12">
-              <div>
-                <div className="mb-6 inline-flex h-14 w-14 items-center justify-center rounded-xl bg-primary text-white shadow-lg shadow-primary/20">
-                  <MapPin size={24} />
+        {/* Map Explorer Section */}
+        <section className="overflow-hidden rounded-xl border border-[#e2bfb0] bg-white shadow-sm">
+          <div className="grid gap-0 lg:grid-cols-[0.35fr_0.65fr]">
+            <div className="flex flex-col justify-between gap-8 border-b border-border-light/50 bg-[#fdfaf7] p-8 lg:border-b-0 lg:border-r">
+              <div className="space-y-4">
+                <div className="inline-flex h-12 w-12 items-center justify-center rounded-lg bg-primary text-white shadow-md">
+                  <MapPin size={22} />
                 </div>
                 <p className="text-xs font-bold uppercase tracking-widest text-primary">{t('market_map')}</p>
-                <h2 className="mt-4 text-3xl font-bold leading-[1.2] tracking-tight text-text-primary md:text-4xl">{t('market_map_title')}</h2>
-                <p className="mt-6 text-base leading-relaxed text-text-muted">
-                  {t('market_map_desc')}
+                <h2 className="text-xl font-bold tracking-tight text-text-primary">{t('market_map_title')}</h2>
+                <p className="text-xs leading-relaxed text-text-muted">
+                  {t('market_map_desc') || 'Explore all local markets mapped geographically. Find closest pickup points and courier hubs near your location.'}
                 </p>
               </div>
               <div className="grid grid-cols-2 gap-4">
-                <div className="rounded-xl border border-border-light bg-white p-5 shadow-sm">
-                  <p className="text-3xl font-bold text-text-primary">{allMarkets.length || marketsToRender.length}</p>
-                  <p className="mt-1.5 text-[11px] font-bold uppercase tracking-widest text-text-muted">{t('mapped_hubs')}</p>
+                <div className="rounded border border-[#e2bfb0] bg-white p-4 shadow-sm">
+                  <p className="text-2xl font-black text-text-primary">{allMarkets.length || marketsToRender.length}</p>
+                  <p className="text-[9px] font-bold uppercase tracking-wider text-text-muted">{t('mapped_hubs')}</p>
                 </div>
-                <div className="rounded-xl border border-border-light bg-white p-5 shadow-sm">
-                  <p className="text-3xl font-bold text-text-primary flex items-center gap-2">{t('live_label')} <span className="flex h-2.5 w-2.5 relative"><span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-accent-premium opacity-75"></span><span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-accent-premium"></span></span></p>
-                  <p className="mt-1.5 text-[11px] font-bold uppercase tracking-widest text-text-muted">{t('rider_layer')}</p>
+                <div className="rounded border border-[#e2bfb0] bg-white p-4 shadow-sm">
+                  <p className="text-2xl font-black text-primary flex items-center gap-1.5">
+                    {t('live_label')} 
+                    <span className="flex h-2 w-2 relative">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-500 opacity-75"></span>
+                      <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                    </span>
+                  </p>
+                  <p className="text-[9px] font-bold uppercase tracking-wider text-text-muted">{t('rider_layer') || 'COURIER LAYER'}</p>
                 </div>
               </div>
             </div>
-            <div className="h-[500px] bg-background-main md:h-[600px]">
+            <div className="h-[450px] bg-background-surface">
               <RiderMap marketId="all-admin" centerLat={-1.9441} centerLng={30.0619} marketName="Rwanda markets" />
             </div>
           </div>

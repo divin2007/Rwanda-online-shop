@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>RMF - Security &amp; Verification</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Work+Sans:wght@400;500;600;700;900&amp;family=JetBrains+Mono:wght@500&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-surface": "#1b1c1c",
+                        "tertiary": "#005ac2",
+                        "tertiary-fixed-dim": "#adc6ff",
+                        "inverse-on-surface": "#f2f0f0",
+                        "surface-container-high": "#e9e8e7",
+                        "on-secondary-fixed-variant": "#7f2b00",
+                        "on-tertiary": "#ffffff",
+                        "surface-variant": "#e3e2e2",
+                        "secondary-fixed-dim": "#ffb598",
+                        "inverse-surface": "#303030",
+                        "background": "#fbf9f8",
+                        "surface-tint": "#a04100",
+                        "primary-fixed-dim": "#ffb693",
+                        "on-primary": "#ffffff",
+                        "outline": "#8e7164",
+                        "error": "#ba1a1a",
+                        "on-secondary-fixed": "#370e00",
+                        "secondary-container": "#fc671d",
+                        "outline-variant": "#e2bfb0",
+                        "on-secondary-container": "#561b00",
+                        "surface-container-low": "#f5f3f3",
+                        "on-tertiary-fixed": "#001a42",
+                        "on-surface-variant": "#5a4136",
+                        "inverse-primary": "#ffb693",
+                        "secondary-fixed": "#ffdbce",
+                        "tertiary-fixed": "#d8e2ff",
+                        "primary-container": "#ff6b00",
+                        "on-background": "#1b1c1c",
+                        "surface-container": "#efeded",
+                        "surface-container-lowest": "#ffffff",
+                        "on-primary-fixed-variant": "#7a3000",
+                        "primary-fixed": "#ffdbcc",
+                        "on-tertiary-fixed-variant": "#004395",
+                        "on-primary-fixed": "#351000",
+                        "on-primary-container": "#572000",
+                        "surface-bright": "#fbf9f8",
+                        "primary": "#a04100",
+                        "on-error": "#ffffff",
+                        "error-container": "#ffdad6",
+                        "surface": "#fbf9f8",
+                        "tertiary-container": "#5f97ff",
+                        "surface-container-highest": "#e3e2e2",
+                        "on-tertiary-container": "#002f6b",
+                        "on-secondary": "#ffffff",
+                        "surface-dim": "#dbdad9",
+                        "on-error-container": "#93000a",
+                        "secondary": "#a63b00"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.125rem",
+                        "lg": "0.25rem",
+                        "xl": "0.5rem",
+                        "full": "0.75rem"
+                    },
+                    "spacing": {
+                        "lg": "24px",
+                        "md": "16px",
+                        "xs": "4px",
+                        "margin-desktop": "32px",
+                        "margin-mobile": "16px",
+                        "gutter": "16px",
+                        "sm": "8px",
+                        "base": "4px",
+                        "xl": "40px"
+                    },
+                    "fontFamily": {
+                        "body-sm": ["Work Sans"],
+                        "body-md": ["Work Sans"],
+                        "label-md": ["JetBrains Mono"],
+                        "headline-lg-mobile": ["Work Sans"],
+                        "table-data": ["Work Sans"],
+                        "headline-md": ["Work Sans"],
+                        "body-lg": ["Work Sans"],
+                        "headline-lg": ["Work Sans"]
+                    },
+                    "fontSize": {
+                        "body-sm": ["12px", {"lineHeight": "16px", "fontWeight": "400"}],
+                        "body-md": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                        "label-md": ["12px", {"lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "500"}],
+                        "headline-lg-mobile": ["24px", {"lineHeight": "30px", "letterSpacing": "-0.01em", "fontWeight": "700"}],
+                        "table-data": ["13px", {"lineHeight": "18px", "fontWeight": "500"}],
+                        "headline-md": ["20px", {"lineHeight": "28px", "fontWeight": "600"}],
+                        "body-lg": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                        "headline-lg": ["30px", {"lineHeight": "38px", "letterSpacing": "-0.02em", "fontWeight": "700"}]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .otp-input:focus {
+            outline: none;
+            border-color: #a04100;
+            box-shadow: 0 0 0 2px rgba(160, 65, 0, 0.1);
+        }
+        .strength-meter {
+            height: 4px;
+            transition: all 0.3s ease;
+        }
+        .hidden-flow {
+            display: none;
+        }
+        .step-transition {
+            transition: opacity 0.3s ease-in-out, transform 0.3s ease-in-out;
+        }
+    </style>
+</head>
+<body class="bg-background text-on-surface font-body-md min-h-screen flex flex-col">
+<!-- Brand Header -->
+<header class="w-full flex items-center justify-between px-margin-desktop h-16 bg-surface border-b border-outline-variant">
+<div class="flex items-center gap-2">
+<span class="font-headline-md text-headline-md font-black text-primary">RMF Facilitator</span>
+</div>
+<div class="flex items-center gap-md">
+<span class="font-label-md text-label-md text-on-surface-variant">SECURE PORTAL</span>
+<span class="material-symbols-outlined text-primary" data-icon="lock" style="font-variation-settings: 'FILL' 1;">lock</span>
+</div>
+</header>
+<main class="flex-grow flex items-center justify-center p-margin-mobile md:p-margin-desktop">
+<!-- Flow Container: Max width for focused action -->
+<div class="w-full max-w-[480px] bg-surface-container-lowest border border-outline-variant rounded-xl p-xl shadow-sm relative overflow-hidden">
+<!-- STEP 1: EMAIL OTP -->
+<section class="step-transition" id="step-email-otp">
+<div class="mb-xl text-center">
+<div class="w-16 h-16 bg-primary-fixed rounded-full flex items-center justify-center mx-auto mb-md">
+<span class="material-symbols-outlined text-on-primary-fixed text-3xl" data-icon="mail">mail</span>
+</div>
+<h1 class="font-headline-md text-headline-md mb-xs">Verify Email</h1>
+<p class="font-body-md text-on-surface-variant">We've sent a 6-digit code to <span class="font-bold text-on-surface">j.doe@example.rw</span></p>
+</div>
+<div class="space-y-lg">
+<div class="flex justify-between gap-sm">
+<input autofocus="" class="otp-input w-12 h-14 text-center text-headline-md font-bold bg-surface-container border border-outline-variant rounded-lg" maxlength="1" type="text"/>
+<input class="otp-input w-12 h-14 text-center text-headline-md font-bold bg-surface-container border border-outline-variant rounded-lg" maxlength="1" type="text"/>
+<input class="otp-input w-12 h-14 text-center text-headline-md font-bold bg-surface-container border border-outline-variant rounded-lg" maxlength="1" type="text"/>
+<input class="otp-input w-12 h-14 text-center text-headline-md font-bold bg-surface-container border border-outline-variant rounded-lg" maxlength="1" type="text"/>
+<input class="otp-input w-12 h-14 text-center text-headline-md font-bold bg-surface-container border border-outline-variant rounded-lg" maxlength="1" type="text"/>
+<input class="otp-input w-12 h-14 text-center text-headline-md font-bold bg-surface-container border border-outline-variant rounded-lg" maxlength="1" type="text"/>
+</div>
+<button class="w-full py-md bg-primary text-on-primary font-bold rounded-lg hover:opacity-90 active:scale-[0.98] transition-all" onclick="navigate('step-phone-otp')">
+                        Verify Email Address
+                    </button>
+<div class="text-center pt-md">
+<p class="font-body-sm text-on-surface-variant mb-xs">Didn't receive the code?</p>
+<button class="font-label-md text-label-md text-primary hover:underline">RESEND EMAIL</button>
+</div>
+</div>
+</section>
+<!-- STEP 2: PHONE OTP -->
+<section class="step-transition hidden-flow" id="step-phone-otp">
+<div class="mb-xl text-center">
+<div class="w-16 h-16 bg-secondary-fixed rounded-full flex items-center justify-center mx-auto mb-md">
+<span class="material-symbols-outlined text-on-secondary-fixed text-3xl" data-icon="smartphone">smartphone</span>
+</div>
+<h1 class="font-headline-md text-headline-md mb-xs">SMS Verification</h1>
+<p class="font-body-md text-on-surface-variant">Enter the code sent to <span class="font-bold text-on-surface">+250 ••• ••67</span></p>
+</div>
+<div class="space-y-lg">
+<div class="flex justify-between gap-sm">
+<input class="otp-input w-12 h-14 text-center text-headline-md font-bold bg-surface-container border border-outline-variant rounded-lg" maxlength="1" type="text"/>
+<input class="otp-input w-12 h-14 text-center text-headline-md font-bold bg-surface-container border border-outline-variant rounded-lg" maxlength="1" type="text"/>
+<input class="otp-input w-12 h-14 text-center text-headline-md font-bold bg-surface-container border border-outline-variant rounded-lg" maxlength="1" type="text"/>
+<input class="otp-input w-12 h-14 text-center text-headline-md font-bold bg-surface-container border border-outline-variant rounded-lg" maxlength="1" type="text"/>
+</div>
+<button class="w-full py-md bg-primary text-on-primary font-bold rounded-lg hover:opacity-90 active:scale-[0.98] transition-all" onclick="navigate('step-reset-password')">
+                        Verify Phone Number
+                    </button>
+<div class="text-center pt-md">
+<p class="font-body-sm text-on-surface-variant mb-xs" id="countdown-text">Resend code in <span class="font-bold text-on-surface" id="timer">00:59</span></p>
+<button class="hidden font-label-md text-label-md text-primary hover:underline" id="resend-sms">RESEND SMS</button>
+</div>
+</div>
+</section>
+<!-- STEP 3: RESET PASSWORD -->
+<section class="step-transition hidden-flow" id="step-reset-password">
+<div class="mb-lg">
+<h1 class="font-headline-md text-headline-md mb-xs">Create New Password</h1>
+<p class="font-body-md text-on-surface-variant">Ensure your account stays secure with a strong password.</p>
+</div>
+<div class="space-y-md">
+<div>
+<label class="block font-label-md text-label-md text-on-surface-variant mb-xs">NEW PASSWORD</label>
+<div class="relative">
+<input class="w-full bg-surface border border-outline-variant rounded-lg py-md px-md focus:border-primary outline-none" id="new-password" placeholder="••••••••" type="password"/>
+<span class="material-symbols-outlined absolute right-md top-1/2 -translate-y-1/2 text-on-surface-variant cursor-pointer" data-icon="visibility">visibility</span>
+</div>
+<div class="mt-xs flex gap-1">
+<div class="strength-meter w-1/4 rounded-full bg-surface-container-highest" id="s1"></div>
+<div class="strength-meter w-1/4 rounded-full bg-surface-container-highest" id="s2"></div>
+<div class="strength-meter w-1/4 rounded-full bg-surface-container-highest" id="s3"></div>
+<div class="strength-meter w-1/4 rounded-full bg-surface-container-highest" id="s4"></div>
+</div>
+<p class="font-body-sm text-on-surface-variant mt-xs" id="strength-text">Password strength: Weak</p>
+</div>
+<div>
+<label class="block font-label-md text-label-md text-on-surface-variant mb-xs">CONFIRM PASSWORD</label>
+<div class="relative">
+<input class="w-full bg-surface border border-outline-variant rounded-lg py-md px-md focus:border-primary outline-none" id="confirm-password" placeholder="••••••••" type="password"/>
+<span class="material-symbols-outlined absolute right-md top-1/2 -translate-y-1/2 text-error hidden" data-icon="error" id="match-icon">error</span>
+</div>
+<p class="font-body-sm text-error mt-xs hidden" id="match-text">Passwords do not match</p>
+</div>
+<div class="bg-surface-container p-md border border-outline-variant rounded-lg">
+<ul class="space-y-xs font-body-sm text-on-surface-variant">
+<li class="flex items-center gap-xs"><span class="material-symbols-outlined text-[16px]" data-icon="check_circle">check_circle</span> At least 8 characters</li>
+<li class="flex items-center gap-xs"><span class="material-symbols-outlined text-[16px]" data-icon="check_circle">check_circle</span> Includes numbers or symbols</li>
+</ul>
+</div>
+<button class="w-full py-md bg-primary text-on-primary font-bold rounded-lg hover:opacity-90 active:scale-[0.98] transition-all mt-lg" onclick="navigate('step-success')">
+                        Update Password
+                    </button>
+</div>
+</section>
+<!-- STEP 4: SUCCESS STATE -->
+<section class="step-transition hidden-flow py-xl text-center" id="step-success">
+<div class="relative mb-xl inline-block">
+<div class="w-24 h-24 bg-tertiary-container/20 rounded-full flex items-center justify-center mx-auto">
+<span class="material-symbols-outlined text-tertiary text-6xl" data-icon="verified" style="font-variation-settings: 'FILL' 1;">verified</span>
+</div>
+<div class="absolute -top-2 -right-2 bg-primary text-on-primary w-8 h-8 rounded-full flex items-center justify-center border-4 border-surface-container-lowest">
+<span class="material-symbols-outlined text-[20px]" data-icon="check">check</span>
+</div>
+</div>
+<h1 class="font-headline-md text-headline-md mb-xs">Account Verified</h1>
+<p class="font-body-md text-on-surface-variant mb-xl">Your identity has been confirmed and your password updated. You now have full access to the RMF Facilitator portal.</p>
+<div class="space-y-md">
+<button class="w-full py-md bg-primary text-on-primary font-bold rounded-lg hover:opacity-90 active:scale-[0.98] transition-all flex items-center justify-center gap-sm">
+                        Continue to Dashboard
+                        <span class="material-symbols-outlined" data-icon="arrow_forward">arrow_forward</span>
+</button>
+<div class="flex items-center justify-center gap-xs text-on-surface-variant font-label-md text-label-md">
+<span class="material-symbols-outlined text-sm" data-icon="shield">shield</span>
+                        SECURED BY RMF ESCROW
+                    </div>
+</div>
+</section>
+<!-- EXCEPTION: LINK EXPIRED -->
+<section class="step-transition hidden-flow" id="step-expired">
+<div class="text-center py-xl">
+<div class="w-16 h-16 bg-error-container rounded-full flex items-center justify-center mx-auto mb-md">
+<span class="material-symbols-outlined text-error text-3xl" data-icon="history">history</span>
+</div>
+<h1 class="font-headline-md text-headline-md mb-xs">Verification Link Expired</h1>
+<p class="font-body-md text-on-surface-variant mb-xl">For your security, verification links expire after 30 minutes. Please request a new one.</p>
+<button class="w-full py-md bg-surface border border-outline text-on-surface font-bold rounded-lg hover:bg-surface-container transition-all mb-md" onclick="navigate('step-email-otp')">
+                        Request New Link
+                    </button>
+<button class="text-on-surface-variant font-label-md text-label-md hover:text-primary transition-colors">
+                        CONTACT SUPPORT
+                    </button>
+</div>
+</section>
+<!-- Temporary debug trigger for expired state -->
+<div class="absolute bottom-2 left-2 opacity-20 hover:opacity-100 transition-opacity">
+<button class="text-[10px] text-on-surface-variant" onclick="navigate('step-expired')">DEBUG: EXPIRED</button>
+</div>
+</div>
+</main>
+<!-- Trust Footer -->
+<footer class="w-full py-lg px-margin-desktop bg-surface border-t border-outline-variant mt-auto">
+<div class="max-w-[1280px] mx-auto flex flex-col md:flex-row justify-between items-center gap-md">
+<div class="flex gap-lg">
+<a class="text-on-surface-variant font-label-md text-label-md hover:text-primary" href="#">PRIVACY POLICY</a>
+<a class="text-on-surface-variant font-label-md text-label-md hover:text-primary" href="#">TERMS OF SERVICE</a>
+<a class="text-on-surface-variant font-label-md text-label-md hover:text-primary" href="#">HELP CENTER</a>
+</div>
+<div class="flex items-center gap-sm">
+<img alt="Rwanda Flag" class="h-4 rounded-sm" data-alt="A small, clear rectangular flag of Rwanda with a vibrant blue, yellow, and green horizontal design and a golden sun in the upper right corner. The lighting is neutral and the image is sharp and professional." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDQqpBFKKEfVLRmwfmGZkz5uSwiaIrq8SUvCvxt_La4-N8x7lOA4pnsrYUfJylNlJZ7cPjuUyWEuZJvu4VqBnINu12n51HJ_ZVSMaExrEnDiN4x0Y01ZFd2BvOwO97EcExiSsxZUY1nSr7UUI907OZoKZFxGioMetBV77WFJCVMdvhmRMZpsbIA8C2_2c1g62aWqVlNsO3QCkgKSKf4Fk5kSR0t4tLMpwf8I16A5LkYNcmWO6qUoelTPDcivpxE3HdWeS5sTbNMqiRv"/>
+<p class="font-body-sm text-on-surface-variant">© 2024 Rwanda Market Facilitator. All rights reserved.</p>
+</div>
+</div>
+</footer>
+<script>
+        // Basic Navigation Handler
+        function navigate(stepId) {
+            const sections = document.querySelectorAll('section');
+            sections.forEach(s => {
+                s.classList.add('hidden-flow');
+                s.classList.remove('opacity-100');
+            });
+            
+            const target = document.getElementById(stepId);
+            target.classList.remove('hidden-flow');
+            setTimeout(() => {
+                target.classList.add('opacity-100');
+            }, 50);
+
+            // Special logic for phone countdown
+            if (stepId === 'step-phone-otp') {
+                startTimer(59);
+            }
+        }
+
+        // OTP Input Auto-focus & Chaining
+        document.querySelectorAll('.otp-input').forEach((input, idx, inputs) => {
+            input.addEventListener('input', (e) => {
+                if (e.target.value.length === 1 && idx < inputs.length - 1) {
+                    inputs[idx + 1].focus();
+                }
+            });
+            input.addEventListener('keydown', (e) => {
+                if (e.key === 'Backspace' && !e.target.value && idx > 0) {
+                    inputs[idx - 1].focus();
+                }
+            });
+        });
+
+        // Countdown Timer Logic
+        let timerInterval;
+        function startTimer(duration) {
+            clearInterval(timerInterval);
+            let timer = duration, minutes, seconds;
+            const timerDisplay = document.getElementById('timer');
+            const countdownText = document.getElementById('countdown-text');
+            const resendBtn = document.getElementById('resend-sms');
+            
+            resendBtn.classList.add('hidden');
+            countdownText.classList.remove('hidden');
+
+            timerInterval = setInterval(() => {
+                minutes = parseInt(timer / 60, 10);
+                seconds = parseInt(timer % 60, 10);
+
+                minutes = minutes < 10 ? "0" + minutes : minutes;
+                seconds = seconds < 10 ? "0" + seconds : seconds;
+
+                timerDisplay.textContent = minutes + ":" + seconds;
+
+                if (--timer < 0) {
+                    clearInterval(timerInterval);
+                    countdownText.classList.add('hidden');
+                    resendBtn.classList.remove('hidden');
+                }
+            }, 1000);
+        }
+
+        // Password Strength Logic
+        const passInput = document.getElementById('new-password');
+        const confirmInput = document.getElementById('confirm-password');
+        const strengthText = document.getElementById('strength-text');
+        const meters = ['s1', 's2', 's3', 's4'];
+
+        passInput.addEventListener('input', (e) => {
+            const val = e.target.value;
+            let score = 0;
+            if (val.length > 6) score++;
+            if (val.length > 10) score++;
+            if (/[0-9]/.test(val)) score++;
+            if (/[^A-Za-z0-9]/.test(val)) score++;
+
+            meters.forEach((m, i) => {
+                const el = document.getElementById(m);
+                el.className = 'strength-meter w-1/4 rounded-full ';
+                if (i < score) {
+                    if (score === 1) el.classList.add('bg-error');
+                    else if (score === 2) el.classList.add('bg-secondary-container');
+                    else if (score === 3) el.classList.add('bg-tertiary-container');
+                    else if (score === 4) el.classList.add('bg-primary');
+                } else {
+                    el.classList.add('bg-surface-container-highest');
+                }
+            });
+
+            const labels = ['Weak', 'Fair', 'Good', 'Strong'];
+            strengthText.textContent = `Password strength: ${labels[score - 1] || 'Weak'}`;
+        });
+
+        // Match Validation
+        confirmInput.addEventListener('input', (e) => {
+            const isMatch = e.target.value === passInput.value;
+            const icon = document.getElementById('match-icon');
+            const text = document.getElementById('match-text');
+            
+            if (e.target.value === "") {
+                icon.classList.add('hidden');
+                text.classList.add('hidden');
+            } else if (isMatch) {
+                icon.classList.remove('hidden', 'text-error');
+                icon.classList.add('text-primary');
+                icon.textContent = 'check_circle';
+                text.classList.add('hidden');
+            } else {
+                icon.classList.remove('hidden', 'text-primary');
+                icon.classList.add('text-error');
+                icon.textContent = 'error';
+                text.classList.remove('hidden');
+            }
+        });
+    </script>
+</body></html>

@@ -4,6 +4,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { Layout } from '@/components/layout/Layout';
 import { ImageUpload } from '@/components/ui/ImageUpload';
 import { CatalogAttributeFields } from '@/components/catalog/CatalogAttributeFields';
+import { CategoryDrilldownPicker } from '@/components/catalog/CategoryDrilldownPicker';
 import { useAuth } from '@/context/AuthContext';
 import { productApi, sellerApi } from '@/lib/api';
 import { useApi } from '@/hooks/useApi';
@@ -153,6 +154,7 @@ function NewProductPageContent() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (formData.images.length === 0) return toast.error('At least one product photo is required');
+    if (!formData.category) return toast.error('Please choose an exact product category');
     if (!user?.id) return toast.error('Please log in again to continue.');
     
     setIsSubmitting(true);
@@ -247,17 +249,17 @@ function NewProductPageContent() {
 
                        <div className="space-y-4">
                           <label className="text-[10px] font-black uppercase tracking-[0.4em] text-[#1b1c1c]/40">Category</label>
-                          <select 
-                            required 
-                            className="w-full bg-[#fcf9f8] border border-[#e0e0e0]/10 p-5 text-sm font-bold uppercase tracking-widest outline-none focus:border-[#ff6b00]"
+                          <CategoryDrilldownPicker
+                            categories={catalogCategories}
                             value={formData.category}
-                            onChange={e => setFormData({...formData, category: e.target.value})}
-                          >
-                             <option value="">Select a category...</option>
-                             {catalogCategories.map(category => (
-                               <option key={category.id} value={category.id}>{category.label}</option>
-                             ))}
-                          </select>
+                            onChange={(categoryId, category) => setFormData(current => ({
+                              ...current,
+                              category: categoryId,
+                              unit: current.unit || category.defaultUnit || 'pcs',
+                              attributes: {},
+                              variants: [],
+                            }))}
+                          />
                        </div>
 
                        <div className="space-y-4 pt-6">
@@ -550,3 +552,4 @@ function NewProductPageContent() {
     </Layout>
   );
 }
+

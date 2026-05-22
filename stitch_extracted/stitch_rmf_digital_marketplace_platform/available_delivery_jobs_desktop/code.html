@@ -1,0 +1,474 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>RMF Rider Job Board - Available Delivery Jobs</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Work+Sans:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@500&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "tertiary-container": "#5f97ff",
+                        "on-secondary-fixed-variant": "#7f2b00",
+                        "outline": "#8e7164",
+                        "on-background": "#1b1c1c",
+                        "surface": "#fbf9f8",
+                        "primary-container": "#ff6b00",
+                        "on-tertiary-fixed-variant": "#004395",
+                        "on-primary-fixed-variant": "#7a3000",
+                        "inverse-surface": "#303030",
+                        "secondary-container": "#fc671d",
+                        "on-tertiary-container": "#002f6b",
+                        "error-container": "#ffdad6",
+                        "on-error": "#ffffff",
+                        "surface-container-highest": "#e3e2e2",
+                        "on-error-container": "#93000a",
+                        "on-surface": "#1b1c1c",
+                        "surface-container-high": "#e9e8e7",
+                        "tertiary-fixed": "#d8e2ff",
+                        "background": "#fbf9f8",
+                        "surface-variant": "#e3e2e2",
+                        "surface-tint": "#a04100",
+                        "secondary-fixed-dim": "#ffb598",
+                        "primary": "#a04100",
+                        "primary-fixed": "#ffdbcc",
+                        "inverse-on-surface": "#f2f0f0",
+                        "error": "#ba1a1a",
+                        "on-secondary-fixed": "#370e00",
+                        "on-secondary-container": "#561b00",
+                        "on-primary-fixed": "#351000",
+                        "outline-variant": "#e2bfb0",
+                        "on-surface-variant": "#5a4136",
+                        "on-tertiary": "#ffffff",
+                        "secondary-fixed": "#ffdbce",
+                        "surface-container": "#efeded",
+                        "on-primary": "#ffffff",
+                        "tertiary-fixed-dim": "#adc6ff",
+                        "surface-container-lowest": "#ffffff",
+                        "on-primary-container": "#572000",
+                        "inverse-primary": "#ffb693",
+                        "tertiary": "#005ac2",
+                        "primary-fixed-dim": "#ffb693",
+                        "surface-container-low": "#f5f3f3",
+                        "secondary": "#a63b00",
+                        "on-tertiary-fixed": "#001a42",
+                        "on-secondary": "#ffffff",
+                        "surface-bright": "#fbf9f8",
+                        "surface-dim": "#dbdad9"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.125rem",
+                        "lg": "0.25rem",
+                        "xl": "0.5rem",
+                        "full": "0.75rem"
+                    },
+                    "spacing": {
+                        "margin-mobile": "16px",
+                        "xl": "40px",
+                        "md": "16px",
+                        "sm": "8px",
+                        "margin-desktop": "32px",
+                        "lg": "24px",
+                        "xs": "4px",
+                        "gutter": "16px",
+                        "base": "4px"
+                    },
+                    "fontFamily": {
+                        "body-sm": ["Work Sans"],
+                        "body-md": ["Work Sans"],
+                        "headline-lg-mobile": ["Work Sans"],
+                        "headline-lg": ["Work Sans"],
+                        "table-data": ["Work Sans"],
+                        "body-lg": ["Work Sans"],
+                        "headline-md": ["Work Sans"],
+                        "label-md": ["JetBrains Mono"]
+                    },
+                    "fontSize": {
+                        "body-sm": ["12px", {"lineHeight": "16px", "fontWeight": "400"}],
+                        "body-md": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                        "headline-lg-mobile": ["24px", {"lineHeight": "30px", "letterSpacing": "-0.01em", "fontWeight": "700"}],
+                        "headline-lg": ["30px", {"lineHeight": "38px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                        "table-data": ["13px", {"lineHeight": "18px", "fontWeight": "500"}],
+                        "body-lg": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                        "headline-md": ["20px", {"lineHeight": "28px", "fontWeight": "600"}],
+                        "label-md": ["12px", {"lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "500"}]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .countdown-pulse {
+            animation: pulse-ring 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+        @keyframes pulse-ring {
+            0%, 100% { opacity: 1; }
+            50% { opacity: .5; }
+        }
+        .bento-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+            gap: 16px;
+        }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    </style>
+</head>
+<body class="bg-surface text-on-surface font-body-md min-h-screen pb-24 lg:pb-0">
+<!-- TopNavBar (Shared Component) -->
+<header class="fixed top-0 left-0 w-full z-50 flex justify-between items-center px-margin-desktop h-16 bg-surface border-b border-outline-variant">
+<div class="flex items-center gap-base">
+<span class="text-headline-md font-headline-md font-bold text-primary">RMF</span>
+<div class="hidden md:flex ml-lg gap-md">
+<nav class="flex gap-md h-16 items-center">
+<a class="text-primary border-b-2 border-primary px-sm h-full flex items-center font-body-md" href="#">Available Delivery Jobs</a>
+<a class="text-on-surface-variant hover:bg-surface-container-low transition-colors px-sm h-full flex items-center font-body-md" href="#">Earnings</a>
+<a class="text-on-surface-variant hover:bg-surface-container-low transition-colors px-sm h-full flex items-center font-body-md" href="#">Support</a>
+</nav>
+</div>
+</div>
+<div class="flex items-center gap-md">
+<div class="hidden lg:flex items-center bg-surface-container px-sm py-xs rounded-lg border border-outline-variant">
+<span class="material-symbols-outlined text-primary" data-icon="location_on">location_on</span>
+<span class="text-body-sm font-label-md ml-xs">Kigali, Nyarugenge</span>
+</div>
+<button class="material-symbols-outlined text-on-surface-variant p-base hover:bg-surface-container-low transition-colors rounded-full" data-icon="notifications">notifications</button>
+<div class="w-8 h-8 rounded-full overflow-hidden border border-outline">
+<img alt="User Account" class="w-full h-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCT4Bd7tK13bKWk3QgKVkznBpNq8EYkZEoIixS7mBKB3g0zhTjv3jJabj9zV_yLp9JEazOxk8Yj1tQzWn2UxefKKPeG14mO2P5nxWzyNShN9nRAXmFMqchjco4JKg9aKH8PLLDwMwP6n8KZSlOhkjWXY6_OdiRw5hln1mi_ry5GmpPlEQWx86Hkqgzksd6Aub9gAA_yvtx0Ff_14MWdCENKoYGqspTh7Hz7q8GCv4EO58QybAk34PFgac5Xw1Fbk2Mxmf8iwlJEHHG8"/>
+</div>
+</div>
+</header>
+<main class="pt-20 px-margin-mobile lg:px-margin-desktop pb-12 max-w-[1280px] mx-auto">
+<!-- Header Section -->
+<section class="mb-lg flex flex-col md:flex-row md:items-end justify-between gap-md">
+<div>
+<h1 class="font-headline-lg text-headline-lg text-on-background mb-base">Available Jobs</h1>
+<p class="text-on-surface-variant font-body-md">Real-time delivery opportunities near your location.</p>
+</div>
+<div class="flex gap-sm">
+<div class="bg-primary-fixed text-on-primary-fixed px-md py-sm rounded-lg flex items-center gap-sm border border-primary">
+<span class="material-symbols-outlined text-[18px]" data-icon="online_prediction">online_prediction</span>
+<span class="font-label-md">Status: Online</span>
+</div>
+</div>
+</section>
+<!-- Stats Bar -->
+<section class="mb-lg grid grid-cols-2 md:grid-cols-4 gap-sm">
+<div class="bg-surface-container-lowest border border-outline-variant p-md rounded-lg">
+<span class="text-on-surface-variant font-label-md uppercase tracking-wider block mb-xs">Today's Earnings</span>
+<span class="font-headline-md text-primary">12,450 RWF</span>
+</div>
+<div class="bg-surface-container-lowest border border-outline-variant p-md rounded-lg">
+<span class="text-on-surface-variant font-label-md uppercase tracking-wider block mb-xs">Deliveries</span>
+<span class="font-headline-md text-on-surface">8</span>
+</div>
+<div class="bg-surface-container-lowest border border-outline-variant p-md rounded-lg">
+<span class="text-on-surface-variant font-label-md uppercase tracking-wider block mb-xs">Distance Covered</span>
+<span class="font-headline-md text-on-surface">42 km</span>
+</div>
+<div class="bg-surface-container-lowest border border-outline-variant p-md rounded-lg">
+<span class="text-on-surface-variant font-label-md uppercase tracking-wider block mb-xs">Rider Score</span>
+<span class="font-headline-md text-tertiary">4.9/5</span>
+</div>
+</section>
+<!-- Job Cards Bento Grid -->
+<div class="bento-grid">
+<!-- Job Card 1 -->
+<div class="bg-surface-container-lowest border border-outline-variant rounded-xl overflow-hidden flex flex-col transition-all hover:border-primary">
+<div class="bg-secondary-fixed p-sm flex justify-between items-center">
+<div class="flex items-center gap-xs">
+<span class="material-symbols-outlined text-on-secondary-fixed text-[18px]" data-icon="schedule">schedule</span>
+<span class="text-label-md font-label-md text-on-secondary-fixed countdown-pulse" id="timer-1">00:45</span>
+</div>
+<span class="bg-white/50 px-sm py-[2px] rounded-full text-label-md font-label-md text-on-secondary-fixed">0.8 km away</span>
+</div>
+<div class="p-md flex-grow">
+<div class="flex justify-between items-start mb-md">
+<div>
+<h3 class="font-headline-md text-on-surface">Kigali City Market</h3>
+<p class="text-body-sm text-on-surface-variant flex items-center gap-xs">
+<span class="material-symbols-outlined text-[16px]" data-icon="shopping_bag">shopping_bag</span>
+                                Fresh Produce Wholesaler
+                            </p>
+</div>
+<div class="text-right">
+<span class="font-headline-md text-primary block">3,500 RWF</span>
+<span class="text-label-md font-label-md text-on-surface-variant">Est. Payout</span>
+</div>
+</div>
+<div class="space-y-sm mb-md relative pl-lg">
+<div class="absolute left-[7px] top-[10px] bottom-[10px] w-[2px] bg-outline-variant"></div>
+<div class="relative">
+<span class="absolute -left-[20px] top-1 w-2.5 h-2.5 rounded-full bg-primary border-2 border-white"></span>
+<p class="text-label-md font-label-md text-on-surface-variant uppercase">Pickup</p>
+<p class="text-body-md font-medium">Stall 42, Kigali City Market</p>
+</div>
+<div class="relative">
+<span class="absolute -left-[20px] top-1 w-2.5 h-2.5 rounded-full bg-tertiary border-2 border-white"></span>
+<p class="text-label-md font-label-md text-on-surface-variant uppercase">Drop-off</p>
+<p class="text-body-md font-medium">Nyarugenge District Office</p>
+</div>
+</div>
+<div class="grid grid-cols-3 gap-xs border-t border-outline-variant pt-md">
+<div class="text-center">
+<span class="material-symbols-outlined text-on-surface-variant" data-icon="distance">distance</span>
+<p class="text-label-md font-label-md">3.2 km</p>
+</div>
+<div class="text-center">
+<span class="material-symbols-outlined text-on-surface-variant" data-icon="timer">timer</span>
+<p class="text-label-md font-label-md">15 min</p>
+</div>
+<div class="text-center">
+<span class="material-symbols-outlined text-on-surface-variant" data-icon="weight">weight</span>
+<p class="text-label-md font-label-md">12 kg</p>
+</div>
+</div>
+</div>
+<div class="p-md flex gap-sm bg-surface-container-low border-t border-outline-variant">
+<button class="flex-1 py-sm bg-primary text-on-primary font-label-md uppercase rounded-lg hover:opacity-90 active:scale-95 transition-all">Accept</button>
+<button class="flex-1 py-sm border border-outline text-on-surface-variant font-label-md uppercase rounded-lg hover:bg-surface-container-high transition-all">Decline</button>
+</div>
+</div>
+<!-- Job Card 2 -->
+<div class="bg-surface-container-lowest border border-outline-variant rounded-xl overflow-hidden flex flex-col transition-all hover:border-primary">
+<div class="bg-secondary-fixed p-sm flex justify-between items-center">
+<div class="flex items-center gap-xs">
+<span class="material-symbols-outlined text-on-secondary-fixed text-[18px]" data-icon="schedule">schedule</span>
+<span class="text-label-md font-label-md text-on-secondary-fixed" id="timer-2">02:15</span>
+</div>
+<span class="bg-white/50 px-sm py-[2px] rounded-full text-label-md font-label-md text-on-secondary-fixed">1.5 km away</span>
+</div>
+<div class="p-md flex-grow">
+<div class="flex justify-between items-start mb-md">
+<div>
+<h3 class="font-headline-md text-on-surface">Kimironko Market</h3>
+<p class="text-body-sm text-on-surface-variant flex items-center gap-xs">
+<span class="material-symbols-outlined text-[16px]" data-icon="storefront">storefront</span>
+                                Dry Goods &amp; Grains
+                            </p>
+</div>
+<div class="text-right">
+<span class="font-headline-md text-primary block">5,200 RWF</span>
+<span class="text-label-md font-label-md text-on-surface-variant">Est. Payout</span>
+</div>
+</div>
+<div class="space-y-sm mb-md relative pl-lg">
+<div class="absolute left-[7px] top-[10px] bottom-[10px] w-[2px] bg-outline-variant"></div>
+<div class="relative">
+<span class="absolute -left-[20px] top-1 w-2.5 h-2.5 rounded-full bg-primary border-2 border-white"></span>
+<p class="text-label-md font-label-md text-on-surface-variant uppercase">Pickup</p>
+<p class="text-body-md font-medium">Entrance B, Kimironko Market</p>
+</div>
+<div class="relative">
+<span class="absolute -left-[20px] top-1 w-2.5 h-2.5 rounded-full bg-tertiary border-2 border-white"></span>
+<p class="text-label-md font-label-md text-on-surface-variant uppercase">Drop-off</p>
+<p class="text-body-md font-medium">Gasabo District Housing</p>
+</div>
+</div>
+<div class="grid grid-cols-3 gap-xs border-t border-outline-variant pt-md">
+<div class="text-center">
+<span class="material-symbols-outlined text-on-surface-variant" data-icon="distance">distance</span>
+<p class="text-label-md font-label-md">6.8 km</p>
+</div>
+<div class="text-center">
+<span class="material-symbols-outlined text-on-surface-variant" data-icon="timer">timer</span>
+<p class="text-label-md font-label-md">25 min</p>
+</div>
+<div class="text-center">
+<span class="material-symbols-outlined text-on-surface-variant" data-icon="inventory_2">inventory_2</span>
+<p class="text-label-md font-label-md">2x Bags</p>
+</div>
+</div>
+</div>
+<div class="p-md flex gap-sm bg-surface-container-low border-t border-outline-variant">
+<button class="flex-1 py-sm bg-primary text-on-primary font-label-md uppercase rounded-lg hover:opacity-90 active:scale-95 transition-all">Accept</button>
+<button class="flex-1 py-sm border border-outline text-on-surface-variant font-label-md uppercase rounded-lg hover:bg-surface-container-high transition-all">Decline</button>
+</div>
+</div>
+<!-- Job Card 3 (Bulk Delivery) -->
+<div class="bg-surface-container-lowest border border-outline-variant rounded-xl overflow-hidden flex flex-col transition-all hover:border-primary md:col-span-1">
+<div class="bg-secondary-fixed p-sm flex justify-between items-center">
+<div class="flex items-center gap-xs">
+<span class="material-symbols-outlined text-on-secondary-fixed text-[18px]" data-icon="schedule">schedule</span>
+<span class="text-label-md font-label-md text-on-secondary-fixed" id="timer-3">01:10</span>
+</div>
+<span class="bg-white/50 px-sm py-[2px] rounded-full text-label-md font-label-md text-on-secondary-fixed">2.1 km away</span>
+</div>
+<div class="p-md flex-grow">
+<div class="flex justify-between items-start mb-md">
+<div>
+<div class="flex items-center gap-xs">
+<h3 class="font-headline-md text-on-surface">RMF Logistic Hub</h3>
+<span class="material-symbols-outlined text-tertiary text-[18px]" data-icon="verified" data-weight="fill">verified</span>
+</div>
+<p class="text-body-sm text-on-surface-variant flex items-center gap-xs">
+<span class="material-symbols-outlined text-[16px]" data-icon="local_shipping">local_shipping</span>
+                                Bulk Distribution
+                            </p>
+</div>
+<div class="text-right">
+<span class="font-headline-md text-primary block">8,750 RWF</span>
+<span class="text-label-md font-label-md text-on-surface-variant">Est. Payout</span>
+</div>
+</div>
+<div class="space-y-sm mb-md relative pl-lg">
+<div class="absolute left-[7px] top-[10px] bottom-[10px] w-[2px] bg-outline-variant"></div>
+<div class="relative">
+<span class="absolute -left-[20px] top-1 w-2.5 h-2.5 rounded-full bg-primary border-2 border-white"></span>
+<p class="text-label-md font-label-md text-on-surface-variant uppercase">Pickup</p>
+<p class="text-body-md font-medium">Main Warehouse, Kicukiro</p>
+</div>
+<div class="relative">
+<span class="absolute -left-[20px] top-1 w-2.5 h-2.5 rounded-full bg-tertiary border-2 border-white"></span>
+<p class="text-label-md font-label-md text-on-surface-variant uppercase">Drop-off</p>
+<p class="text-body-md font-medium">Masaka Health Center</p>
+</div>
+</div>
+<div class="grid grid-cols-3 gap-xs border-t border-outline-variant pt-md">
+<div class="text-center">
+<span class="material-symbols-outlined text-on-surface-variant" data-icon="distance">distance</span>
+<p class="text-label-md font-label-md">11.4 km</p>
+</div>
+<div class="text-center">
+<span class="material-symbols-outlined text-on-surface-variant" data-icon="timer">timer</span>
+<p class="text-label-md font-label-md">35 min</p>
+</div>
+<div class="text-center">
+<span class="material-symbols-outlined text-on-surface-variant" data-icon="box">box</span>
+<p class="text-label-md font-label-md">25 kg</p>
+</div>
+</div>
+</div>
+<div class="p-md flex gap-sm bg-surface-container-low border-t border-outline-variant">
+<button class="flex-1 py-sm bg-primary text-on-primary font-label-md uppercase rounded-lg hover:opacity-90 active:scale-95 transition-all">Accept</button>
+<button class="flex-1 py-sm border border-outline text-on-surface-variant font-label-md uppercase rounded-lg hover:bg-surface-container-high transition-all">Decline</button>
+</div>
+</div>
+<!-- Job Card 4 (Small Delivery) -->
+<div class="bg-surface-container-lowest border border-outline-variant rounded-xl overflow-hidden flex flex-col transition-all hover:border-primary">
+<div class="bg-secondary-fixed p-sm flex justify-between items-center">
+<div class="flex items-center gap-xs">
+<span class="material-symbols-outlined text-on-secondary-fixed text-[18px]" data-icon="schedule">schedule</span>
+<span class="text-label-md font-label-md text-on-secondary-fixed" id="timer-4">03:30</span>
+</div>
+<span class="bg-white/50 px-sm py-[2px] rounded-full text-label-md font-label-md text-on-secondary-fixed">0.3 km away</span>
+</div>
+<div class="p-md flex-grow">
+<div class="flex justify-between items-start mb-md">
+<div>
+<h3 class="font-headline-md text-on-surface">Amani Pharma</h3>
+<p class="text-body-sm text-on-surface-variant flex items-center gap-xs">
+<span class="material-symbols-outlined text-[16px]" data-icon="medical_services">medical_services</span>
+                                Pharmacy/Medical
+                            </p>
+</div>
+<div class="text-right">
+<span class="font-headline-md text-primary block">1,800 RWF</span>
+<span class="text-label-md font-label-md text-on-surface-variant">Est. Payout</span>
+</div>
+</div>
+<div class="space-y-sm mb-md relative pl-lg">
+<div class="absolute left-[7px] top-[10px] bottom-[10px] w-[2px] bg-outline-variant"></div>
+<div class="relative">
+<span class="absolute -left-[20px] top-1 w-2.5 h-2.5 rounded-full bg-primary border-2 border-white"></span>
+<p class="text-label-md font-label-md text-on-surface-variant uppercase">Pickup</p>
+<p class="text-body-md font-medium">Amani Pharma, City Tower</p>
+</div>
+<div class="relative">
+<span class="absolute -left-[20px] top-1 w-2.5 h-2.5 rounded-full bg-tertiary border-2 border-white"></span>
+<p class="text-label-md font-label-md text-on-surface-variant uppercase">Drop-off</p>
+<p class="text-body-md font-medium">Kiyovu Street 12</p>
+</div>
+</div>
+<div class="grid grid-cols-3 gap-xs border-t border-outline-variant pt-md">
+<div class="text-center">
+<span class="material-symbols-outlined text-on-surface-variant" data-icon="distance">distance</span>
+<p class="text-label-md font-label-md">1.1 km</p>
+</div>
+<div class="text-center">
+<span class="material-symbols-outlined text-on-surface-variant" data-icon="timer">timer</span>
+<p class="text-label-md font-label-md">8 min</p>
+</div>
+<div class="text-center">
+<span class="material-symbols-outlined text-on-surface-variant" data-icon="mail">mail</span>
+<p class="text-label-md font-label-md">0.5 kg</p>
+</div>
+</div>
+</div>
+<div class="p-md flex gap-sm bg-surface-container-low border-t border-outline-variant">
+<button class="flex-1 py-sm bg-primary text-on-primary font-label-md uppercase rounded-lg hover:opacity-90 active:scale-95 transition-all">Accept</button>
+<button class="flex-1 py-sm border border-outline text-on-surface-variant font-label-md uppercase rounded-lg hover:bg-surface-container-high transition-all">Decline</button>
+</div>
+</div>
+</div>
+</main>
+<!-- BottomNavBar (Shared Component - Mobile Only) -->
+<nav class="lg:hidden fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-4 py-2 bg-surface border-t border-outline-variant shadow-lg rounded-t-xl">
+<div class="flex flex-col items-center justify-center bg-secondary-container text-on-secondary-container rounded-full px-4 py-1">
+<span class="material-symbols-outlined" data-icon="home">home</span>
+<span class="font-label-md">Home</span>
+</div>
+<div class="flex flex-col items-center justify-center text-on-surface-variant">
+<span class="material-symbols-outlined" data-icon="search">search</span>
+<span class="font-label-md">Search</span>
+</div>
+<div class="flex flex-col items-center justify-center text-on-surface-variant">
+<span class="material-symbols-outlined" data-icon="receipt_long">receipt_long</span>
+<span class="font-label-md">Orders</span>
+</div>
+<div class="flex flex-col items-center justify-center text-on-surface-variant">
+<span class="material-symbols-outlined" data-icon="person">person</span>
+<span class="font-label-md">Account</span>
+</div>
+</nav>
+<script>
+        // Simple countdown logic for visual effects
+        function startCountdown(id, initialSeconds) {
+            let seconds = initialSeconds;
+            const element = document.getElementById(id);
+            const interval = setInterval(() => {
+                seconds--;
+                if (seconds <= 0) {
+                    clearInterval(interval);
+                    element.innerText = "EXPIRED";
+                    element.classList.remove('countdown-pulse');
+                    element.parentElement.parentElement.classList.add('opacity-50', 'grayscale');
+                } else {
+                    const mins = Math.floor(seconds / 60);
+                    const secs = seconds % 60;
+                    element.innerText = `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+                }
+            }, 1000);
+        }
+
+        startCountdown('timer-1', 45);
+        startCountdown('timer-2', 135);
+        startCountdown('timer-3', 70);
+        startCountdown('timer-4', 210);
+
+        // Interaction Mockups
+        document.querySelectorAll('button').forEach(btn => {
+            btn.addEventListener('click', function() {
+                if(this.innerText === 'ACCEPT') {
+                    this.closest('.transition-all').style.transform = 'scale(0.95)';
+                    this.innerText = 'ACCEPTED!';
+                    this.disabled = true;
+                    this.classList.add('bg-tertiary');
+                }
+                if(this.innerText === 'DECLINE') {
+                    this.closest('.transition-all').style.opacity = '0';
+                    setTimeout(() => this.closest('.transition-all').remove(), 300);
+                }
+            });
+        });
+    </script>
+</body></html>

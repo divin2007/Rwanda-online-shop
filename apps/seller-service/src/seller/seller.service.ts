@@ -337,7 +337,9 @@ export class SellerService {
     try {
       const axios = require('axios');
       const userUrl = process.env.USER_SERVICE_URL || 'http://localhost:3001/api/v1';
-      await axios.put(`${userUrl}/users/${userId}/role`, { role });
+      const secret = process.env.INTERNAL_SERVICE_SECRET;
+      const headers = secret ? { 'x-internal-service-key': secret } : {};
+      await axios.put(`${userUrl}/users/${userId}/role`, { role }, { headers });
       this.logger.log(`User ${userId} role synced to ${role} in user-service`);
     } catch (error: any) {
       this.logger.warn(`Failed to sync role for user ${userId}: ${error.message}`);
@@ -348,11 +350,13 @@ export class SellerService {
     try {
       const axios = require('axios');
       const notificationUrl = process.env.NOTIFICATION_SERVICE_URL || 'http://localhost:3009/api/v1';
+      const secret = process.env.INTERNAL_SERVICE_SECRET;
+      const headers = secret ? { 'x-internal-service-key': secret } : {};
       axios.post(`${notificationUrl}/notifications/in-app`, {
         userId,
         type: 'seller.status_update',
         params: { message }
-      }).catch(() => {});
+      }, { headers }).catch(() => {});
     } catch {}
   }
 
@@ -362,8 +366,10 @@ export class SellerService {
       const axios = require('axios');
       const userUrl = process.env.USER_SERVICE_URL || 'http://localhost:3001/api/v1';
       const notificationUrl = process.env.NOTIFICATION_SERVICE_URL || 'http://localhost:3009/api/v1';
+      const secret = process.env.INTERNAL_SERVICE_SECRET;
+      const headers = secret ? { 'x-internal-service-key': secret } : {};
       // Fetch admin users from user-service
-      const res = await axios.get(`${userUrl}/users?role=ADMIN`).catch(() => null);
+      const res = await axios.get(`${userUrl}/users?role=ADMIN`, { headers }).catch(() => null);
       const admins = res?.data?.data || [];
       for (const admin of admins) {
         const adminId = admin._id || admin.id;
@@ -372,7 +378,7 @@ export class SellerService {
           userId: adminId,
           type: 'seller.status_update',
           params: { message: `New seller application from "${stallName}" is awaiting your review.` }
-        }).catch(() => {});
+        }, { headers }).catch(() => {});
         
         if (admin.email) {
           await axios.post(`${notificationUrl}/notifications/email`, {
@@ -380,7 +386,7 @@ export class SellerService {
             email: admin.email,
             type: 'seller.status_update',
             params: { message: `New seller application from "${stallName}" is awaiting your review.` }
-          }).catch(() => {});
+          }, { headers }).catch(() => {});
         }
       }
     } catch (e: any) {

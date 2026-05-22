@@ -33,6 +33,7 @@ export default function VideosPage() {
           title={search.trim() ? `Videos matching "${search.trim()}"` : 'All market videos'}
           description="Browse fresh seller videos across every connected RMF market."
           search={search}
+          onTagClick={(tag) => setSearch(tag)}
         />
       </div>
     </Layout>

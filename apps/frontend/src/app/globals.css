@@ -3,20 +3,22 @@
 @tailwind utilities;
 
 :root {
-  /* RMF Operational Commerce palette - High-Fidelity Vibrant Actual Orange */
+  /* RMF Operational Commerce palette - rebuilt from Stitch reference */
   --rmf-green: #ff6b00;
   --rmf-green-dark: #e05300;
   --rmf-green-light: #ffedd5;
   --rmf-gold: #ff9f1c;
   --rmf-gold-dark: #cc7a00;
   --rmf-charcoal: #1b1c1c;
-  --rmf-charcoal-muted: #414844;
-  --rmf-cream: #fdfaf7;
-  --rmf-cream-dark: #f7f1eb;
+  --rmf-charcoal-muted: #574e47;
+  --rmf-cream: #fbf9f8;
+  --rmf-cream-dark: #efeded;
   --rmf-border: #ebdcd0;
   --rmf-border-strong: #d2bca8;
   --rmf-text: #1b1c1c;
   --rmf-text-muted: #574e47;
+  --rmf-blue: #3b82f6;
+  --rmf-error: #ba1a1a;
   --rmf-white: #FFFFFF;
   
   --primary: var(--rmf-green);
@@ -38,8 +40,9 @@ html {
     @apply font-sans font-bold text-[var(--rmf-charcoal)] tracking-normal;
   }
 
-  .font-sans { font-family: var(--font-inter), Inter, system-ui, sans-serif; }
-  .font-serif { font-family: var(--font-inter), Inter, system-ui, sans-serif; }
+  .font-sans { font-family: var(--font-work-sans), "Work Sans", system-ui, sans-serif; }
+  .font-serif { font-family: var(--font-work-sans), "Work Sans", system-ui, sans-serif; }
+  .font-mono { font-family: var(--font-jetbrains-mono), "JetBrains Mono", ui-monospace, monospace; }
 }
 
 @layer components {
@@ -48,39 +51,39 @@ html {
   }
 
   .glass-header {
-    @apply bg-white/80 backdrop-blur-md border-b border-[var(--rmf-border)] sticky top-0 z-50;
+    @apply bg-white border-b border-[var(--rmf-border)] sticky top-0 z-50;
   }
 
   .glass-card {
-    @apply rounded-xl bg-white/70 backdrop-blur-sm border border-[var(--rmf-border)] transition-all duration-300 hover:border-[var(--rmf-green)] hover:shadow-xl hover:-translate-y-1;
+    @apply rounded-lg bg-white border border-[var(--rmf-border)] transition-colors duration-200 hover:border-[var(--rmf-green)];
   }
 
   .cinematic-shadow {
-    @apply shadow-[0_16px_48px_rgba(255,107,0,0.08)];
+    @apply shadow-[0_1px_3px_rgba(27,28,28,0.04)];
   }
 
   .premium-gradient {
-    background: linear-gradient(135deg, #ff6b00 0%, #e05300 100%);
+    background: #ff6b00;
   }
 
   .premium-gradient-light {
-    background: linear-gradient(135deg, #f7f7f3 0%, #efefeb 100%);
+    background: #f5f3f3;
   }
 
   .hover-lift {
-    @apply transition-all duration-300 hover:-translate-y-1 hover:shadow-lg;
+    @apply transition-colors duration-200 hover:border-[var(--rmf-green)];
   }
 
   .rmf-btn-primary {
-    @apply inline-flex items-center justify-center gap-2 rounded-lg bg-[var(--rmf-green)] text-white px-6 py-3.5 text-sm font-bold tracking-tight transition-all duration-300 hover:bg-[var(--rmf-green-dark)] hover:shadow-lg active:translate-y-px;
+    @apply inline-flex items-center justify-center gap-2 rounded bg-[var(--rmf-green)] text-white px-5 py-3 text-sm font-bold tracking-normal transition-colors duration-200 hover:bg-[var(--rmf-green-dark)] active:translate-y-px;
   }
 
   .rmf-btn-outline {
-    @apply inline-flex items-center justify-center gap-2 rounded-lg border border-[var(--rmf-border)] bg-white/50 backdrop-blur-sm text-[var(--rmf-charcoal)] px-6 py-3.5 text-sm font-bold tracking-tight transition-all duration-300 hover:border-[var(--rmf-green)] hover:text-[var(--rmf-green)] hover:bg-white;
+    @apply inline-flex items-center justify-center gap-2 rounded border border-[var(--rmf-green)] bg-white text-[var(--rmf-green)] px-5 py-3 text-sm font-bold tracking-normal transition-colors duration-200 hover:bg-[var(--rmf-green-light)];
   }
 
   .rmf-form-group {
-    @apply flex flex-col gap-3 mb-6;
+    @apply flex flex-col gap-2 mb-5;
   }
 
   .rmf-label {
@@ -88,7 +91,7 @@ html {
   }
 
   .rmf-input {
-    @apply rounded-lg bg-white border border-[var(--rmf-border)] px-4 py-3.5 text-base font-normal outline-none transition-all duration-300 focus:border-[var(--rmf-green)] focus:ring-4 focus:ring-[rgba(27,67,50,0.05)];
+    @apply rounded bg-white border border-[var(--rmf-border)] px-4 py-3 text-sm font-medium outline-none transition-colors duration-200 focus:border-[var(--rmf-green)] focus:ring-2 focus:ring-[rgba(255,107,0,0.12)];
   }
 
   .rmf-input-error {
@@ -100,7 +103,7 @@ html {
   }
 
   .rmf-select {
-    @apply rounded-md bg-white border border-[var(--rmf-border)] px-4 py-4 text-base font-medium outline-none appearance-none cursor-pointer focus:border-[var(--rmf-green)];
+    @apply rounded bg-white border border-[var(--rmf-border)] px-4 py-3 text-sm font-medium outline-none appearance-none cursor-pointer focus:border-[var(--rmf-green)];
   }
 
   .rmf-checkbox-group {
@@ -112,11 +115,11 @@ html {
   }
 
   .rmf-label-sm {
-    @apply text-xs font-bold uppercase tracking-[0.08em] text-[var(--rmf-green)];
+    @apply font-mono text-xs font-bold uppercase tracking-[0.08em] text-[var(--rmf-green)];
   }
 
   .rmf-badge-verified {
-    @apply inline-flex items-center gap-1 rounded-sm bg-[var(--rmf-gold)] px-2 py-1 text-xs font-bold uppercase tracking-[0.08em] text-[#221b00];
+    @apply inline-flex items-center gap-1 rounded-sm bg-[var(--rmf-gold)] px-2 py-1 font-mono text-[10px] font-bold uppercase tracking-[0.08em] text-[#221b00];
   }
 
   .rmf-badge-origin {
@@ -125,6 +128,34 @@ html {
 
   .rmf-section {
     @apply rounded-lg border border-[var(--rmf-border)] bg-white;
+  }
+
+  .rmf-panel {
+    @apply rounded-lg border border-[var(--rmf-border)] bg-white;
+  }
+
+  .rmf-panel-header {
+    @apply border-b border-[var(--rmf-border)] bg-[#ffedd5]/35 px-4 py-3;
+  }
+
+  .rmf-kicker {
+    @apply font-mono text-[11px] font-bold uppercase tracking-[0.18em] text-[var(--rmf-green)];
+  }
+
+  .rmf-status-chip {
+    @apply inline-flex items-center gap-1 rounded-sm border border-[var(--rmf-border)] bg-white px-2 py-1 font-mono text-[10px] font-bold uppercase tracking-[0.08em] text-[var(--rmf-text-muted)];
+  }
+
+  .rmf-data-table {
+    @apply w-full border-collapse text-left text-sm;
+  }
+
+  .rmf-data-table th {
+    @apply border-b border-[var(--rmf-border)] bg-[#f5f3f3] px-3 py-3 font-mono text-[10px] font-bold uppercase tracking-[0.14em] text-[var(--rmf-text-muted)];
+  }
+
+  .rmf-data-table td {
+    @apply border-b border-[var(--rmf-border)] px-3 py-3 text-[13px] font-medium text-[var(--rmf-text)];
   }
 
   /* DARK CONTEXT UTILITY */

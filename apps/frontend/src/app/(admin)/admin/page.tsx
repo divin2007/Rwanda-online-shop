@@ -50,6 +50,8 @@ function AdminDashboardContent() {
   }, [searchParams]);
 
   const [selectedSeller, setSelectedSeller] = useState<any>(null);
+  const [approvalSubTab, setApprovalSubTab] = useState<'sellers' | 'riders' | 'profile-changes'>('sellers');
+  const [rejectNote, setRejectNote] = useState('');
   const [selectedReceipt, setSelectedReceipt] = useState<ReceiptOrder | null>(null);
   const [allOrders, setAllOrders] = useState<any[]>([]);
   const [deliveryCache, setDeliveryCache] = useState<Record<string, any>>({});
@@ -191,6 +193,11 @@ function AdminDashboardContent() {
     if (activeTab === 'markets') fetchMarkets();
     if (activeTab === 'payouts') fetchPayoutRequests();
     if (activeTab === 'profile-changes') fetchProfileChangeRequests();
+    if (activeTab === 'approvals') {
+      fetchSellers();
+      fetchRiders();
+      fetchProfileChangeRequests();
+    }
     if (activeTab === 'taxonomy') {
       fetchTaxonomy();
       fetchGovernance();
@@ -327,6 +334,18 @@ function AdminDashboardContent() {
       fetchRiders();
     } catch (e) {
       toast.error('Failed to approve rider');
+    }
+  };
+
+  const declineRider = async (id: string) => {
+    const reason = prompt('Rejection reason (shown to rider):');
+    if (reason === null) return;
+    try {
+      await riderApi.post(`/riders/${id}/reject`, { reason: reason || 'Application declined by admin' });
+      toast.success('Rider application declined');
+      fetchRiders();
+    } catch (e) {
+      toast.error('Failed to decline rider');
     }
   };
 
@@ -851,115 +870,158 @@ function AdminDashboardContent() {
             </div>
           )}
 
-          {activeTab === 'sellers' && (
-            <div className="bg-white border border-[#e0e0e0] shadow-sm animate-reveal overflow-hidden">
-              <table className="w-full text-left">
-                <thead className="bg-[#fcf9f8] text-[#414844] text-[9px] font-black uppercase tracking-[0.2em] border-b border-[#e0e0e0]">
-                  <tr>
-                    <th className="p-6">Seller Details</th>
-                    <th className="p-6">Category</th>
-                    <th className="p-6">Applied On</th>
-                    <th className="p-6 text-right">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-[#e0e0e0]">
-                  {!pendingSellers || pendingSellers.length === 0 ? (
-                    <tr><td colSpan={4} className="p-12 text-center text-[#414844]">No pending seller applications.</td></tr>
-                  ) : (
-                    pendingSellers.map((s: any) => (
-                      <tr key={s._id} className="hover:bg-[#fcf9f8]/50 transition-colors">
-                        <td className="p-6">
-                          <p className="font-sans text-lg text-[#1b1c1c]">{s.shopDetails?.name || s.stallName || s.marketId}</p>
-                          <p className="text-[10px] font-black text-[#414844] uppercase tracking-widest mt-1">{s.sellerName || 'Pending'}</p>
-                        </td>
-                        <td className="p-6 text-xs font-medium text-[#1b1c1c]">{s.marketId && s.marketId.length > 5 ? 'Market Vendor' : 'Independent'}</td>
-                        <td className="p-6 text-xs text-[#414844]">{new Date(s.createdAt).toLocaleDateString()}</td>
-                        <td className="p-6 text-right flex justify-end gap-3">
-                          <button className="px-4 py-2 border border-[#e0e0e0] text-[9px] font-black uppercase tracking-widest text-[#1b1c1c] hover:border-[#ff6b00]" onClick={() => setSelectedSeller(s)}>View Docs</button>
-                          <button className="px-4 py-2 border border-red-200 bg-red-50 text-[9px] font-black uppercase tracking-widest text-red-600 hover:border-red-500" onClick={() => declineSeller(s._id)}>Decline</button>
-                          <button className="px-4 py-2 bg-[#e05300] text-white text-[9px] font-black uppercase tracking-widest hover:bg-[#e05300]" onClick={() => approveSeller(s._id)}>Approve</button>
-                        </td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            </div>
-          )}
-
-          {activeTab === 'riders' && (
-            <div className="bg-white border border-[#e0e0e0] shadow-sm animate-reveal overflow-hidden">
-              <table className="w-full text-left">
-                <thead className="bg-[#fcf9f8] text-[#414844] text-[9px] font-black uppercase tracking-[0.2em] border-b border-[#e0e0e0]">
-                  <tr>
-                    <th className="p-6">Rider ID</th>
-                    <th className="p-6">Plate Number</th>
-                    <th className="p-6">Applied On</th>
-                    <th className="p-6 text-right">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-[#e0e0e0]">
-                  {!pendingRiders || pendingRiders.length === 0 ? (
-                    <tr><td colSpan={4} className="p-12 text-center text-[#414844]">No pending rider applications.</td></tr>
-                  ) : (
-                    pendingRiders.map((r: any) => (
-                      <tr key={r._id} className="hover:bg-[#fcf9f8]/50 transition-colors">
-                        <td className="p-6">
-                          <p className="font-mono text-sm font-bold text-[#1b1c1c]">{r.userId.substring(0,8)}</p>
-                        </td>
-                        <td className="p-6 font-mono text-sm font-medium">{r.plateNumber}</td>
-                        <td className="p-6 text-xs text-[#414844]">{new Date(r.createdAt).toLocaleDateString()}</td>
-                        <td className="p-6 text-right flex justify-end gap-3">
-                          <button className="px-4 py-2 border border-[#e0e0e0] text-[9px] font-black uppercase tracking-widest text-[#1b1c1c] hover:border-[#ff6b00]" onClick={() => setSelectedSeller(r)}>View Docs</button>
-                          <button className="px-4 py-2 bg-[#e05300] text-white text-[9px] font-black uppercase tracking-widest hover:bg-[#e05300]" onClick={() => approveRider(r._id)}>Approve</button>
-                        </td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            </div>
-          )}
-
-          {activeTab === 'profile-changes' && (
+          {activeTab === 'approvals' && (
             <div className="space-y-6 animate-reveal">
-              <div className="grid gap-4 md:grid-cols-2">
-                {[
-                  { title: 'Seller market changes', type: 'seller' as const, items: sellerChangeRequests },
-                  { title: 'Rider profile changes', type: 'rider' as const, items: riderChangeRequests },
-                ].map(group => (
-                  <section key={group.type} className="rounded-lg border border-[#e0e0e0] bg-white p-6 shadow-sm">
-                    <div className="mb-5 flex items-center justify-between border-b border-[#e0e0e0] pb-4">
-                      <div>
-                        <p className="text-[10px] font-black uppercase tracking-[0.18em] text-[#ff6b00]">Admin review</p>
-                        <h2 className="mt-1 text-xl font-black text-[#1b1c1c]">{group.title}</h2>
-                      </div>
-                      <span className="rounded-full bg-[#ffedd5] px-3 py-1 text-xs font-black text-[#9a3412]">{group.items.length}</span>
-                    </div>
-                    {profileChangesLoading ? (
-                      <div className="h-40 animate-pulse rounded-md bg-[#fcf9f8]" />
-                    ) : group.items.length === 0 ? (
-                      <p className="rounded-md border border-dashed border-[#e0e0e0] p-8 text-center text-sm font-semibold text-[#5f7569]">No pending requests.</p>
-                    ) : (
-                      <div className="space-y-4">
-                        {group.items.map((request: any) => (
-                          <article key={request._id} className="rounded-md border border-[#e0e0e0] bg-[#fcf9f8] p-4">
-                            <div className="mb-3 flex items-center justify-between gap-3">
-                              <p className="text-xs font-black uppercase tracking-widest text-[#1b1c1c]">{request.targetId}</p>
-                              <p className="text-[10px] font-bold text-[#5f7569]">{new Date(request.createdAt).toLocaleString()}</p>
-                            </div>
-                            <pre className="max-h-56 overflow-auto rounded-md bg-white p-3 text-xs text-[#1b1c1c]">{JSON.stringify(request.requestedChanges, null, 2)}</pre>
-                            <div className="mt-4 flex justify-end gap-2">
-                              <button onClick={() => reviewProfileChange(group.type, request._id, 'reject')} className="rounded-md border border-red-200 bg-red-50 px-4 py-2 text-[10px] font-black uppercase tracking-widest text-red-600">Reject</button>
-                              <button onClick={() => reviewProfileChange(group.type, request._id, 'approve')} className="rounded-md bg-[#ff6b00] px-4 py-2 text-[10px] font-black uppercase tracking-widest text-white">Approve</button>
-                            </div>
-                          </article>
-                        ))}
-                      </div>
+              {/* Sub-tab navigation */}
+              <div className="flex items-center gap-1 rounded-xl border border-[#e0e0e0] bg-[#fcf9f8] p-1">
+                {([
+                  { key: 'sellers', label: '🏪 Sellers', count: Array.isArray(pendingSellers) ? pendingSellers.length : 0 },
+                  { key: 'riders', label: '🛵 Riders', count: Array.isArray(pendingRiders) ? pendingRiders.length : 0 },
+                  { key: 'profile-changes', label: '📝 Profile Changes', count: sellerChangeRequests.length + riderChangeRequests.length },
+                ] as const).map(t => (
+                  <button
+                    key={t.key}
+                    onClick={() => setApprovalSubTab(t.key)}
+                    className={`flex flex-1 items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-xs font-black uppercase tracking-wider transition-all ${
+                      approvalSubTab === t.key
+                        ? 'bg-white text-[#e05300] shadow-sm border border-[#e0e0e0]'
+                        : 'text-[#414844] hover:text-[#1b1c1c]'
+                    }`}
+                  >
+                    {t.label}
+                    {t.count > 0 && (
+                      <span className={`rounded-full px-1.5 py-0.5 text-[9px] font-black ${
+                        approvalSubTab === t.key ? 'bg-[#ffedd5] text-[#9a3412]' : 'bg-[#e0e0e0] text-[#414844]'
+                      }`}>{t.count}</span>
                     )}
-                  </section>
+                  </button>
                 ))}
               </div>
+
+              {/* ── SELLERS sub-tab ── */}
+              {approvalSubTab === 'sellers' && (
+                <div className="space-y-4">
+                  {!Array.isArray(pendingSellers) || pendingSellers.length === 0 ? (
+                    <div className="rounded-xl border border-dashed border-[#e0e0e0] bg-white p-16 text-center">
+                      <p className="text-2xl mb-2">✅</p>
+                      <p className="text-sm font-bold text-[#414844]">No pending seller applications.</p>
+                    </div>
+                  ) : (
+                    pendingSellers.map((s: any) => (
+                      <div key={s._id} className="rounded-xl border border-[#e0e0e0] bg-white shadow-sm overflow-hidden">
+                        {/* Header */}
+                        <div className="flex items-center justify-between gap-4 border-b border-[#e0e0e0] bg-[#fcf9f8] px-6 py-4">
+                          <div>
+                            <p className="text-lg font-black text-[#1b1c1c]">{s.shopDetails?.name || s.stallName || 'Unnamed shop'}</p>
+                            <p className="text-[10px] font-black text-[#414844] uppercase tracking-widest mt-0.5">
+                              {s.marketId && s.marketId.length > 5 ? 'Market Vendor' : 'Independent Seller'} · Applied {new Date(s.createdAt).toLocaleDateString()}
+                            </p>
+                          </div>
+                          <div className="flex gap-2">
+                            <button onClick={() => declineSeller(s._id)} className="px-4 py-2 border border-red-200 bg-red-50 text-[9px] font-black uppercase tracking-widest text-red-600 hover:bg-red-100 rounded-lg transition">Decline</button>
+                            <button onClick={() => approveSeller(s._id)} className="px-5 py-2 bg-[#e05300] text-white text-[9px] font-black uppercase tracking-widest hover:bg-[#c24600] rounded-lg transition">✓ Approve</button>
+                          </div>
+                        </div>
+                        {/* Document grid */}
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 p-6">
+                          <VerificationDocumentPanel title="Business Permit" url={s.businessPermitUrl} />
+                          <VerificationDocumentPanel title="RRA Certificate" url={s.rraCertificateUrl} />
+                          <VerificationDocumentPanel title="National ID" url={s.idCardUrl} />
+                          <VerificationDocumentPanel title="Stall / Shop Photo" url={s.stallPhotoUrl} />
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              )}
+
+              {/* ── RIDERS sub-tab ── */}
+              {approvalSubTab === 'riders' && (
+                <div className="space-y-4">
+                  {!Array.isArray(pendingRiders) || pendingRiders.length === 0 ? (
+                    <div className="rounded-xl border border-dashed border-[#e0e0e0] bg-white p-16 text-center">
+                      <p className="text-2xl mb-2">✅</p>
+                      <p className="text-sm font-bold text-[#414844]">No pending rider applications.</p>
+                    </div>
+                  ) : (
+                    pendingRiders.map((r: any) => (
+                      <div key={r._id} className="rounded-xl border border-[#e0e0e0] bg-white shadow-sm overflow-hidden">
+                        {/* Header */}
+                        <div className="flex items-center justify-between gap-4 border-b border-[#e0e0e0] bg-[#fcf9f8] px-6 py-4">
+                          <div>
+                            <p className="text-lg font-black text-[#1b1c1c]">
+                              {r.vehicleType || 'Rider'} · <span className="font-mono text-[#ff6b00]">{r.plateNumber || 'No plate'}</span>
+                            </p>
+                            <p className="text-[10px] font-black text-[#414844] uppercase tracking-widest mt-0.5">
+                              User: {r.userId?.substring(0, 12)}… · Applied {new Date(r.createdAt).toLocaleDateString()}
+                            </p>
+                          </div>
+                          <div className="flex gap-2">
+                            <button onClick={() => declineRider(r._id)} className="px-4 py-2 border border-red-200 bg-red-50 text-[9px] font-black uppercase tracking-widest text-red-600 hover:bg-red-100 rounded-lg transition">Decline</button>
+                            <button onClick={() => approveRider(r._id)} className="px-5 py-2 bg-[#e05300] text-white text-[9px] font-black uppercase tracking-widest hover:bg-[#c24600] rounded-lg transition">✓ Approve</button>
+                          </div>
+                        </div>
+                        {/* Document grid */}
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 p-6">
+                          <VerificationDocumentPanel title="Driver's Licence" url={r.licenseUrl} />
+                          <VerificationDocumentPanel title="National ID" url={r.idCardUrl} />
+                          <VerificationDocumentPanel title="Vehicle Photo" url={r.vehiclePhotoUrl} />
+                          <VerificationDocumentPanel title="Insurance Cert." url={r.insuranceUrl} />
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              )}
+
+              {/* ── PROFILE CHANGES sub-tab ── */}
+              {approvalSubTab === 'profile-changes' && (
+                <div className="grid gap-4 md:grid-cols-2">
+                  {([
+                    { title: 'Seller profile changes', type: 'seller' as const, items: sellerChangeRequests },
+                    { title: 'Rider profile changes', type: 'rider' as const, items: riderChangeRequests },
+                ] as const).map(group => (
+                    <section key={group.type} className="rounded-xl border border-[#e0e0e0] bg-white p-6 shadow-sm">
+                      <div className="mb-5 flex items-center justify-between border-b border-[#e0e0e0] pb-4">
+                        <div>
+                          <p className="text-[10px] font-black uppercase tracking-[0.18em] text-[#ff6b00]">Pending review</p>
+                          <h2 className="mt-1 text-xl font-black text-[#1b1c1c]">{group.title}</h2>
+                        </div>
+                        <span className="rounded-full bg-[#ffedd5] px-3 py-1 text-xs font-black text-[#9a3412]">{group.items.length}</span>
+                      </div>
+                      {profileChangesLoading ? (
+                        <div className="h-40 animate-pulse rounded-md bg-[#fcf9f8]" />
+                      ) : group.items.length === 0 ? (
+                        <p className="rounded-md border border-dashed border-[#e0e0e0] p-8 text-center text-sm font-semibold text-[#5f7569]">No pending requests.</p>
+                      ) : (
+                        <div className="space-y-4">
+                          {group.items.map((request: any) => (
+                            <article key={request._id} className="rounded-md border border-[#e0e0e0] bg-[#fcf9f8] p-4">
+                              <div className="mb-3 flex items-center justify-between gap-3">
+                                <p className="text-xs font-black uppercase tracking-widest text-[#1b1c1c]">{request.targetId}</p>
+                                <p className="text-[10px] font-bold text-[#5f7569]">{new Date(request.createdAt).toLocaleString()}</p>
+                              </div>
+                              {/* Show any document URLs as clickable images */}
+                              {Object.entries(request.requestedChanges || {}).some(([k]) => k.toLowerCase().includes('url')) && (
+                                <div className="grid grid-cols-2 gap-3 mb-3">
+                                  {Object.entries(request.requestedChanges || {}).filter(([k]) => k.toLowerCase().includes('url')).map(([k, v]: any) => (
+                                    <VerificationDocumentPanel key={k} title={k.replace(/([A-Z])/g, ' $1').replace('Url', '').trim()} url={v} />
+                                  ))}
+                                </div>
+                              )}
+                              <pre className="max-h-40 overflow-auto rounded-md bg-white p-3 text-xs text-[#1b1c1c]">{JSON.stringify(request.requestedChanges, null, 2)}</pre>
+                              <div className="mt-4 flex justify-end gap-2">
+                                <button onClick={() => reviewProfileChange(group.type, request._id, 'reject')} className="rounded-md border border-red-200 bg-red-50 px-4 py-2 text-[10px] font-black uppercase tracking-widest text-red-600">Reject</button>
+                                <button onClick={() => reviewProfileChange(group.type, request._id, 'approve')} className="rounded-md bg-[#ff6b00] px-4 py-2 text-[10px] font-black uppercase tracking-widest text-white">Approve</button>
+                              </div>
+                            </article>
+                          ))}
+                        </div>
+                      )}
+                    </section>
+                  ))}
+                </div>
+              )}
             </div>
           )}
 
@@ -1014,6 +1076,120 @@ function AdminDashboardContent() {
                   Scroll to load more product approvals
                 </div>
               )}
+            </div>
+          )}
+
+          {false && activeTab === 'taxonomy' && (
+            <div className="space-y-6 animate-reveal">
+              <div className="grid gap-4 md:grid-cols-4">
+                {[
+                  { label: 'Categories', value: taxonomyCategories.length },
+                  { label: 'Products audited', value: governanceReport?.totals?.products || 0 },
+                  { label: 'Missing required', value: governanceReport?.totals?.missingRequired || 0 },
+                  { label: 'Uncategorized', value: governanceReport?.totals?.uncategorized || 0 },
+                ].map(card => (
+                  <div key={card.label} className="rounded-lg border border-[#dfe7e2] bg-white p-5 shadow-sm">
+                    <p className="text-[10px] font-black uppercase tracking-[0.18em] text-[#5f7569]">{card.label}</p>
+                    <p className="mt-2 text-3xl font-sans text-[#ff6b00]">{card.value}</p>
+                  </div>
+                ))}
+              </div>
+
+              <div className="grid gap-6 xl:grid-cols-[0.95fr_1.05fr]">
+                <section className="rounded-lg border border-[#dfe7e2] bg-white p-6 shadow-sm">
+                  <div className="mb-5 flex items-start justify-between gap-3">
+                    <div>
+                      <p className="text-[10px] font-black uppercase tracking-[0.18em] text-[#ff6b00]">Taxonomy editor</p>
+                      <h3 className="mt-2 text-2xl font-sans text-[#1b1c1c]">Category intelligence</h3>
+                    </div>
+                    <button onClick={() => setTaxonomyForm({ id: '', label: '', productType: '', defaultUnit: 'pcs', aliases: '', synonyms: '', attributesJson: '[]', variantAxesJson: '[]' })} className="rounded-md border border-[#dfe7e2] px-3 py-2 text-[10px] font-black uppercase tracking-widest text-[#ff6b00]">
+                      New
+                    </button>
+                  </div>
+
+                  <div className="grid gap-3 md:grid-cols-2">
+                    {[
+                      ['id', 'Category ID'],
+                      ['label', 'Display label'],
+                      ['productType', 'Product type'],
+                      ['defaultUnit', 'Default unit'],
+                      ['aliases', 'Aliases'],
+                      ['synonyms', 'Search synonyms'],
+                    ].map(([key, label]) => (
+                      <label key={key} className="block">
+                        <span className="mb-1 block text-[10px] font-black uppercase tracking-[0.14em] text-[#405046]">{label}</span>
+                        <input value={taxonomyForm[key]} onChange={e => setTaxonomyForm((prev: any) => ({ ...prev, [key]: e.target.value }))} className="h-10 w-full rounded-md border border-[#dfe7e2] px-3 text-sm font-semibold outline-none focus:border-[#ff6b00]" />
+                      </label>
+                    ))}
+                  </div>
+
+                  <label className="mt-4 block">
+                    <span className="mb-1 block text-[10px] font-black uppercase tracking-[0.14em] text-[#405046]">Attributes JSON</span>
+                    <textarea value={taxonomyForm.attributesJson} onChange={e => setTaxonomyForm((prev: any) => ({ ...prev, attributesJson: e.target.value }))} className="min-h-40 w-full rounded-md border border-[#dfe7e2] bg-[#fcf9f8] p-3 font-mono text-xs outline-none focus:border-[#ff6b00]" />
+                  </label>
+
+                  <label className="mt-4 block">
+                    <span className="mb-1 block text-[10px] font-black uppercase tracking-[0.14em] text-[#405046]">Variant axes JSON</span>
+                    <textarea value={taxonomyForm.variantAxesJson} onChange={e => setTaxonomyForm((prev: any) => ({ ...prev, variantAxesJson: e.target.value }))} className="min-h-28 w-full rounded-md border border-[#dfe7e2] bg-[#fcf9f8] p-3 font-mono text-xs outline-none focus:border-[#ff6b00]" />
+                  </label>
+
+                  <div className="mt-5 flex flex-wrap gap-3">
+                    <button onClick={saveTaxonomyCategory} className="rounded-md bg-[#ff6b00] px-5 py-3 text-[10px] font-black uppercase tracking-widest text-white">Save category</button>
+                    <button onClick={() => runBackfill(true)} className="rounded-md border border-[#dfe7e2] px-5 py-3 text-[10px] font-black uppercase tracking-widest text-[#ff6b00]">Dry-run backfill</button>
+                    <button onClick={() => runBackfill(false)} className="rounded-md border border-[#ff6b00] bg-[#e8f5ed] px-5 py-3 text-[10px] font-black uppercase tracking-widest text-[#ff6b00]">Run backfill</button>
+                  </div>
+                </section>
+
+                <section className="rounded-lg border border-[#dfe7e2] bg-white shadow-sm">
+                  <div className="border-b border-[#dfe7e2] p-5">
+                    <p className="text-[10px] font-black uppercase tracking-[0.18em] text-[#ff6b00]">Live taxonomy</p>
+                    <h3 className="mt-2 text-2xl font-sans text-[#1b1c1c]">Managed product categories</h3>
+                  </div>
+                  <div className="divide-y divide-[#edf1ee]">
+                    {taxonomyCategories.map(category => (
+                      <div key={category.id} className="grid gap-4 p-5 md:grid-cols-[1fr_auto] md:items-center">
+                        <div>
+                          <p className="text-lg font-black text-[#1b1c1c]">{category.label}</p>
+                          <p className="mt-1 text-xs font-bold uppercase tracking-[0.12em] text-[#5f7569]">{category.id} · {category.productType} · {category.defaultUnit}</p>
+                          <p className="mt-2 text-sm font-semibold text-[#405046]">{category.attributes?.length || 0} attributes · {category.variantAxes?.length || 0} variant axes · v{category.version || 1}</p>
+                        </div>
+                        <div className="flex gap-2">
+                          <button onClick={() => editTaxonomyCategory(category)} className="rounded-md border border-[#dfe7e2] px-3 py-2 text-[10px] font-black uppercase tracking-widest text-[#ff6b00]">Edit</button>
+                          <button onClick={() => retireTaxonomyCategory(category.id)} className="rounded-md border border-[#ead2d2] px-3 py-2 text-[10px] font-black uppercase tracking-widest text-[#8a3c3c]">Retire</button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </section>
+              </div>
+
+              <section className="rounded-lg border border-[#dfe7e2] bg-white p-6 shadow-sm">
+                <div className="mb-5">
+                  <p className="text-[10px] font-black uppercase tracking-[0.18em] text-[#ff6b00]">Attribute governance</p>
+                  <h3 className="mt-2 text-2xl font-sans text-[#1b1c1c]">Data cleanup queue</h3>
+                </div>
+                <div className="grid gap-4 lg:grid-cols-3">
+                  {[
+                    ['Missing required fields', governanceReport?.missingRequired || []],
+                    ['Unknown attributes', governanceReport?.unknownAttributes || []],
+                    ['Needs category backfill', governanceReport?.uncategorized || []],
+                  ].map(([title, rows]: any) => (
+                    <div key={title} className="rounded-lg border border-[#edf1ee] bg-[#fcf9f8] p-4">
+                      <p className="text-sm font-black text-[#1b1c1c]">{title}</p>
+                      <div className="mt-3 max-h-72 space-y-2 overflow-y-auto">
+                        {rows.length === 0 ? (
+                          <p className="text-sm font-semibold text-[#5f7569]">No issues found.</p>
+                        ) : rows.slice(0, 20).map((row: any, index: number) => (
+                          <div key={`${row.productId}-${row.field || index}`} className="rounded-md bg-white p-3 text-xs font-semibold text-[#405046]">
+                            <p className="font-black text-[#1b1c1c]">{row.name}</p>
+                            <p>{row.field || row.category} {row.suggestedCategoryId ? `→ ${row.suggestedCategoryId}` : ''}</p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </section>
             </div>
           )}
 

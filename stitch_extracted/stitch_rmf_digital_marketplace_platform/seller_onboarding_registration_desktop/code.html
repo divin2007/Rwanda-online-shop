@@ -1,0 +1,510 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Seller Onboarding - RMF</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Work+Sans:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@500&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-primary-fixed": "#351000",
+                        "background": "#fbf9f8",
+                        "secondary-fixed-dim": "#ffb598",
+                        "primary-fixed": "#ffdbcc",
+                        "on-secondary": "#ffffff",
+                        "surface-container": "#efeded",
+                        "on-tertiary-container": "#002f6b",
+                        "surface-container-low": "#f5f3f3",
+                        "on-surface": "#1b1c1c",
+                        "surface": "#fbf9f8",
+                        "tertiary-fixed-dim": "#adc6ff",
+                        "surface-container-lowest": "#ffffff",
+                        "secondary": "#a63b00",
+                        "on-secondary-fixed-variant": "#7f2b00",
+                        "on-primary-fixed-variant": "#7a3000",
+                        "on-primary-container": "#572000",
+                        "on-primary": "#ffffff",
+                        "surface-tint": "#a04100",
+                        "surface-container-highest": "#e3e2e2",
+                        "on-background": "#1b1c1c",
+                        "on-secondary-fixed": "#370e00",
+                        "tertiary-fixed": "#d8e2ff",
+                        "surface-container-high": "#e9e8e7",
+                        "inverse-surface": "#303030",
+                        "primary": "#a04100",
+                        "secondary-fixed": "#ffdbce",
+                        "on-tertiary-fixed-variant": "#004395",
+                        "inverse-primary": "#ffb693",
+                        "primary-container": "#ff6b00",
+                        "surface-bright": "#fbf9f8",
+                        "tertiary": "#005ac2",
+                        "outline": "#8e7164",
+                        "inverse-on-surface": "#f2f0f0",
+                        "on-surface-variant": "#5a4136",
+                        "surface-variant": "#e3e2e2",
+                        "surface-dim": "#dbdad9",
+                        "secondary-container": "#fc671d",
+                        "tertiary-container": "#5f97ff",
+                        "on-error-container": "#93000a",
+                        "primary-fixed-dim": "#ffb693",
+                        "on-tertiary-fixed": "#001a42",
+                        "outline-variant": "#e2bfb0",
+                        "on-secondary-container": "#561b00",
+                        "error": "#ba1a1a",
+                        "error-container": "#ffdad6",
+                        "on-tertiary": "#ffffff",
+                        "on-error": "#ffffff"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.125rem",
+                        "lg": "0.25rem",
+                        "xl": "0.5rem",
+                        "full": "0.75rem"
+                    },
+                    "spacing": {
+                        "gutter": "16px",
+                        "base": "4px",
+                        "xs": "4px",
+                        "md": "16px",
+                        "margin-mobile": "16px",
+                        "sm": "8px",
+                        "margin-desktop": "32px",
+                        "xl": "40px",
+                        "lg": "24px"
+                    },
+                    "fontFamily": {
+                        "table-data": ["Work Sans"],
+                        "headline-lg": ["Work Sans"],
+                        "headline-md": ["Work Sans"],
+                        "body-sm": ["Work Sans"],
+                        "headline-lg-mobile": ["Work Sans"],
+                        "body-md": ["Work Sans"],
+                        "body-lg": ["Work Sans"],
+                        "label-md": ["JetBrains Mono"]
+                    },
+                    "fontSize": {
+                        "table-data": ["13px", {"lineHeight": "18px", "fontWeight": "500"}],
+                        "headline-lg": ["30px", {"lineHeight": "38px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                        "headline-md": ["20px", {"lineHeight": "28px", "fontWeight": "600"}],
+                        "body-sm": ["12px", {"lineHeight": "16px", "fontWeight": "400"}],
+                        "headline-lg-mobile": ["24px", {"lineHeight": "30px", "letterSpacing": "-0.01em", "fontWeight": "700"}],
+                        "body-md": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                        "body-lg": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                        "label-md": ["12px", {"lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "500"}]
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+            display: inline-block;
+            vertical-align: middle;
+        }
+        .step-transition {
+            transition: opacity 0.3s ease-in-out, transform 0.3s ease-in-out;
+        }
+        .hidden-step {
+            display: none;
+            opacity: 0;
+            transform: translateY(10px);
+        }
+        .active-step {
+            display: block;
+            opacity: 1;
+            transform: translateY(0);
+        }
+    </style>
+</head>
+<body class="bg-background text-on-surface font-body-md min-h-screen">
+<!-- Top Navigation Anchor (Manual Filter: No BottomNav for Onboarding) -->
+<nav class="fixed top-0 left-0 w-full z-50 flex justify-between items-center px-margin-desktop h-16 bg-surface border-b border-outline-variant">
+<div class="flex items-center gap-4">
+<span class="text-headline-md font-headline-md font-bold text-primary">RMF</span>
+<div class="h-6 w-[1px] bg-outline-variant"></div>
+<span class="font-label-md text-label-md uppercase tracking-wider text-on-surface-variant">Seller Onboarding</span>
+</div>
+<div class="flex items-center gap-md">
+<button class="flex items-center gap-2 px-md py-sm hover:bg-surface-container-low transition-colors rounded-lg">
+<span class="material-symbols-outlined text-primary">help</span>
+<span class="font-body-md text-body-md">Support</span>
+</button>
+</div>
+</nav>
+<!-- Main Content Canvas -->
+<main class="pt-24 pb-12 px-margin-mobile md:px-margin-desktop max-w-[1280px] mx-auto">
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-lg">
+<!-- Progress Sidebar (Lg Only) -->
+<div class="hidden lg:block lg:col-span-3">
+<div class="sticky top-24 space-y-md p-md border border-outline-variant rounded-xl bg-surface-container-lowest">
+<h3 class="font-headline-md text-headline-md text-primary mb-lg">Registration Progress</h3>
+<div class="space-y-sm" id="progress-list">
+<!-- Steps defined in JS -->
+</div>
+<div class="pt-lg border-t border-outline-variant mt-lg">
+<div class="flex items-center gap-3 p-3 bg-tertiary-fixed rounded-lg">
+<span class="material-symbols-outlined text-tertiary">verified_user</span>
+<div>
+<p class="font-label-md text-label-md text-on-tertiary-fixed leading-tight">Secure &amp; Verified</p>
+<p class="text-[10px] text-on-tertiary-fixed-variant">Trust is our foundation</p>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Form Area -->
+<div class="lg:col-span-9 space-y-lg">
+<!-- Onboarding Wizard Card -->
+<div class="bg-surface-container-lowest border border-outline-variant rounded-xl overflow-hidden shadow-sm">
+<!-- Progress Bar Mobile -->
+<div class="lg:hidden h-2 bg-surface-container">
+<div class="h-full bg-primary transition-all duration-500 w-[16%]" id="mobile-progress"></div>
+</div>
+<div class="p-lg md:p-xl">
+<form id="onboarding-form">
+<!-- Step 1: Identity -->
+<div class="step-transition active-step" id="step-1">
+<div class="mb-lg">
+<h1 class="font-headline-lg text-headline-lg text-on-surface">Choose Your Entity Type</h1>
+<p class="text-on-surface-variant mt-sm">Select the registration type that best describes your business operations.</p>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-md">
+<label class="relative border-2 border-outline-variant rounded-xl p-lg cursor-pointer hover:bg-surface-container-low transition-all group">
+<input checked="" class="absolute top-4 right-4 text-primary focus:ring-primary h-5 w-5" name="entity_type" type="radio" value="individual"/>
+<div class="flex flex-col gap-sm">
+<span class="material-symbols-outlined text-4xl text-primary mb-2">person</span>
+<span class="font-headline-md text-headline-md">Individual Trader</span>
+<span class="font-body-md text-on-surface-variant">For small-scale merchants operating independently without a registered firm.</span>
+</div>
+</label>
+<label class="relative border-2 border-outline-variant rounded-xl p-lg cursor-pointer hover:bg-surface-container-low transition-all group">
+<input class="absolute top-4 right-4 text-primary focus:ring-primary h-5 w-5" name="entity_type" type="radio" value="business"/>
+<div class="flex flex-col gap-sm">
+<span class="material-symbols-outlined text-4xl text-primary mb-2">store</span>
+<span class="font-headline-md text-headline-md">Registered Business</span>
+<span class="font-body-md text-on-surface-variant">For companies or cooperatives with an official TIN and RDB registration.</span>
+</div>
+</label>
+</div>
+</div>
+<!-- Step 2: Shop Details -->
+<div class="step-transition hidden-step" id="step-2">
+<div class="mb-lg">
+<h1 class="font-headline-lg text-headline-lg text-on-surface">Shop Details</h1>
+<p class="text-on-surface-variant mt-sm">Help buyers find you by providing your marketplace identity.</p>
+</div>
+<div class="space-y-lg max-w-2xl">
+<div class="grid grid-cols-1 md:grid-cols-2 gap-lg">
+<div class="space-y-xs">
+<label class="font-label-md text-label-md text-on-surface-variant">Legal Business Name</label>
+<input class="w-full bg-surface border border-outline-variant p-md rounded-lg focus:border-primary focus:ring-0 outline-none" placeholder="e.g., Kigali Crafts Ltd" type="text"/>
+</div>
+<div class="space-y-xs">
+<label class="font-label-md text-label-md text-on-surface-variant">Public Shop Name</label>
+<input class="w-full bg-surface border border-outline-variant p-md rounded-lg focus:border-primary focus:ring-0 outline-none" placeholder="e.g., The Craft Hut" type="text"/>
+</div>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-lg">
+<div class="space-y-xs">
+<label class="font-label-md text-label-md text-on-surface-variant">Market Selection</label>
+<select class="w-full bg-surface border border-outline-variant p-md rounded-lg focus:border-primary focus:ring-0 outline-none">
+<option>Select a Market</option>
+<option>Kimironko Market</option>
+<option>Nyabugogo Market</option>
+<option>Nyamirambo Market</option>
+<option>Muhanga Regional Market</option>
+</select>
+</div>
+<div class="space-y-xs">
+<label class="font-label-md text-label-md text-on-surface-variant">Stall Number / Building</label>
+<input class="w-full bg-surface border border-outline-variant p-md rounded-lg focus:border-primary focus:ring-0 outline-none" placeholder="e.g., Stall B-42" type="text"/>
+</div>
+</div>
+</div>
+</div>
+<!-- Step 3: Location -->
+<div class="step-transition hidden-step" id="step-3">
+<div class="mb-lg">
+<h1 class="font-headline-lg text-headline-lg text-on-surface">Physical Location</h1>
+<p class="text-on-surface-variant mt-sm">Pin your shop's exact location to enable local deliveries and pickup routes.</p>
+</div>
+<div class="relative h-[400px] w-full border border-outline-variant rounded-xl overflow-hidden bg-surface-container">
+<img class="w-full h-full object-cover" data-alt="A highly detailed overhead satellite view of a bustling urban market district in Kigali, Rwanda. The map displays intricate street networks, clusters of market stalls with colorful roofs, and lush green vegetation characteristic of the Rwandan landscape. The lighting is bright and clear, emphasizing the geometric precision of the city planning and the vibrant activity of the local trade hub." data-location="Kigali, Rwanda" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBW5iSjAPM3qE5JViS9guvyb4ae_KLZ2aoMPIFyo3pAGvGqZJOCYNJqe6R775UeXvMCc56dhikkWIBht_-GqMV_C0Tg0hbjA76dO5zLJuTcahsv-cmeJaJMo9fisirhx4ArJ11JbGEWN-kLJQMNgciJ5KmxE1rAag9XIZ5ib8GsNecXPTSBotKEne7xcSnx29pZeyZ-lBx0RvJHrzzmwsV6QwJSOh3H8F77RWASa1XyLXTM2U3N61IcHbO4oXklCLF9J6U-i_CLzp7N"/>
+<div class="absolute inset-0 flex items-center justify-center pointer-events-none">
+<div class="bg-primary text-white p-3 rounded-full shadow-xl animate-bounce">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">location_on</span>
+</div>
+</div>
+<div class="absolute bottom-4 left-4 right-4 bg-surface p-md rounded-lg border border-outline-variant shadow-lg flex items-center gap-md">
+<span class="material-symbols-outlined text-primary">my_location</span>
+<span class="font-body-md">Kigali, Gasabo, Kimironko Sector - Market Gate 2</span>
+</div>
+</div>
+</div>
+<!-- Step 4: Financials -->
+<div class="step-transition hidden-step" id="step-4">
+<div class="mb-lg">
+<h1 class="font-headline-lg text-headline-lg text-on-surface">Payment &amp; Verification</h1>
+<p class="text-on-surface-variant mt-sm">Configure your MTN MoMo payout details for automatic revenue settlements.</p>
+</div>
+<div class="max-w-xl space-y-lg">
+<div class="p-lg bg-surface-container rounded-xl border border-outline-variant flex gap-md items-start">
+<span class="material-symbols-outlined text-primary text-3xl">payments</span>
+<div>
+<h4 class="font-headline-md text-headline-md mb-base">Secure Payouts</h4>
+<p class="text-body-md text-on-surface-variant">RMF uses secure escrow. Funds are released to your MTN MoMo account immediately upon delivery confirmation.</p>
+</div>
+</div>
+<div class="space-y-md">
+<div class="space-y-xs">
+<label class="font-label-md text-label-md text-on-surface-variant">Registered Phone Number</label>
+<div class="flex gap-2">
+<div class="flex-grow flex items-center bg-surface border border-outline-variant rounded-lg px-md">
+<span class="text-on-surface-variant mr-2">+250</span>
+<input class="w-full py-md border-none focus:ring-0 outline-none bg-transparent" placeholder="78X XXX XXX" type="tel"/>
+</div>
+<button class="px-lg bg-primary text-white rounded-lg font-bold" type="button">Verify</button>
+</div>
+</div>
+<div class="space-y-xs">
+<label class="font-label-md text-label-md text-on-surface-variant">MTN MoMo Payout Number</label>
+<div class="flex items-center bg-surface border border-outline-variant rounded-lg px-md">
+<span class="text-on-surface-variant mr-2">+250</span>
+<input class="w-full py-md border-none focus:ring-0 outline-none bg-transparent" placeholder="78X XXX XXX" type="tel"/>
+<span class="material-symbols-outlined text-green-600">check_circle</span>
+</div>
+<p class="text-[10px] text-on-surface-variant">Must match the registered merchant identity.</p>
+</div>
+</div>
+</div>
+</div>
+<!-- Step 5: Branding -->
+<div class="step-transition hidden-step" id="step-5">
+<div class="mb-lg">
+<h1 class="font-headline-lg text-headline-lg text-on-surface">Shop Branding</h1>
+<p class="text-on-surface-variant mt-sm">Set up your storefront's visual identity to build trust with buyers.</p>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-lg">
+<div class="space-y-lg">
+<div class="space-y-xs">
+<label class="font-label-md text-label-md text-on-surface-variant">Shop Logo</label>
+<div class="w-32 h-32 border-2 border-dashed border-outline-variant rounded-xl flex flex-col items-center justify-center bg-surface-container-low hover:bg-surface-container transition-colors cursor-pointer">
+<span class="material-symbols-outlined text-outline">add_a_photo</span>
+<span class="text-[10px] text-outline mt-2">Upload PNG/JPG</span>
+</div>
+</div>
+<div class="space-y-xs">
+<label class="font-label-md text-label-md text-on-surface-variant">Opening Hours</label>
+<div class="grid grid-cols-2 gap-sm">
+<input class="bg-surface border border-outline-variant p-md rounded-lg" type="time" value="08:00"/>
+<input class="bg-surface border border-outline-variant p-md rounded-lg" type="time" value="18:00"/>
+</div>
+</div>
+</div>
+<div class="space-y-xs">
+<label class="font-label-md text-label-md text-on-surface-variant">Shop Banner</label>
+<div class="w-full h-48 border-2 border-dashed border-outline-variant rounded-xl flex flex-col items-center justify-center bg-surface-container-low hover:bg-surface-container transition-colors cursor-pointer">
+<span class="material-symbols-outlined text-outline text-4xl">image</span>
+<span class="text-[10px] text-outline mt-2">Recommended: 1200 x 400px</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Step 6: Legal -->
+<div class="step-transition hidden-step" id="step-6">
+<div class="mb-lg">
+<h1 class="font-headline-lg text-headline-lg text-on-surface">Legal Compliance</h1>
+<p class="text-on-surface-variant mt-sm">Finalize your application by providing valid identification documents.</p>
+</div>
+<div class="space-y-lg">
+<div class="grid grid-cols-1 md:grid-cols-2 gap-md">
+<div class="p-lg border border-outline-variant rounded-xl bg-surface-container-low flex items-center justify-between">
+<div class="flex items-center gap-md">
+<span class="material-symbols-outlined text-primary">badge</span>
+<div>
+<p class="font-bold">National ID / Passport</p>
+<p class="text-xs text-on-surface-variant">Required for verification</p>
+</div>
+</div>
+<button class="text-primary font-bold hover:underline" type="button">Upload</button>
+</div>
+<div class="p-lg border border-outline-variant rounded-xl bg-surface-container-low flex items-center justify-between">
+<div class="flex items-center gap-md">
+<span class="material-symbols-outlined text-primary">description</span>
+<div>
+<p class="font-bold">Business License (RDB)</p>
+<p class="text-xs text-on-surface-variant">For registered entities only</p>
+</div>
+</div>
+<button class="text-primary font-bold hover:underline" type="button">Upload</button>
+</div>
+</div>
+<div class="p-lg bg-surface-container rounded-xl border border-outline-variant mt-xl">
+<div class="flex gap-md items-start">
+<input class="mt-1 h-5 w-5 text-primary border-outline focus:ring-primary rounded" type="checkbox"/>
+<div class="space-y-sm">
+<p class="font-body-md text-on-surface">I hereby agree to the <span class="text-primary underline cursor-pointer">RMF Seller Terms and Conditions</span>, the Data Privacy Policy, and the Marketplace Fee Structure of 5% per transaction.</p>
+<p class="text-xs text-on-surface-variant">By clicking "Submit for Approval," you certify that the information provided is accurate and truthful.</p>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Step 7: Approval Pending -->
+<div class="step-transition hidden-step" id="step-7">
+<div class="flex flex-col items-center justify-center text-center py-xl">
+<div class="w-24 h-24 bg-primary-container rounded-full flex items-center justify-center mb-lg">
+<span class="material-symbols-outlined text-white text-5xl">pending_actions</span>
+</div>
+<h1 class="font-headline-lg text-headline-lg text-on-surface">Application Under Review</h1>
+<p class="text-on-surface-variant mt-sm max-w-lg">Thank you for joining RMF. Our verification team is currently reviewing your shop details. This usually takes 24–48 hours.</p>
+<!-- Review Timeline -->
+<div class="w-full max-w-md mt-xl space-y-lg text-left">
+<div class="relative pl-8 pb-lg border-l-2 border-primary">
+<div class="absolute -left-[11px] top-0 w-5 h-5 bg-primary rounded-full flex items-center justify-center">
+<span class="material-symbols-outlined text-white text-[12px]" style="font-variation-settings: 'FILL' 1;">check</span>
+</div>
+<p class="font-bold">Registration Submitted</p>
+<p class="text-xs text-on-surface-variant">Completed on May 24, 2024</p>
+</div>
+<div class="relative pl-8 pb-lg border-l-2 border-primary">
+<div class="absolute -left-[11px] top-0 w-5 h-5 bg-primary-container border-2 border-primary rounded-full"></div>
+<p class="font-bold">Identity &amp; Financial Verification</p>
+<p class="text-xs text-on-surface-variant">In progress - We are validating your MTN MoMo details.</p>
+</div>
+<div class="relative pl-8 pb-lg border-l-2 border-outline-variant">
+<div class="absolute -left-[11px] top-0 w-5 h-5 bg-surface border-2 border-outline-variant rounded-full"></div>
+<p class="font-bold text-on-surface-variant">Shop Launch</p>
+<p class="text-xs text-on-surface-variant">Waiting for approval</p>
+</div>
+</div>
+<div class="mt-xl flex gap-md">
+<button class="px-lg py-md border border-outline-variant rounded-lg font-bold hover:bg-surface-container-low transition-colors" type="button">Go to Dashboard (Limited)</button>
+<button class="px-lg py-md bg-secondary text-white rounded-lg font-bold" type="button">Contact Admin</button>
+</div>
+</div>
+</div>
+</form>
+</div>
+<!-- Footer Actions -->
+<div class="bg-surface-container p-md md:p-lg border-t border-outline-variant flex justify-between items-center" id="wizard-footer">
+<button class="invisible px-lg py-md border border-outline-variant rounded-lg font-bold text-on-surface-variant hover:bg-surface-container-high transition-colors flex items-center gap-2" id="prev-btn" type="button">
+<span class="material-symbols-outlined">arrow_back</span>
+                            Back
+                        </button>
+<div class="flex items-center gap-md">
+<span class="hidden md:block text-on-surface-variant font-label-md" id="step-counter">Step 1 of 6</span>
+<button class="px-xl py-md bg-primary text-white rounded-lg font-bold hover:opacity-90 transition-opacity flex items-center gap-2" id="next-btn" type="button">
+                                Continue
+                                <span class="material-symbols-outlined">arrow_forward</span>
+</button>
+</div>
+</div>
+</div>
+<!-- Trust Card -->
+<div class="flex items-center justify-between p-md border border-outline-variant rounded-xl bg-surface-variant" id="trust-indicator">
+<div class="flex items-center gap-md">
+<span class="material-symbols-outlined text-primary">security</span>
+<p class="text-body-md font-medium">Your data is encrypted and secure with RMF Trade Protocol</p>
+</div>
+<p class="text-xs text-on-surface-variant hidden md:block">Reference ID: ONB-481-2290</p>
+</div>
+</div>
+</div>
+</main>
+<script>
+        const steps = [
+            { id: 1, label: "Identity", icon: "how_to_reg" },
+            { id: 2, label: "Shop Details", icon: "store" },
+            { id: 3, label: "Location", icon: "location_on" },
+            { id: 4, label: "Financials", icon: "account_balance_wallet" },
+            { id: 5, label: "Branding", icon: "palette" },
+            { id: 6, label: "Legal", icon: "gavel" }
+        ];
+
+        let currentStep = 1;
+
+        function updateUI() {
+            // Update step visibility
+            for (let i = 1; i <= 7; i++) {
+                const el = document.getElementById(`step-${i}`);
+                if (el) {
+                    el.classList.remove('active-step');
+                    el.classList.add('hidden-step');
+                }
+            }
+            document.getElementById(`step-${currentStep}`).classList.remove('hidden-step');
+            document.getElementById(`step-${currentStep}`).classList.add('active-step');
+
+            // Update Sidebar
+            const progressList = document.getElementById('progress-list');
+            progressList.innerHTML = '';
+            steps.forEach(step => {
+                const isActive = currentStep === step.id;
+                const isCompleted = currentStep > step.id;
+                
+                const stepEl = document.createElement('div');
+                stepEl.className = `flex items-center gap-3 p-3 rounded-lg transition-all ${isActive ? 'bg-primary-fixed text-on-primary-fixed' : ''}`;
+                stepEl.innerHTML = `
+                    <div class="flex items-center justify-center w-8 h-8 rounded-full border-2 ${isCompleted ? 'bg-primary border-primary text-white' : (isActive ? 'border-primary' : 'border-outline-variant text-on-surface-variant')}">
+                        ${isCompleted ? '<span class="material-symbols-outlined text-[16px]">check</span>' : `<span class="font-label-md">${step.id}</span>`}
+                    </div>
+                    <div class="flex flex-col">
+                        <span class="font-bold text-body-md leading-none">${step.label}</span>
+                        <span class="text-[10px] opacity-70 uppercase tracking-tighter">${isCompleted ? 'Completed' : (isActive ? 'In Progress' : 'Pending')}</span>
+                    </div>
+                `;
+                progressList.appendChild(stepEl);
+            });
+
+            // Footer & Progress Bars
+            const footer = document.getElementById('wizard-footer');
+            const prevBtn = document.getElementById('prev-btn');
+            const nextBtn = document.getElementById('next-btn');
+            const counter = document.getElementById('step-counter');
+            const mobileProg = document.getElementById('mobile-progress');
+            const trust = document.getElementById('trust-indicator');
+
+            mobileProg.style.width = `${(currentStep / 6) * 100}%`;
+            
+            if (currentStep >= 7) {
+                footer.classList.add('hidden');
+                trust.classList.add('hidden');
+                counter.innerText = "";
+            } else {
+                footer.classList.remove('hidden');
+                trust.classList.remove('hidden');
+                prevBtn.className = currentStep === 1 ? 'invisible px-lg py-md border border-outline-variant rounded-lg font-bold' : 'visible px-lg py-md border border-outline-variant rounded-lg font-bold text-on-surface-variant hover:bg-surface-container-high transition-colors flex items-center gap-2';
+                nextBtn.innerHTML = currentStep === 6 ? 'Submit for Approval <span class="material-symbols-outlined">send</span>' : 'Continue <span class="material-symbols-outlined">arrow_forward</span>';
+                counter.innerText = `Step ${currentStep} of 6`;
+            }
+        }
+
+        document.getElementById('next-btn').addEventListener('click', () => {
+            if (currentStep < 7) {
+                currentStep++;
+                updateUI();
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            }
+        });
+
+        document.getElementById('prev-btn').addEventListener('click', () => {
+            if (currentStep > 1) {
+                currentStep--;
+                updateUI();
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            }
+        });
+
+        // Initialize UI
+        updateUI();
+    </script>
+</body></html>

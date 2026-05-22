@@ -1,0 +1,539 @@
+<!DOCTYPE html>
+
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Seller Reviews - RMF Marketplace Portal</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Work+Sans:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@500&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "on-primary-fixed": "#351000",
+                    "background": "#fbf9f8",
+                    "secondary-fixed-dim": "#ffb598",
+                    "primary-fixed": "#ffdbcc",
+                    "on-secondary": "#ffffff",
+                    "surface-container": "#efeded",
+                    "on-tertiary-container": "#002f6b",
+                    "surface-container-low": "#f5f3f3",
+                    "on-surface": "#1b1c1c",
+                    "surface": "#fbf9f8",
+                    "tertiary-fixed-dim": "#adc6ff",
+                    "surface-container-lowest": "#ffffff",
+                    "secondary": "#a63b00",
+                    "on-secondary-fixed-variant": "#7f2b00",
+                    "on-primary-fixed-variant": "#7a3000",
+                    "on-primary-container": "#572000",
+                    "on-primary": "#ffffff",
+                    "surface-tint": "#a04100",
+                    "surface-container-highest": "#e3e2e2",
+                    "on-background": "#1b1c1c",
+                    "on-secondary-fixed": "#370e00",
+                    "tertiary-fixed": "#d8e2ff",
+                    "surface-container-high": "#e9e8e7",
+                    "inverse-surface": "#303030",
+                    "primary": "#a04100",
+                    "secondary-fixed": "#ffdbce",
+                    "on-tertiary-fixed-variant": "#004395",
+                    "inverse-primary": "#ffb693",
+                    "primary-container": "#ff6b00",
+                    "surface-bright": "#fbf9f8",
+                    "tertiary": "#005ac2",
+                    "outline": "#8e7164",
+                    "inverse-on-surface": "#f2f0f0",
+                    "on-surface-variant": "#5a4136",
+                    "surface-variant": "#e3e2e2",
+                    "surface-dim": "#dbdad9",
+                    "secondary-container": "#fc671d",
+                    "tertiary-container": "#5f97ff",
+                    "on-error-container": "#93000a",
+                    "primary-fixed-dim": "#ffb693",
+                    "on-tertiary-fixed": "#001a42",
+                    "outline-variant": "#e2bfb0",
+                    "on-secondary-container": "#561b00",
+                    "error": "#ba1a1a",
+                    "error-container": "#ffdad6",
+                    "on-tertiary": "#ffffff",
+                    "on-error": "#ffffff"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.125rem",
+                    "lg": "0.25rem",
+                    "xl": "0.5rem",
+                    "full": "0.75rem"
+            },
+            "spacing": {
+                    "gutter": "16px",
+                    "base": "4px",
+                    "xs": "4px",
+                    "md": "16px",
+                    "margin-mobile": "16px",
+                    "sm": "8px",
+                    "margin-desktop": "32px",
+                    "xl": "40px",
+                    "lg": "24px"
+            },
+            "fontFamily": {
+                    "table-data": ["Work Sans"],
+                    "headline-lg": ["Work Sans"],
+                    "headline-md": ["Work Sans"],
+                    "body-sm": ["Work Sans"],
+                    "headline-lg-mobile": ["Work Sans"],
+                    "body-md": ["Work Sans"],
+                    "body-lg": ["Work Sans"],
+                    "label-md": ["JetBrains Mono"]
+            },
+            "fontSize": {
+                    "table-data": ["13px", {"lineHeight": "18px", "fontWeight": "500"}],
+                    "headline-lg": ["30px", {"lineHeight": "38px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                    "headline-md": ["20px", {"lineHeight": "28px", "fontWeight": "600"}],
+                    "body-sm": ["12px", {"lineHeight": "16px", "fontWeight": "400"}],
+                    "headline-lg-mobile": ["24px", {"lineHeight": "30px", "letterSpacing": "-0.01em", "fontWeight": "700"}],
+                    "body-md": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                    "body-lg": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                    "label-md": ["12px", {"lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "500"}]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+            vertical-align: middle;
+        }
+        .filled-icon {
+            font-variation-settings: 'FILL' 1;
+        }
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #e2bfb0; border-radius: 10px; }
+    </style>
+</head>
+<body class="bg-background text-on-background font-body-md overflow-x-hidden">
+<!-- Top Navigation Bar -->
+<header class="fixed top-0 left-0 w-full z-50 flex justify-between items-center px-margin-desktop h-16 bg-surface border-b border-outline-variant">
+<div class="flex items-center gap-lg">
+<span class="text-headline-md font-headline-md font-bold text-primary">RMF</span>
+<div class="hidden md:flex items-center gap-md">
+<nav class="flex gap-lg">
+<a class="text-on-surface-variant font-label-md text-label-md hover:bg-surface-container-low transition-colors px-2 py-1" href="#">Dashboard</a>
+<a class="text-on-surface-variant font-label-md text-label-md hover:bg-surface-container-low transition-colors px-2 py-1" href="#">Orders</a>
+<a class="text-primary border-b-2 border-primary font-label-md text-label-md px-2 py-1" href="#">Reviews</a>
+<a class="text-on-surface-variant font-label-md text-label-md hover:bg-surface-container-low transition-colors px-2 py-1" href="#">Inventory</a>
+</nav>
+</div>
+</div>
+<div class="flex items-center gap-md">
+<div class="hidden lg:flex items-center bg-surface-container-low border border-outline-variant px-md py-xs rounded-lg">
+<span class="material-symbols-outlined text-on-surface-variant" data-icon="search">search</span>
+<input class="bg-transparent border-none focus:ring-0 text-body-md w-48 ml-xs" placeholder="Search reviews..." type="text"/>
+</div>
+<div class="flex gap-sm">
+<button class="p-2 hover:bg-surface-container-low rounded-full transition-colors"><span class="material-symbols-outlined" data-icon="notifications">notifications</span></button>
+<button class="p-2 hover:bg-surface-container-low rounded-full transition-colors"><span class="material-symbols-outlined" data-icon="language">language</span></button>
+<div class="w-8 h-8 rounded-full overflow-hidden border border-outline-variant">
+<img alt="User Account" data-alt="A professional headshot of a Rwandan entrepreneur, middle-aged with a warm and confident expression, set against a clean, modern studio background with soft warm lighting that emphasizes reliability and professionalism." src="https://lh3.googleusercontent.com/aida-public/AB6AXuB8BV8AdJCFYhbMKbNdNWknOkvMXX4NecPxII8pOrOc9bwJMwu4NeMeBbqXKSD4GfxNSrMZOjERFFAhclNsLhLgrINpPxn6PC-ToG-KV1NpwplvLaSX8v3_zYpQ3gr2dYfNPGpCTeYEFk2rfEQrHU6xCuyAkZzyjuOZa15kWk9CRtBGkQd_K5_OaMiGocqlFgl549yPKaDNm4aXo-PgKK9fPocj8eyt10_Vk-3qLRy38NuezGjq28dUxsikdQs6yFkkH3bXGK2X2YSx"/>
+</div>
+</div>
+</div>
+</header>
+<!-- Side Navigation Bar (Desktop) -->
+<aside class="hidden lg:flex flex-col w-64 h-screen fixed left-0 top-16 bg-surface-container-lowest border-r border-outline-variant p-md space-y-base">
+<div class="mb-lg">
+<p class="font-headline-md text-headline-md font-bold text-primary">Marketplace Portal</p>
+<p class="font-body-md text-body-md text-on-surface-variant opacity-70">Operational View</p>
+</div>
+<div class="flex-1 space-y-1">
+<a class="flex items-center gap-md p-md text-on-surface-variant hover:bg-surface-container-high transition-all" href="#">
+<span class="material-symbols-outlined" data-icon="dashboard">dashboard</span>
+<span class="font-label-md text-label-md">Dashboard</span>
+</a>
+<a class="flex items-center gap-md p-md text-on-surface-variant hover:bg-surface-container-high transition-all" href="#">
+<span class="material-symbols-outlined" data-icon="inventory_2">inventory_2</span>
+<span class="font-label-md text-label-md">Orders</span>
+</a>
+<a class="flex items-center gap-md p-md bg-primary-container text-on-primary-container rounded-lg font-bold scale-95 transition-transform" href="#">
+<span class="material-symbols-outlined filled-icon" data-icon="star" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="font-label-md text-label-md">Reviews</span>
+</a>
+<a class="flex items-center gap-md p-md text-on-surface-variant hover:bg-surface-container-high transition-all" href="#">
+<span class="material-symbols-outlined" data-icon="inventory">inventory</span>
+<span class="font-label-md text-label-md">Inventory</span>
+</a>
+<a class="flex items-center gap-md p-md text-on-surface-variant hover:bg-surface-container-high transition-all" href="#">
+<span class="material-symbols-outlined" data-icon="handshake">handshake</span>
+<span class="font-label-md text-label-md">Negotiations</span>
+</a>
+<a class="flex items-center gap-md p-md text-on-surface-variant hover:bg-surface-container-high transition-all" href="#">
+<span class="material-symbols-outlined" data-icon="local_shipping">local_shipping</span>
+<span class="font-label-md text-label-md">Logistics</span>
+</a>
+</div>
+<div class="pt-md border-t border-outline-variant">
+<button class="w-full flex justify-center py-sm bg-primary text-on-primary rounded-lg font-label-md mb-md">Switch Role</button>
+<a class="flex items-center gap-md p-md text-on-surface-variant hover:bg-surface-container-high transition-all" href="#">
+<span class="material-symbols-outlined" data-icon="settings">settings</span>
+<span class="font-label-md text-label-md">Settings</span>
+</a>
+<a class="flex items-center gap-md p-md text-on-surface-variant hover:bg-surface-container-high transition-all" href="#">
+<span class="material-symbols-outlined" data-icon="help">help</span>
+<span class="font-label-md text-label-md">Support</span>
+</a>
+</div>
+</aside>
+<!-- Main Content -->
+<main class="lg:ml-64 pt-20 pb-24 lg:pb-12 px-margin-mobile lg:px-margin-desktop">
+<div class="max-w-[1280px] mx-auto">
+<header class="mb-lg">
+<h1 class="font-headline-lg text-headline-lg lg:text-headline-lg text-on-surface">Reputation Management</h1>
+<p class="font-body-md text-body-md text-on-surface-variant">Monitor, manage and respond to merchant-customer feedback to build trust.</p>
+</header>
+<!-- Bento Layout Grid -->
+<div class="grid grid-cols-1 md:grid-cols-12 gap-gutter">
+<!-- 1. Overall Shop Rating -->
+<section class="md:col-span-4 bg-surface-container-lowest border border-outline-variant p-lg rounded-xl flex flex-col justify-between">
+<div>
+<div class="flex items-center justify-between mb-sm">
+<h2 class="font-headline-md text-headline-md text-on-surface">Overall Rating</h2>
+<span class="bg-primary-container text-on-primary-container px-sm py-xs rounded font-label-md text-label-md">TRUSTED SELLER</span>
+</div>
+<div class="flex items-baseline gap-sm mb-lg">
+<span class="text-5xl font-bold text-on-surface">4.8</span>
+<div class="flex flex-col">
+<div class="flex text-secondary">
+<span class="material-symbols-outlined filled-icon" data-icon="star" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="material-symbols-outlined filled-icon" data-icon="star" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="material-symbols-outlined filled-icon" data-icon="star" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="material-symbols-outlined filled-icon" data-icon="star" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="material-symbols-outlined" data-icon="star_half">star_half</span>
+</div>
+<span class="text-body-sm text-on-surface-variant font-body-sm">Based on 1,240 reviews</span>
+</div>
+</div>
+<!-- Rating Distribution Chart -->
+<div class="space-y-base">
+<div class="flex items-center gap-sm">
+<span class="w-4 font-label-md text-label-md">5</span>
+<div class="flex-1 h-2 bg-surface-container rounded-full overflow-hidden">
+<div class="h-full bg-primary" style="width: 82%"></div>
+</div>
+<span class="w-8 text-right font-label-md text-label-md text-on-surface-variant">82%</span>
+</div>
+<div class="flex items-center gap-sm">
+<span class="w-4 font-label-md text-label-md">4</span>
+<div class="flex-1 h-2 bg-surface-container rounded-full overflow-hidden">
+<div class="h-full bg-primary" style="width: 12%"></div>
+</div>
+<span class="w-8 text-right font-label-md text-label-md text-on-surface-variant">12%</span>
+</div>
+<div class="flex items-center gap-sm">
+<span class="w-4 font-label-md text-label-md">3</span>
+<div class="flex-1 h-2 bg-surface-container rounded-full overflow-hidden">
+<div class="h-full bg-primary" style="width: 4%"></div>
+</div>
+<span class="w-8 text-right font-label-md text-label-md text-on-surface-variant">4%</span>
+</div>
+<div class="flex items-center gap-sm">
+<span class="w-4 font-label-md text-label-md">2</span>
+<div class="flex-1 h-2 bg-surface-container rounded-full overflow-hidden">
+<div class="h-full bg-primary" style="width: 1%"></div>
+</div>
+<span class="w-8 text-right font-label-md text-label-md text-on-surface-variant">1%</span>
+</div>
+<div class="flex items-center gap-sm">
+<span class="w-4 font-label-md text-label-md">1</span>
+<div class="flex-1 h-2 bg-surface-container rounded-full overflow-hidden">
+<div class="h-full bg-primary" style="width: 1%"></div>
+</div>
+<span class="w-8 text-right font-label-md text-label-md text-on-surface-variant">1%</span>
+</div>
+</div>
+</div>
+<div class="mt-lg pt-md border-t border-outline-variant flex items-center gap-sm text-secondary">
+<span class="material-symbols-outlined text-sm" data-icon="verified_user">verified_user</span>
+<span class="font-label-md text-label-md">RELIABLE REPUTATION SINCE 2021</span>
+</div>
+</section>
+<!-- 4. Review Insights -->
+<section class="md:col-span-8 bg-surface-container-lowest border border-outline-variant p-lg rounded-xl">
+<h2 class="font-headline-md text-headline-md text-on-surface mb-md">Review Insights</h2>
+<div class="grid grid-cols-1 sm:grid-cols-2 gap-lg">
+<div>
+<p class="font-label-md text-label-md text-on-surface-variant uppercase tracking-wider mb-sm">Frequent Keywords</p>
+<div class="flex flex-wrap gap-sm">
+<span class="px-md py-xs bg-tertiary-fixed text-on-tertiary-fixed rounded-full font-label-md text-label-md">FAST DELIVERY</span>
+<span class="px-md py-xs bg-tertiary-fixed text-on-tertiary-fixed rounded-full font-label-md text-label-md">HIGH QUALITY</span>
+<span class="px-md py-xs bg-tertiary-fixed text-on-tertiary-fixed rounded-full font-label-md text-label-md">WELL PACKAGED</span>
+<span class="px-md py-xs bg-tertiary-fixed text-on-tertiary-fixed rounded-full font-label-md text-label-md">SECURE TRANSACTION</span>
+<span class="px-md py-xs bg-surface-container-high text-on-surface-variant rounded-full font-label-md text-label-md">LOCAL SOURCING</span>
+</div>
+</div>
+<div class="bg-surface-container-low p-md rounded-lg border border-outline-variant">
+<div class="flex items-center gap-sm mb-xs">
+<span class="material-symbols-outlined text-primary" data-icon="lightbulb">lightbulb</span>
+<p class="font-headline-md text-[16px] font-bold">Growth Tip</p>
+</div>
+<p class="text-body-sm font-body-sm text-on-surface-variant">74% of positive reviews mention "packaging quality." Consider maintaining this standard to drive repeat business.</p>
+<div class="mt-md flex items-center justify-between">
+<span class="text-body-sm font-bold text-on-surface-variant">Merchant Sentiment:</span>
+<span class="text-secondary font-bold">EXCELLENT</span>
+</div>
+</div>
+</div>
+<div class="mt-lg flex flex-col sm:flex-row gap-gutter">
+<div class="flex-1 border-t border-outline-variant pt-md">
+<p class="text-body-sm font-body-sm text-on-surface-variant mb-xs">Response Rate</p>
+<p class="text-headline-md font-bold text-on-surface">98.4%</p>
+</div>
+<div class="flex-1 border-t border-outline-variant pt-md">
+<p class="text-body-sm font-body-sm text-on-surface-variant mb-xs">Average Response Time</p>
+<p class="text-headline-md font-bold text-on-surface">4.2 Hours</p>
+</div>
+<div class="flex-1 border-t border-outline-variant pt-md">
+<p class="text-body-sm font-body-sm text-on-surface-variant mb-xs">Dispute Resolution</p>
+<p class="text-headline-md font-bold text-on-surface">100%</p>
+</div>
+</div>
+</section>
+<!-- 2. Review List with Filters -->
+<section class="md:col-span-12 bg-surface-container-lowest border border-outline-variant rounded-xl overflow-hidden">
+<div class="p-lg border-b border-outline-variant flex flex-col md:flex-row md:items-center justify-between gap-md bg-surface-container-lowest">
+<h2 class="font-headline-md text-headline-md text-on-surface">All Reviews</h2>
+<div class="flex flex-wrap items-center gap-sm">
+<select class="bg-surface-container-low border border-outline-variant rounded-lg px-md py-xs text-body-md font-body-md focus:border-primary">
+<option>All Products</option>
+<option>Coffee Beans</option>
+<option>Macadamia Nuts</option>
+</select>
+<select class="bg-surface-container-low border border-outline-variant rounded-lg px-md py-xs text-body-md font-body-md focus:border-primary">
+<option>All Ratings</option>
+<option>5 Stars</option>
+<option>4 Stars</option>
+<option>3 Stars &amp; Below</option>
+</select>
+<select class="bg-surface-container-low border border-outline-variant rounded-lg px-md py-xs text-body-md font-body-md focus:border-primary">
+<option>Newest First</option>
+<option>Oldest First</option>
+<option>Most Helpful</option>
+</select>
+</div>
+</div>
+<!-- Review Table / List -->
+<div class="overflow-x-auto">
+<table class="w-full text-left border-collapse">
+<thead>
+<tr class="bg-surface-container-low">
+<th class="p-md font-label-md text-label-md text-on-surface-variant border-b border-outline-variant">Customer &amp; Date</th>
+<th class="p-md font-label-md text-label-md text-on-surface-variant border-b border-outline-variant">Product</th>
+<th class="p-md font-label-md text-label-md text-on-surface-variant border-b border-outline-variant">Rating &amp; Feedback</th>
+<th class="p-md font-label-md text-label-md text-on-surface-variant border-b border-outline-variant">Status</th>
+<th class="p-md font-label-md text-label-md text-on-surface-variant border-b border-outline-variant text-right">Actions</th>
+</tr>
+</thead>
+<tbody class="font-table-data text-table-data divide-y divide-outline-variant">
+<!-- Review Item 1 -->
+<tr class="hover:bg-surface-container-low transition-colors">
+<td class="p-md align-top">
+<div class="flex items-center gap-sm mb-xs">
+<div class="w-6 h-6 bg-secondary-fixed rounded-full flex items-center justify-center text-[10px] text-on-secondary-fixed font-bold">IM</div>
+<span class="font-bold">Iradukunda M.</span>
+</div>
+<span class="text-body-sm text-on-surface-variant">Oct 24, 2023</span>
+</td>
+<td class="p-md align-top">
+<div class="flex items-center gap-xs">
+<div class="w-10 h-10 bg-surface-container rounded border border-outline-variant flex-shrink-0">
+<img alt="Product Image" data-alt="A macro photograph of premium Rwandan roasted coffee beans with a rich, glossy dark brown texture. The beans are displayed on a rustic wooden surface with warm, earthy lighting emphasizing the quality and artisan nature of the product." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCROgDYrvR8lKZjKg-th-ErIXoq-Kla2LyOSqw_Qr7YrmVp_-t7YbbrA80BFMiBiy2DUf10sDypn6JIuIkJ1yHSYV6T4e5s32_zPEmaQ8jZveNqv8Pp2-NzV91s8kdxVzDxRfSMI5Vk1xXlSObVBdonYwtLKFZ4Wv3H8-P2-Ozcdya3ICHVK-id7pKKdE6aeoFGHrb6gneb2ToJFcKXPNML3kyYJ7QcRVCy3zO7DMvfxZ06u3WksECwb-qkC-gPFZ6Y08Q3uTWTPbg2"/>
+</div>
+<span class="text-on-surface font-medium truncate max-w-[120px]">Premium Arabica Coffee</span>
+</div>
+</td>
+<td class="p-md align-top max-w-md">
+<div class="flex text-secondary mb-xs">
+<span class="material-symbols-outlined filled-icon text-[16px]" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="material-symbols-outlined filled-icon text-[16px]" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="material-symbols-outlined filled-icon text-[16px]" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="material-symbols-outlined filled-icon text-[16px]" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="material-symbols-outlined filled-icon text-[16px]" style="font-variation-settings: 'FILL' 1;">star</span>
+</div>
+<p class="text-on-surface font-normal line-clamp-2">"Excellent quality and arrived 2 days earlier than expected in Kigali. The packaging kept everything fresh. Will buy again!"</p>
+</td>
+<td class="p-md align-top">
+<span class="bg-surface-container-high text-on-surface-variant px-sm py-xs rounded text-[10px] font-bold uppercase">PENDING RESPONSE</span>
+</td>
+<td class="p-md align-top text-right">
+<div class="flex justify-end gap-sm">
+<button class="text-primary hover:underline font-bold" onclick="toggleReply(1)">Reply</button>
+<button class="text-on-surface-variant hover:text-error transition-colors"><span class="material-symbols-outlined text-[18px]" data-icon="report">report</span></button>
+</div>
+</td>
+</tr>
+<!-- Reply Box 1 (Hidden by default) -->
+<tr class="hidden bg-surface-container-low shadow-inner" id="reply-box-1">
+<td class="p-lg" colspan="5">
+<div class="bg-surface-container-lowest border border-outline-variant p-md rounded-lg max-w-2xl">
+<p class="text-body-sm font-bold text-on-surface-variant mb-sm uppercase">Replying to Iradukunda M.</p>
+<textarea class="w-full bg-surface-container-low border border-outline-variant focus:border-primary focus:ring-1 focus:ring-primary rounded p-md text-body-md" placeholder="Write your response here..." rows="3"></textarea>
+<div class="mt-md flex justify-between items-center">
+<span class="text-body-sm text-on-surface-variant">Note: Responses are public and visible to all customers.</span>
+<div class="flex gap-sm">
+<button class="px-md py-xs border border-outline text-on-surface-variant rounded-lg font-label-md" onclick="toggleReply(1)">Cancel</button>
+<button class="px-md py-xs bg-primary text-on-primary rounded-lg font-label-md">Post Reply</button>
+</div>
+</div>
+</div>
+</td>
+</tr>
+<!-- Review Item 2 -->
+<tr class="hover:bg-surface-container-low transition-colors">
+<td class="p-md align-top">
+<div class="flex items-center gap-sm mb-xs">
+<div class="w-6 h-6 bg-tertiary-fixed rounded-full flex items-center justify-center text-[10px] text-on-tertiary-fixed font-bold">SK</div>
+<span class="font-bold">Samuel K.</span>
+</div>
+<span class="text-body-sm text-on-surface-variant">Oct 20, 2023</span>
+</td>
+<td class="p-md align-top">
+<div class="flex items-center gap-xs">
+<div class="w-10 h-10 bg-surface-container rounded border border-outline-variant flex-shrink-0">
+<img alt="Product Image" data-alt="Close-up of premium, whole organic Macadamia nuts in their shells, set against a burlap texture with warm, natural sunlight casting soft shadows. The image emphasizes freshness, organic sourcing, and high-end agriculture." src="https://lh3.googleusercontent.com/aida-public/AB6AXuByFr2OiYNCcI1MMANyEkqZR2o6KSwQlteHY02ybIEdqK5wkyF5mdPQpgSLFcWscan6MAzmLWfHtnzzMr2tlbMY2LIDCmglsgrkguYjSw-3mj2XPoM7ta-QoDy58ORG1Y8Z6SjEA8pNN0WllqPL9XU7wy55sDJ03HH8nxxrKSZkrfcuq-Mh74AuhuH0DAGFlDZO1FLuo3TPFqj91L8j_EBdgKcq1yEUkXnnkJZhkOAwYMadeMwPyAVXFmAFSexaKpT-JsS_T2lSz7jF"/>
+</div>
+<span class="text-on-surface font-medium truncate max-w-[120px]">Organic Macadamia</span>
+</div>
+</td>
+<td class="p-md align-top max-w-md">
+<div class="flex text-secondary mb-xs">
+<span class="material-symbols-outlined filled-icon text-[16px]" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="material-symbols-outlined filled-icon text-[16px]" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="material-symbols-outlined filled-icon text-[16px]" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="material-symbols-outlined filled-icon text-[16px]" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="material-symbols-outlined text-[16px]" data-icon="star">star</span>
+</div>
+<p class="text-on-surface font-normal line-clamp-2">"Good product, but the delivery person had some trouble finding the address."</p>
+</td>
+<td class="p-md align-top">
+<div class="flex items-center gap-xs text-secondary">
+<span class="material-symbols-outlined text-sm" data-icon="check_circle">check_circle</span>
+<span class="text-[10px] font-bold uppercase">REPLIED</span>
+</div>
+</td>
+<td class="p-md align-top text-right">
+<div class="flex justify-end gap-sm">
+<button class="text-on-surface-variant hover:underline font-bold">Edit Reply</button>
+<button class="text-on-surface-variant hover:text-error transition-colors"><span class="material-symbols-outlined text-[18px]" data-icon="report">report</span></button>
+</div>
+</td>
+</tr>
+<!-- Review Item 3 (Policy Violation Mockup) -->
+<tr class="hover:bg-surface-container-low transition-colors bg-error-container/10">
+<td class="p-md align-top">
+<div class="flex items-center gap-sm mb-xs">
+<div class="w-6 h-6 bg-surface-container-highest rounded-full flex items-center justify-center text-[10px] font-bold">??</div>
+<span class="font-bold">Anonymous</span>
+</div>
+<span class="text-body-sm text-on-surface-variant">Oct 18, 2023</span>
+</td>
+<td class="p-md align-top">
+<div class="flex items-center gap-xs">
+<div class="w-10 h-10 bg-surface-container rounded border border-outline-variant flex-shrink-0">
+<img alt="Product Image" data-alt="A macro photograph of premium Rwandan roasted coffee beans with a rich, glossy dark brown texture. The beans are displayed on a rustic wooden surface with warm, earthy lighting emphasizing the quality and artisan nature of the product." src="https://lh3.googleusercontent.com/aida-public/AB6AXuC5-0rZ5T2POS9JMPLgvYHdSfk8srddhTEWxNhBo6Nhlc8Qsl3s1fMmN8grguC5srZWhgHxnBkHFYYTW_JV8QF_fiaTJYqzrMVKMYdeke5DSST4ggIny5oixPIHWwHwEVRlBGzMQP3ZmQHmi349DM4dbl8Q4aaiGg5l5YQ5M2UPaGpgJecZBT6rmWAUz8hifmPYm0Q7s8WK3QxckF4CvN5Gko70sja-Dram2rI89Q9bQQyL2Gp61PC7K90G_x15m7WTRQhbUnDEy3ZB"/>
+</div>
+<span class="text-on-surface font-medium truncate max-w-[120px]">Premium Arabica Coffee</span>
+</div>
+</td>
+<td class="p-md align-top max-w-md">
+<div class="flex text-secondary mb-xs">
+<span class="material-symbols-outlined filled-icon text-[16px]" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="material-symbols-outlined text-[16px]" data-icon="star">star</span>
+<span class="material-symbols-outlined text-[16px]" data-icon="star">star</span>
+<span class="material-symbols-outlined text-[16px]" data-icon="star">star</span>
+<span class="material-symbols-outlined text-[16px]" data-icon="star">star</span>
+</div>
+<p class="text-on-surface font-normal line-clamp-2">"Unprofessional language used in feedback..." <span class="italic text-on-surface-variant">(Review flagged for policy violation)</span></p>
+</td>
+<td class="p-md align-top">
+<div class="flex items-center gap-xs text-error">
+<span class="material-symbols-outlined text-sm" data-icon="flag">flag</span>
+<span class="text-[10px] font-bold uppercase">REPORTED</span>
+</div>
+</td>
+<td class="p-md align-top text-right">
+<div class="flex justify-end gap-sm">
+<span class="text-body-sm text-on-surface-variant">Review in appeal</span>
+</div>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="p-md border-t border-outline-variant flex items-center justify-between bg-surface-container-lowest">
+<span class="text-body-sm text-on-surface-variant">Showing 1-10 of 1,240 reviews</span>
+<div class="flex items-center gap-xs">
+<button class="w-8 h-8 flex items-center justify-center border border-outline-variant rounded hover:bg-surface-container-low"><span class="material-symbols-outlined" data-icon="chevron_left">chevron_left</span></button>
+<button class="w-8 h-8 flex items-center justify-center bg-primary text-on-primary rounded font-bold">1</button>
+<button class="w-8 h-8 flex items-center justify-center border border-outline-variant rounded hover:bg-surface-container-low">2</button>
+<button class="w-8 h-8 flex items-center justify-center border border-outline-variant rounded hover:bg-surface-container-low">3</button>
+<button class="w-8 h-8 flex items-center justify-center border border-outline-variant rounded hover:bg-surface-container-low"><span class="material-symbols-outlined" data-icon="chevron_right">chevron_right</span></button>
+</div>
+</div>
+</section>
+</div>
+</div>
+</main>
+<!-- Bottom Navigation Bar (Mobile) -->
+<nav class="lg:hidden fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-4 py-2 bg-surface border-t border-outline-variant shadow-lg rounded-t-xl">
+<a class="flex flex-col items-center justify-center text-on-surface-variant" href="#">
+<span class="material-symbols-outlined" data-icon="home">home</span>
+<span class="font-label-md text-label-md">Home</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant" href="#">
+<span class="material-symbols-outlined" data-icon="search">search</span>
+<span class="font-label-md text-label-md">Search</span>
+</a>
+<a class="flex flex-col items-center justify-center bg-secondary-container text-on-secondary-container rounded-full px-4 py-1 scale-90 duration-150" href="#">
+<span class="material-symbols-outlined filled-icon" data-icon="receipt_long" style="font-variation-settings: 'FILL' 1;">receipt_long</span>
+<span class="font-label-md text-label-md">Reviews</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant" href="#">
+<span class="material-symbols-outlined" data-icon="person">person</span>
+<span class="font-label-md text-label-md">Account</span>
+</a>
+</nav>
+<!-- Success Toast (Interaction Feedback) -->
+<div class="fixed bottom-24 right-8 lg:bottom-8 lg:right-8 bg-inverse-surface text-inverse-on-surface px-lg py-md rounded-xl shadow-2xl translate-y-20 opacity-0 transition-all duration-300 flex items-center gap-md z-[100]" id="toast">
+<span class="material-symbols-outlined text-primary" data-icon="check_circle">check_circle</span>
+<span class="font-label-md text-label-md">REPLY POSTED SUCCESSFULLY</span>
+</div>
+<script>
+        function toggleReply(id) {
+            const row = document.getElementById(`reply-box-${id}`);
+            if (row.classList.contains('hidden')) {
+                row.classList.remove('hidden');
+            } else {
+                row.classList.add('hidden');
+            }
+        }
+
+        // Micro-interaction simulation
+        const postButtons = document.querySelectorAll('button.bg-primary');
+        postButtons.forEach(btn => {
+            if (btn.innerText === 'Post Reply') {
+                btn.addEventListener('click', () => {
+                    const toast = document.getElementById('toast');
+                    toast.classList.remove('translate-y-20', 'opacity-0');
+                    btn.closest('tr').classList.add('hidden');
+                    setTimeout(() => {
+                        toast.classList.add('translate-y-20', 'opacity-0');
+                    }, 3000);
+                });
+            }
+        });
+    </script>
+</body></html>

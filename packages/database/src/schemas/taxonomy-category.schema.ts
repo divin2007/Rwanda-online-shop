@@ -21,6 +21,7 @@ export const taxonomyCategorySchema = new Schema({
   aliases: [{ type: String, lowercase: true, trim: true }],
   synonyms: [{ type: String, lowercase: true, trim: true }],
   searchBoost: { type: Number, default: 1 },
+  parentId: { type: String, default: null, lowercase: true, trim: true },
   variantAxes: [catalogFieldSchema],
   attributes: [catalogFieldSchema],
   isActive: { type: Boolean, default: true },
@@ -37,6 +38,7 @@ export const taxonomyCategorySchema = new Schema({
 }, { timestamps: true });
 
 taxonomyCategorySchema.index({ id: 1, deletedAt: 1 });
+taxonomyCategorySchema.index({ parentId: 1 });
 taxonomyCategorySchema.index({ productType: 1, deletedAt: 1 });
 taxonomyCategorySchema.index({ aliases: 1 });
 taxonomyCategorySchema.index({ synonyms: 1 });

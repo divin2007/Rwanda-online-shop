@@ -83,6 +83,7 @@ export const userSchema = new Schema({
     lastLoginIp: String,
     failedLoginAttempts: { type: Number, default: 0 },
     lockedUntil: Date,
+    refreshTokenHash: { type: String },
     passwordChangedAt: Date,
     twoFactorEnabled: { type: Boolean, default: false }
   },

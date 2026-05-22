@@ -39,6 +39,7 @@ interface ReceiptViewProps {
   order: ReceiptOrder;
   role: 'buyer' | 'seller' | 'rider' | 'admin';
   onClose?: () => void;
+  onOrderUpdated?: () => void | Promise<void>;
 }
 
 const STATUS_LABELS: Record<string, { label: string; color: string }> = {
@@ -57,7 +58,7 @@ const STATUS_LABELS: Record<string, { label: string; color: string }> = {
   resolved:             { label: 'RESOLVED',           color: '#10B981' },
 };
 
-export function ReceiptView({ order, role, onClose }: ReceiptViewProps) {
+export function ReceiptView({ order, role, onClose, onOrderUpdated }: ReceiptViewProps) {
   const buyer = order.buyer || { fullName: 'Anonymous Buyer', phone: 'Hidden' };
   const seller = order.seller || { fullName: 'Verified Seller', stallId: 'N/A' };
   const sourceFinancials = order.financials || {};
@@ -90,6 +91,7 @@ export function ReceiptView({ order, role, onClose }: ReceiptViewProps) {
   const statusInfo = STATUS_LABELS[orderStatus] || { label: orderStatus.toUpperCase(), color: '#6B7280' };
   const isNegotiation = orderStatus === 'awaiting_quote' || orderStatus === 'quote_sent' || order.attributes?.isQuoteRequest === 'true';
   const isPaid = order.payment?.status === 'paid';
+  const chatRole = role === 'seller' ? 'SELLER' : role === 'buyer' ? 'BUYER' : null;
 
   const isPayout = order.products?.[0]?.productId === 'withdrawal';
 
@@ -194,7 +196,7 @@ export function ReceiptView({ order, role, onClose }: ReceiptViewProps) {
       <div className="w-full max-w-6xl max-h-[95vh] flex flex-col md:flex-row shadow-2xl border border-[#e0e0e0] rounded-lg bg-[#fcf9f8] overflow-hidden">
 
         {/* ── Left: Negotiation Panel ── */}
-        {isNegotiation && (
+        {isNegotiation && chatRole && (
           <div className="w-full md:w-[420px] bg-[#e05300] flex flex-col border-r-0 md:border-r-2 border-b-2 md:border-b-0 border-[#ffd700]/20 overflow-y-auto">
             {/* Panel Header */}
             <div className="px-8 py-6 border-b border-[#ffd700]/20">
@@ -208,8 +210,13 @@ export function ReceiptView({ order, role, onClose }: ReceiptViewProps) {
                 orderId={orderId}
                 initialMessages={order.messages || []}
                 recipientName={role === 'buyer' ? seller.fullName : buyerName}
-                userRole={role.toUpperCase() as 'BUYER' | 'SELLER'}
+                userRole={chatRole}
                 orderStatus={orderStatus}
+                paymentStatus={order.payment?.status}
+                marketId={seller.marketId}
+                deliveryAddress={buyer.deliveryAddress}
+                deliveryFee={financials.deliveryFee}
+                onOrderUpdated={onOrderUpdated}
               />
             </div>
 

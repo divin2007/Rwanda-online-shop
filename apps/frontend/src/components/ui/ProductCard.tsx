@@ -1,17 +1,18 @@
 'use client';
+
 import React from 'react';
-import Link from 'next/link';
 import Image from 'next/image';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { BadgeCheck, Heart, MessageCircle, ShoppingCart } from 'lucide-react';
-import { useLanguage } from '@/context/LanguageContext';
-import { useCart } from '@/components/cart/CartContext';
-import { useWishlist } from '@/context/WishlistContext';
-import { useAuth } from '@/context/AuthContext';
-import { formatCurrency } from '@/lib/format';
-import { getProductUrl } from '@/lib/urls';
-import { trackProductSignal } from '@/lib/recommendations';
 import toast from 'react-hot-toast';
+import { useAuth } from '@/context/AuthContext';
+import { useCart } from '@/components/cart/CartContext';
+import { useLanguage } from '@/context/LanguageContext';
+import { useWishlist } from '@/context/WishlistContext';
+import { formatCurrency } from '@/lib/format';
+import { trackProductSignal } from '@/lib/recommendations';
+import { getProductUrl } from '@/lib/urls';
 
 interface ProductCardProps {
   product: {
@@ -47,28 +48,50 @@ interface ProductCardProps {
   isCompact?: boolean;
 }
 
+const normalizeImages = (rawImages: unknown) => {
+  const list = typeof rawImages === 'string'
+    ? rawImages.split(',')
+    : Array.isArray(rawImages)
+      ? rawImages.flatMap(item => (typeof item === 'string' ? item.split(',') : item))
+      : [];
+
+  return list
+    .map(item => (typeof item === 'string' ? item.trim() : ''))
+    .filter(url => url.startsWith('http') || url.startsWith('/'));
+};
+
 export const ProductCard = ({ product, isCompact = false }: ProductCardProps) => {
+  const router = useRouter();
   const { t } = useLanguage();
+  const { user } = useAuth();
   const { addToCart } = useCart();
   const { isInWishlist, toggleWishlist } = useWishlist();
-  const { user } = useAuth();
-  const router = useRouter();
+  const images = React.useMemo(() => normalizeImages(product.images), [product.images]);
 
-  const handleBuyNow = async (e: React.MouseEvent) => {
-    e.preventDefault();
+  const sellerProfile = typeof product.sellerId === 'object' ? product.sellerId : null;
+  const sellerId = sellerProfile?._id || product.sellerId;
+  const sellerUserId = sellerProfile?.userId || null;
+  const sellerName = sellerProfile?.shopDetails?.name || sellerProfile?.stallName || 'Verified seller';
+  const marketSlug = typeof product.marketId === 'object' ? product.marketId.slug : undefined;
+  const productUrl = getProductUrl(product._id, marketSlug);
+  const hasPromotion = product.promotion && product.promotion.promotedPrice > 0;
+  const displayPrice = hasPromotion ? product.promotion!.promotedPrice : product.price;
+  const isNegotiable = String(product.isNegotiable) === 'true' || product.isNegotiable === true || product.stockType === 'on_demand';
+  const available = Boolean(product.inStock || product.stockType === 'infinite' || product.stockType === 'on_demand');
+
+  const handleNegotiation = async (event: React.MouseEvent) => {
+    event.preventDefault();
     if (!user) return toast.error('Please log in to negotiate with the seller');
+    if (user.role !== 'BUYER') {
+      return toast.error('Negotiations must be started from a buyer account.');
+    }
     trackProductSignal(product, 'add_to_cart');
-
-    const sellerProfile = typeof product.sellerId === 'object' ? product.sellerId : null;
-    const sellerId = sellerProfile?._id || product.sellerId;
-    const sellerUserId = sellerProfile?.userId || null;
 
     try {
       const subtotal = product.price;
       const deliveryFee = 1000;
       const platformCommission = Math.max(subtotal * 0.015, 100);
       const gatewayFee = Math.ceil(subtotal * 0.02);
-      const totalAmount = subtotal + deliveryFee + gatewayFee;
 
       const payload = {
         buyer: {
@@ -79,7 +102,7 @@ export const ProductCard = ({ product, isCompact = false }: ProductCardProps) =>
         seller: {
           sellerId,
           userId: sellerUserId,
-          fullName: sellerProfile?.shopDetails?.name || sellerProfile?.stallName || 'Seller',
+          fullName: sellerName,
           stallId: sellerProfile?.stallId || 'N/A',
           marketId: typeof product.marketId === 'object' ? product.marketId._id : product.marketId,
         },
@@ -94,7 +117,7 @@ export const ProductCard = ({ product, isCompact = false }: ProductCardProps) =>
           deliveryFee,
           platformCommission,
           gatewayFee,
-          totalAmount,
+          totalAmount: subtotal + deliveryFee + gatewayFee,
           sellerPayout: subtotal - platformCommission,
           riderPayout: 900,
         },
@@ -106,7 +129,6 @@ export const ProductCard = ({ product, isCompact = false }: ProductCardProps) =>
       const { orderApi } = await import('@/lib/api');
       const response = await orderApi.post('/orders', payload);
       const order = response.data?.data || response.data;
-
       toast.success('Negotiation started. Redirecting...');
       router.push(`/orders?open=${order._id}`);
     } catch (err: unknown) {
@@ -117,128 +139,120 @@ export const ProductCard = ({ product, isCompact = false }: ProductCardProps) =>
     }
   };
 
-  const normalizedImages: string[] = React.useMemo(() => {
-    const rawImages = product.images;
-    let list: any[] = [];
-    if (typeof rawImages === 'string') {
-      list = (rawImages as string).split(',');
-    } else if (Array.isArray(rawImages)) {
-      list = rawImages.flatMap((item: any) => 
-        typeof item === 'string' ? item.split(',') : item
-      );
-    }
-    return list
-      .map((url: any) => typeof url === 'string' ? url.trim() : '')
-      .filter((url: string) => url.startsWith('http') || url.startsWith('/'));
-  }, [product.images]);
-
-  if (normalizedImages.length === 0) return null;
-
-  const hasPromotion = product.promotion && product.promotion.promotedPrice > 0;
-  const displayPrice = hasPromotion ? product.promotion!.promotedPrice : product.price;
-  const discountLabel = hasPromotion
-    ? (product.promotion!.type === 'percentage'
-        ? `-${product.promotion!.discount}%`
-        : `-${formatCurrency(product.promotion!.discount)}`)
-    : null;
-  const isNegotiable = String(product.isNegotiable) === 'true' || product.isNegotiable === true;
-  const productUrl = getProductUrl(product._id, typeof product.marketId === 'object' ? product.marketId.slug : undefined);
+  const handleCart = (event: React.MouseEvent) => {
+    event.preventDefault();
+    trackProductSignal(product, 'add_to_cart');
+    addToCart(product);
+  };
 
   return (
-    <div className="group flex h-full flex-col overflow-hidden rounded-xl border border-border-light bg-white shadow-sm transition-all duration-300 hover:-translate-y-1 hover:border-primary/20 hover:shadow-xl cinematic-shadow">
-      <div className="relative aspect-[4/3] overflow-hidden bg-background-surface">
-        <Link href={productUrl} onClick={() => trackProductSignal(product, 'product_view')} className="relative block h-full w-full">
+    <Link
+      href={productUrl}
+      onClick={() => trackProductSignal(product, 'product_view')}
+      className="group flex h-full flex-col overflow-hidden rounded-lg border border-[#e2bfb0] bg-white transition-colors hover:border-[#a04100]"
+    >
+      <div className="relative aspect-[4/3] overflow-hidden bg-[#efeded]">
+        {images[0] ? (
           <Image
-            src={normalizedImages[0]}
+            src={images[0]}
             alt={product.name}
             fill
             unoptimized
-            sizes="(min-width: 1024px) 300px, 45vw"
-            className={`object-cover transition-transform duration-700 group-hover:scale-105 ${!product.inStock && product.stockType !== 'infinite' ? 'opacity-45 grayscale' : ''}`}
+            sizes="(min-width: 1024px) 280px, 45vw"
+            className={`object-cover transition-transform duration-500 group-hover:scale-[1.03] ${available ? '' : 'opacity-50 grayscale'}`}
           />
-        </Link>
-        <div className="absolute inset-0 pointer-events-none bg-gradient-to-t from-primary-cinematic/30 via-transparent to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
+        ) : (
+          <div className="flex h-full items-center justify-center px-4 text-center font-mono text-[10px] font-bold uppercase tracking-[0.16em] text-[#8e7164]">
+            Image unavailable
+          </div>
+        )}
 
-        <div className={`absolute left-3 top-3 flex flex-wrap gap-1.5 ${isCompact ? 'left-2 top-2 gap-1' : ''}`}>
-          <span className={`inline-flex items-center gap-1.5 rounded-full bg-white/90 backdrop-blur-md font-bold uppercase tracking-widest text-primary shadow-sm border border-white/20 ${isCompact ? 'px-2 py-0.5 text-[8px]' : 'px-2.5 py-1 text-[10px]'}`}>
-            <BadgeCheck size={isCompact ? 10 : 14} className="text-accent-premium" />
+        <div className="absolute left-3 top-3 flex flex-wrap gap-1.5">
+          <span className="inline-flex items-center gap-1 rounded-sm bg-[#ff9f1c] px-2 py-1 font-mono text-[10px] font-bold uppercase tracking-[0.08em] text-[#221b00]">
+            <BadgeCheck size={12} />
             Verified
           </span>
-          {hasPromotion && (
-            <span className={`rounded-full bg-red-600/90 backdrop-blur-md font-bold uppercase tracking-widest text-white shadow-sm border border-red-500/20 ${isCompact ? 'px-2 py-0.5 text-[8px]' : 'px-2.5 py-1 text-[10px]'}`}>
-              {discountLabel} off
+          {product.isMadeInRwanda && (
+            <span className="rounded-sm bg-white px-2 py-1 font-mono text-[10px] font-bold uppercase tracking-[0.08em] text-[#a04100]">
+              Local
             </span>
           )}
-          {product.stockType === 'on_demand' && (
-            <span className={`rounded-full bg-primary/10 backdrop-blur-md font-bold uppercase tracking-widest text-primary shadow-sm border border-primary/20 ${isCompact ? 'px-2 py-0.5 text-[8px]' : 'px-2.5 py-1 text-[10px]'}`}>
-              Custom order
+          {hasPromotion && (
+            <span className="rounded-sm bg-[#ba1a1a] px-2 py-1 font-mono text-[10px] font-bold uppercase tracking-[0.08em] text-white">
+              Deal
             </span>
           )}
         </div>
 
         <button
-          onClick={(e) => {
-            e.preventDefault();
+          type="button"
+          onClick={(event) => {
+            event.preventDefault();
             if (!isInWishlist(product._id)) trackProductSignal(product, 'wishlist');
             toggleWishlist(product._id);
           }}
+          className="absolute right-3 top-3 flex h-9 w-9 items-center justify-center rounded bg-white text-[#a04100] transition-colors hover:bg-[#ffedd5]"
           aria-label="Toggle wishlist"
-          className={`absolute flex items-center justify-center rounded-full bg-white/90 backdrop-blur-md text-primary shadow-sm transition-all duration-300 hover:bg-primary hover:text-white border border-white/20 ${isCompact ? 'right-2 top-2 h-7 w-7' : 'right-3 top-3 h-9 w-9'}`}
         >
-          <Heart size={isCompact ? 12 : 16} fill={isInWishlist(product._id) ? 'currentColor' : 'none'} />
+          <Heart size={16} fill={isInWishlist(product._id) ? 'currentColor' : 'none'} />
         </button>
       </div>
 
-      <div className={`flex flex-1 flex-col ${isCompact ? 'p-3' : 'p-5'}`}>
-        <div className={`flex items-center justify-between gap-2 ${isCompact ? 'mb-2' : 'mb-3'}`}>
-          <span className={`line-clamp-1 font-bold uppercase tracking-widest text-text-secondary ${isCompact ? 'text-[9px]' : 'text-[11px]'}`}>{product.category || 'Product'}</span>
-          {product.isMadeInRwanda && (
-            <span className={`rounded-full border border-primary/30 bg-primary/5 font-bold uppercase tracking-widest text-primary ${isCompact ? 'px-2 py-0.5 text-[7px]' : 'px-2.5 py-1 text-[9px]'}`}>Made in Rwanda</span>
-          )}
-        </div>
-
-        <h3 className={`line-clamp-2 font-bold leading-snug tracking-tight text-text-primary transition-colors group-hover:text-primary ${isCompact ? 'text-base' : 'text-lg'}`}>
-          <Link href={productUrl} onClick={() => trackProductSignal(product, 'product_view')}>{product.name}</Link>
-        </h3>
-
-        <div className={`grid ${isCompact ? 'mt-3 gap-2' : 'mt-4 gap-3'}`}>
-          <div>
-            <div className="flex flex-wrap items-baseline gap-2">
-              <span className={`font-black tracking-tight text-text-primary ${isCompact ? 'text-base' : 'text-xl'}`}>{formatCurrency(displayPrice)}</span>
-              {hasPromotion && (
-                <span className={`font-bold text-text-secondary line-through opacity-70 ${isCompact ? 'text-[10px]' : 'text-xs'}`}>{formatCurrency(product.price)}</span>
-              )}
-            </div>
-            <span className={`font-bold uppercase tracking-widest text-text-secondary ${isCompact ? 'text-[9px]' : 'text-[11px]'}`}>per {product.unit}</span>
-          </div>
-          <span className={`w-fit rounded-full font-bold uppercase tracking-widest ${product.inStock ? 'bg-primary/10 text-primary font-black' : 'bg-red-50 text-red-600 border border-red-100'} ${isCompact ? 'px-2 py-1 text-[8px]' : 'px-3 py-1.5 text-[10px]'}`}>
-            {product.inStock ? t('product_available') : (product.stockType === 'on_demand' ? t('crafted_on_commission') : t('product_out_of_stock'))}
+      <div className={`flex flex-1 flex-col ${isCompact ? 'p-3' : 'p-4'}`}>
+        <div className="flex items-center justify-between gap-2">
+          <span className="line-clamp-1 font-mono text-[10px] font-bold uppercase tracking-[0.16em] text-[#a04100]">
+            {product.category || 'Product'}
+          </span>
+          <span className={`rmf-status-chip ${available ? 'text-[#12805c]' : 'text-[#ba1a1a]'}`}>
+            {available ? 'In stock' : 'Unavailable'}
           </span>
         </div>
 
-        <div className={`mt-auto ${isCompact ? 'pt-4' : 'pt-6'}`}>
+        <h3 className={`${isCompact ? 'mt-2 text-base' : 'mt-3 text-lg'} line-clamp-2 font-black leading-tight text-[#1b1c1c]`}>
+          {product.name}
+        </h3>
+        <p className="mt-1 line-clamp-1 text-xs font-medium text-[#574e47]">by {sellerName}</p>
+
+        <div className="mt-4 flex items-end justify-between gap-3">
+          <div>
+            <div className="flex flex-wrap items-baseline gap-2">
+              <span className={`${isCompact ? 'text-base' : 'text-xl'} font-black text-[#a04100]`}>
+                {formatCurrency(displayPrice)}
+              </span>
+              {hasPromotion && (
+                <span className="text-xs font-bold text-[#8e7164] line-through">
+                  {formatCurrency(product.price)}
+                </span>
+              )}
+            </div>
+            <p className="mt-1 font-mono text-[10px] font-bold uppercase tracking-[0.14em] text-[#574e47]">
+              per {product.unit}
+            </p>
+          </div>
+        </div>
+
+        <div className="mt-auto pt-4">
           {isNegotiable ? (
             <button
-              onClick={handleBuyNow}
-              className={`inline-flex w-full items-center justify-center gap-2 rounded-xl bg-amber-100/90 border border-amber-200/50 font-black uppercase tracking-widest text-amber-900 transition-colors hover:bg-accent-premium hover:text-white ${isCompact ? 'h-9 px-3 text-[10px]' : 'h-11 px-4 text-xs'}`}
+              type="button"
+              onClick={handleNegotiation}
+              className="inline-flex h-10 w-full items-center justify-center gap-2 rounded border border-[#a04100] bg-white px-3 font-mono text-[11px] font-bold uppercase tracking-[0.12em] text-[#a04100] transition-colors hover:bg-[#ffedd5]"
             >
-              <MessageCircle size={isCompact ? 14 : 18} />
-              Negotiate price
+              <MessageCircle size={15} />
+              Negotiate
             </button>
           ) : (
             <button
-              onClick={() => {
-                trackProductSignal(product, 'add_to_cart');
-                addToCart(product);
-              }}
-              className={`inline-flex w-full items-center justify-center gap-2 rounded-xl bg-primary font-bold uppercase tracking-widest text-white shadow-md shadow-primary/20 transition-all hover:-translate-y-0.5 hover:shadow-lg hover:shadow-primary/30 ${isCompact ? 'h-9 px-3 text-[10px]' : 'h-11 px-4 text-xs'}`}
+              type="button"
+              onClick={handleCart}
+              className="inline-flex h-10 w-full items-center justify-center gap-2 rounded bg-[#ff6b00] px-3 font-mono text-[11px] font-bold uppercase tracking-[0.12em] text-white transition-colors hover:bg-[#e05300]"
             >
-              <ShoppingCart size={isCompact ? 14 : 18} />
-              {product.stockType === 'on_demand' ? 'Request quote' : t('product_add_to_cart')}
+              <ShoppingCart size={15} />
+              {t('product_add_to_cart') || 'Add to cart'}
             </button>
           )}
         </div>
       </div>
-    </div>
+    </Link>
   );
 };

@@ -115,6 +115,7 @@ export class SellerController {
   // FIX [SELLER-APPROVE]: Was unauthenticated — anyone could approve seller applications.
   // Now requires ADMIN role.
   @UseGuards(JwtAuthGuard)
+  @Roles(UserRole.SELLER)
   @Post('settings/change-request')
   async createSettingsChangeRequest(@Request() req: any, @Body() body: any) {
     const request = await this.sellerService.createSettingsChangeRequest(req.user.userId, body || {});

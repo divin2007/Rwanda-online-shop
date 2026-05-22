@@ -1,0 +1,475 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>RMF | Seller Promotions Dashboard</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Work+Sans:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@500&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-primary-fixed": "#351000",
+                        "background": "#fbf9f8",
+                        "secondary-fixed-dim": "#ffb598",
+                        "primary-fixed": "#ffdbcc",
+                        "on-secondary": "#ffffff",
+                        "surface-container": "#efeded",
+                        "on-tertiary-container": "#002f6b",
+                        "surface-container-low": "#f5f3f3",
+                        "on-surface": "#1b1c1c",
+                        "surface": "#fbf9f8",
+                        "tertiary-fixed-dim": "#adc6ff",
+                        "surface-container-lowest": "#ffffff",
+                        "secondary": "#a63b00",
+                        "on-secondary-fixed-variant": "#7f2b00",
+                        "on-primary-fixed-variant": "#7a3000",
+                        "on-primary-container": "#572000",
+                        "on-primary": "#ffffff",
+                        "surface-tint": "#a04100",
+                        "surface-container-highest": "#e3e2e2",
+                        "on-background": "#1b1c1c",
+                        "on-secondary-fixed": "#370e00",
+                        "tertiary-fixed": "#d8e2ff",
+                        "surface-container-high": "#e9e8e7",
+                        "inverse-surface": "#303030",
+                        "primary": "#a04100",
+                        "secondary-fixed": "#ffdbce",
+                        "on-tertiary-fixed-variant": "#004395",
+                        "inverse-primary": "#ffb693",
+                        "primary-container": "#ff6b00",
+                        "surface-bright": "#fbf9f8",
+                        "tertiary": "#005ac2",
+                        "outline": "#8e7164",
+                        "inverse-on-surface": "#f2f0f0",
+                        "on-surface-variant": "#5a4136",
+                        "surface-variant": "#e3e2e2",
+                        "surface-dim": "#dbdad9",
+                        "secondary-container": "#fc671d",
+                        "tertiary-container": "#5f97ff",
+                        "on-error-container": "#93000a",
+                        "primary-fixed-dim": "#ffb693",
+                        "on-tertiary-fixed": "#001a42",
+                        "outline-variant": "#e2bfb0",
+                        "on-secondary-container": "#561b00",
+                        "error": "#ba1a1a",
+                        "error-container": "#ffdad6",
+                        "on-tertiary": "#ffffff",
+                        "on-error": "#ffffff"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.125rem",
+                        "lg": "0.25rem",
+                        "xl": "0.5rem",
+                        "full": "0.75rem"
+                    },
+                    "spacing": {
+                        "gutter": "16px",
+                        "base": "4px",
+                        "xs": "4px",
+                        "md": "16px",
+                        "margin-mobile": "16px",
+                        "sm": "8px",
+                        "margin-desktop": "32px",
+                        "xl": "40px",
+                        "lg": "24px"
+                    },
+                    "fontFamily": {
+                        "table-data": ["Work Sans"],
+                        "headline-lg": ["Work Sans"],
+                        "headline-md": ["Work Sans"],
+                        "body-sm": ["Work Sans"],
+                        "headline-lg-mobile": ["Work Sans"],
+                        "body-md": ["Work Sans"],
+                        "body-lg": ["Work Sans"],
+                        "label-md": ["JetBrains Mono"]
+                    },
+                    "fontSize": {
+                        "table-data": ["13px", {"lineHeight": "18px", "fontWeight": "500"}],
+                        "headline-lg": ["30px", {"lineHeight": "38px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                        "headline-md": ["20px", {"lineHeight": "28px", "fontWeight": "600"}],
+                        "body-sm": ["12px", {"lineHeight": "16px", "fontWeight": "400"}],
+                        "headline-lg-mobile": ["24px", {"lineHeight": "30px", "letterSpacing": "-0.01em", "fontWeight": "700"}],
+                        "body-md": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                        "body-lg": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                        "label-md": ["12px", {"lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "500"}]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .ghost-border {
+            border: 1px solid #ebdcd0;
+        }
+        body {
+            background-color: #fbf9f8;
+        }
+    </style>
+</head>
+<body class="font-body-md text-on-surface antialiased">
+<!-- TopNavBar -->
+<header class="fixed top-0 left-0 w-full z-50 flex justify-between items-center px-margin-desktop h-16 bg-surface border-b border-outline-variant">
+<div class="flex items-center gap-lg">
+<span class="text-headline-md font-headline-md font-bold text-primary">RMF</span>
+<div class="hidden md:flex items-center gap-md ml-xl">
+<nav class="flex gap-md h-full items-center">
+<a class="font-label-md text-label-md text-on-surface-variant hover:bg-surface-container-low transition-colors px-3 py-2 rounded" href="#">Marketplace</a>
+<a class="font-label-md text-label-md text-primary border-b-2 border-primary px-3 py-2" href="#">Promotions</a>
+<a class="font-label-md text-label-md text-on-surface-variant hover:bg-surface-container-low transition-colors px-3 py-2 rounded" href="#">Logistics</a>
+</nav>
+</div>
+</div>
+<div class="flex items-center gap-md">
+<button class="p-2 text-on-surface-variant hover:bg-surface-container-low transition-colors rounded">
+<span class="material-symbols-outlined" data-icon="location_on">location_on</span>
+</button>
+<button class="p-2 text-on-surface-variant hover:bg-surface-container-low transition-colors rounded">
+<span class="material-symbols-outlined" data-icon="notifications">notifications</span>
+</button>
+<div class="w-8 h-8 rounded-full bg-surface-container-highest overflow-hidden border border-outline-variant">
+<img alt="User Account" data-alt="A professional headshot of a business merchant in Rwanda, captured with soft natural lighting in a clean office environment. The subject is wearing a professional collared shirt, and the background is slightly blurred to emphasize their friendly yet authoritative presence. The photo uses high-contrast, clean tones consistent with a corporate modern marketplace interface." src="https://lh3.googleusercontent.com/aida-public/AB6AXuB_4vIaaFIUoMQ_HBou522mw5T6WoRYDh7ah-j8yRpfRBEjV2USwaUrzh7L-NbjM3UYSf11sjyaRBUJRBYYTQlrmp0Jp_2X28B30PgF0rAPExvSorKYT_CheJCF-xW5UI-C9FIz58BQqp3dBsZQVuXrpKIxM07cNFjVdpj6GfnZhTJNyvpjhv8wajXoryKyY9Xya10wyM1_nukxhvbOCAs-eHTUMMlxmWLhsYnKGSPDRj0q8gt85ME_Tt0LvPs2Aj5D7g0Gpp-xlnv1"/>
+</div>
+</div>
+</header>
+<!-- SideNavBar (Hidden on Mobile) -->
+<aside class="hidden lg:flex fixed left-0 top-16 flex-col w-64 h-[calc(100vh-64px)] p-md space-y-base bg-surface-container-lowest border-r border-outline-variant z-40">
+<div class="mb-lg px-2">
+<h2 class="font-headline-md text-headline-md font-bold text-primary">Marketplace Portal</h2>
+<p class="font-label-md text-label-md text-on-surface-variant">Operational View</p>
+</div>
+<nav class="flex-grow space-y-1">
+<a class="flex items-center gap-md p-sm text-on-surface-variant hover:bg-surface-container-high transition-all rounded-lg" href="#">
+<span class="material-symbols-outlined" data-icon="dashboard">dashboard</span>
+<span class="font-label-md text-label-md">Dashboard</span>
+</a>
+<a class="flex items-center gap-md p-sm bg-primary-container text-on-primary-container font-bold rounded-lg scale-95 transition-transform" href="#">
+<span class="material-symbols-outlined" data-icon="inventory_2" style="font-variation-settings: 'FILL' 1;">inventory_2</span>
+<span class="font-label-md text-label-md">Promotions</span>
+</a>
+<a class="flex items-center gap-md p-sm text-on-surface-variant hover:bg-surface-container-high transition-all rounded-lg" href="#">
+<span class="material-symbols-outlined" data-icon="inventory">inventory</span>
+<span class="font-label-md text-label-md">Inventory</span>
+</a>
+<a class="flex items-center gap-md p-sm text-on-surface-variant hover:bg-surface-container-high transition-all rounded-lg" href="#">
+<span class="material-symbols-outlined" data-icon="handshake">handshake</span>
+<span class="font-label-md text-label-md">Negotiations</span>
+</a>
+</nav>
+<div class="pt-md border-t border-outline-variant space-y-1">
+<button class="w-full flex items-center gap-md p-sm text-on-surface-variant hover:bg-surface-container-high transition-all rounded-lg">
+<span class="material-symbols-outlined" data-icon="settings">settings</span>
+<span class="font-label-md text-label-md">Settings</span>
+</button>
+<div class="p-sm mt-md bg-surface-variant rounded-xl flex items-center justify-between">
+<div class="flex items-center gap-sm">
+<span class="material-symbols-outlined text-primary" data-icon="account_balance_wallet">account_balance_wallet</span>
+<span class="font-label-md text-label-md font-bold">RWF 450,200</span>
+</div>
+</div>
+</div>
+</aside>
+<!-- Main Content -->
+<main class="lg:ml-64 pt-24 pb-20 px-margin-mobile md:px-margin-desktop max-w-[1280px] mx-auto">
+<!-- Dashboard Header & Performance Metrics -->
+<section class="mb-xl">
+<div class="flex flex-col md:flex-row md:items-end justify-between mb-lg gap-md">
+<div>
+<h1 class="font-headline-lg text-headline-lg text-on-surface">Seller Promotions</h1>
+<p class="text-on-surface-variant font-body-md mt-1">Manage, track, and optimize your discount campaigns.</p>
+</div>
+<div class="flex items-center gap-sm bg-surface-container p-1 rounded-lg ghost-border">
+<button class="px-4 py-2 bg-white text-primary font-bold rounded shadow-sm text-label-md">Weekly</button>
+<button class="px-4 py-2 text-on-surface-variant font-bold text-label-md hover:bg-white/50 transition-colors">Monthly</button>
+</div>
+</div>
+<!-- Metrics Bento Grid -->
+<div class="grid grid-cols-1 md:grid-cols-3 gap-md">
+<div class="bg-white p-lg ghost-border rounded-xl">
+<div class="flex justify-between items-start mb-sm">
+<span class="material-symbols-outlined text-primary bg-primary-fixed p-2 rounded-lg" data-icon="visibility">visibility</span>
+<span class="text-green-600 font-label-md text-xs flex items-center gap-1">+12.5% <span class="material-symbols-outlined text-xs" data-icon="trending_up">trending_up</span></span>
+</div>
+<p class="text-on-surface-variant font-label-md">Total Promo Views</p>
+<h3 class="font-headline-md text-headline-md text-on-surface mt-1">42,890</h3>
+</div>
+<div class="bg-white p-lg ghost-border rounded-xl">
+<div class="flex justify-between items-start mb-sm">
+<span class="material-symbols-outlined text-tertiary bg-tertiary-fixed p-2 rounded-lg" data-icon="ads_click">ads_click</span>
+<span class="text-green-600 font-label-md text-xs flex items-center gap-1">+4.2% <span class="material-symbols-outlined text-xs" data-icon="trending_up">trending_up</span></span>
+</div>
+<p class="text-on-surface-variant font-label-md">Conversion Rate</p>
+<h3 class="font-headline-md text-headline-md text-on-surface mt-1">8.4%</h3>
+</div>
+<div class="bg-white p-lg ghost-border rounded-xl">
+<div class="flex justify-between items-start mb-sm">
+<span class="material-symbols-outlined text-secondary bg-secondary-fixed p-2 rounded-lg" data-icon="payments">payments</span>
+<span class="text-on-surface-variant font-label-md text-xs">Target: 2.5M</span>
+</div>
+<p class="text-on-surface-variant font-label-md">Promo Revenue</p>
+<h3 class="font-headline-md text-headline-md text-on-surface mt-1">RWF 1,840,000</h3>
+</div>
+</div>
+</section>
+<!-- Main Layout: Form vs Active Deals -->
+<div class="grid grid-cols-1 xl:grid-cols-12 gap-xl">
+<!-- Left: Create Promotion Form -->
+<div class="xl:col-span-4">
+<div class="sticky top-24 bg-white ghost-border rounded-xl overflow-hidden">
+<div class="bg-surface-container-high p-md border-b border-outline-variant">
+<h2 class="font-headline-md text-headline-md text-primary flex items-center gap-2">
+<span class="material-symbols-outlined" data-icon="add_circle">add_circle</span>
+                            Create Promotion
+                        </h2>
+</div>
+<form class="p-lg space-y-md">
+<div>
+<label class="block font-label-md text-label-md text-on-surface-variant mb-base">Promotion Name</label>
+<input class="w-full ghost-border bg-background px-4 py-3 rounded-lg focus:ring-1 focus:ring-primary focus:border-primary outline-none" placeholder="e.g. Harvest Festival Sale" type="text"/>
+</div>
+<div class="grid grid-cols-2 gap-md">
+<div>
+<label class="block font-label-md text-label-md text-on-surface-variant mb-base">Discount Type</label>
+<select class="w-full ghost-border bg-background px-4 py-3 rounded-lg focus:ring-1 focus:ring-primary outline-none">
+<option>Percentage (%)</option>
+<option>Fixed Amount (RWF)</option>
+</select>
+</div>
+<div>
+<label class="block font-label-md text-label-md text-on-surface-variant mb-base">Value</label>
+<input class="w-full ghost-border bg-background px-4 py-3 rounded-lg focus:ring-1 focus:ring-primary outline-none" placeholder="15" type="number"/>
+</div>
+</div>
+<div>
+<label class="block font-label-md text-label-md text-on-surface-variant mb-base">Select Products</label>
+<div class="ghost-border bg-background p-sm rounded-lg flex flex-wrap gap-2">
+<span class="bg-primary-fixed text-on-primary-fixed-variant px-2 py-1 rounded text-xs flex items-center gap-1">
+                                    Grade A Beans <span class="material-symbols-outlined text-[14px] cursor-pointer" data-icon="close">close</span>
+</span>
+<span class="bg-primary-fixed text-on-primary-fixed-variant px-2 py-1 rounded text-xs flex items-center gap-1">
+                                    Arabica Coffee <span class="material-symbols-outlined text-[14px] cursor-pointer" data-icon="close">close</span>
+</span>
+<button class="text-primary font-label-md text-xs hover:underline" type="button">+ Add Product</button>
+</div>
+</div>
+<div class="grid grid-cols-2 gap-md">
+<div>
+<label class="block font-label-md text-label-md text-on-surface-variant mb-base">Start Date</label>
+<input class="w-full ghost-border bg-background px-4 py-3 rounded-lg text-sm outline-none" type="date"/>
+</div>
+<div>
+<label class="block font-label-md text-label-md text-on-surface-variant mb-base">End Date</label>
+<input class="w-full ghost-border bg-background px-4 py-3 rounded-lg text-sm outline-none" type="date"/>
+</div>
+</div>
+<div>
+<label class="block font-label-md text-label-md text-on-surface-variant mb-base">Usage Limit (Stock)</label>
+<input class="w-full ghost-border bg-background px-4 py-3 rounded-lg outline-none" placeholder="500" type="number"/>
+<p class="text-[10px] text-on-surface-variant mt-1 italic flex items-center gap-1">
+<span class="material-symbols-outlined text-[12px]" data-icon="info">info</span> Promotion ends when stock is depleted.
+                            </p>
+</div>
+<button class="w-full bg-primary text-on-primary py-4 rounded-xl font-bold hover:opacity-90 transition-opacity flex justify-center items-center gap-2">
+<span class="material-symbols-outlined" data-icon="rocket_launch">rocket_launch</span>
+                            Launch Promotion
+                        </button>
+<div class="flex items-center justify-center gap-2 py-2">
+<span class="material-symbols-outlined text-green-600 text-[16px]" data-icon="verified_user">verified_user</span>
+<span class="text-body-sm font-label-md text-on-surface-variant">Secure Marketplace Verification</span>
+</div>
+</form>
+</div>
+</div>
+<!-- Right: Active Promotions & History -->
+<div class="xl:col-span-8 space-y-xl">
+<!-- Active Promotions -->
+<div>
+<div class="flex items-center justify-between mb-lg">
+<h2 class="font-headline-md text-headline-md text-on-surface">Active Promotions</h2>
+<span class="bg-primary-fixed text-on-primary-fixed-variant px-3 py-1 rounded-full text-xs font-bold">4 Running</span>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-md">
+<!-- Promo Card 1 -->
+<div class="bg-white ghost-border rounded-xl overflow-hidden group">
+<div class="relative h-24 bg-surface-container-highest overflow-hidden">
+<img alt="Beans Promotion" class="w-full h-full object-cover opacity-60 group-hover:scale-105 transition-transform duration-500" data-alt="A macro photograph showing high-quality, dried Rwandan Grade A beans in a rustic woven basket. The lighting is warm and natural, highlighting the textures and earthy tones of the beans. The background is a clean marketplace setting with soft wooden surfaces, creating a reliable and grounded commercial atmosphere for an active promotion card." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDfaGlfo8L6ErXAeyYtRjp7_FM6pe1G6ZdI5uuFPmdWJNeFBt4QSRpdIRf1nu7UsWwkUosAWU5ObX2fu2Crr2RQV3MSVULk7FH4UWp94qOsSw9i-RdzPswiJ9_HBcjBKmb5u4_2iBK3-_pqOQnOJk1mkawvoUwKVCyiVQGdrhWaA0CiRmQoYzv-ioH79DjVeegslxeSMNwPWHZfHTIHiNqagdyB6CG7egi1gQAFSUm2W6pXo8odE0UqnryegCsIU1DQdUi7SRsIYv4y"/>
+<div class="absolute top-2 right-2 flex gap-2">
+<span class="bg-green-100 text-green-800 text-[10px] font-bold px-2 py-1 rounded uppercase tracking-wider">Live</span>
+<button class="bg-white/90 p-1 rounded-full shadow-sm hover:bg-white transition-colors">
+<span class="material-symbols-outlined text-[18px] text-on-surface" data-icon="more_vert">more_vert</span>
+</button>
+</div>
+<div class="absolute bottom-2 left-3">
+<span class="bg-primary-container text-on-primary-container px-3 py-1 rounded-lg text-lg font-bold">20% OFF</span>
+</div>
+</div>
+<div class="p-md">
+<h4 class="font-bold text-on-surface">Bean Season Flash Sale</h4>
+<p class="text-body-sm text-on-surface-variant mb-md">Grade A Dried Beans, Red Kidney Beans</p>
+<div class="flex justify-between items-center text-xs font-label-md text-on-surface-variant border-t border-outline-variant pt-md">
+<div class="flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]" data-icon="calendar_today">calendar_today</span>
+                                        Oct 12 - Oct 20
+                                    </div>
+<div class="flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]" data-icon="inventory">inventory</span>
+                                        124/500 left
+                                    </div>
+</div>
+<div class="mt-md flex gap-2">
+<button class="flex-1 border border-primary text-primary py-2 rounded-lg text-sm font-bold hover:bg-primary/5 transition-colors">Pause</button>
+<button class="flex-1 bg-surface-variant text-on-surface-variant py-2 rounded-lg text-sm font-bold hover:bg-surface-container-highest transition-colors">Edit</button>
+</div>
+</div>
+</div>
+<!-- Promo Card 2 -->
+<div class="bg-white ghost-border rounded-xl overflow-hidden group">
+<div class="relative h-24 bg-surface-container-highest overflow-hidden">
+<img alt="Coffee Promotion" class="w-full h-full object-cover opacity-60 group-hover:scale-105 transition-transform duration-500" data-alt="A professional flat-lay photograph of dark-roasted Rwandan coffee beans spread across a light marble surface. The shot is high-contrast with deep brown tones and bright white highlights, capturing the premium quality of the product. The style is modern and minimal, designed to represent a high-end seller promotion for Arabica coffee." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAT8o2h09INI1XuSySj-H5O7-LdREZf4s6H52D58UVO5vhpdvF4WM6_GjgvLITaoSAHcI83yNTBpH3ov6NoEW9ocHYOYpO6u9t02SoHm-gG88LOF6DLvns7gftsOhrmWg9ZNwRdCc2plyTc7W68cZyZvqVjpcmpDkoe4lPusfyiXN7o8aj-eKMVcRyvomV4Yu4GXYlvbeF-qdjhcmtcstJ_JsY786LkbZJulqRWjGuy2vHpKiaP8-sRVQ6_BGPWE6ZsTalVK4glYRGe"/>
+<div class="absolute top-2 right-2 flex gap-2">
+<span class="bg-green-100 text-green-800 text-[10px] font-bold px-2 py-1 rounded uppercase tracking-wider">Live</span>
+<button class="bg-white/90 p-1 rounded-full shadow-sm">
+<span class="material-symbols-outlined text-[18px] text-on-surface" data-icon="more_vert">more_vert</span>
+</button>
+</div>
+<div class="absolute bottom-2 left-3">
+<span class="bg-primary-container text-on-primary-container px-3 py-1 rounded-lg text-lg font-bold">RWF 5k OFF</span>
+</div>
+</div>
+<div class="p-md">
+<h4 class="font-bold text-on-surface">Coffee Morning Special</h4>
+<p class="text-body-sm text-on-surface-variant mb-md">Premium Arabica Grounds (500g)</p>
+<div class="flex justify-between items-center text-xs font-label-md text-on-surface-variant border-t border-outline-variant pt-md">
+<div class="flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]" data-icon="calendar_today">calendar_today</span>
+                                        Oct 15 - Oct 30
+                                    </div>
+<div class="flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]" data-icon="inventory">inventory</span>
+                                        45/200 left
+                                    </div>
+</div>
+<div class="mt-md flex gap-2">
+<button class="flex-1 border border-primary text-primary py-2 rounded-lg text-sm font-bold hover:bg-primary/5 transition-colors">Pause</button>
+<button class="flex-1 bg-surface-variant text-on-surface-variant py-2 rounded-lg text-sm font-bold hover:bg-surface-container-highest transition-colors">Edit</button>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Expired Deals History -->
+<div>
+<h2 class="font-headline-md text-headline-md text-on-surface mb-lg">Promotion History</h2>
+<div class="bg-white ghost-border rounded-xl overflow-hidden">
+<table class="w-full text-left border-collapse">
+<thead>
+<tr class="bg-surface-container-low border-b border-outline-variant">
+<th class="p-md font-label-md text-label-md text-on-surface-variant">Deal Name</th>
+<th class="p-md font-label-md text-label-md text-on-surface-variant">Type</th>
+<th class="p-md font-label-md text-label-md text-on-surface-variant">Date Range</th>
+<th class="p-md font-label-md text-label-md text-on-surface-variant">Total Rev</th>
+<th class="p-md font-label-md text-label-md text-on-surface-variant">Action</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-outline-variant">
+<tr class="hover:bg-surface-container-low transition-colors">
+<td class="p-md">
+<span class="font-bold text-on-surface">Summer Bulk Discount</span>
+<div class="text-xs text-on-surface-variant">Maize Flour (50kg)</div>
+</td>
+<td class="p-md"><span class="bg-surface-variant px-2 py-1 rounded text-xs">10% Fixed</span></td>
+<td class="p-md text-table-data font-table-data">Aug 01 - Aug 15</td>
+<td class="p-md text-table-data font-table-data">RWF 420k</td>
+<td class="p-md">
+<button class="text-primary font-bold text-xs flex items-center gap-1">
+<span class="material-symbols-outlined text-[16px]" data-icon="replay">replay</span>
+                                            Relaunch
+                                        </button>
+</td>
+</tr>
+<tr class="bg-background/50 hover:bg-surface-container-low transition-colors">
+<td class="p-md">
+<span class="font-bold text-on-surface">Eid Al-Adha Promo</span>
+<div class="text-xs text-on-surface-variant">Wholesale Rice</div>
+</td>
+<td class="p-md"><span class="bg-surface-variant px-2 py-1 rounded text-xs">RWF 2k Fixed</span></td>
+<td class="p-md text-table-data font-table-data">Jul 10 - Jul 20</td>
+<td class="p-md text-table-data font-table-data">RWF 890k</td>
+<td class="p-md">
+<button class="text-primary font-bold text-xs flex items-center gap-1">
+<span class="material-symbols-outlined text-[16px]" data-icon="replay">replay</span>
+                                            Relaunch
+                                        </button>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+</div>
+</div>
+</main>
+<!-- BottomNavBar (Mobile Only) -->
+<nav class="lg:hidden fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-4 py-2 bg-surface border-t border-outline-variant shadow-lg rounded-t-xl">
+<a class="flex flex-col items-center justify-center text-on-surface-variant" href="#">
+<span class="material-symbols-outlined" data-icon="home">home</span>
+<span class="font-label-md text-[10px]">Home</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant" href="#">
+<span class="material-symbols-outlined" data-icon="search">search</span>
+<span class="font-label-md text-[10px]">Search</span>
+</a>
+<a class="flex flex-col items-center justify-center bg-secondary-container text-on-secondary-container rounded-full px-4 py-1 scale-90 duration-150" href="#">
+<span class="material-symbols-outlined" data-icon="receipt_long" style="font-variation-settings: 'FILL' 1;">receipt_long</span>
+<span class="font-label-md text-[10px]">Orders</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant" href="#">
+<span class="material-symbols-outlined" data-icon="person">person</span>
+<span class="font-label-md text-[10px]">Account</span>
+</a>
+</nav>
+<!-- Contextual FAB -->
+<button class="fixed bottom-20 right-6 md:bottom-10 md:right-10 w-14 h-14 bg-primary text-white rounded-full shadow-xl flex items-center justify-center hover:scale-110 transition-transform lg:hidden">
+<span class="material-symbols-outlined" data-icon="add">add</span>
+</button>
+<script>
+        // Micro-interaction for form buttons and promo toggles
+        document.querySelectorAll('button').forEach(button => {
+            button.addEventListener('mousedown', () => {
+                button.classList.add('scale-95');
+            });
+            button.addEventListener('mouseup', () => {
+                button.classList.remove('scale-95');
+            });
+        });
+
+        // Simple mock toggle for "Pause/Resume" buttons
+        const pauseButtons = document.querySelectorAll('.flex-1.border-primary');
+        pauseButtons.forEach(btn => {
+            btn.addEventListener('click', function() {
+                const isPaused = this.textContent === 'Resume';
+                this.textContent = isPaused ? 'Pause' : 'Resume';
+                const statusBadge = this.closest('.bg-white').querySelector('.bg-green-100');
+                if (statusBadge) {
+                    if (!isPaused) {
+                        statusBadge.textContent = 'Paused';
+                        statusBadge.classList.replace('bg-green-100', 'bg-gray-100');
+                        statusBadge.classList.replace('text-green-800', 'text-gray-800');
+                    } else {
+                        statusBadge.textContent = 'Live';
+                        statusBadge.classList.replace('bg-gray-100', 'bg-green-100');
+                        statusBadge.classList.replace('text-gray-800', 'text-green-800');
+                    }
+                }
+            });
+        });
+    </script>
+</body></html>

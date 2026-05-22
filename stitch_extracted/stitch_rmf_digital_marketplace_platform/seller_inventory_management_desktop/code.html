@@ -1,0 +1,427 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>RMF Seller Inventory | Marketplace Portal</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Work+Sans:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@500&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "inverse-surface": "#303030",
+                        "secondary-fixed-dim": "#ffb598",
+                        "outline-variant": "#e2bfb0",
+                        "background": "#fbf9f8",
+                        "on-secondary-container": "#561b00",
+                        "on-primary-fixed": "#351000",
+                        "on-surface": "#1b1c1c",
+                        "surface": "#fbf9f8",
+                        "tertiary": "#005ac2",
+                        "secondary": "#a63b00",
+                        "on-secondary-fixed-variant": "#7f2b00",
+                        "error-container": "#ffdad6",
+                        "tertiary-container": "#5f97ff",
+                        "on-tertiary-fixed": "#001a42",
+                        "on-surface-variant": "#5a4136",
+                        "surface-container-lowest": "#ffffff",
+                        "tertiary-fixed-dim": "#adc6ff",
+                        "on-error-container": "#93000a",
+                        "on-tertiary-container": "#002f6b",
+                        "on-tertiary": "#ffffff",
+                        "on-secondary": "#ffffff",
+                        "secondary-container": "#fc671d",
+                        "on-background": "#1b1c1c",
+                        "primary-fixed": "#ffdbcc",
+                        "surface-bright": "#fbf9f8",
+                        "surface-container-low": "#f5f3f3",
+                        "on-tertiary-fixed-variant": "#004395",
+                        "on-primary-fixed-variant": "#7a3000",
+                        "secondary-fixed": "#ffdbce",
+                        "surface-container": "#efeded",
+                        "on-primary-container": "#572000",
+                        "error": "#ba1a1a",
+                        "tertiary-fixed": "#d8e2ff",
+                        "primary-fixed-dim": "#ffb693",
+                        "surface-container-high": "#e9e8e7",
+                        "on-secondary-fixed": "#370e00",
+                        "primary-container": "#ff6b00",
+                        "surface-tint": "#a04100",
+                        "surface-dim": "#dbdad9",
+                        "surface-variant": "#e3e2e2",
+                        "inverse-primary": "#ffb693",
+                        "primary": "#a04100",
+                        "surface-container-highest": "#e3e2e2",
+                        "on-primary": "#ffffff",
+                        "outline": "#8e7164",
+                        "on-error": "#ffffff",
+                        "inverse-on-surface": "#f2f0f0"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.125rem",
+                        "lg": "0.25rem",
+                        "xl": "0.5rem",
+                        "full": "0.75rem"
+                    },
+                    "spacing": {
+                        "md": "16px",
+                        "gutter": "16px",
+                        "margin-desktop": "32px",
+                        "sm": "8px",
+                        "base": "4px",
+                        "xl": "40px",
+                        "xs": "4px",
+                        "margin-mobile": "16px",
+                        "lg": "24px"
+                    },
+                    "fontFamily": {
+                        "headline-md": ["Work Sans"],
+                        "headline-lg": ["Work Sans"],
+                        "table-data": ["Work Sans"],
+                        "body-sm": ["Work Sans"],
+                        "label-md": ["JetBrains Mono"],
+                        "body-md": ["Work Sans"],
+                        "body-lg": ["Work Sans"],
+                        "headline-lg-mobile": ["Work Sans"]
+                    },
+                    "fontSize": {
+                        "headline-md": ["20px", {"lineHeight": "28px", "fontWeight": "600"}],
+                        "headline-lg": ["30px", {"lineHeight": "38px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                        "table-data": ["13px", {"lineHeight": "18px", "fontWeight": "500"}],
+                        "body-sm": ["12px", {"lineHeight": "16px", "fontWeight": "400"}],
+                        "label-md": ["12px", {"lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "500"}],
+                        "body-md": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                        "body-lg": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                        "headline-lg-mobile": ["24px", {"lineHeight": "30px", "letterSpacing": "-0.01em", "fontWeight": "700"}]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .hide-scrollbar::-webkit-scrollbar { display: none; }
+        .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    </style>
+</head>
+<body class="bg-background text-on-surface font-body-md overflow-hidden h-screen flex flex-col">
+<!-- TopNavBar -->
+<nav class="fixed top-0 left-0 w-full z-50 flex justify-between items-center px-margin-desktop h-16 bg-surface border-b border-outline-variant">
+<div class="flex items-center gap-xl">
+<span class="text-headline-md font-headline-md font-bold text-primary">RMF</span>
+<div class="hidden md:flex items-center space-x-md h-full">
+<a class="h-full flex items-center px-base text-on-surface-variant hover:bg-surface-container-low transition-colors font-label-md text-label-md" href="#">Dashboard</a>
+<a class="h-full flex items-center px-base text-primary border-b-2 border-primary font-label-md text-label-md opacity-80 transition-opacity" href="#">Inventory</a>
+<a class="h-full flex items-center px-base text-on-surface-variant hover:bg-surface-container-low transition-colors font-label-md text-label-md" href="#">Orders</a>
+</div>
+</div>
+<div class="flex items-center gap-md">
+<button class="p-base rounded-full hover:bg-surface-container-low transition-colors">
+<span class="material-symbols-outlined text-primary">location_on</span>
+</button>
+<button class="p-base rounded-full hover:bg-surface-container-low transition-colors">
+<span class="material-symbols-outlined text-primary">notifications</span>
+</button>
+<div class="w-8 h-8 rounded-full overflow-hidden border border-outline-variant">
+<img alt="User Account" data-alt="A professional headshot of a Rwandan male entrepreneur in a clean white shirt, against a soft-focus office background. The lighting is bright and warm, reflecting a professional and reliable business atmosphere. The image is crisp and high-contrast, fitting the corporate modern aesthetic of the brand." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAfMSZTbt-2his0ENT_dfe9EMxAQlQaC3Boy06CoZK1zm_ChwQ-TCNOAQBOACYJTRkCAp0p3sHjUOiDlOqC6oxwrjeIvrX1c5l2v4etY97Fdug-qc7hbuUDSr6J5TzpON05DekVLvg5hmrKw-QvPqzM2gF8gnD-RTBwCRVWJN0mCvP41hTWnBf9WMhv8oP2lg52BGvnn7JLW9jHBhzBzY06Z_r7uK5TDkvFmJ2VuzZ4OTBAXdE0ipOMThXV3PD0rwrHCmJMIxdZnFvo"/>
+</div>
+</div>
+</nav>
+<div class="flex flex-1 pt-16 overflow-hidden">
+<!-- SideNavBar -->
+<aside class="hidden lg:flex flex-col w-64 h-full p-md space-y-base bg-surface-container-lowest border-r border-outline-variant">
+<div class="mb-lg px-base">
+<h2 class="font-headline-md text-headline-md font-bold text-primary">Marketplace Portal</h2>
+<p class="font-body-md text-body-md text-on-surface-variant">Operational View</p>
+</div>
+<nav class="flex-1 space-y-xs overflow-y-auto hide-scrollbar">
+<a class="flex items-center gap-md p-md rounded-lg text-on-surface-variant hover:bg-surface-container-high transition-all" href="#">
+<span class="material-symbols-outlined">dashboard</span>
+<span class="font-label-md text-label-md">Dashboard</span>
+</a>
+<a class="flex items-center gap-md p-md rounded-lg text-on-surface-variant hover:bg-surface-container-high transition-all" href="#">
+<span class="material-symbols-outlined">receipt_long</span>
+<span class="font-label-md text-label-md">Orders</span>
+</a>
+<a class="flex items-center gap-md p-md rounded-lg bg-primary-container text-on-primary-container font-bold scale-95 transition-transform" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">inventory</span>
+<span class="font-label-md text-label-md">Inventory</span>
+</a>
+<a class="flex items-center gap-md p-md rounded-lg text-on-surface-variant hover:bg-surface-container-high transition-all" href="#">
+<span class="material-symbols-outlined">handshake</span>
+<span class="font-label-md text-label-md">Negotiations</span>
+</a>
+<a class="flex items-center gap-md p-md rounded-lg text-on-surface-variant hover:bg-surface-container-high transition-all" href="#">
+<span class="material-symbols-outlined">local_shipping</span>
+<span class="font-label-md text-label-md">Logistics</span>
+</a>
+<a class="flex items-center gap-md p-md rounded-lg text-on-surface-variant hover:bg-surface-container-high transition-all" href="#">
+<span class="material-symbols-outlined">analytics</span>
+<span class="font-label-md text-label-md">Analytics</span>
+</a>
+</nav>
+<div class="pt-md border-t border-outline-variant space-y-xs">
+<a class="flex items-center gap-md p-md rounded-lg text-on-surface-variant hover:bg-surface-container-high transition-all" href="#">
+<span class="material-symbols-outlined">settings</span>
+<span class="font-label-md text-label-md">Settings</span>
+</a>
+<button class="w-full mt-md bg-primary text-on-primary py-sm px-md rounded-lg font-label-md text-label-md">Switch Role</button>
+</div>
+</aside>
+<!-- Main Content Area -->
+<main class="flex-1 flex flex-col h-full bg-background relative overflow-hidden">
+<!-- Content Header -->
+<header class="bg-surface-container-low px-margin-desktop py-lg border-b border-outline-variant">
+<div class="flex flex-col md:flex-row md:items-center justify-between gap-md">
+<div>
+<h1 class="font-headline-lg text-headline-lg text-on-surface">Product Inventory</h1>
+<p class="text-on-surface-variant font-body-md">Manage 142 products across your warehouse.</p>
+</div>
+<div class="flex items-center gap-sm">
+<button class="flex items-center gap-base px-md py-sm bg-surface text-primary border border-primary rounded-lg font-label-md text-label-md hover:bg-primary-fixed transition-colors">
+<span class="material-symbols-outlined text-[18px]">file_download</span>
+                            Export CSV
+                        </button>
+<button class="flex items-center gap-base px-md py-sm bg-primary text-on-primary rounded-lg font-label-md text-label-md hover:opacity-90 transition-opacity">
+<span class="material-symbols-outlined text-[18px]">add</span>
+                            Add Product
+                        </button>
+</div>
+</div>
+<!-- Bulk Actions & Filters -->
+<div class="mt-lg flex flex-wrap items-center gap-md p-sm bg-surface-container-lowest rounded-xl border border-outline-variant">
+<div class="flex items-center gap-sm pr-md border-r border-outline-variant">
+<input class="w-4 h-4 rounded-sm border-outline text-primary focus:ring-primary" type="checkbox"/>
+<span class="font-label-md text-label-md text-on-surface-variant">0 Selected</span>
+</div>
+<div class="flex items-center gap-sm">
+<button class="px-sm py-xs text-on-surface-variant font-label-md text-label-md hover:bg-surface-container-low rounded">Update Stock</button>
+<button class="px-sm py-xs text-on-surface-variant font-label-md text-label-md hover:bg-surface-container-low rounded">Change Price</button>
+<button class="px-sm py-xs text-on-surface-variant font-label-md text-label-md hover:bg-surface-container-low rounded">Set Status</button>
+</div>
+<div class="ml-auto flex items-center gap-sm">
+<div class="relative">
+<span class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+<span class="material-symbols-outlined text-on-surface-variant text-[20px]">search</span>
+</span>
+<input class="pl-10 pr-4 py-xs bg-surface border border-outline-variant rounded-lg text-body-md focus:outline-none focus:border-primary w-64" placeholder="Search by SKU or name..." type="text"/>
+</div>
+</div>
+</div>
+</header>
+<!-- Inventory List -->
+<div class="flex-1 overflow-y-auto px-margin-desktop py-md space-y-md hide-scrollbar" id="inventory-list">
+<!-- Product Card 1 -->
+<div class="group bg-surface-container-lowest border border-outline-variant rounded-xl overflow-hidden hover:border-primary transition-colors">
+<div class="flex items-center p-md gap-lg">
+<input class="w-4 h-4 rounded-sm border-outline text-primary focus:ring-primary" type="checkbox"/>
+<div class="w-16 h-16 rounded-lg overflow-hidden bg-surface-container border border-outline-variant shrink-0">
+<img alt="Product Thumbnail" data-alt="A close-up, high-detail photograph of raw, sun-dried Rwandan coffee beans in a woven basket. The warm morning sunlight highlights the earthy browns and textures of the beans. The visual style is grounded and authentic, using a palette of rich ochres and whites, emphasizing the agricultural excellence of RMF products." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAEXkG300A5zoJJLz1f9nc012U5LiqaSNmnCzHFAtQOx4Elr5MXeXDEWyhcwo5ejCu_MMfr-gNocJgP-vgu8nxRANTZVAcoEcPFLiLDEDmTtj9nPqT4ZNXH_Ln1kypjnlw0eExib2iThWPjSXa5oYLJVuR6N9ZYWcFsRi_RbGR99rtgovaxw2XeS7fnxILm86siz33Xd8n3Ws-5TlfC7EB4YQcnEnQhG8S56ma_DFPoIFaIlkt7Ig2XE6c6WxUoKtu3ZLSB2hNzNDet"/>
+</div>
+<div class="flex-1 min-w-0">
+<div class="flex items-center gap-sm text-on-surface-variant text-body-sm mb-xs">
+<span>Produce</span>
+<span class="material-symbols-outlined text-[14px]">chevron_right</span>
+<span>Export Grade</span>
+</div>
+<h3 class="font-headline-md text-headline-md text-on-surface truncate">Arabica Specialty Coffee (Gikondo)</h3>
+</div>
+<div class="w-40">
+<div class="font-label-md text-label-md text-on-surface-variant">Total Stock</div>
+<div class="font-headline-md text-headline-md text-on-surface">1,240 <span class="text-body-sm font-normal">kg</span></div>
+</div>
+<div class="w-40">
+<div class="flex items-center gap-base px-sm py-xs bg-green-50 text-green-700 rounded-full w-fit">
+<span class="w-2 h-2 rounded-full bg-green-500"></span>
+<span class="font-label-md text-label-md">Active</span>
+</div>
+</div>
+<button class="p-sm rounded-lg hover:bg-surface-container transition-colors" onclick="toggleVariants('v1')">
+<span class="material-symbols-outlined" id="icon-v1">expand_more</span>
+</button>
+</div>
+<!-- Variants Table (Hidden by default) -->
+<div class="hidden border-t border-outline-variant bg-surface-container-low px-xl py-md" id="v1">
+<table class="w-full text-left font-table-data text-table-data">
+<thead>
+<tr class="text-on-surface-variant border-b border-outline-variant">
+<th class="pb-sm font-semibold">SKU</th>
+<th class="pb-sm font-semibold">Variant Details</th>
+<th class="pb-sm font-semibold">Price (RWF)</th>
+<th class="pb-sm font-semibold">In Stock</th>
+<th class="pb-sm text-right font-semibold">Actions</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-outline-variant">
+<tr class="hover:bg-surface-container transition-colors">
+<td class="py-sm">COF-001-A</td>
+<td class="py-sm">250g Vacuum Pack</td>
+<td class="py-sm">4,500</td>
+<td class="py-sm">400</td>
+<td class="py-sm text-right">
+<button class="text-primary hover:underline">Edit</button>
+</td>
+</tr>
+<tr class="hover:bg-surface-container transition-colors">
+<td class="py-sm">COF-001-B</td>
+<td class="py-sm">1kg Export Pack</td>
+<td class="py-sm">16,200</td>
+<td class="py-sm">840</td>
+<td class="py-sm text-right">
+<button class="text-primary hover:underline">Edit</button>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<!-- Product Card 2 -->
+<div class="group bg-surface-container-lowest border border-outline-variant rounded-xl overflow-hidden hover:border-primary transition-colors">
+<div class="flex items-center p-md gap-lg">
+<input class="w-4 h-4 rounded-sm border-outline text-primary focus:ring-primary" type="checkbox"/>
+<div class="w-16 h-16 rounded-lg overflow-hidden bg-surface-container border border-outline-variant shrink-0">
+<img alt="Product Thumbnail" data-alt="A clean, minimalist studio photograph of a stack of premium woven textile patterns in vibrant Rwandan prints. The fabric textures are rich and detailed, presented under soft, professional lighting. The color palette features deep reds, oranges, and earthy yellows, maintaining a high-utility, professional marketplace aesthetic." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDNOhaMeGJDaK6TwMFDxZCYllLEoVxfOpLFxAL3HWcm30Bze_FCIx3eTzUz_IhqRIiWEze_rCyQjdmcpaioQfobw-1ycBHetwNt7qInWuNUcsAOv-MGgWpnuvzwIhuT44yiUc8C9ojN142Vce1MlwUWwWpDaPxvNDzKo-f4Ik2t987cpO8S86NLNEiO44e45NTwe1_NqSoxYM1NnDlP_wniXUjNR9-wpCOeoCj4Yz1RPO_MFbo47LNQtQBaM2Z9QTBBmlUrmuWFuKl3"/>
+</div>
+<div class="flex-1 min-w-0">
+<div class="flex items-center gap-sm text-on-surface-variant text-body-sm mb-xs">
+<span>Textiles</span>
+<span class="material-symbols-outlined text-[14px]">chevron_right</span>
+<span>Traditional</span>
+</div>
+<h3 class="font-headline-md text-headline-md text-on-surface truncate">Imigongo Inspired Printed Fabric</h3>
+</div>
+<div class="w-40">
+<div class="font-label-md text-label-md text-on-surface-variant">Total Stock</div>
+<div class="font-headline-md text-headline-md text-on-surface text-error">0 <span class="text-body-sm font-normal">meters</span></div>
+</div>
+<div class="w-40">
+<div class="flex items-center gap-base px-sm py-xs bg-red-50 text-red-700 rounded-full w-fit">
+<span class="w-2 h-2 rounded-full bg-red-500"></span>
+<span class="font-label-md text-label-md">Out of Stock</span>
+</div>
+</div>
+<button class="p-sm rounded-lg hover:bg-surface-container transition-colors" onclick="toggleVariants('v2')">
+<span class="material-symbols-outlined" id="icon-v2">expand_more</span>
+</button>
+</div>
+<div class="hidden border-t border-outline-variant bg-surface-container-low px-xl py-md text-center text-on-surface-variant italic" id="v2">
+                        No variant details available for out of stock items.
+                    </div>
+</div>
+<!-- Product Card 3 -->
+<div class="group bg-surface-container-lowest border border-outline-variant rounded-xl overflow-hidden hover:border-primary transition-colors">
+<div class="flex items-center p-md gap-lg">
+<input class="w-4 h-4 rounded-sm border-outline text-primary focus:ring-primary" type="checkbox"/>
+<div class="w-16 h-16 rounded-lg overflow-hidden bg-surface-container border border-outline-variant shrink-0">
+<img alt="Product Thumbnail" data-alt="Product photography of handmade artisanal leather sandals on a white marble surface. The sandals show impeccable craftsmanship with intricate stitching details. The lighting is crisp and bright, creating a clean, high-end commercial feel. The palette is dominated by rich tan leather tones against a neutral background." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCLeoxR_9VHu963jInF4JlgWmn8bkt_NEYmBx47cLFS9lEdyB1Fr6eB9OFNPxQuar8jzYzWlK1OFCONvYLjn5KGhbsoKmJ-wXoR5H0j0SJL_MuTfOjTAFW1xbsjlmrU955bn6kkP48HU_IDUgaiqjL4YvGoLqSjpeZB3UyLWV4eX5qZUStvSLhi2GQsn4Ii_GNjGGpxddpjraRGV8XBNrpJ92jng4bNOYGhrmDfkbZEwPHt-yBKIzENiBXvIcz2xXdmF-MSPsugHbne"/>
+</div>
+<div class="flex-1 min-w-0">
+<div class="flex items-center gap-sm text-on-surface-variant text-body-sm mb-xs">
+<span>Footwear</span>
+<span class="material-symbols-outlined text-[14px]">chevron_right</span>
+<span>Handmade</span>
+</div>
+<h3 class="font-headline-md text-headline-md text-on-surface truncate">Hand-Stitched Safari Sandals</h3>
+</div>
+<div class="w-40">
+<div class="font-label-md text-label-md text-on-surface-variant">Total Stock</div>
+<div class="font-headline-md text-headline-md text-on-surface">45 <span class="text-body-sm font-normal">pairs</span></div>
+</div>
+<div class="w-40">
+<div class="flex items-center gap-base px-sm py-xs bg-blue-50 text-blue-700 rounded-full w-fit">
+<span class="w-2 h-2 rounded-full bg-blue-500"></span>
+<span class="font-label-md text-label-md">Awaiting Approval</span>
+</div>
+</div>
+<button class="p-sm rounded-lg hover:bg-surface-container transition-colors" onclick="toggleVariants('v3')">
+<span class="material-symbols-outlined" id="icon-v3">expand_more</span>
+</button>
+</div>
+<div class="hidden border-t border-outline-variant bg-surface-container-low px-xl py-md" id="v3">
+<div class="flex items-center justify-between p-sm border border-dashed border-outline rounded-lg bg-surface-container-lowest">
+<p class="font-body-md text-on-surface-variant">Inventory details are hidden until quality verification is complete.</p>
+<span class="font-label-md text-label-md text-tertiary">Estimated: 24h</span>
+</div>
+</div>
+</div>
+<!-- Infinite Scroll Loading Indicator -->
+<div class="flex flex-col items-center py-xl space-y-md" id="loading">
+<div class="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
+<p class="font-label-md text-label-md text-on-surface-variant uppercase tracking-widest">Loading More Products</p>
+</div>
+</div>
+<!-- Trust Indicator / Sticky Footer -->
+<footer class="bg-surface-container-high px-margin-desktop py-sm flex items-center justify-between border-t border-outline-variant">
+<div class="flex items-center gap-base text-on-surface-variant text-body-sm">
+<span class="material-symbols-outlined text-[16px] text-primary" style="font-variation-settings: 'FILL' 1;">verified_user</span>
+<span>Secure Inventory Management System • RMF Verified</span>
+</div>
+<div class="text-body-sm text-on-surface-variant">
+                    Last synced: Just now
+                </div>
+</footer>
+</main>
+</div>
+<!-- BottomNavBar (Mobile Only) -->
+<nav class="lg:hidden fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-4 py-2 bg-surface border-t border-outline-variant shadow-lg rounded-t-xl">
+<a class="flex flex-col items-center justify-center text-on-surface-variant" href="#">
+<span class="material-symbols-outlined">home</span>
+<span class="font-label-md text-label-md">Home</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant" href="#">
+<span class="material-symbols-outlined">search</span>
+<span class="font-label-md text-label-md">Search</span>
+</a>
+<a class="flex flex-col items-center justify-center bg-secondary-container text-on-secondary-container rounded-full px-4 py-1 scale-90 duration-150" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">inventory</span>
+<span class="font-label-md text-label-md">Inventory</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant" href="#">
+<span class="material-symbols-outlined">person</span>
+<span class="font-label-md text-label-md">Account</span>
+</a>
+</nav>
+<script>
+        function toggleVariants(id) {
+            const el = document.getElementById(id);
+            const icon = document.getElementById('icon-' + id);
+            if (el.classList.contains('hidden')) {
+                el.classList.remove('hidden');
+                icon.innerText = 'expand_less';
+                icon.classList.add('text-primary');
+            } else {
+                el.classList.add('hidden');
+                icon.innerText = 'expand_more';
+                icon.classList.remove('text-primary');
+            }
+        }
+
+        // Mock Infinite Scroll
+        const list = document.getElementById('inventory-list');
+        list.addEventListener('scroll', () => {
+            if (list.scrollTop + list.clientHeight >= list.scrollHeight - 20) {
+                // Here we would normally fetch new items
+                console.log('Fetching more inventory...');
+            }
+        });
+
+        // Toggle Active State Micro-interaction
+        document.querySelectorAll('aside nav a').forEach(link => {
+            link.addEventListener('click', (e) => {
+                document.querySelectorAll('aside nav a').forEach(l => {
+                    l.classList.remove('bg-primary-container', 'text-on-primary-container', 'font-bold', 'scale-95');
+                    l.classList.add('text-on-surface-variant');
+                });
+                link.classList.add('bg-primary-container', 'text-on-primary-container', 'font-bold', 'scale-95');
+                link.classList.remove('text-on-surface-variant');
+            });
+        });
+    </script>
+</body></html>

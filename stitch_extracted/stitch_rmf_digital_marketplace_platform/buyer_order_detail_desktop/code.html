@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Order Details - RMF Facilitator</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Work+Sans:wght@400;500;600;700;800;900&amp;family=JetBrains+Mono:wght@500&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<!-- Tailwind Config -->
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "surface-container": "#efeded",
+                    "error": "#ba1a1a",
+                    "surface-tint": "#a04100",
+                    "on-primary-fixed-variant": "#7a3000",
+                    "surface-container-highest": "#e3e2e2",
+                    "on-secondary-fixed": "#370e00",
+                    "primary": "#a04100",
+                    "on-primary-fixed": "#351000",
+                    "secondary-container": "#fc671d",
+                    "on-secondary": "#ffffff",
+                    "surface-container-lowest": "#ffffff",
+                    "on-surface": "#1b1c1c",
+                    "on-secondary-fixed-variant": "#7f2b00",
+                    "outline": "#8e7164",
+                    "on-tertiary-container": "#002f6b",
+                    "inverse-surface": "#303030",
+                    "on-tertiary": "#ffffff",
+                    "on-surface-variant": "#5a4136",
+                    "tertiary-fixed": "#d8e2ff",
+                    "secondary-fixed-dim": "#ffb598",
+                    "on-primary": "#ffffff",
+                    "primary-fixed": "#ffdbcc",
+                    "primary-container": "#ff6b00",
+                    "on-primary-container": "#572000",
+                    "tertiary-fixed-dim": "#adc6ff",
+                    "on-tertiary-fixed": "#001a42",
+                    "on-secondary-container": "#561b00",
+                    "inverse-primary": "#ffb693",
+                    "on-error": "#ffffff",
+                    "tertiary": "#005ac2",
+                    "primary-fixed-dim": "#ffb693",
+                    "surface-dim": "#dbdad9",
+                    "inverse-on-surface": "#f2f0f0",
+                    "error-container": "#ffdad6",
+                    "on-error-container": "#93000a",
+                    "secondary": "#a63b00",
+                    "on-tertiary-fixed-variant": "#004395",
+                    "surface": "#fbf9f8",
+                    "surface-variant": "#e3e2e2",
+                    "tertiary-container": "#5f97ff",
+                    "surface-container-low": "#f5f3f3",
+                    "secondary-fixed": "#ffdbce",
+                    "on-background": "#1b1c1c",
+                    "background": "#fbf9f8",
+                    "surface-container-high": "#e9e8e7",
+                    "surface-bright": "#fbf9f8",
+                    "outline-variant": "#e2bfb0"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.125rem",
+                    "lg": "0.25rem",
+                    "xl": "0.5rem",
+                    "full": "0.75rem"
+            },
+            "spacing": {
+                    "margin-mobile": "16px",
+                    "margin-desktop": "32px",
+                    "gutter": "16px",
+                    "xl": "40px",
+                    "lg": "24px",
+                    "xs": "4px",
+                    "sm": "8px",
+                    "base": "4px",
+                    "md": "16px"
+            },
+            "fontFamily": {
+                    "headline-lg-mobile": ["Work Sans"],
+                    "body-sm": ["Work Sans"],
+                    "label-md": ["JetBrains Mono"],
+                    "table-data": ["Work Sans"],
+                    "headline-lg": ["Work Sans"],
+                    "body-lg": ["Work Sans"],
+                    "headline-md": ["Work Sans"],
+                    "body-md": ["Work Sans"]
+            },
+            "fontSize": {
+                    "headline-lg-mobile": ["24px", {"lineHeight": "30px", "letterSpacing": "-0.01em", "fontWeight": "700"}],
+                    "body-sm": ["12px", {"lineHeight": "16px", "fontWeight": "400"}],
+                    "label-md": ["12px", {"lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "500"}],
+                    "table-data": ["13px", {"lineHeight": "18px", "fontWeight": "500"}],
+                    "headline-lg": ["30px", {"lineHeight": "38px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                    "body-lg": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                    "headline-md": ["20px", {"lineHeight": "28px", "fontWeight": "600"}],
+                    "body-md": ["14px", {"lineHeight": "20px", "fontWeight": "400"}]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .step-active { color: var(--primary); }
+        .step-line { height: 2px; flex-grow: 1; background-color: #ebdcd0; position: relative; top: 12px; }
+        .step-line-active { background-color: #ff6b00; }
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: #fbf9f8; }
+        ::-webkit-scrollbar-thumb { background: #ebdcd0; border-radius: 10px; }
+    </style>
+</head>
+<body class="bg-surface text-on-surface font-body-md overflow-x-hidden">
+<!-- TopNavBar -->
+<header class="bg-surface border-b border-outline-variant sticky top-0 z-50">
+<div class="flex justify-between items-center w-full px-margin-desktop h-16 max-w-[1280px] mx-auto">
+<div class="flex items-center gap-md">
+<span class="font-headline-md text-headline-md font-black text-primary">RMF Facilitator</span>
+<nav class="hidden md:flex gap-lg ml-xl">
+<a class="text-on-surface-variant dark:text-on-surface-variant font-medium hover:text-primary transition-colors" href="#">Marketplace</a>
+<a class="text-primary border-b-2 border-primary font-bold transition-colors" href="#">Orders</a>
+<a class="text-on-surface-variant dark:text-on-surface-variant font-medium hover:text-primary transition-colors" href="#">Logistics</a>
+<a class="text-on-surface-variant dark:text-on-surface-variant font-medium hover:text-primary transition-colors" href="#">Analytics</a>
+</nav>
+</div>
+<div class="flex items-center gap-md">
+<div class="hidden sm:flex items-center gap-sm">
+<button class="p-2 hover:bg-surface-container-high rounded-full transition-all">
+<span class="material-symbols-outlined" data-icon="notifications">notifications</span>
+</button>
+<button class="p-2 hover:bg-surface-container-high rounded-full transition-all">
+<span class="material-symbols-outlined" data-icon="account_balance_wallet">account_balance_wallet</span>
+</button>
+</div>
+<div class="w-8 h-8 rounded-full overflow-hidden border border-outline-variant bg-surface-container">
+<img alt="User profile" data-alt="A professional close-up headshot of a businessperson in a clean, modern workspace. The lighting is soft and natural, reflecting a bright and optimistic atmosphere. The image uses a warm, neutral color palette with soft beiges and whites, maintaining a corporate and reliable aesthetic consistent with a modern trading platform." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCkXX7MdE6vtuxv1KGm3QJSFioF2rg-VCspNZof0z2fkZEPNLZuSpW8vAVOVjRyu4h4j7TppJHU32FMFQfuTGDz6hJa-3cawbV3ay6eYGvSj9a2Vo5Vi6po815oY-c-u19ivOfTCPwd4oGKntXvEYvEe72jfIx-qIZnFo3xvwXkJBwa07A1cFmFmocrrv_XezJfxVVgwd1TG0FKxOupY7WiJyrG0Tb85VSH1QxlDbcp-WtSmwYPBsiNHXUZpI74pXVpGDOA4zWP-_du"/>
+</div>
+</div>
+</div>
+</header>
+<main class="max-w-[1280px] mx-auto px-margin-mobile md:px-margin-desktop py-lg pb-32">
+<!-- Breadcrumbs & Header -->
+<div class="flex flex-col md:flex-row md:items-end justify-between gap-md mb-xl">
+<div>
+<nav class="flex items-center gap-xs text-on-surface-variant mb-base font-label-md text-label-md">
+<a class="hover:text-primary" href="#">Orders</a>
+<span class="material-symbols-outlined text-[14px]">chevron_right</span>
+<span class="text-on-surface">#ORD-28491-RW</span>
+</nav>
+<h1 class="font-headline-lg text-headline-lg text-on-surface tracking-tight">Order #28491</h1>
+<div class="flex items-center gap-sm mt-xs">
+<span class="px-md py-xs bg-secondary-container text-on-secondary-container font-label-md text-label-md rounded-lg">IN ESCROW</span>
+<span class="text-on-surface-variant font-body-sm text-body-sm">Placed on Oct 24, 2023 • 14:32 CAT</span>
+</div>
+</div>
+<div class="flex gap-sm">
+<button class="flex items-center gap-sm px-lg py-sm border border-primary text-primary font-bold rounded-lg hover:bg-primary-fixed-dim transition-all">
+<span class="material-symbols-outlined" data-icon="help">help</span>
+                    Get Help
+                </button>
+<button class="flex items-center gap-sm px-lg py-sm bg-primary text-on-primary font-bold rounded-lg hover:opacity-90 transition-all shadow-sm">
+<span class="material-symbols-outlined" data-icon="reorder">reorder</span>
+                    Reorder
+                </button>
+</div>
+</div>
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-gutter">
+<!-- Left Column: Details & Progress -->
+<div class="lg:col-span-8 space-y-gutter">
+<!-- Escrow Lifecycle Visualization -->
+<section class="bg-surface-container-low border border-outline-variant p-lg rounded-xl">
+<h3 class="font-headline-md text-headline-md mb-lg flex items-center gap-sm">
+<span class="material-symbols-outlined text-primary" data-icon="verified_user">verified_user</span>
+                        Escrow Protection
+                    </h3>
+<div class="flex items-start w-full gap-0 mb-sm">
+<!-- Step 1 -->
+<div class="flex flex-col items-center flex-1">
+<div class="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-on-primary mb-xs z-10">
+<span class="material-symbols-outlined text-[18px]" data-icon="check">check</span>
+</div>
+<span class="font-label-md text-label-md text-primary">Paid</span>
+</div>
+<div class="step-line step-line-active"></div>
+<!-- Step 2 -->
+<div class="flex flex-col items-center flex-1">
+<div class="w-8 h-8 rounded-full bg-primary-container border-2 border-primary flex items-center justify-center text-on-primary-container mb-xs z-10 animate-pulse">
+<span class="material-symbols-outlined text-[18px]" data-icon="lock" style="font-variation-settings: 'FILL' 1;">lock</span>
+</div>
+<span class="font-label-md text-label-md text-primary font-bold">In Escrow</span>
+</div>
+<div class="step-line"></div>
+<!-- Step 3 -->
+<div class="flex flex-col items-center flex-1">
+<div class="w-8 h-8 rounded-full bg-surface-container-highest border border-outline flex items-center justify-center text-on-surface-variant mb-xs z-10">
+<span class="material-symbols-outlined text-[18px]" data-icon="release_alert">release_alert</span>
+</div>
+<span class="font-label-md text-label-md text-on-surface-variant">Released</span>
+</div>
+</div>
+<div class="mt-lg p-md bg-white border border-outline-variant rounded-lg flex gap-md">
+<div class="w-1 bg-primary rounded-full"></div>
+<p class="text-body-sm font-body-sm text-on-surface-variant">
+                            Funds are securely held in the RMF Escrow vault. They will be released to the seller once you confirm receipt of <strong>150kg Arabica Coffee Beans</strong> in good condition.
+                        </p>
+</div>
+</section>
+<!-- Order Items -->
+<section class="bg-white border border-outline-variant overflow-hidden rounded-xl">
+<div class="p-md bg-surface-container-low border-b border-outline-variant flex justify-between items-center">
+<h3 class="font-headline-md text-headline-md">Itemized Receipt</h3>
+<span class="text-body-sm text-on-surface-variant">2 Items</span>
+</div>
+<div class="p-0">
+<table class="w-full text-left border-collapse">
+<thead>
+<tr class="bg-surface-variant/30 text-label-md font-label-md uppercase tracking-wider">
+<th class="px-lg py-md border-b border-outline-variant">Description</th>
+<th class="px-lg py-md border-b border-outline-variant text-center">Qty</th>
+<th class="px-lg py-md border-b border-outline-variant text-right">Unit Price</th>
+<th class="px-lg py-md border-b border-outline-variant text-right">Total</th>
+</tr>
+</thead>
+<tbody class="text-table-data font-table-data">
+<tr class="border-b border-outline-variant hover:bg-surface-container-low transition-colors">
+<td class="px-lg py-md flex items-center gap-md">
+<div class="w-12 h-12 rounded bg-surface-container flex-shrink-0 overflow-hidden">
+<img alt="Coffee beans" data-alt="High-quality roasted arabica coffee beans stored in a burlap sack in a professional agricultural trading warehouse. The lighting is warm and directional, emphasizing the texture of the beans. The overall scene is clean and organized, suggesting a reliable and high-grade product from a professional Rwandan exporter." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDkys81cfZd2jvuUEQBNNJMCHqEEyOU8Wkm7pnxWhri1dJlDr4nJ_tlpWFJAT_NCvct3wU-ef6IxVcdA-0CKR9ciDvYfUGDdjHCmF8YUQwurrPEgwL8gH7a9h_IeMpnuB9SeB8jyMX_byVs4_zQ0v5S7Z4Ri2bcQ9EdoLDwhCGjTjQbeNr41FGY3Z1cuCwNBFdk3rKBMhxOtIn-zraHI5xyD9QkgRC_TdZCSf3-8PZcEwztPmZJP4mIl-HCmu9pTpcXZskfN0o0OMGZ"/>
+</div>
+<div>
+<div class="font-bold text-on-surface">Premium Arabica Coffee Beans</div>
+<div class="text-body-sm font-body-sm text-on-surface-variant">Grade A1, Kibuye Region</div>
+</div>
+</td>
+<td class="px-lg py-md text-center">150 kg</td>
+<td class="px-lg py-md text-right">7,500 RWF</td>
+<td class="px-lg py-md text-right font-bold">1,125,000 RWF</td>
+</tr>
+<tr class="border-b border-outline-variant hover:bg-surface-container-low transition-colors">
+<td class="px-lg py-md flex items-center gap-md">
+<div class="w-12 h-12 rounded bg-surface-container flex-shrink-0 overflow-hidden">
+<img alt="Jute Bags" data-alt="Stacked stacks of clean, unused industrial-grade jute sacks for agricultural transport. The sacks are neatly organized in a bright, modern supply distribution center. The color palette is earthy and natural, featuring browns and tans, with high-key lighting that reinforces the clean and reliable brand aesthetic." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAeCOoj9X6CZmzT2FV792MPt0BHCHei7viYbRULVKdVx7EKxLLU-NraeVZo5rPE7VwcZdnLtPrVqKAAJJIl6VfwvhHmQSXXCpeORo35CC-VybIa7xgJTXNpDpLoVG7lFlsK456TvHqxjVJIiY2I4XqNctWd3iFzsGC4x0g8VkMHMCGSlreXtI4P3tpkgU3FDbFLaWUGtYnD2LkScZD4bXOroE-eQwodGk9lY-QBwKLHr1scWSgIyParEPJpFa8XFlD1bzoXOrymVDmN"/>
+</div>
+<div>
+<div class="font-bold text-on-surface">Reinforced Jute Export Bags</div>
+<div class="text-body-sm font-body-sm text-on-surface-variant">Capacity 75kg, Pack of 2</div>
+</div>
+</td>
+<td class="px-lg py-md text-center">2 Units</td>
+<td class="px-lg py-md text-right">4,500 RWF</td>
+<td class="px-lg py-md text-right font-bold">9,000 RWF</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="p-lg bg-surface-container-low space-y-xs">
+<div class="flex justify-between text-body-md font-body-md text-on-surface-variant">
+<span>Subtotal</span>
+<span>1,134,000 RWF</span>
+</div>
+<div class="flex justify-between text-body-md font-body-md text-on-surface-variant">
+<span>Service Fee (1.5%)</span>
+<span>17,010 RWF</span>
+</div>
+<div class="flex justify-between text-body-md font-body-md text-on-surface-variant">
+<span>Delivery Fee</span>
+<span>45,000 RWF</span>
+</div>
+<div class="pt-sm mt-sm border-t border-outline flex justify-between text-headline-md font-bold text-primary">
+<span>Total Amount</span>
+<span>1,196,010 RWF</span>
+</div>
+<div class="flex justify-end pt-xs">
+<span class="flex items-center gap-xs text-body-sm font-body-sm text-on-tertiary-fixed-variant">
+<span class="material-symbols-outlined text-[16px]" data-icon="verified" style="font-variation-settings: 'FILL' 1;">verified</span>
+                                Paid via MTN MoMo
+                            </span>
+</div>
+</div>
+</section>
+</div>
+<!-- Right Column: Map & Seller -->
+<div class="lg:col-span-4 space-y-gutter">
+<!-- Logistics & Map -->
+<section class="bg-white border border-outline-variant overflow-hidden rounded-xl">
+<div class="h-48 w-full bg-surface-container relative">
+<!-- Mock Map -->
+<div class="absolute inset-0 grayscale opacity-40" data-alt="A stylized, high-contrast overhead map of a modern urban intersection with clean roads and minimal building shapes. The map uses a neutral gray and white color scheme with clear outlines. A bright orange location pin is positioned centrally, creating a focal point for delivery tracking." style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuB6AHfJnjeq_ecBK5dJPmZfQajG0jevJ2Qn1yZRRznKKmf7NcupK5TYCzycmCjcZXdVTxFuzP-MiAIsh_d6tNhhrqUOSMOTK70SsMsZdgoEAAIQLxB-XY7YLEphVW7BUwcJR9Oma2CY6ll36x0zuFVYmQEPYb4dMSQ__pKfxJCofMQSj3NqHXKieD010tneLLrmW5eZWUjJedV2011mR7wokayFykb6gF64mI2HTuhswFFXBUQQy8kroTqmMgiiUjb5swUzGcDRRLQC'); background-size: cover; background-position: center;">
+</div>
+<div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 flex flex-col items-center">
+<span class="material-symbols-outlined text-primary text-[40px] drop-shadow-md" data-icon="location_on" style="font-variation-settings: 'FILL' 1;">location_on</span>
+<div class="px-sm py-xs bg-white text-on-surface font-label-md text-label-md rounded border border-outline-variant shadow-sm mt-xs">Warehouse D-14</div>
+</div>
+</div>
+<div class="p-lg">
+<h3 class="font-headline-md text-headline-md mb-md">Delivery Details</h3>
+<div class="space-y-md">
+<div class="flex gap-md">
+<span class="material-symbols-outlined text-on-surface-variant" data-icon="distance">distance</span>
+<div>
+<div class="text-label-md font-label-md text-on-surface-variant">ADDRESS</div>
+<div class="text-body-md font-bold">Kigali Special Economic Zone, Block B, Kigali, Rwanda</div>
+</div>
+</div>
+<div class="flex gap-md">
+<span class="material-symbols-outlined text-on-surface-variant" data-icon="local_shipping">local_shipping</span>
+<div>
+<div class="text-label-md font-label-md text-on-surface-variant">LOGISTICS PARTNER</div>
+<div class="text-body-md font-bold">Rwanda Post Express</div>
+<div class="text-body-sm font-body-sm text-primary underline cursor-pointer">Track: RW-POST-99238</div>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- Seller Info & Chat -->
+<section class="bg-white border border-outline-variant p-lg rounded-xl">
+<h3 class="font-headline-md text-headline-md mb-lg">Order Parties</h3>
+<div class="space-y-lg">
+<!-- Seller -->
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-md">
+<div class="w-12 h-12 rounded-full overflow-hidden border border-outline-variant bg-surface-container">
+<img alt="Seller" data-alt="A portrait of a smiling African businesswoman in a bright, modern office setting. She represents a trustworthy seller on the marketplace. The lighting is crisp and professional, highlighting a reliable and established brand persona." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCSyahueOz0XTFm46aDcFPu4S081oTPgYB4n0mS1pACpwViy1FTc9XP_vMWeVM6sK7Odoo0nDG0vzmBElN_jYifcCe2ftAnm21u693zCPKhPatJLcXd0mhGHP2bXCL77EcVMYo-E4akjCVNCqKwLiGGNUjLDIcEM_B0RWRBxjMb1nNpu6tgxQbNkX8RRjA7ocXLjepk7lQRzygSf48iCApByKLQxh531PAalwxERhxNOp2BlIPVQtT3NImXqQ84CxsOt08a57K1qJWx"/>
+</div>
+<div>
+<div class="font-bold text-on-surface">Kivu Traders Ltd.</div>
+<div class="text-body-sm font-body-sm text-on-surface-variant flex items-center gap-xs">
+<span class="material-symbols-outlined text-[14px] text-tertiary" data-icon="verified" style="font-variation-settings: 'FILL' 1;">verified</span>
+                                        Verified Seller
+                                    </div>
+</div>
+</div>
+<button class="p-2 bg-surface-container-high rounded-lg hover:bg-primary hover:text-on-primary transition-all group" title="Chat with Seller">
+<span class="material-symbols-outlined" data-icon="chat">chat</span>
+</button>
+</div>
+<div class="h-px bg-outline-variant"></div>
+<!-- Rider -->
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-md">
+<div class="w-12 h-12 rounded-full overflow-hidden border border-outline-variant bg-surface-container">
+<img alt="Rider" data-alt="A portrait of a male delivery professional wearing a clean uniform. He looks focused and professional, representing a reliable logistics partner. The background is a slightly blurred street scene in a bright, sunny Rwandan city, emphasizing the local context." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBxc87jF90L1BRLq51ZEBnoTUuzMFjxOUmSJ-eX1etsBPXupFydZXmBbGE-l2O3ExvQUuio240vd0iI8upM7XyS5ji_sWbpT-MjkaiSWOnWfsGRDgS0Bn3UP0DKtYoM7I3E99VT2CX-zKopN98UlNFucCrjbBcIwzzgru7xTm8kHfV8zuf909ha7L6cU8g6cjMLwIonsS0dkzPemeIxRfdeQmxqWZ5WdZni6kdZyJH8d7bKPCNFveGmiVwF-nUZsInl8OGqXgXAa_uc"/>
+</div>
+<div>
+<div class="font-bold text-on-surface">Jean-Pierre M.</div>
+<div class="text-body-sm font-body-sm text-on-surface-variant">Rider ID: #2293</div>
+</div>
+</div>
+<button class="p-2 bg-surface-container-high rounded-lg hover:bg-primary hover:text-on-primary transition-all" title="Chat with Rider">
+<span class="material-symbols-outlined" data-icon="two_wheeler">two_wheeler</span>
+</button>
+</div>
+</div>
+</section>
+<!-- Help/Safety Tip -->
+<div class="p-lg bg-tertiary-container/20 border border-tertiary-container/40 rounded-xl">
+<div class="flex gap-md">
+<span class="material-symbols-outlined text-tertiary" data-icon="info">info</span>
+<div>
+<h4 class="font-bold text-on-tertiary-container mb-xs">Secure Payment</h4>
+<p class="text-body-sm font-body-sm text-on-tertiary-container">Always communicate through RMF to remain covered by our Trade Assurance policy.</p>
+</div>
+</div>
+</div>
+</div>
+</div>
+</main>
+<!-- Mobile BottomNavBar -->
+<nav class="md:hidden fixed bottom-0 left-0 w-full flex justify-around items-center px-4 py-2 pb-safe bg-surface border-t border-outline-variant z-50">
+<a class="flex flex-col items-center justify-center text-on-surface-variant" href="#">
+<span class="material-symbols-outlined" data-icon="home">home</span>
+<span class="font-label-md text-[10px]">Home</span>
+</a>
+<a class="flex flex-col items-center justify-center bg-primary-container text-on-primary-container rounded-xl px-4 py-1" href="#">
+<span class="material-symbols-outlined" data-icon="map">map</span>
+<span class="font-label-md text-[10px]">Track</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant" href="#">
+<span class="material-symbols-outlined" data-icon="mail">mail</span>
+<span class="font-label-md text-[10px]">Inbox</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant" href="#">
+<span class="material-symbols-outlined" data-icon="person">person</span>
+<span class="font-label-md text-[10px]">Profile</span>
+</a>
+</nav>
+<script>
+        // Simple interactivity for demonstration
+        document.querySelectorAll('button').forEach(btn => {
+            btn.addEventListener('mousedown', () => {
+                btn.style.transform = 'scale(0.98)';
+            });
+            btn.addEventListener('mouseup', () => {
+                btn.style.transform = 'scale(1)';
+            });
+        });
+
+        // Simulating the "In Escrow" pulse effect
+        const pulseElement = document.querySelector('.animate-pulse');
+        if(pulseElement) {
+            setInterval(() => {
+                pulseElement.classList.toggle('opacity-50');
+            }, 1000);
+        }
+    </script>
+</body></html>

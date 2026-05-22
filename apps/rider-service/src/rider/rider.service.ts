@@ -272,7 +272,9 @@ export class RiderService {
     try {
       const axios = require('axios');
       const walletUrl = process.env.WALLET_SERVICE_URL || 'http://localhost:3007/api/v1';
-      const res = await axios.get(`${walletUrl}/wallets/${userId}/balance`);
+      const secret = process.env.INTERNAL_SERVICE_SECRET;
+      const headers = secret ? { 'x-internal-service-key': secret } : {};
+      const res = await axios.get(`${walletUrl}/wallets/${userId}/balance`, { headers });
       earnings = res.data?.data?.totalEarnings || 0;
     } catch {
       this.logger.warn(`Could not fetch wallet earnings for rider ${userId}`);
@@ -288,19 +290,24 @@ export class RiderService {
 
   // Helper: create wallet with rider role on approval
   private async ensureWalletExists(userId: string) {
-    const axios = require('axios');
-    const walletUrl = process.env.WALLET_SERVICE_URL || 'http://localhost:3007/api/v1';
-    await axios.post(`${walletUrl}/wallets/ensure`, { userId, role: 'rider' }).catch(() => {
-      // Try the generic balance endpoint which auto-creates
-      return axios.get(`${walletUrl}/wallets/${userId}/balance`);
-    });
+    try {
+      const axios = require('axios');
+      const walletUrl = process.env.WALLET_SERVICE_URL || 'http://localhost:3007/api/v1';
+      const secret = process.env.INTERNAL_SERVICE_SECRET;
+      const headers = secret ? { 'x-internal-service-key': secret } : {};
+      await axios.post(`${walletUrl}/wallets/user/${userId}`, {}, { headers });
+    } catch (e: any) {
+      this.logger.warn(`Failed to ensure wallet exists for rider ${userId}: ${e.message}`);
+    }
   }
 
   private async syncRoleToUserService(userId: string, role: string) {
     try {
       const axios = require('axios');
       const userUrl = process.env.USER_SERVICE_URL || 'http://localhost:3001/api/v1';
-      await axios.put(`${userUrl}/users/${userId}/role`, { role });
+      const secret = process.env.INTERNAL_SERVICE_SECRET;
+      const headers = secret ? { 'x-internal-service-key': secret } : {};
+      await axios.put(`${userUrl}/users/${userId}/role`, { role }, { headers });
     } catch (e: any) {
       this.logger.warn(`Failed to sync rider role for ${userId}: ${e.message}`);
     }
@@ -310,11 +317,40 @@ export class RiderService {
     try {
       const axios = require('axios');
       const notificationUrl = process.env.NOTIFICATION_SERVICE_URL || 'http://localhost:3009/api/v1';
+      const secret = process.env.INTERNAL_SERVICE_SECRET;
+      const headers = secret ? { 'x-internal-service-key': secret } : {};
       axios.post(`${notificationUrl}/notifications/in-app`, {
         userId,
         type: 'rider.status_update',
         params: { message }
-      }).catch(() => {});
+      }, { headers }).catch(() => {});
     } catch {}
+  }
+
+  async findNearbyRiders(lat: number, lng: number, maxDistanceMeters: number): Promise<any[]> {
+    const activeRiders = await this.riderModel.find({
+      isActive: true,
+      isApproved: true,
+      deletedAt: null,
+      'currentLocation.lat': { $ne: null },
+      'currentLocation.lng': { $ne: null }
+    }).exec();
+
+    const center = { lat, lng };
+    return activeRiders
+      .map(rider => {
+        const riderCoords = {
+          lat: rider.currentLocation.lat,
+          lng: rider.currentLocation.lng
+        };
+        const distanceKm = this.locationService.calculateDistance(center, riderCoords);
+        const distanceMeters = Math.round(distanceKm * 1000);
+        return {
+          rider,
+          distanceMeters
+        };
+      })
+      .filter(item => item.distanceMeters <= maxDistanceMeters)
+      .sort((a, b) => a.distanceMeters - b.distanceMeters);
   }
 }

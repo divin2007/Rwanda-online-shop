@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Work+Sans:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@500&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "tertiary": "#005ac2",
+                    "primary-container": "#ff6b00",
+                    "on-secondary-container": "#561b00",
+                    "on-primary-fixed": "#351000",
+                    "surface-variant": "#e3e2e2",
+                    "on-primary-fixed-variant": "#7a3000",
+                    "secondary-container": "#fc671d",
+                    "on-primary-container": "#572000",
+                    "on-tertiary-fixed-variant": "#004395",
+                    "outline-variant": "#e2bfb0",
+                    "on-tertiary-fixed": "#001a42",
+                    "surface-container-low": "#f5f3f3",
+                    "on-background": "#1b1c1c",
+                    "on-tertiary-container": "#002f6b",
+                    "error-container": "#ffdad6",
+                    "on-surface-variant": "#5a4136",
+                    "surface-container-highest": "#e3e2e2",
+                    "on-secondary": "#ffffff",
+                    "surface-dim": "#dbdad9",
+                    "secondary": "#a63b00",
+                    "on-error-container": "#93000a",
+                    "surface-container": "#efeded",
+                    "on-tertiary": "#ffffff",
+                    "secondary-fixed": "#ffdbce",
+                    "on-error": "#ffffff",
+                    "inverse-primary": "#ffb693",
+                    "secondary-fixed-dim": "#ffb598",
+                    "surface": "#fbf9f8",
+                    "tertiary-fixed": "#d8e2ff",
+                    "inverse-on-surface": "#f2f0f0",
+                    "inverse-surface": "#303030",
+                    "error": "#ba1a1a",
+                    "primary-fixed-dim": "#ffb693",
+                    "tertiary-fixed-dim": "#adc6ff",
+                    "surface-container-high": "#e9e8e7",
+                    "primary-fixed": "#ffdbcc",
+                    "outline": "#8e7164",
+                    "primary": "#a04100",
+                    "on-surface": "#1b1c1c",
+                    "on-secondary-fixed": "#370e00",
+                    "tertiary-container": "#5f97ff",
+                    "surface-bright": "#fbf9f8",
+                    "on-primary": "#ffffff",
+                    "background": "#fbf9f8",
+                    "surface-container-lowest": "#ffffff",
+                    "surface-tint": "#a04100",
+                    "on-secondary-fixed-variant": "#7f2b00"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.125rem",
+                    "lg": "0.25rem",
+                    "xl": "0.5rem",
+                    "full": "0.75rem"
+            },
+            "spacing": {
+                    "gutter": "16px",
+                    "base": "4px",
+                    "margin-mobile": "16px",
+                    "margin-desktop": "32px",
+                    "xs": "4px",
+                    "lg": "24px",
+                    "xl": "40px",
+                    "sm": "8px",
+                    "md": "16px"
+            },
+            "fontFamily": {
+                    "table-data": ["Work Sans"],
+                    "body-md": ["Work Sans"],
+                    "label-md": ["JetBrains Mono"],
+                    "body-sm": ["Work Sans"],
+                    "headline-lg": ["Work Sans"],
+                    "headline-lg-mobile": ["Work Sans"],
+                    "body-lg": ["Work Sans"],
+                    "headline-md": ["Work Sans"]
+            },
+            "fontSize": {
+                    "table-data": ["13px", {"lineHeight": "18px", "fontWeight": "500"}],
+                    "body-md": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                    "label-md": ["12px", {"lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "500"}],
+                    "body-sm": ["12px", {"lineHeight": "16px", "fontWeight": "400"}],
+                    "headline-lg": ["30px", {"lineHeight": "38px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                    "headline-lg-mobile": ["24px", {"lineHeight": "30px", "letterSpacing": "-0.01em", "fontWeight": "700"}],
+                    "body-lg": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                    "headline-md": ["20px", {"lineHeight": "28px", "fontWeight": "600"}]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        .pinterest-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            grid-auto-rows: 20px;
+            gap: 16px;
+        }
+        .pinterest-card-sm { grid-row-end: span 12; }
+        .pinterest-card-md { grid-row-end: span 16; }
+        .pinterest-card-lg { grid-row-end: span 20; }
+        
+        .selected-overlay {
+            opacity: 0;
+            transition: opacity 0.2s ease-in-out;
+        }
+        .preference-card.active .selected-overlay {
+            opacity: 1;
+        }
+        .preference-card.active {
+            border-color: #a04100;
+            box-shadow: 0 0 0 2px #a04100;
+        }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+    </style>
+</head>
+<body class="bg-background text-on-background font-body-md min-h-screen">
+<!-- Top Navigation Bar (Suppressed branding, focus on progress) -->
+<header class="fixed top-0 w-full z-50 bg-surface border-b border-outline-variant px-margin-mobile md:px-margin-desktop h-16 flex justify-between items-center">
+<div class="flex items-center gap-sm">
+<span class="font-headline-md text-headline-md font-bold text-primary">RMF</span>
+<span class="text-on-surface-variant hidden md:block">| Buyer Onboarding</span>
+</div>
+<div class="flex items-center gap-md">
+<div class="hidden md:flex flex-col items-end">
+<span class="font-label-md text-label-md text-on-surface-variant">STEP 2 OF 3</span>
+<span class="font-label-md text-label-md text-primary font-bold">Preferences</span>
+</div>
+<div class="w-32 h-2 bg-surface-container-high rounded-full overflow-hidden">
+<div class="w-2/3 h-full bg-primary-container"></div>
+</div>
+</div>
+</header>
+<main class="pt-24 pb-32 px-margin-mobile md:px-margin-desktop max-w-[1280px] mx-auto">
+<!-- Header Content -->
+<section class="mb-lg text-center md:text-left">
+<h1 class="font-headline-lg text-headline-lg-mobile md:text-headline-lg text-on-surface mb-xs">Tailor Your Marketplace</h1>
+<p class="font-body-lg text-body-lg text-on-surface-variant max-w-2xl">Select at least 3 categories that match your business needs. This helps us curate the best trade opportunities and logistics routes for you.</p>
+</section>
+<!-- Pinterest-style Grid -->
+<div class="pinterest-grid">
+<!-- Category: Agriculture -->
+<div class="preference-card pinterest-card-lg relative group cursor-pointer overflow-hidden rounded-xl border border-outline-variant bg-surface-container-lowest transition-all hover:scale-[1.02]" onclick="toggleSelection(this)">
+<img class="w-full h-full object-cover" data-alt="A vibrant high-angle photograph of a bustling Rwandan agricultural market featuring baskets of ripe avocados, beans, and maize. The scene is bathed in warm, natural sunlight, highlighting the rich textures and earthy colors of the produce. The aesthetic is clean and corporate modern, emphasizing reliability and local commerce through high-contrast details and a warm, inviting color palette." src="https://lh3.googleusercontent.com/aida-public/AB6AXuD4GICQ9OIyNTxxdfGD_oWJMJ9n5XJO0PJk84jiKFAZcxbHFlxsbiUOEwPIB8RaH65bfrAY42N1eyOpDHbKqaTfEeHkeOLIKM2c9YNpo6lAHklMJklFYhL-0J1XGhlpisuFK67Cf0WJ4-l3kd-tE-b81SXergo-5GydqfKaspTjLIkZChZfgatC4SLkCHkDBBk4hPEntCXA3Kjud9LtJu-WEYItws5_iXUQJ931QUjQdtuPwjMfQu9TJ03e6Lyrm1ixWRbKW1iEjNdp"/>
+<div class="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent"></div>
+<div class="absolute bottom-0 left-0 p-md w-full">
+<span class="font-label-md text-label-md text-white/80 uppercase">Primary Sector</span>
+<h3 class="font-headline-md text-headline-md text-white">Agriculture</h3>
+</div>
+<div class="selected-overlay absolute inset-0 bg-primary/20 flex items-center justify-center border-4 border-primary rounded-xl">
+<span class="material-symbols-outlined text-white text-[48px]" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+</div>
+</div>
+<!-- Category: Textiles -->
+<div class="preference-card pinterest-card-md relative group cursor-pointer overflow-hidden rounded-xl border border-outline-variant bg-surface-container-lowest transition-all hover:scale-[1.02]" onclick="toggleSelection(this)">
+<img class="w-full h-full object-cover" data-alt="A professional close-up of vibrant, patterned African wax print fabrics neatly rolled and stacked in a bright, modern warehouse setting. The lighting is crisp and even, accentuating the intricate geometric patterns and bold colors of the textiles. The overall mood is industrial yet cultural, aligning with a reliable and grounded marketplace identity." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBfHP6b-LOUIfeALCXTOv9de9QjE2H_xiHBgDbOGOf9RdLfDcrYhdnkcx9Htv9zHAACq3XGJxG1uA7KSdX5jFrP7JlwfiAxqFkXG3lz85uL_X96YeqQEAygiMzyGb5MPH4qavXknNx7fYnxZLzxbKt7TEoEEF7AhyoXkhNMKGKio1HgieTWzQ1cohAQwjDMuZ7fc9lTkhjZk5gkS2R2IMJgBntQRzeiINo-0l-eRVKlLqR5vx04u7S6sLkrr1G31spm3CNDnRkH4HK6"/>
+<div class="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent"></div>
+<div class="absolute bottom-0 left-0 p-md w-full">
+<h3 class="font-headline-md text-headline-md text-white">Textiles</h3>
+</div>
+<div class="selected-overlay absolute inset-0 bg-primary/20 flex items-center justify-center border-4 border-primary rounded-xl">
+<span class="material-symbols-outlined text-white text-[48px]" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+</div>
+</div>
+<!-- Category: Electronics -->
+<div class="preference-card pinterest-card-sm relative group cursor-pointer overflow-hidden rounded-xl border border-outline-variant bg-surface-container-lowest transition-all hover:scale-[1.02]" onclick="toggleSelection(this)">
+<img class="w-full h-full object-cover" data-alt="A sharp, detailed image of boxed consumer electronics and components arranged on organized metal shelving. The lighting is cool-toned and professional, suggesting a high-tech and efficient supply chain environment. The visual style is functional and clear, emphasizing the reliability of electronic goods within a Rwandan trading hub context." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDjJNBFhTrVejlWKCyFBugbeNxHzn1WLbKkkUMX7xmyC--S3FjOD0UeVvKfRUf-yJsswru8uYotksyjx7KjFqh1biJ_lB_YRaCupMycNybWxNlIUPRsnVJQdB1awHMuKu6ykvwgYSYHa0yYTJ6Epp4pMYFU615uv1pmYRpv_YPyBVp6SJY8Q6IQzF3wq3mN7VvvFFZWsg0ha3Or-xcvJh6UoEa0zAxtawadNeY3Qil50LpLP5TIEu9CTagGa9O72zt2sa1DEdAXK862"/>
+<div class="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent"></div>
+<div class="absolute bottom-0 left-0 p-md w-full">
+<h3 class="font-headline-md text-headline-md text-white">Electronics</h3>
+</div>
+<div class="selected-overlay absolute inset-0 bg-primary/20 flex items-center justify-center border-4 border-primary rounded-xl">
+<span class="material-symbols-outlined text-white text-[48px]" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+</div>
+</div>
+<!-- Category: Building Materials -->
+<div class="preference-card pinterest-card-lg relative group cursor-pointer overflow-hidden rounded-xl border border-outline-variant bg-surface-container-lowest transition-all hover:scale-[1.02]" onclick="toggleSelection(this)">
+<img class="w-full h-full object-cover" data-alt="An artistic but clear shot of stacked high-quality construction materials including timber beams and cement blocks in a well-lit distribution yard. The warm afternoon sun casts long, structured shadows, highlighting the tactile quality of the materials. The atmosphere is one of development and operational clarity, using earth tones to reflect the local building industry." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAPvr8gVmTC2OEHbl_MeNAIGWag_u5dbj2YcPgjVRoef4bDE8uYBIYIGGNSHfBqhOFhBII1kBGQgKJHFexcDWqfSKetGnxHGLHmNLNR6-_flpyQcO-uDP-e9uBz9oK96d0jEu46wGsrTlCUstWHyc7XLrFA3kM_q1i4pe_V4KByhzhvzpm9P47WoLO4O6WfpHMY7nBAroe68IqvKnUrQ3xiVaMRZQ7gA-zWppBbioKVDIpJx-8ZxNV1uGFEqcgW1bMlwz8hMXvKfhDg"/>
+<div class="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent"></div>
+<div class="absolute bottom-0 left-0 p-md w-full">
+<h3 class="font-headline-md text-headline-md text-white">Building Materials</h3>
+</div>
+<div class="selected-overlay absolute inset-0 bg-primary/20 flex items-center justify-center border-4 border-primary rounded-xl">
+<span class="material-symbols-outlined text-white text-[48px]" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+</div>
+</div>
+<!-- Category: Fashion -->
+<div class="preference-card pinterest-card-md relative group cursor-pointer overflow-hidden rounded-xl border border-outline-variant bg-surface-container-lowest transition-all hover:scale-[1.02]" onclick="toggleSelection(this)">
+<img class="w-full h-full object-cover" data-alt="A high-end retail display featuring modern African fashion apparel on minimalist mannequins. The setting is a clean, boutique-style space with warm wood accents and soft overhead lighting. The color palette is sophisticated, mixing neutrals with vibrant fabric accents, creating a sense of professional style and immediate consumer trust." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAaVzkQ2L93U4algwXZKBg5Qk1OL3jsi9nYQeRTT5sEeYlBWlLv52d9yQFrj-BMW80qB8r_bcCncfRfyielvpzqq7sDEmaYP_4NAheuE8G-0cNvYIpruH0cA-iTkM_nTvCdz2iPk4Xu6YhfBNTksEv2f6nk8l9UzwfpUCA4IDClRj-48xa9-etTAQGN0RHv9gHaoh8ggBO8Dyf5FD6jN6MXcK-E8dSBxK-R_0BBHM0ZMcTalaYqPWm9DWonX8QVTppxrElxKPzrYmv4"/>
+<div class="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent"></div>
+<div class="absolute bottom-0 left-0 p-md w-full">
+<h3 class="font-headline-md text-headline-md text-white">Fashion</h3>
+</div>
+<div class="selected-overlay absolute inset-0 bg-primary/20 flex items-center justify-center border-4 border-primary rounded-xl">
+<span class="material-symbols-outlined text-white text-[48px]" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+</div>
+</div>
+<!-- Category: Groceries -->
+<div class="preference-card pinterest-card-sm relative group cursor-pointer overflow-hidden rounded-xl border border-outline-variant bg-surface-container-lowest transition-all hover:scale-[1.02]" onclick="toggleSelection(this)">
+<img class="w-full h-full object-cover" data-alt="A clean, organized photograph of staple grocery items like rice, oil, and flour in modern packaging arranged on a shelf. The lighting is bright and clear, emphasizing purity and household reliability. The visual approach is straightforward and functional, designed for quick recognition in a commerce-focused interface." src="https://lh3.googleusercontent.com/aida-public/AB6AXuA_kqXiXEJcbh1192c45aaWjQHscm6t35cjOaGipHpSiKm4DAVYKoPDVp6BdS8WJYuN0RSKAfhH-842qpdh2t6Mmt0iNQHll7IR-JINPqFF1Nc0Q_UeL26WEw-D3lD5xnCcMFdJ_QuuVSJOgomxHJXGO5r121jFydF2qjRZCLN6_g4wIGRSML-lXd4bdac7ZDUyvMhF0BjhWqyboF035hIkajDbHNjlppmWu4V7_JEZdsV-c_p2UDcFXBu33pYGmrEcPRpB9nAl8Fq6"/>
+<div class="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent"></div>
+<div class="absolute bottom-0 left-0 p-md w-full">
+<h3 class="font-headline-md text-headline-md text-white">Groceries</h3>
+</div>
+<div class="selected-overlay absolute inset-0 bg-primary/20 flex items-center justify-center border-4 border-primary rounded-xl">
+<span class="material-symbols-outlined text-white text-[48px]" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+</div>
+</div>
+<!-- Category: Crafts -->
+<div class="preference-card pinterest-card-lg relative group cursor-pointer overflow-hidden rounded-xl border border-outline-variant bg-surface-container-lowest transition-all hover:scale-[1.02]" onclick="toggleSelection(this)">
+<img class="w-full h-full object-cover" data-alt="Close-up of hand-woven Agaseke baskets with intricate geometric patterns in traditional Rwandan colors. The lighting is soft and focused, bringing out the fine craftsmanship and natural fibers. The mood is respectful and artisanal, reinforcing the brand's connection to local Rwandan culture and high-quality commerce." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBwXijd4Ta49WSO9iQSU0r7BJfLXzGeSKQ7yY3f2GJOaA_95K3aXhA9hBRaY6y-qNAc1_A5_exTcqAcWpcgQH6_c8Htt7VD7Qo10Va4wFWODZYF7mEN4fZBMTL5QSQeBS8Ix1LrHL3oFgj16rMLLv05Al-Qz5MEj_CjOO9EAk8ZtHp7bEITOD5PunL0Zo97VgnIzpVy_Wr8dQZjqhFpTqqqfItfKuqWFoYKxMdzO1eGKEB6R5Di4lMlrLMN8G9Vy2YCbWprKXgzbha7"/>
+<div class="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent"></div>
+<div class="absolute bottom-0 left-0 p-md w-full">
+<h3 class="font-headline-md text-headline-md text-white">Crafts</h3>
+</div>
+<div class="selected-overlay absolute inset-0 bg-primary/20 flex items-center justify-center border-4 border-primary rounded-xl">
+<span class="material-symbols-outlined text-white text-[48px]" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+</div>
+</div>
+<!-- Category: Beauty -->
+<div class="preference-card pinterest-card-md relative group cursor-pointer overflow-hidden rounded-xl border border-outline-variant bg-surface-container-lowest transition-all hover:scale-[1.02]" onclick="toggleSelection(this)">
+<img class="w-full h-full object-cover" data-alt="A professional arrangement of natural skincare and beauty products in amber glass bottles on a clean stone surface. Minimalist styling and soft, flattering light create an aura of wellness and high-end manufacturing. The aesthetic is contemporary and reliable, catering to a sophisticated trade sector." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBLxsRpqo1nZ9mOb1eYZGTxxk6SNneRnQyhpaDyYUbVHY9CISiQKbCIYsPNLSESruPHMnJQKxYWbTmpbKo1PqNXUzSI-0fY2cC9UHhSlSiccpwDHBkLAPZ8ZD5abOpDl-8LFchJCJmufDBqq-IQiLYhkmrAV5ifIKQmpAKKR6ttPoqqzRWAlbbgsna_3D90s-1EM8TpQ28tUk9oscm8sL5Q1GHdGUYzZc-GxqO1w8LiL5dZrtw6UKglpprVTKH2py3CwTgT7oZssVcP"/>
+<div class="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent"></div>
+<div class="absolute bottom-0 left-0 p-md w-full">
+<h3 class="font-headline-md text-headline-md text-white">Beauty</h3>
+</div>
+<div class="selected-overlay absolute inset-0 bg-primary/20 flex items-center justify-center border-4 border-primary rounded-xl">
+<span class="material-symbols-outlined text-white text-[48px]" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+</div>
+</div>
+<!-- Category: Produce -->
+<div class="preference-card pinterest-card-sm relative group cursor-pointer overflow-hidden rounded-xl border border-outline-variant bg-surface-container-lowest transition-all hover:scale-[1.02]" onclick="toggleSelection(this)">
+<img class="w-full h-full object-cover" data-alt="A vivid, macro photograph of fresh organic vegetables including tomatoes, peppers, and greens. The lighting is bright and showcases the dewy freshness of the items. The corporate modern style is applied through sharp focus and a high-contrast palette that signals quality and health in the produce sector." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCe9DCte2nEl7SY9Ra6T5Xlpcw9ROdFPQtlrTrRS-hxuVAEcIJv34rqpmXc3ScxYxvpcds0XJ2f3bLizBhHu8IPZFRBu3jfmKzW_ERomn6YDWuvO8ArV8poSfwfbzrUOSK73yJ7pA1DOeWwNKFeHTjt8S45ghEIkn74h7ggIe-6IXBl5CALS0pq8w4H9jliuNNyN9Q-BALu2dAy4ZB3eTAqHpkDRFbKZJ5UvZtdz-BR6FPrmVgsurBp_30j9DDMkoFygleCFNOnvCqA"/>
+<div class="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent"></div>
+<div class="absolute bottom-0 left-0 p-md w-full">
+<h3 class="font-headline-md text-headline-md text-white">Produce</h3>
+</div>
+<div class="selected-overlay absolute inset-0 bg-primary/20 flex items-center justify-center border-4 border-primary rounded-xl">
+<span class="material-symbols-outlined text-white text-[48px]" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+</div>
+</div>
+</div>
+</main>
+<!-- Bottom Action Bar -->
+<footer class="fixed bottom-0 w-full bg-surface-container-low border-t border-outline-variant p-md md:p-lg z-50">
+<div class="max-w-[1280px] mx-auto flex flex-col md:flex-row justify-between items-center gap-md">
+<div class="flex items-center gap-sm">
+<div class="flex -space-x-2">
+<div class="w-8 h-8 rounded-full border-2 border-surface bg-primary-fixed flex items-center justify-center">
+<span class="material-symbols-outlined text-[16px] text-primary">person</span>
+</div>
+<div class="w-8 h-8 rounded-full border-2 border-surface bg-secondary-fixed flex items-center justify-center">
+<span class="material-symbols-outlined text-[16px] text-secondary">trending_up</span>
+</div>
+</div>
+<p class="font-label-md text-label-md text-on-surface-variant">
+<span class="font-bold text-primary" id="selection-count">0</span> categories selected
+                </p>
+</div>
+<div class="flex gap-md w-full md:w-auto">
+<button class="flex-1 md:flex-none px-xl py-md rounded-full font-label-md text-label-md border border-outline text-on-surface-variant hover:bg-surface-container-high transition-all">
+                    Skip for now
+                </button>
+<button class="flex-1 md:flex-none px-xl py-md rounded-full font-label-md text-label-md bg-primary text-white font-bold opacity-50 cursor-not-allowed transition-all shadow-md active:scale-95" disabled="" id="complete-btn" onclick="completeOnboarding()">
+                    Complete Onboarding
+                </button>
+</div>
+</div>
+</footer>
+<script>
+        let selectedCount = 0;
+        const completeBtn = document.getElementById('complete-btn');
+        const countDisplay = document.getElementById('selection-count');
+
+        function toggleSelection(card) {
+            card.classList.toggle('active');
+            
+            if (card.classList.contains('active')) {
+                selectedCount++;
+            } else {
+                selectedCount--;
+            }
+
+            countDisplay.innerText = selectedCount;
+
+            if (selectedCount >= 3) {
+                completeBtn.disabled = false;
+                completeBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+                completeBtn.classList.add('hover:bg-secondary', 'bg-primary-container');
+            } else {
+                completeBtn.disabled = true;
+                completeBtn.classList.add('opacity-50', 'cursor-not-allowed');
+                completeBtn.classList.remove('hover:bg-secondary', 'bg-primary-container');
+            }
+        }
+
+        function completeOnboarding() {
+            const btn = document.getElementById('complete-btn');
+            btn.innerHTML = '<span class="flex items-center gap-xs"><span class="material-symbols-outlined animate-spin">sync</span> Personalizing...</span>';
+            
+            setTimeout(() => {
+                alert('Preferences saved! Redirecting to your personalized RMF Marketplace Dashboard.');
+                window.location.reload();
+            }, 1500);
+        }
+    </script>
+</body></html>

@@ -10,7 +10,7 @@
     "build": "turbo run build",
     "dev": "npm run build --workspace @rmf/database && turbo run dev --concurrency=20",
     "wait-for-services": "node scripts/wait-for-services.js",
-    "seed": "node apps/market-service/scripts/seed-full.js",
+    "seed": "npm run seed --workspace market-service",
     "clear-db": "node apps/market-service/scripts/clear-db.js",
     "lint": "turbo run lint",
     "test": "turbo run test"

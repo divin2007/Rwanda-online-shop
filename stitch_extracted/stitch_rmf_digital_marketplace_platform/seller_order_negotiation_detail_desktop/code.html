@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>RMF | Marketplace Portal - Negotiation</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Work+Sans:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@500&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "inverse-surface": "#303030",
+                        "secondary-fixed-dim": "#ffb598",
+                        "outline-variant": "#e2bfb0",
+                        "background": "#fbf9f8",
+                        "on-secondary-container": "#561b00",
+                        "on-primary-fixed": "#351000",
+                        "on-surface": "#1b1c1c",
+                        "surface": "#fbf9f8",
+                        "tertiary": "#005ac2",
+                        "secondary": "#a63b00",
+                        "on-secondary-fixed-variant": "#7f2b00",
+                        "error-container": "#ffdad6",
+                        "tertiary-container": "#5f97ff",
+                        "on-tertiary-fixed": "#001a42",
+                        "on-surface-variant": "#5a4136",
+                        "surface-container-lowest": "#ffffff",
+                        "tertiary-fixed-dim": "#adc6ff",
+                        "on-error-container": "#93000a",
+                        "on-tertiary-container": "#002f6b",
+                        "on-tertiary": "#ffffff",
+                        "on-secondary": "#ffffff",
+                        "secondary-container": "#fc671d",
+                        "on-background": "#1b1c1c",
+                        "primary-fixed": "#ffdbcc",
+                        "surface-bright": "#fbf9f8",
+                        "surface-container-low": "#f5f3f3",
+                        "on-tertiary-fixed-variant": "#004395",
+                        "on-primary-fixed-variant": "#7a3000",
+                        "secondary-fixed": "#ffdbce",
+                        "surface-container": "#efeded",
+                        "on-primary-container": "#572000",
+                        "error": "#ba1a1a",
+                        "tertiary-fixed": "#d8e2ff",
+                        "primary-fixed-dim": "#ffb693",
+                        "surface-container-high": "#e9e8e7",
+                        "on-secondary-fixed": "#370e00",
+                        "primary-container": "#ff6b00",
+                        "surface-tint": "#a04100",
+                        "surface-dim": "#dbdad9",
+                        "surface-variant": "#e3e2e2",
+                        "inverse-primary": "#ffb693",
+                        "primary": "#a04100",
+                        "surface-container-highest": "#e3e2e2",
+                        "on-primary": "#ffffff",
+                        "outline": "#8e7164",
+                        "on-error": "#ffffff",
+                        "inverse-on-surface": "#f2f0f0"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.125rem",
+                        "lg": "0.25rem",
+                        "xl": "0.5rem",
+                        "full": "0.75rem"
+                    },
+                    "spacing": {
+                        "md": "16px",
+                        "gutter": "16px",
+                        "margin-desktop": "32px",
+                        "sm": "8px",
+                        "base": "4px",
+                        "xl": "40px",
+                        "xs": "4px",
+                        "margin-mobile": "16px",
+                        "lg": "24px"
+                    },
+                    "fontFamily": {
+                        "headline-md": ["Work Sans"],
+                        "headline-lg": ["Work Sans"],
+                        "table-data": ["Work Sans"],
+                        "body-sm": ["Work Sans"],
+                        "label-md": ["JetBrains Mono"],
+                        "body-md": ["Work Sans"],
+                        "body-lg": ["Work Sans"],
+                        "headline-lg-mobile": ["Work Sans"]
+                    },
+                    "fontSize": {
+                        "headline-md": ["20px", {"lineHeight": "28px", "fontWeight": "600"}],
+                        "headline-lg": ["30px", {"lineHeight": "38px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                        "table-data": ["13px", {"lineHeight": "18px", "fontWeight": "500"}],
+                        "body-sm": ["12px", {"lineHeight": "16px", "fontWeight": "400"}],
+                        "label-md": ["12px", {"lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "500"}],
+                        "body-md": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                        "body-lg": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                        "headline-lg-mobile": ["24px", {"lineHeight": "30px", "letterSpacing": "-0.01em", "fontWeight": "700"}]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        body { background-color: #fbf9f8; }
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: #fbf9f8; }
+        ::-webkit-scrollbar-thumb { background: #ebdcd0; border-radius: 3px; }
+        .ghost-border { border: 1px solid #ebdcd0; }
+        .shimmer {
+            background: linear-gradient(90deg, transparent, rgba(255, 107, 0, 0.05), transparent);
+            background-size: 200% 100%;
+            animation: shimmer 2s infinite linear;
+        }
+        @keyframes shimmer { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }
+    </style>
+</head>
+<body class="font-body-md text-on-surface">
+<!-- TopNavBar Shell -->
+<header class="fixed top-0 left-0 w-full z-50 flex justify-between items-center px-margin-desktop h-16 bg-surface border-b border-outline-variant">
+<div class="flex items-center gap-xl">
+<span class="text-headline-md font-headline-md font-bold text-primary">RMF</span>
+<div class="hidden md:flex gap-md">
+<nav class="flex gap-lg">
+<a class="text-on-surface-variant hover:bg-surface-container-low transition-colors px-sm py-base" href="#">Dashboard</a>
+<a class="text-on-surface-variant hover:bg-surface-container-low transition-colors px-sm py-base" href="#">Orders</a>
+<a class="text-primary border-b-2 border-primary px-sm py-base" href="#">Negotiations</a>
+<a class="text-on-surface-variant hover:bg-surface-container-low transition-colors px-sm py-base" href="#">Logistics</a>
+</nav>
+</div>
+</div>
+<div class="flex items-center gap-md">
+<div class="flex gap-sm mr-md">
+<span class="material-symbols-outlined text-primary cursor-pointer p-base hover:bg-surface-container-low rounded-lg" data-icon="location_on">location_on</span>
+<span class="material-symbols-outlined text-primary cursor-pointer p-base hover:bg-surface-container-low rounded-lg" data-icon="language">language</span>
+<span class="material-symbols-outlined text-primary cursor-pointer p-base hover:bg-surface-container-low rounded-lg" data-icon="notifications">notifications</span>
+<span class="material-symbols-outlined text-primary cursor-pointer p-base hover:bg-surface-container-low rounded-lg" data-icon="shopping_cart">shopping_cart</span>
+</div>
+<img alt="User Account" class="w-8 h-8 rounded-full border border-outline-variant" data-alt="A professional headshot of a Rwandan business consultant in a light-colored linen suit, set against a blurred background of a modern office space with warm wooden accents and soft, natural morning sunlight streaming through large windows." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBmwfVosYKliKpl_6BMouyEPgUtE7SeYeFppZ-zzsbYOmhtWG7FXNK-4A1Bw5QVifJxghJMVdyl2lmGqZq2_FdpnVYti1S0MwpVzgGQlRWUigj0SPyZF4r-qBUuic7mCyMZCDuZx4GMwIQes2jph2SfFMMPrB3-yovhwpJm5bIarQE7PKh1hYonziU2loqaH-lwrPWMg6qRk-gM8PHa3hHmqGlxNjisgJJ1ogfMgXe_X0oG4IIL__u5DzBRXyUtwK_AayCS9p103HJl"/>
+</div>
+</header>
+<div class="flex pt-16 h-screen">
+<!-- SideNavBar Shell -->
+<aside class="hidden lg:flex flex-col w-64 h-full p-md space-y-base bg-surface-container-lowest border-r border-outline-variant">
+<div class="mb-lg px-base">
+<p class="font-label-md text-label-md text-on-surface-variant uppercase tracking-widest">Marketplace Portal</p>
+<p class="font-body-md text-body-md text-outline">Operational View</p>
+</div>
+<nav class="flex-1 space-y-base">
+<a class="flex items-center gap-md p-md text-on-surface-variant hover:bg-surface-container-high transition-all rounded-lg" href="#">
+<span class="material-symbols-outlined" data-icon="dashboard">dashboard</span>
+<span class="font-label-md text-label-md">Dashboard</span>
+</a>
+<a class="flex items-center gap-md p-md text-on-surface-variant hover:bg-surface-container-high transition-all rounded-lg" href="#">
+<span class="material-symbols-outlined" data-icon="inventory_2">inventory_2</span>
+<span class="font-label-md text-label-md">Orders</span>
+</a>
+<a class="flex items-center gap-md p-md text-on-surface-variant hover:bg-surface-container-high transition-all rounded-lg" href="#">
+<span class="material-symbols-outlined" data-icon="inventory">inventory</span>
+<span class="font-label-md text-label-md">Inventory</span>
+</a>
+<a class="flex items-center gap-md p-md bg-primary-container text-on-primary-container rounded-lg font-bold scale-95 transition-transform" href="#">
+<span class="material-symbols-outlined" data-icon="handshake">handshake</span>
+<span class="font-label-md text-label-md">Negotiations</span>
+</a>
+<a class="flex items-center gap-md p-md text-on-surface-variant hover:bg-surface-container-high transition-all rounded-lg" href="#">
+<span class="material-symbols-outlined" data-icon="local_shipping">local_shipping</span>
+<span class="font-label-md text-label-md">Logistics</span>
+</a>
+</nav>
+<div class="pt-md border-t border-outline-variant">
+<button class="w-full bg-primary text-on-primary py-sm rounded-lg font-bold mb-md hover:opacity-90 transition-opacity">Switch Role</button>
+<a class="flex items-center gap-md p-md text-on-surface-variant hover:bg-surface-container-high transition-all rounded-lg" href="#">
+<span class="material-symbols-outlined" data-icon="settings">settings</span>
+<span class="font-label-md text-label-md">Settings</span>
+</a>
+</div>
+</aside>
+<!-- Main Content Canvas -->
+<main class="flex-1 overflow-y-auto bg-background p-md lg:p-margin-desktop">
+<div class="max-w-[1280px] mx-auto grid grid-cols-1 xl:grid-cols-12 gap-lg h-full">
+<!-- Left Column: Negotiation Thread (8 columns) -->
+<section class="xl:col-span-8 flex flex-col h-[calc(100vh-140px)]">
+<!-- Header Info -->
+<div class="mb-lg flex justify-between items-end border-b border-outline-variant pb-md">
+<div>
+<div class="flex items-center gap-sm mb-xs">
+<span class="bg-tertiary-container text-on-tertiary-container text-[10px] px-sm py-[2px] font-bold uppercase tracking-tighter rounded-full">Active Negotiation</span>
+<span class="text-outline font-label-md text-label-md">#NEG-2024-0892</span>
+</div>
+<h1 class="font-headline-lg text-headline-lg text-on-surface">Bulk Maize Procurement - Kigali Hub</h1>
+</div>
+<div class="text-right">
+<p class="font-label-md text-label-md text-outline">Escrow Release Policy</p>
+<p class="font-body-md text-body-md font-bold text-secondary">T+2 Delivery Verified</p>
+</div>
+</div>
+<!-- Chat/Negotiation Area -->
+<div class="flex-1 overflow-y-auto space-y-lg pr-base">
+<!-- System Notification -->
+<div class="flex justify-center">
+<div class="ghost-border bg-surface-container-low px-md py-xs rounded-full">
+<p class="text-xs text-on-surface-variant font-label-md">NEGOTIATION OPENED BY BUYER • OCT 12, 09:45 AM</p>
+</div>
+</div>
+<!-- Buyer Message -->
+<div class="flex gap-md max-w-[80%]">
+<div class="w-8 h-8 rounded bg-surface-container-high flex items-center justify-center shrink-0 border border-outline-variant">
+<span class="material-symbols-outlined text-outline" data-icon="person">person</span>
+</div>
+<div class="ghost-border bg-surface p-md rounded-xl rounded-tl-none">
+<p class="text-primary font-bold text-xs mb-base">John Munyaneza (Buyer)</p>
+<p class="font-body-md text-body-md text-on-surface-variant">We are looking for 500 tons of grade A white maize. Our logistics team can pick up from your Musanze warehouse. What is your best price for a bulk order with immediate payment via RMF Escrow?</p>
+<p class="text-[10px] text-outline mt-sm text-right">09:48 AM</p>
+</div>
+</div>
+<!-- Seller Quote (The "Quote Card") -->
+<div class="flex flex-row-reverse gap-md max-w-[80%] ml-auto">
+<div class="w-8 h-8 rounded bg-primary-container flex items-center justify-center shrink-0 border border-primary">
+<span class="material-symbols-outlined text-on-primary-container" data-icon="store">store</span>
+</div>
+<div class="bg-surface-container-lowest border-2 border-primary p-lg rounded-xl rounded-tr-none shadow-sm relative overflow-hidden">
+<div class="absolute top-0 right-0 bg-primary text-on-primary px-md py-xs text-[10px] font-bold uppercase tracking-widest">Your Offer</div>
+<div class="flex justify-between items-start mb-md">
+<div>
+<h3 class="font-headline-md text-headline-md text-primary mb-base">Bulk Maize Quote</h3>
+<p class="font-body-sm text-body-sm text-outline">Valid until Oct 15, 2024</p>
+</div>
+<div class="text-right">
+<p class="font-label-md text-label-md text-on-surface-variant">Price per Ton</p>
+<p class="font-headline-md text-headline-md text-secondary">RWF 420,000</p>
+</div>
+</div>
+<div class="space-y-sm bg-surface-container-low p-md rounded-lg mb-md">
+<div class="flex justify-between font-body-md">
+<span>Quantity</span>
+<span class="font-bold">500 MT</span>
+</div>
+<div class="flex justify-between font-body-md">
+<span>Total Value</span>
+<span class="font-bold">RWF 210,000,000</span>
+</div>
+<div class="flex justify-between font-body-md">
+<span>Logistics</span>
+<span class="text-on-secondary-fixed-variant">Buyer Pickup (Musanze)</span>
+</div>
+</div>
+<div class="flex gap-sm">
+<button class="flex-1 bg-primary text-on-primary font-bold py-sm rounded hover:opacity-90 transition-opacity">MODIFY QUOTE</button>
+<button class="px-md ghost-border text-primary rounded hover:bg-surface-container-low transition-colors">
+<span class="material-symbols-outlined" data-icon="history">history</span>
+</button>
+</div>
+</div>
+</div>
+<!-- Buyer Message -->
+<div class="flex gap-md max-w-[80%]">
+<div class="w-8 h-8 rounded bg-surface-container-high flex items-center justify-center shrink-0 border border-outline-variant">
+<span class="material-symbols-outlined text-outline" data-icon="person">person</span>
+</div>
+<div class="ghost-border bg-surface p-md rounded-xl rounded-tl-none">
+<p class="text-primary font-bold text-xs mb-base">John Munyaneza (Buyer)</p>
+<p class="font-body-md text-body-md text-on-surface-variant">The price is acceptable, but we need delivery to Kigali instead of pickup. Can you include transport for an additional RWF 5,000 per ton?</p>
+<p class="text-[10px] text-outline mt-sm text-right">10:15 AM</p>
+</div>
+</div>
+</div>
+<!-- Input Area -->
+<div class="mt-lg pt-md bg-surface border-t border-outline-variant">
+<div class="flex gap-md items-end">
+<div class="flex-1 ghost-border bg-surface-container-lowest rounded-xl p-xs">
+<textarea class="w-full bg-transparent border-none focus:ring-0 resize-none font-body-md p-md h-24" placeholder="Type your counter-offer or message..."></textarea>
+<div class="flex justify-between items-center px-md pb-md">
+<div class="flex gap-sm">
+<button class="p-xs hover:bg-surface-container-high rounded text-outline"><span class="material-symbols-outlined" data-icon="attach_file">attach_file</span></button>
+<button class="p-xs hover:bg-surface-container-high rounded text-outline"><span class="material-symbols-outlined" data-icon="analytics">analytics</span></button>
+</div>
+<div class="flex gap-sm">
+<button class="px-md py-sm ghost-border text-primary font-bold rounded-lg hover:bg-surface-container-low">DRAFT QUOTE</button>
+<button class="px-lg py-sm bg-primary text-on-primary font-bold rounded-lg hover:opacity-90 transition-opacity">SEND</button>
+</div>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- Right Column: Order Sidebar (4 columns) -->
+<aside class="xl:col-span-4 space-y-lg h-[calc(100vh-140px)] overflow-y-auto">
+<!-- Order Progress -->
+<div class="ghost-border bg-surface-container-lowest rounded-xl overflow-hidden">
+<div class="bg-surface-container-high p-md flex justify-between items-center">
+<span class="font-label-md text-label-md text-on-surface-variant uppercase tracking-widest">Process Flow</span>
+<span class="material-symbols-outlined text-primary" data-icon="verified_user" style="font-variation-settings: 'FILL' 1;">verified_user</span>
+</div>
+<div class="p-lg">
+<div class="relative pl-lg space-y-xl">
+<div class="absolute left-[7px] top-2 bottom-2 w-[1px] bg-outline-variant"></div>
+<div class="relative flex items-start gap-md">
+<div class="absolute -left-[19px] top-0 w-3 h-3 rounded-full bg-primary ring-4 ring-primary-fixed"></div>
+<div>
+<p class="font-bold text-on-surface leading-none mb-xs">Negotiation</p>
+<p class="text-xs text-outline">Active - Finalizing terms</p>
+</div>
+</div>
+<div class="relative flex items-start gap-md">
+<div class="absolute -left-[19px] top-0 w-3 h-3 rounded-full bg-outline-variant"></div>
+<div class="opacity-40">
+<p class="font-bold text-on-surface leading-none mb-xs">Escrow Funding</p>
+<p class="text-xs text-outline">Awaiting agreement</p>
+</div>
+</div>
+<div class="relative flex items-start gap-md">
+<div class="absolute -left-[19px] top-0 w-3 h-3 rounded-full bg-outline-variant"></div>
+<div class="opacity-40">
+<p class="font-bold text-on-surface leading-none mb-xs">Logistics Hub</p>
+<p class="text-xs text-outline">Route pending</p>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Inventory Summary -->
+<div class="ghost-border bg-surface rounded-xl p-lg">
+<div class="flex justify-between items-center mb-md">
+<h4 class="font-headline-md text-headline-md text-on-surface">Order Details</h4>
+<span class="material-symbols-outlined text-outline" data-icon="inventory">inventory</span>
+</div>
+<div class="space-y-md">
+<div class="flex gap-md">
+<div class="w-16 h-16 rounded ghost-border overflow-hidden bg-surface-container shrink-0">
+<img alt="Maize" class="w-full h-full object-cover" data-alt="A macro photograph of high-quality sun-dried white maize kernels piled in a woven basket, with sharp focus on the textures and natural golden hues, captured in a warm, rustic storage barn with soft, diffused sunlight." src="https://lh3.googleusercontent.com/aida-public/AB6AXuB8IvxuEHsjEfxQ1gOMv62Jhl8oV_srklJVOK6rgCGLkzAX6HvpXQFXsglf5II3ukorTI1j499OOlHyoYAc50mCA6opweAQfwU5XzqV87J6DIBUUbyqBeQ-PiI7rywy0pAUAre0KBNFCvHiMs3L4QXBdnMBcYBgzN-sK6oC-hvUqc5EI8ucJ8uPpNIyrjENVRkd7rsXoB-llwasOPETg-fN423mrCrbNyTSvKW_0Evody3HOYpRgPVtFbfYgwTwTvyiSgelS9OUcBHT"/>
+</div>
+<div class="flex-1">
+<p class="font-bold text-on-surface">Grade A White Maize</p>
+<p class="text-xs text-outline">SKU: MZ-WH-G1-RW</p>
+<p class="font-label-md text-label-md text-primary mt-base">500 Tons Requested</p>
+</div>
+</div>
+<div class="grid grid-cols-2 gap-sm">
+<div class="bg-surface-container-low p-md rounded">
+<p class="text-[10px] text-outline uppercase font-bold">In Stock</p>
+<p class="font-headline-md text-headline-md">1,240 MT</p>
+</div>
+<div class="bg-surface-container-low p-md rounded">
+<p class="text-[10px] text-outline uppercase font-bold">Reserved</p>
+<p class="font-headline-md text-headline-md">150 MT</p>
+</div>
+</div>
+</div>
+</div>
+<!-- Trust Indicators -->
+<div class="bg-secondary-container/10 border border-secondary/20 rounded-xl p-md flex items-start gap-md">
+<span class="material-symbols-outlined text-secondary" data-icon="shield" style="font-variation-settings: 'FILL' 1;">shield</span>
+<div>
+<p class="font-bold text-on-secondary-container text-xs uppercase tracking-widest">Secure Payment</p>
+<p class="text-xs text-on-secondary-fixed-variant mt-xs">Funds will be held in RMF Escrow and only released upon successful quality verification at the Kigali delivery hub.</p>
+</div>
+</div>
+<!-- Market Context -->
+<div class="ghost-border bg-surface rounded-xl p-lg overflow-hidden relative">
+<div class="shimmer absolute inset-0 pointer-events-none opacity-20"></div>
+<h4 class="font-headline-md text-headline-md text-on-surface mb-sm">Market Rate</h4>
+<div class="flex items-end gap-sm">
+<p class="text-2xl font-bold text-on-surface">RWF 415/kg</p>
+<span class="text-tertiary font-bold text-xs flex items-center mb-base">
+<span class="material-symbols-outlined text-sm" data-icon="trending_up">trending_up</span>
+                                2.4%
+                            </span>
+</div>
+<p class="text-xs text-outline mt-base">Current average for Musanze Region</p>
+</div>
+</aside>
+</div>
+</main>
+</div>
+<!-- BottomNavBar (Mobile Only) -->
+<nav class="lg:hidden fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-4 py-2 bg-surface border-t border-outline-variant shadow-lg rounded-t-xl">
+<a class="flex flex-col items-center justify-center text-on-surface-variant" href="#">
+<span class="material-symbols-outlined" data-icon="home">home</span>
+<span class="font-label-md text-label-md">Home</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant" href="#">
+<span class="material-symbols-outlined" data-icon="search">search</span>
+<span class="font-label-md text-label-md">Search</span>
+</a>
+<a class="flex flex-col items-center justify-center bg-secondary-container text-on-secondary-container rounded-full px-4 py-1 scale-90 duration-150" href="#">
+<span class="material-symbols-outlined" data-icon="handshake" style="font-variation-settings: 'FILL' 1;">handshake</span>
+<span class="font-label-md text-label-md">Deals</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant" href="#">
+<span class="material-symbols-outlined" data-icon="person">person</span>
+<span class="font-label-md text-label-md">Account</span>
+</a>
+</nav>
+<!-- FAB Tooltip (Contextual) -->
+<button class="fixed bottom-20 right-8 lg:bottom-12 lg:right-12 w-14 h-14 bg-primary text-on-primary rounded-full shadow-2xl flex items-center justify-center hover:scale-110 transition-transform z-40">
+<span class="material-symbols-outlined text-3xl" data-icon="support_agent">support_agent</span>
+</button>
+<script>
+        // Simple micro-interaction for the input area
+        const textarea = document.querySelector('textarea');
+        textarea.addEventListener('focus', () => {
+            textarea.parentElement.classList.add('ring-2', 'ring-primary');
+            textarea.parentElement.classList.remove('ghost-border');
+        });
+        textarea.addEventListener('blur', () => {
+            textarea.parentElement.classList.remove('ring-2', 'ring-primary');
+            textarea.parentElement.classList.add('ghost-border');
+        });
+
+        // Toggle Active State simulation
+        const navLinks = document.querySelectorAll('aside nav a');
+        navLinks.forEach(link => {
+            link.addEventListener('click', (e) => {
+                navLinks.forEach(l => {
+                    l.classList.remove('bg-primary-container', 'text-on-primary-container', 'font-bold', 'scale-95');
+                    l.classList.add('text-on-surface-variant');
+                });
+                link.classList.add('bg-primary-container', 'text-on-primary-container', 'font-bold', 'scale-95');
+                link.classList.remove('text-on-surface-variant');
+            });
+        });
+    </script>
+</body></html>

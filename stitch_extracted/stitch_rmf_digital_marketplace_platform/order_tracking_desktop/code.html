@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>RMF - Order Tracking</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Work+Sans:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@500&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-surface": "#1b1c1c",
+                        "surface-container-low": "#f5f3f3",
+                        "primary-fixed": "#ffdbcc",
+                        "secondary-fixed-dim": "#ffb598",
+                        "on-secondary": "#ffffff",
+                        "background": "#fbf9f8",
+                        "on-primary-fixed": "#351000",
+                        "surface-container": "#efeded",
+                        "on-tertiary-container": "#002f6b",
+                        "surface-container-highest": "#e3e2e2",
+                        "on-background": "#1b1c1c",
+                        "on-secondary-fixed": "#370e00",
+                        "surface-tint": "#a04100",
+                        "inverse-surface": "#303030",
+                        "surface-container-high": "#e9e8e7",
+                        "tertiary-fixed": "#d8e2ff",
+                        "tertiary-fixed-dim": "#adc6ff",
+                        "surface-container-lowest": "#ffffff",
+                        "on-secondary-fixed-variant": "#7f2b00",
+                        "secondary": "#a63b00",
+                        "surface": "#fbf9f8",
+                        "on-primary-fixed-variant": "#7a3000",
+                        "on-primary-container": "#572000",
+                        "on-primary": "#ffffff",
+                        "surface-bright": "#fbf9f8",
+                        "tertiary": "#005ac2",
+                        "primary-container": "#ff6b00",
+                        "inverse-on-surface": "#f2f0f0",
+                        "outline": "#8e7164",
+                        "primary": "#a04100",
+                        "inverse-primary": "#ffb693",
+                        "secondary-fixed": "#ffdbce",
+                        "on-tertiary-fixed-variant": "#004395",
+                        "error": "#ba1a1a",
+                        "error-container": "#ffdad6",
+                        "on-tertiary": "#ffffff",
+                        "on-error": "#ffffff",
+                        "tertiary-container": "#5f97ff",
+                        "on-error-container": "#93000a",
+                        "on-surface-variant": "#5a4136",
+                        "secondary-container": "#fc671d",
+                        "surface-dim": "#dbdad9",
+                        "surface-variant": "#e3e2e2",
+                        "on-secondary-container": "#561b00",
+                        "outline-variant": "#e2bfb0",
+                        "primary-fixed-dim": "#ffb693",
+                        "on-tertiary-fixed": "#001a42"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.125rem",
+                        "lg": "0.25rem",
+                        "xl": "0.5rem",
+                        "full": "0.75rem"
+                    },
+                    "spacing": {
+                        "sm": "8px",
+                        "margin-mobile": "16px",
+                        "xs": "4px",
+                        "md": "16px",
+                        "gutter": "16px",
+                        "base": "4px",
+                        "lg": "24px",
+                        "margin-desktop": "32px",
+                        "xl": "40px"
+                    },
+                    "fontFamily": {
+                        "headline-lg": ["Work Sans"],
+                        "body-sm": ["Work Sans"],
+                        "headline-md": ["Work Sans"],
+                        "table-data": ["Work Sans"],
+                        "body-lg": ["Work Sans"],
+                        "headline-lg-mobile": ["Work Sans"],
+                        "body-md": ["Work Sans"],
+                        "label-md": ["JetBrains Mono"]
+                    },
+                    "fontSize": {
+                        "headline-lg": ["30px", {"lineHeight": "38px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                        "body-sm": ["12px", {"lineHeight": "16px", "fontWeight": "400"}],
+                        "headline-md": ["20px", {"lineHeight": "28px", "fontWeight": "600"}],
+                        "table-data": ["13px", {"lineHeight": "18px", "fontWeight": "500"}],
+                        "body-lg": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                        "headline-lg-mobile": ["24px", {"lineHeight": "30px", "letterSpacing": "-0.01em", "fontWeight": "700"}],
+                        "body-md": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                        "label-md": ["12px", {"lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "500"}]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        body { font-family: 'Work Sans', sans-serif; }
+        .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
+        .ghost-border { border: 1px solid #ebdcd0; }
+        .step-active .step-line { background-color: #a04100; }
+        .step-active .step-circle { background-color: #a04100; color: white; }
+        .map-gradient { background: linear-gradient(to bottom, rgba(251,249,248,0) 0%, rgba(251,249,248,1) 100%); }
+    </style>
+</head>
+<body class="bg-background text-on-surface">
+<!-- TopNavBar -->
+<header class="bg-surface dark:bg-surface-container border-b border-outline-variant dark:border-outline fixed top-0 left-0 w-full z-50 flex justify-between items-center px-margin-desktop h-16">
+<div class="flex items-center gap-md">
+<button class="md:hidden p-base">
+<span class="material-symbols-outlined">arrow_back</span>
+</button>
+<span class="text-headline-md font-headline-md font-bold text-primary dark:text-primary-fixed-dim">RMF</span>
+</div>
+<div class="hidden md:flex flex-1 justify-start px-xl">
+<div class="flex items-center gap-lg">
+<a class="text-on-surface-variant dark:text-on-surface-variant font-label-md text-label-md hover:bg-surface-container-low transition-colors px-base" href="#">Home</a>
+<a class="text-on-surface-variant dark:text-on-surface-variant font-label-md text-label-md hover:bg-surface-container-low transition-colors px-base" href="#">Search</a>
+<a class="text-primary dark:text-primary-fixed-dim border-b-2 border-primary font-label-md text-label-md px-base" href="#">Orders</a>
+<a class="text-on-surface-variant dark:text-on-surface-variant font-label-md text-label-md hover:bg-surface-container-low transition-colors px-base" href="#">Account</a>
+</div>
+</div>
+<div class="flex items-center gap-md">
+<span class="material-symbols-outlined text-primary" data-icon="location_on">location_on</span>
+<span class="material-symbols-outlined text-primary" data-icon="notifications">notifications</span>
+<div class="w-8 h-8 rounded-full bg-surface-container-highest overflow-hidden border border-outline-variant">
+<img alt="User Account" data-alt="A professional headshot of a Rwandan entrepreneur with a warm smile, wearing a clean, modern business casual shirt. The background is a soft-focus office environment with natural light and warm earth tones, matching a high-trust, corporate-modern design aesthetic. The lighting is bright and clear." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBDlpcE5oP1P4cujZ7K88zas4YMNJARtLgdR4vh43lK2WC_xB8f6--JmBrLKGjtUCWqLzoQSF0mUkNU2KC62Zhc9-zZ_vbc20m0x6mhoSs-ah9IpG3Zuc-fDxVlWO3hwWJT7MvyENK2g4BxPJ8ixb-jYLlTLwgUphma7SDYf8gHcxowSAAUVTDd9j9dycldlItOqSywoOiDnW1AYZ9beF_UPkJP2Yq99MioOgG-jFi_Ti7AWjwZCs9fTIhAcIUNm5qWN0hgNZiS6cG3"/>
+</div>
+</div>
+</header>
+<main class="pt-16 pb-24 md:pb-8 max-w-[1280px] mx-auto px-margin-mobile md:px-margin-desktop">
+<div class="mt-lg md:mt-xl grid grid-cols-1 lg:grid-cols-12 gap-gutter">
+<!-- Left Column: Map & Order Details -->
+<div class="lg:col-span-8 space-y-gutter">
+<!-- Live Tracking Map Section -->
+<div class="relative ghost-border rounded-xl bg-surface overflow-hidden aspect-[16/10] md:aspect-auto md:h-[500px]">
+<div class="absolute inset-0 bg-surface-container-low">
+<img class="w-full h-full object-cover opacity-60" data-alt="A clean, minimalist topographical map of Kigali, Rwanda, showing simplified street grids and urban layouts. The map uses a neutral color palette of off-whites, light beiges, and subtle earth tones. Highlighting a delivery route between a central marketplace and a residential neighborhood with crisp vector-style pins." data-location="Kigali" src="https://lh3.googleusercontent.com/aida-public/AB6AXuC9gqV9qqI_bpvd3gYKzdJg_GHblg8IYMBdJvLAomzfavFGJfTOc-DqrZbMUdR-PjmlGTRXheEs6CMJCeTIoZbzfBE3DgMNNHTQr_nBJCouH1H70i2VzXNQbUHG0RzUIknert99jMmmLDqdy148VLmjOHJr3autV8X8bG_gD9If1S66yM9wU7UrflfQ0Tv5iiumRnuS59YBEqEIWf27Y2v_-Wc05HCEk4dFxBFcSlARdgNETrax7ZJ7_4GacSD0t14JpvX8t1qpTSXN"/>
+<!-- Simulated Pins & Route -->
+<div class="absolute top-1/4 left-1/4 flex flex-col items-center">
+<div class="bg-secondary p-xs rounded-lg text-white shadow-lg">
+<span class="material-symbols-outlined text-[20px]" data-icon="store">store</span>
+</div>
+<span class="text-label-md font-label-md bg-white px-xs rounded mt-xs shadow-sm">Kigali Market</span>
+</div>
+<div class="absolute bottom-1/3 right-1/4 flex flex-col items-center">
+<div class="bg-primary p-xs rounded-lg text-white shadow-lg">
+<span class="material-symbols-outlined text-[20px]" data-icon="home">home</span>
+</div>
+<span class="text-label-md font-label-md bg-white px-xs rounded mt-xs shadow-sm">Home</span>
+</div>
+<!-- Rider Position -->
+<div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 flex flex-col items-center animate-pulse">
+<div class="bg-tertiary p-xs rounded-full text-white shadow-lg border-2 border-white">
+<span class="material-symbols-outlined text-[24px]" data-icon="moped">moped</span>
+</div>
+<span class="text-label-md font-label-md bg-tertiary-fixed text-on-tertiary-fixed px-xs rounded mt-xs shadow-sm">Eric (Rider)</span>
+</div>
+</div>
+<!-- Overlay Info -->
+<div class="absolute top-md left-md right-md flex justify-between items-start pointer-events-none">
+<div class="bg-white/90 backdrop-blur-sm p-md rounded-lg ghost-border pointer-events-auto shadow-sm">
+<h2 class="text-body-md font-bold text-primary">Out for Delivery</h2>
+<p class="text-label-md">Arriving in approx. 12 mins</p>
+</div>
+<div class="bg-white/90 backdrop-blur-sm p-sm rounded-lg ghost-border pointer-events-auto shadow-sm flex items-center gap-xs">
+<div class="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
+<span class="text-label-md font-label-md">Live GPS Active</span>
+</div>
+</div>
+</div>
+<!-- Order Summary Card -->
+<div class="ghost-border rounded-xl bg-surface-container-lowest p-lg shadow-sm">
+<div class="flex flex-wrap justify-between items-start gap-md mb-lg">
+<div>
+<h3 class="text-headline-md font-headline-md text-on-surface">Order #RMF-88294</h3>
+<p class="text-body-sm text-on-surface-variant">Placed on Oct 24, 2023 • 10:45 AM</p>
+</div>
+<div class="flex items-center gap-sm bg-surface-container px-md py-xs rounded-lg">
+<span class="material-symbols-outlined text-primary" data-icon="security">security</span>
+<span class="text-label-md font-label-md text-on-surface">Secure Escrow Active</span>
+</div>
+</div>
+<div class="space-y-md border-t border-outline-variant pt-lg">
+<div class="flex justify-between items-center">
+<div class="flex items-center gap-md">
+<div class="w-12 h-12 bg-surface-container rounded-lg flex items-center justify-center">
+<span class="material-symbols-outlined text-on-surface-variant" data-icon="inventory_2">inventory_2</span>
+</div>
+<div>
+<p class="text-body-md font-semibold">Bulk Organic Maize (50kg)</p>
+<p class="text-body-sm text-on-surface-variant">Qty: 2 • Grade A Certified</p>
+</div>
+</div>
+<p class="text-body-md font-bold text-secondary">RWF 45,000</p>
+</div>
+<div class="flex justify-between items-center">
+<div class="flex items-center gap-md">
+<div class="w-12 h-12 bg-surface-container rounded-lg flex items-center justify-center">
+<span class="material-symbols-outlined text-on-surface-variant" data-icon="local_shipping">local_shipping</span>
+</div>
+<div>
+<p class="text-body-md font-semibold">Standard Logistics</p>
+<p class="text-body-sm text-on-surface-variant">Verified Express Delivery</p>
+</div>
+</div>
+<p class="text-body-md font-bold text-secondary">RWF 2,500</p>
+</div>
+</div>
+<div class="mt-xl pt-md border-t border-outline-variant flex justify-between items-center">
+<span class="text-body-lg font-bold">Total Amount</span>
+<span class="text-headline-md font-headline-md text-primary">RWF 47,500</span>
+</div>
+</div>
+</div>
+<!-- Right Column: Timeline & Handover -->
+<div class="lg:col-span-4 space-y-gutter">
+<!-- Handover QR Section -->
+<div class="ghost-border rounded-xl bg-surface-container-high p-lg text-center flex flex-col items-center">
+<h3 class="text-body-md font-bold mb-xs">Delivery Confirmation</h3>
+<p class="text-body-sm text-on-surface-variant mb-lg">Show this QR to the rider upon arrival to release payment.</p>
+<div class="p-md bg-white rounded-xl ghost-border mb-md">
+<img alt="QR Code" class="w-32 h-32" data-alt="A sharp, high-contrast QR code centered on a clean white background. The image is minimalist and functional, designed to look like a digital security token within a high-end financial app. The framing is tight and the resolution is crisp, reinforcing the brand's reliability and technological sophistication." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBuNxPjKwypm11WFU3mVLnaE08vODpIdgOaY7_KBgB8JLwocqsI26E9hBgHWWDioWVr4wZ3prLUrhMcYmy7os2iK16epyvjMf9-t_r2CuQmfeTI0mzNes5SKWUi-oFZ9ZENU_XRbP8lWdAf8cW-j9minSxrMVuoYHzIXVGp3Fb6RZT9Gq1XL8tgKRvFTM0kZehMBKXAlPyRIyyyahQkv6hzwE7ECykhuoKIKHw_OyKx3u6DB0oYlu8QY4Z3wjdQtieGJ1e41M18qRgC"/>
+</div>
+<div class="w-full bg-surface-container-lowest py-sm px-md rounded-lg mb-lg border border-dashed border-outline">
+<p class="text-label-md font-label-md text-on-surface-variant">CONFIRMATION CODE</p>
+<p class="text-headline-md font-bold tracking-widest">88 - 29 - 41</p>
+</div>
+<button class="w-full py-md bg-primary text-white font-bold rounded-lg hover:opacity-90 transition-opacity flex items-center justify-center gap-sm">
+<span class="material-symbols-outlined" data-icon="chat">chat</span>
+                        Contact Rider
+                    </button>
+</div>
+<!-- Vertical Timeline -->
+<div class="ghost-border rounded-xl bg-surface-container-lowest p-lg shadow-sm">
+<h3 class="text-body-md font-bold mb-xl">Tracking Status</h3>
+<div class="space-y-0">
+<!-- Step 1: Placed -->
+<div class="flex gap-lg group">
+<div class="flex flex-col items-center">
+<div class="w-8 h-8 rounded-full bg-primary text-white flex items-center justify-center z-10 shrink-0">
+<span class="material-symbols-outlined text-[18px]" data-icon="check" data-weight="fill">check</span>
+</div>
+<div class="w-0.5 h-full bg-primary"></div>
+</div>
+<div class="pb-xl">
+<p class="text-body-md font-bold">Order Placed</p>
+<p class="text-body-sm text-on-surface-variant">Oct 24, 10:45 AM</p>
+</div>
+</div>
+<!-- Step 2: Confirmed -->
+<div class="flex gap-lg group">
+<div class="flex flex-col items-center">
+<div class="w-8 h-8 rounded-full bg-primary text-white flex items-center justify-center z-10 shrink-0">
+<span class="material-symbols-outlined text-[18px]" data-icon="check" data-weight="fill">check</span>
+</div>
+<div class="w-0.5 h-full bg-primary"></div>
+</div>
+<div class="pb-xl">
+<p class="text-body-md font-bold">Payment Confirmed</p>
+<p class="text-body-sm text-on-surface-variant">Escrow secured by RMF</p>
+</div>
+</div>
+<!-- Step 3: Preparing -->
+<div class="flex gap-lg group">
+<div class="flex flex-col items-center">
+<div class="w-8 h-8 rounded-full bg-primary text-white flex items-center justify-center z-10 shrink-0">
+<span class="material-symbols-outlined text-[18px]" data-icon="check" data-weight="fill">check</span>
+</div>
+<div class="w-0.5 h-full bg-primary"></div>
+</div>
+<div class="pb-xl">
+<p class="text-body-md font-bold">Preparing</p>
+<p class="text-body-sm text-on-surface-variant">Market stall has packed items</p>
+</div>
+</div>
+<!-- Step 4: Picked Up -->
+<div class="flex gap-lg group">
+<div class="flex flex-col items-center">
+<div class="w-8 h-8 rounded-full bg-primary text-white flex items-center justify-center z-10 shrink-0">
+<span class="material-symbols-outlined text-[18px]" data-icon="check" data-weight="fill">check</span>
+</div>
+<div class="w-0.5 h-full bg-primary"></div>
+</div>
+<div class="pb-xl">
+<p class="text-body-md font-bold">Rider Picked Up</p>
+<p class="text-body-sm text-on-surface-variant">Assigned to Eric M.</p>
+</div>
+</div>
+<!-- Step 5: Out for Delivery (Active) -->
+<div class="flex gap-lg group">
+<div class="flex flex-col items-center">
+<div class="w-8 h-8 rounded-full border-2 border-primary bg-primary-fixed flex items-center justify-center z-10 shrink-0 relative">
+<div class="absolute inset-0 rounded-full border-4 border-primary/20 animate-ping"></div>
+<span class="material-symbols-outlined text-primary text-[18px]" data-icon="moped">moped</span>
+</div>
+<div class="w-0.5 h-full border-l-2 border-dashed border-outline-variant"></div>
+</div>
+<div class="pb-xl">
+<p class="text-body-md font-bold text-primary">Out for Delivery</p>
+<p class="text-body-sm text-primary">Rider is 1.2km away</p>
+</div>
+</div>
+<!-- Step 6: Completed -->
+<div class="flex gap-lg group">
+<div class="flex flex-col items-center">
+<div class="w-8 h-8 rounded-full bg-surface-container flex items-center justify-center z-10 shrink-0">
+<span class="material-symbols-outlined text-on-surface-variant text-[18px]" data-icon="done_all">done_all</span>
+</div>
+</div>
+<div>
+<p class="text-body-md font-bold text-on-surface-variant">Completed</p>
+<p class="text-body-sm text-on-surface-variant">Pending handover</p>
+</div>
+</div>
+</div>
+</div>
+<!-- Support Card -->
+<div class="bg-tertiary-container/10 p-lg rounded-xl border border-tertiary-container flex items-start gap-md">
+<span class="material-symbols-outlined text-tertiary" data-icon="help">help</span>
+<div>
+<h4 class="text-body-md font-bold text-on-tertiary-container">Need assistance?</h4>
+<p class="text-body-sm text-on-tertiary-container/80 mb-md">Our support team is available 24/7 for any disputes or delay issues.</p>
+<a class="text-label-md font-label-md text-tertiary font-bold underline" href="#">Open Support Chat</a>
+</div>
+</div>
+</div>
+</div>
+</main>
+<!-- BottomNavBar (Mobile Only) -->
+<nav class="lg:hidden fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-4 py-2 bg-surface dark:bg-surface-container-high border-t border-outline-variant dark:border-outline shadow-lg rounded-t-xl">
+<a class="flex flex-col items-center justify-center text-on-surface-variant dark:text-on-surface-variant hover:bg-surface-container transition-all" href="#">
+<span class="material-symbols-outlined" data-icon="home">home</span>
+<span class="font-label-md text-label-md">Home</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant dark:text-on-surface-variant hover:bg-surface-container transition-all" href="#">
+<span class="material-symbols-outlined" data-icon="search">search</span>
+<span class="font-label-md text-label-md">Search</span>
+</a>
+<a class="flex flex-col items-center justify-center bg-secondary-container dark:bg-secondary text-on-secondary-container dark:text-on-secondary rounded-full px-4 py-1 scale-90 duration-150" href="#">
+<span class="material-symbols-outlined" data-icon="receipt_long">receipt_long</span>
+<span class="font-label-md text-label-md">Orders</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant dark:text-on-surface-variant hover:bg-surface-container transition-all" href="#">
+<span class="material-symbols-outlined" data-icon="person">person</span>
+<span class="font-label-md text-label-md">Account</span>
+</a>
+</nav>
+<script>
+        // Simple micro-interaction for the QR code and contact button
+        document.querySelector('button').addEventListener('mousedown', function() {
+            this.style.transform = 'scale(0.95)';
+        });
+        document.querySelector('button').addEventListener('mouseup', function() {
+            this.style.transform = 'scale(1)';
+        });
+        
+        // Simulating a real-time update
+        setTimeout(() => {
+            console.log("Rider position updated...");
+        }, 5000);
+    </script>
+</body></html>

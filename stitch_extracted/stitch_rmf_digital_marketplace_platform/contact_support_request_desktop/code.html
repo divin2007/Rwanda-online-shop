@@ -1,0 +1,380 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>RMF Market - Contact &amp; Support</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Work+Sans:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@500&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+    tailwind.config = {
+      darkMode: "class",
+      theme: {
+        extend: {
+          "colors": {
+                  "surface": "#fbf9f8",
+                  "on-tertiary-container": "#002f6b",
+                  "inverse-surface": "#303030",
+                  "error-container": "#ffdad6",
+                  "secondary-container": "#fc671d",
+                  "on-tertiary": "#ffffff",
+                  "on-error-container": "#93000a",
+                  "on-surface-variant": "#5a4136",
+                  "on-background": "#1b1c1c",
+                  "on-secondary-fixed": "#370e00",
+                  "surface-container-highest": "#e3e2e2",
+                  "secondary-fixed-dim": "#ffb598",
+                  "on-surface": "#1b1c1c",
+                  "primary-fixed": "#ffdbcc",
+                  "on-primary-fixed-variant": "#7a3000",
+                  "on-primary": "#ffffff",
+                  "on-secondary-container": "#561b00",
+                  "surface-tint": "#a04100",
+                  "surface-bright": "#fbf9f8",
+                  "error": "#ba1a1a",
+                  "surface-container": "#efeded",
+                  "inverse-primary": "#ffb693",
+                  "surface-container-high": "#e9e8e7",
+                  "on-primary-fixed": "#351000",
+                  "outline-variant": "#e2bfb0",
+                  "on-tertiary-fixed": "#001a42",
+                  "primary-container": "#ff6b00",
+                  "surface-dim": "#dbdad9",
+                  "surface-container-low": "#f5f3f3",
+                  "on-primary-container": "#572000",
+                  "surface-container-lowest": "#ffffff",
+                  "primary-fixed-dim": "#ffb693",
+                  "tertiary-fixed": "#d8e2ff",
+                  "tertiary-container": "#5f97ff",
+                  "inverse-on-surface": "#f2f0f0",
+                  "secondary": "#a63b00",
+                  "tertiary": "#005ac2",
+                  "primary": "#a04100",
+                  "on-tertiary-fixed-variant": "#004395",
+                  "background": "#fbf9f8",
+                  "secondary-fixed": "#ffdbce",
+                  "on-secondary": "#ffffff",
+                  "on-secondary-fixed-variant": "#7f2b00"
+          },
+          "borderRadius": {
+                  "DEFAULT": "0.125rem",
+                  "lg": "0.25rem",
+                  "xl": "0.5rem",
+                  "full": "0.75rem"
+          },
+          "spacing": {
+                  "sm": "8px",
+                  "xl": "40px",
+                  "md": "16px",
+                  "margin-desktop": "32px",
+                  "base": "4px",
+                  "lg": "24px",
+                  "margin-mobile": "16px",
+                  "xs": "4px",
+                  "gutter": "16px"
+          },
+          "fontFamily": {
+                  "body-sm": ["Work Sans"],
+                  "body-lg": ["Work Sans"],
+                  "headline-md": ["Work Sans"],
+                  "label-md": ["JetBrains Mono"],
+                  "table-data": ["Work Sans"],
+                  "headline-lg": ["Work Sans"],
+                  "body-md": ["Work Sans"],
+                  "headline-lg-mobile": ["Work Sans"]
+          },
+          "fontSize": {
+                  "body-sm": ["12px", {"lineHeight": "16px", "fontWeight": "400"}],
+                  "body-lg": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                  "headline-md": ["20px", {"lineHeight": "28px", "fontWeight": "600"}],
+                  "label-md": ["12px", {"lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "500"}],
+                  "table-data": ["13px", {"lineHeight": "18px", "fontWeight": "500"}],
+                  "headline-lg": ["30px", {"lineHeight": "38px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                  "body-md": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                  "headline-lg-mobile": ["24px", {"lineHeight": "30px", "letterSpacing": "-0.01em", "fontWeight": "700"}]
+          }
+        },
+      },
+    }
+  </script>
+<style>
+    .material-symbols-outlined {
+      font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+      vertical-align: middle;
+    }
+    .ghost-border { border: 1px solid #ebdcd0; }
+    .focus-ring:focus-within { border-color: #a04100; ring: 1px solid #a04100; }
+    body { background-color: #fbf9f8; color: #1b1c1c; }
+  </style>
+</head>
+<body class="min-h-screen">
+<!-- TopNavBar Implementation -->
+<header class="fixed top-0 w-full z-50 flex justify-between items-center px-margin-desktop bg-surface border-b border-outline-variant h-16">
+<div class="flex items-center gap-xl">
+<h1 class="font-headline-md text-headline-md font-bold text-primary">RMF Market</h1>
+<nav class="hidden md:flex gap-lg">
+<a class="font-body-md text-body-md text-on-surface-variant hover:text-primary transition-colors" href="#">Browse</a>
+<a class="font-body-md text-body-md text-on-surface-variant hover:text-primary transition-colors" href="#">Bulk Orders</a>
+<a class="font-body-md text-body-md text-on-surface-variant hover:text-primary transition-colors" href="#">Logistics</a>
+<a class="font-body-md text-body-md text-on-surface-variant hover:text-primary transition-colors" href="#">Escrow</a>
+</nav>
+</div>
+<div class="flex items-center gap-md">
+<button class="material-symbols-outlined text-on-surface-variant p-base">notifications</button>
+<button class="material-symbols-outlined text-on-surface-variant p-base">shopping_cart</button>
+<div class="flex items-center gap-sm cursor-pointer ml-md">
+<img alt="Buyer Profile Avatar" class="w-8 h-8 rounded-full border border-outline-variant" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBaRccOfc4DxSopvnUEa0SKTCZw05N_2wF6LLeeFQEOPIjuYwLASm-eKS9ep3gU2CZVaTu3Fj6SW6jPyZtoH9VFFWlzVDJuy_L49hUgwJwLMk-EjPxQOyPEXkYfYMg1Wl7YTRMOJ4iZUjJqU4ttAgEhNXRst1zfWqcN2a3dx0P7sB34LfBtA6vSYWMbFqT75KvIYR-5yvJfpYGjRSf9tkrzjrinEw_otwVM334UbM9gcsEw3-dbxvl1qDAK5JwhCcV7QiD873xuQMOf"/>
+<span class="font-label-md text-label-md text-on-surface-variant hidden md:block">Account</span>
+</div>
+</div>
+</header>
+<div class="flex pt-16 min-h-screen">
+<!-- SideNavBar Implementation -->
+<aside class="hidden md:flex flex-col h-[calc(100vh-64px)] sticky top-16 p-md bg-surface-container-low border-r border-outline-variant w-64">
+<div class="flex items-center gap-sm mb-lg px-base">
+<img alt="Buyer Profile Picture" class="w-10 h-10 rounded-lg" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDUlYVMeioJeuhRVsmOQiW0u_8x6p4Z9k12iqqEsNLQQXKwbyh1Btpja7RjAY-6zeterR7HEnwv0fjFg3p-lox2hDILLIqjFGRPvEMDcqcdy_Ff6KtrVTu3j_cCdPDDc0FwQDICbHc5R1Ex-vStmzEpg8xFJCI_zcqiSX0ChOXwFQkF3TZYNvaWpbg5lGWn6ITKbS3liOkDUwKDGs9YYsyeCIxFAvw_A2y8xwVd0yMr37xDSOXXcq-HRl_BUKMOXPnx5pCqXVL8MJy_"/>
+<div class="overflow-hidden">
+<p class="font-body-md text-body-md font-bold text-on-surface truncate">Jean Bahizi</p>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Verified Buyer</p>
+</div>
+</div>
+<nav class="flex-grow flex flex-col gap-base">
+<div class="flex items-center gap-md px-md py-sm text-on-surface-variant hover:bg-surface-container-high transition-colors cursor-pointer rounded-lg">
+<span class="material-symbols-outlined">dashboard</span>
+<span class="font-label-md text-label-md">Dashboard</span>
+</div>
+<div class="flex items-center gap-md px-md py-sm text-on-surface-variant hover:bg-surface-container-high transition-colors cursor-pointer rounded-lg">
+<span class="material-symbols-outlined">package_2</span>
+<span class="font-label-md text-label-md">Orders</span>
+</div>
+<div class="flex items-center gap-md px-md py-sm text-on-surface-variant hover:bg-surface-container-high transition-colors cursor-pointer rounded-lg">
+<span class="material-symbols-outlined">favorite</span>
+<span class="font-label-md text-label-md">Wishlist</span>
+</div>
+<div class="flex items-center gap-md px-md py-sm text-on-surface-variant hover:bg-surface-container-high transition-colors cursor-pointer rounded-lg">
+<span class="material-symbols-outlined">payments</span>
+<span class="font-label-md text-label-md">Payments</span>
+</div>
+<div class="flex items-center gap-md px-md py-sm bg-secondary-container text-on-secondary-container font-bold rounded-lg cursor-pointer">
+<span class="material-symbols-outlined">support_agent</span>
+<span class="font-label-md text-label-md">Support</span>
+</div>
+<div class="flex items-center gap-md px-md py-sm text-on-surface-variant hover:bg-surface-container-high transition-colors cursor-pointer rounded-lg">
+<span class="material-symbols-outlined">settings</span>
+<span class="font-label-md text-label-md">Settings</span>
+</div>
+</nav>
+<div class="mt-auto pt-md border-t border-outline-variant">
+<div class="flex items-center gap-md px-md py-sm text-on-surface-variant hover:bg-surface-container-high transition-colors cursor-pointer rounded-lg">
+<span class="material-symbols-outlined">logout</span>
+<span class="font-label-md text-label-md">Logout</span>
+</div>
+</div>
+</aside>
+<!-- Main Content Canvas -->
+<main class="flex-grow p-margin-mobile md:p-margin-desktop overflow-y-auto">
+<div class="max-w-4xl mx-auto">
+<!-- Header Section -->
+<div class="mb-xl">
+<h2 class="font-headline-lg text-headline-lg text-primary mb-base">Help &amp; Support Center</h2>
+<p class="font-body-lg text-body-lg text-on-surface-variant">Submit a request and our facilitation team will resolve it within 24 hours.</p>
+</div>
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-lg">
+<!-- Support Form Column -->
+<form class="lg:col-span-8 space-y-lg">
+<!-- Issue Type Selector -->
+<section class="bg-surface-container-lowest p-lg ghost-border rounded-lg shadow-sm">
+<label class="block font-label-md text-label-md text-on-surface-variant mb-sm uppercase tracking-wider">Issue Category</label>
+<div class="relative">
+<span class="absolute left-md top-1/2 -translate-y-1/2 material-symbols-outlined text-outline">search</span>
+<input class="w-full pl-xl pr-md py-md bg-surface ghost-border rounded-lg font-body-md text-body-md focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary" placeholder="Search issues (e.g., Escrow, Logistics, Dispute...)" type="text"/>
+</div>
+<div class="mt-md flex flex-wrap gap-sm">
+<button class="px-md py-base font-label-md text-label-md bg-primary-container text-on-primary-container rounded-full flex items-center gap-xs" type="button">
+                  Payment/Escrow <span class="material-symbols-outlined text-[16px]">close</span>
+</button>
+<button class="px-md py-base font-label-md text-label-md bg-surface-container-high text-on-surface-variant border border-outline-variant rounded-full hover:bg-surface-variant transition-colors" type="button">Logistics Delay</button>
+<button class="px-md py-base font-label-md text-label-md bg-surface-container-high text-on-surface-variant border border-outline-variant rounded-full hover:bg-surface-variant transition-colors" type="button">Quality Dispute</button>
+</div>
+</section>
+<!-- Link Context Section -->
+<section class="bg-surface-container-lowest p-lg ghost-border rounded-lg shadow-sm">
+<h3 class="font-body-md text-body-md font-bold text-on-surface mb-md">Contextual Information</h3>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-md">
+<div>
+<label class="block font-label-md text-label-md text-on-surface-variant mb-xs">Link Specific Order ID</label>
+<div class="relative">
+<input class="w-full px-md py-md bg-surface ghost-border rounded-lg font-body-md text-body-md focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary" placeholder="#ORD-2023-8901" type="text"/>
+<span class="absolute right-md top-1/2 -translate-y-1/2 material-symbols-outlined text-outline text-[20px]">link</span>
+</div>
+</div>
+<div>
+<label class="block font-label-md text-label-md text-on-surface-variant mb-xs">Seller / Vendor Name</label>
+<input class="w-full px-md py-md bg-surface ghost-border rounded-lg font-body-md text-body-md focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary" placeholder="Kigali Grain Wholesalers" type="text"/>
+</div>
+</div>
+</section>
+<!-- Detailed Message Section -->
+<section class="bg-surface-container-lowest p-lg ghost-border rounded-lg shadow-sm">
+<label class="block font-label-md text-label-md text-on-surface-variant mb-xs">Detailed Request Description</label>
+<textarea class="w-full px-md py-md bg-surface ghost-border rounded-lg font-body-md text-body-md focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary" placeholder="Describe your issue in detail. Include what happened, when, and what your expected resolution is..." rows="6"></textarea>
+<!-- File Uploader -->
+<div class="mt-md">
+<label class="block font-label-md text-label-md text-on-surface-variant mb-xs">Attachments (Screenshots/Receipts)</label>
+<div class="border-2 border-dashed border-outline-variant rounded-lg p-lg flex flex-col items-center justify-center bg-surface hover:bg-surface-container transition-colors cursor-pointer group">
+<span class="material-symbols-outlined text-outline group-hover:text-primary transition-colors text-[40px] mb-sm">cloud_upload</span>
+<p class="font-body-md text-body-md text-on-surface-variant">Click to upload or drag and drop files here</p>
+<p class="font-body-sm text-body-sm text-outline mt-xs">PDF, JPG, PNG (Max 5MB each)</p>
+</div>
+<div class="mt-sm flex gap-sm">
+<div class="flex items-center gap-sm bg-surface-container p-xs pr-md rounded border border-outline-variant">
+<span class="material-symbols-outlined text-primary">image</span>
+<span class="font-body-sm text-body-sm truncate max-w-[120px]">receipt_102.png</span>
+<button class="material-symbols-outlined text-outline hover:text-error text-[18px]">cancel</button>
+</div>
+</div>
+</div>
+</section>
+<!-- Urgent & Preference -->
+<div class="flex flex-col md:flex-row gap-lg">
+<section class="flex-1 bg-surface-container-lowest p-lg ghost-border rounded-lg shadow-sm">
+<label class="block font-label-md text-label-md text-on-surface-variant mb-md uppercase tracking-wider">Urgency Level</label>
+<div class="flex justify-between items-center bg-surface p-sm rounded-lg ghost-border">
+<button class="flex-1 py-sm px-md text-center font-label-md text-label-md rounded hover:bg-surface-container-high transition-all" type="button">Low</button>
+<button class="flex-1 py-sm px-md text-center font-label-md text-label-md rounded hover:bg-surface-container-high transition-all" type="button">Medium</button>
+<button class="flex-1 py-sm px-md text-center font-label-md text-label-md rounded bg-error-container text-on-error-container font-bold shadow-sm" type="button">High / Urgent</button>
+</div>
+</section>
+<section class="flex-1 bg-surface-container-lowest p-lg ghost-border rounded-lg shadow-sm">
+<label class="block font-label-md text-label-md text-on-surface-variant mb-md uppercase tracking-wider">Contact Preference</label>
+<div class="space-y-sm">
+<label class="flex items-center gap-md cursor-pointer group">
+<div class="w-5 h-5 rounded-full border-2 border-primary flex items-center justify-center">
+<div class="w-2.5 h-2.5 rounded-full bg-primary"></div>
+</div>
+<span class="font-body-md text-body-md text-on-surface">Email Notification</span>
+</label>
+<label class="flex items-center gap-md cursor-pointer group">
+<div class="w-5 h-5 rounded-full border-2 border-outline-variant flex items-center justify-center"></div>
+<span class="font-body-md text-body-md text-on-surface">Direct Call (Verified Number)</span>
+</label>
+</div>
+</section>
+</div>
+<div class="pt-md flex items-center justify-between">
+<div class="flex items-center gap-sm text-tertiary">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">verified_user</span>
+<span class="font-label-md text-label-md uppercase tracking-widest">Secure Support Protocol</span>
+</div>
+<button class="bg-primary text-on-primary px-xl py-md font-body-md text-body-md font-bold rounded shadow-lg hover:opacity-90 active:scale-95 transition-all" type="submit">
+                Submit Request
+              </button>
+</div>
+</form>
+<!-- Sidebar Information -->
+<div class="lg:col-span-4 space-y-lg">
+<div class="bg-surface-container-high p-lg rounded-lg border border-outline-variant">
+<h4 class="font-headline-md text-headline-md text-on-surface mb-md">Direct Support</h4>
+<div class="space-y-md">
+<div class="flex gap-md">
+<div class="w-10 h-10 rounded bg-primary-container flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-on-primary-container">phone_in_talk</span>
+</div>
+<div>
+<p class="font-label-md text-label-md text-outline">Helpline (Mon-Fri)</p>
+<p class="font-body-md text-body-md font-bold text-on-surface">+250 788 123 456</p>
+</div>
+</div>
+<div class="flex gap-md">
+<div class="w-10 h-10 rounded bg-tertiary-container flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-on-tertiary-container">mail</span>
+</div>
+<div>
+<p class="font-label-md text-label-md text-outline">Email Support</p>
+<p class="font-body-md text-body-md font-bold text-on-surface">facilitation@rmf.rw</p>
+</div>
+</div>
+</div>
+</div>
+<div class="bg-primary-container/10 p-lg rounded-lg border border-primary-container/30">
+<div class="flex items-center gap-sm mb-sm text-primary">
+<span class="material-symbols-outlined">gavel</span>
+<h4 class="font-body-md text-body-md font-bold uppercase tracking-wide">Escrow Timeline</h4>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant mb-md leading-relaxed">
+                If your request involves an active Escrow payment, we will automatically put the funds on temporary hold until the facilitation team reviews your dispute.
+              </p>
+<!-- Timeline Indicator -->
+<div class="relative flex justify-between pt-md">
+<div class="absolute top-[23px] left-0 w-full h-0.5 bg-outline-variant"></div>
+<div class="z-10 flex flex-col items-center">
+<div class="w-4 h-4 rounded-full bg-primary ring-4 ring-primary-container/20"></div>
+<span class="mt-xs font-label-md text-[10px] text-primary font-bold">Initiated</span>
+</div>
+<div class="z-10 flex flex-col items-center">
+<div class="w-4 h-4 rounded-full bg-outline-variant"></div>
+<span class="mt-xs font-label-md text-[10px] text-outline">Investigation</span>
+</div>
+<div class="z-10 flex flex-col items-center">
+<div class="w-4 h-4 rounded-full bg-outline-variant"></div>
+<span class="mt-xs font-label-md text-[10px] text-outline">Resolution</span>
+</div>
+</div>
+</div>
+<div class="rounded-lg overflow-hidden ghost-border">
+<img class="w-full h-48 object-cover" data-alt="A professional and clean corporate office setting in Kigali, Rwanda. The image shows a modern customer service center with Rwandan staff working diligently at tidy workstations. Warm sunlight filters through large windows, highlighting an atmosphere of reliability, trust, and local commercial excellence. The aesthetic is grounded and operational, with earth-toned decor elements consistent with the RMF brand palette." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDYep55ndfp27rIN-xkD_Q9a31LE0AmB_2VYmR3dvvMsKcCN-LFppfugtPau6jounMa60HK_SjUv0AKPqwi-kdfJGWOtyFvGFY7dlerh-AzgwJLv04Z-2n4_tgUT__hl_Ra7Bs5PZa5uuOrRNTHIcix40os8c8aYUqPI1FzAnZ4n9-0PWRTDjCfAq1ljhhHpPdUTf5jiesOg_vhNp_Yy2Ef_NnkYV6wtr8USl9XGO7cldb1Km2q6uebruSGhZQP7xiGqA-55atrRc-m"/>
+<div class="p-md bg-surface">
+<p class="font-body-sm text-body-sm italic text-on-surface-variant">"Ensuring transparent commerce across the region." — RMF Facilitation Team</p>
+</div>
+</div>
+</div>
+</div>
+</div>
+</main>
+</div>
+<!-- BottomNavBar for Mobile -->
+<nav class="md:hidden fixed bottom-0 left-0 w-full h-16 bg-surface border-t border-outline-variant grid grid-cols-5 items-center z-50">
+<button class="flex flex-col items-center gap-xs text-on-surface-variant">
+<span class="material-symbols-outlined text-[24px]">dashboard</span>
+<span class="text-[10px] font-label-md">Home</span>
+</button>
+<button class="flex flex-col items-center gap-xs text-on-surface-variant">
+<span class="material-symbols-outlined text-[24px]">package_2</span>
+<span class="text-[10px] font-label-md">Orders</span>
+</button>
+<button class="flex flex-col items-center gap-xs text-on-surface-variant">
+<span class="material-symbols-outlined text-[24px]">favorite</span>
+<span class="text-[10px] font-label-md">Wishlist</span>
+</button>
+<button class="flex flex-col items-center gap-xs text-primary font-bold">
+<span class="material-symbols-outlined text-[24px]" style="font-variation-settings: 'FILL' 1;">support_agent</span>
+<span class="text-[10px] font-label-md">Support</span>
+</button>
+<button class="flex flex-col items-center gap-xs text-on-surface-variant">
+<span class="material-symbols-outlined text-[24px]">settings</span>
+<span class="text-[10px] font-label-md">Settings</span>
+</button>
+</nav>
+<script>
+    // Micro-interaction for Urgency Level selection
+    const urgencyButtons = document.querySelectorAll('.urgency-btn');
+    urgencyButtons.forEach(btn => {
+      btn.addEventListener('click', () => {
+        urgencyButtons.forEach(b => {
+          b.classList.remove('bg-error-container', 'text-on-error-container', 'font-bold', 'shadow-sm');
+          b.classList.add('text-on-surface-variant');
+        });
+        btn.classList.add('bg-error-container', 'text-on-error-container', 'font-bold', 'shadow-sm');
+        btn.classList.remove('text-on-surface-variant');
+      });
+    });
+
+    // Dummy toggle for search suggestion items
+    document.querySelector('input[placeholder*="Search issues"]').addEventListener('input', (e) => {
+      // In a real app, this would filter issue types
+      console.log('Searching for:', e.target.value);
+    });
+  </script>
+</body></html>

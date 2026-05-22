@@ -59,8 +59,12 @@ export class DeliveryController {
     return { success: true, data: history };
   }
 
+  @UseGuards(JwtAuthGuard)
   @Get('rider/:userId')
-  async getRiderDeliveries(@Param('userId') userId: string, @Query('status') status?: string) {
+  async getRiderDeliveries(@Param('userId') userId: string, @Query('status') status: string, @Request() req: any) {
+    if (req.user.role !== 'ADMIN' && req.user.userId !== userId) {
+      throw new ForbiddenException('You can only view your own deliveries');
+    }
     const deliveries = await this.deliveryService.getRiderDeliveries(userId, status);
     return { success: true, data: deliveries };
   }

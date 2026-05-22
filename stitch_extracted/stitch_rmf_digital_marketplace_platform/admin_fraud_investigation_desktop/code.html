@@ -1,0 +1,481 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Fraud Investigation Workspace | RMF Portal</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Work+Sans:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@500&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .risk-gradient {
+            background: linear-gradient(90deg, #22c55e 0%, #eab308 50%, #ef4444 100%);
+        }
+        /* Hide scrollbar for Chrome, Safari and Opera */
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        /* Hide scrollbar for IE, Edge and Firefox */
+        .no-scrollbar {
+            -ms-overflow-style: none;  /* IE and Edge */
+            scrollbar-width: none;  /* Firefox */
+        }
+    </style>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "on-surface": "#1b1c1c",
+                      "tertiary": "#005ac2",
+                      "tertiary-fixed-dim": "#adc6ff",
+                      "inverse-on-surface": "#f2f0f0",
+                      "surface-container-high": "#e9e8e7",
+                      "on-secondary-fixed-variant": "#7f2b00",
+                      "on-tertiary": "#ffffff",
+                      "surface-variant": "#e3e2e2",
+                      "secondary-fixed-dim": "#ffb598",
+                      "inverse-surface": "#303030",
+                      "background": "#fbf9f8",
+                      "surface-tint": "#a04100",
+                      "primary-fixed-dim": "#ffb693",
+                      "on-primary": "#ffffff",
+                      "outline": "#8e7164",
+                      "error": "#ba1a1a",
+                      "on-secondary-fixed": "#370e00",
+                      "secondary-container": "#fc671d",
+                      "outline-variant": "#e2bfb0",
+                      "on-secondary-container": "#561b00",
+                      "surface-container-low": "#f5f3f3",
+                      "on-tertiary-fixed": "#001a42",
+                      "on-surface-variant": "#5a4136",
+                      "inverse-primary": "#ffb693",
+                      "secondary-fixed": "#ffdbce",
+                      "tertiary-fixed": "#d8e2ff",
+                      "primary-container": "#ff6b00",
+                      "on-background": "#1b1c1c",
+                      "surface-container": "#efeded",
+                      "surface-container-lowest": "#ffffff",
+                      "on-primary-fixed-variant": "#7a3000",
+                      "primary-fixed": "#ffdbcc",
+                      "on-tertiary-fixed-variant": "#004395",
+                      "on-primary-fixed": "#351000",
+                      "on-primary-container": "#572000",
+                      "surface-bright": "#fbf9f8",
+                      "primary": "#a04100",
+                      "on-error": "#ffffff",
+                      "error-container": "#ffdad6",
+                      "surface": "#fbf9f8",
+                      "tertiary-container": "#5f97ff",
+                      "surface-container-highest": "#e3e2e2",
+                      "on-tertiary-container": "#002f6b",
+                      "on-secondary": "#ffffff",
+                      "surface-dim": "#dbdad9",
+                      "on-error-container": "#93000a",
+                      "secondary": "#a63b00"
+              },
+              "borderRadius": {
+                      "DEFAULT": "0.125rem",
+                      "lg": "0.25rem",
+                      "xl": "0.5rem",
+                      "full": "0.75rem"
+              },
+              "spacing": {
+                      "lg": "24px",
+                      "md": "16px",
+                      "xs": "4px",
+                      "margin-desktop": "32px",
+                      "margin-mobile": "16px",
+                      "gutter": "16px",
+                      "sm": "8px",
+                      "base": "4px",
+                      "xl": "40px"
+              },
+              "fontFamily": {
+                      "body-sm": ["Work Sans"],
+                      "body-md": ["Work Sans"],
+                      "label-md": ["JetBrains Mono"],
+                      "headline-lg-mobile": ["Work Sans"],
+                      "table-data": ["Work Sans"],
+                      "headline-md": ["Work Sans"],
+                      "body-lg": ["Work Sans"],
+                      "headline-lg": ["Work Sans"]
+              },
+              "fontSize": {
+                      "body-sm": ["12px", {"lineHeight": "16px", "fontWeight": "400"}],
+                      "body-md": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                      "label-md": ["12px", {"lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "500"}],
+                      "headline-lg-mobile": ["24px", {"lineHeight": "30px", "letterSpacing": "-0.01em", "fontWeight": "700"}],
+                      "table-data": ["13px", {"lineHeight": "18px", "fontWeight": "500"}],
+                      "headline-md": ["20px", {"lineHeight": "28px", "fontWeight": "600"}],
+                      "body-lg": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                      "headline-lg": ["30px", {"lineHeight": "38px", "letterSpacing": "-0.02em", "fontWeight": "700"}]
+              }
+            },
+          },
+        }
+      </script>
+</head>
+<body class="bg-background text-on-surface font-body-md">
+<!-- TopAppBar -->
+<header class="fixed top-0 w-full z-50 bg-surface border-b border-outline-variant flex justify-between items-center px-margin-desktop h-16 w-full">
+<div class="flex items-center gap-md">
+<span class="text-headline-md font-headline-md text-primary">RMF Platform</span>
+<div class="hidden md:flex bg-surface-container-low px-sm py-xs border border-outline-variant rounded items-center gap-sm w-80">
+<span class="material-symbols-outlined text-on-surface-variant">search</span>
+<input class="bg-transparent border-none focus:ring-0 text-body-md w-full" placeholder="Search case ID, user, or IP..." type="text"/>
+</div>
+</div>
+<div class="flex items-center gap-md">
+<div class="flex gap-sm items-center">
+<button class="p-2 hover:bg-surface-container-low transition-colors rounded-full cursor-pointer active:opacity-80">
+<span class="material-symbols-outlined text-primary">notifications</span>
+</button>
+<button class="p-2 hover:bg-surface-container-low transition-colors rounded-full cursor-pointer active:opacity-80">
+<span class="material-symbols-outlined text-primary">chat</span>
+</button>
+<button class="flex items-center gap-xs p-1 hover:bg-surface-container-low transition-colors rounded cursor-pointer active:opacity-80">
+<span class="material-symbols-outlined text-primary">account_circle</span>
+<span class="font-bold text-primary border-b-2 border-primary">Admin_04</span>
+</button>
+</div>
+</div>
+</header>
+<!-- SideNavBar -->
+<aside class="fixed left-0 top-0 h-full w-64 hidden md:flex flex-col bg-surface-container-low border-r border-outline-variant p-md gap-sm z-40 pt-20">
+<div class="flex items-center gap-sm mb-lg px-xs">
+<img alt="User Profile" class="w-10 h-10 rounded-full border border-outline-variant" data-alt="A professional corporate headshot of a Rwandan official in business attire, looking confident and reliable. The lighting is warm and natural, set against a clean, modern office interior with soft focus. The overall aesthetic is professional, grounded, and trust-inspiring, consistent with high-level administrative branding." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBiFYhZZb8ifnZAVB8s6JmdRWVm2hjJz7GN6MvaiS5jGjX8-Lq05n7umhohXinoy8iEYPHB2cM2JCaeJh9LmdI1U2iACP3yJ1N63IMGlo65B6yLvLDpOz1UCB9UTJyjCLWqKpXoqUlK1dV1U-vAzI6u4YmZdaFNdZsioTwozTR5k5SB5_4UAZbJA_UpxEaL4SV4FpibZUDpdZoAAz0YzlRBqrN3gwyITnWXLbFJWkWPTowI8Oji9dJIbK7BziNn-qUYzIq-sM7Fsq08"/>
+<div>
+<p class="font-headline-md text-body-md font-bold text-primary">RMF Portal</p>
+<p class="font-label-md text-label-md text-on-surface-variant">Market Facilitator</p>
+</div>
+</div>
+<nav class="flex flex-col gap-xs grow">
+<a class="flex items-center gap-md p-md text-on-surface-variant hover:bg-surface-container-high transition-all duration-200" href="#">
+<span class="material-symbols-outlined">dashboard</span>
+<span class="font-label-md text-label-md">Dashboard</span>
+</a>
+<a class="flex items-center gap-md p-md bg-primary-container text-on-primary-container rounded-xl font-bold transition-all duration-200" href="#">
+<span class="material-symbols-outlined">security</span>
+<span class="font-label-md text-label-md">Fraud Center</span>
+</a>
+<a class="flex items-center gap-md p-md text-on-surface-variant hover:bg-surface-container-high transition-all duration-200" href="#">
+<span class="material-symbols-outlined">receipt_long</span>
+<span class="font-label-md text-label-md">Orders</span>
+</a>
+<a class="flex items-center gap-md p-md text-on-surface-variant hover:bg-surface-container-high transition-all duration-200" href="#">
+<span class="material-symbols-outlined">analytics</span>
+<span class="font-label-md text-label-md">Analytics</span>
+</a>
+</nav>
+<div class="border-t border-outline-variant pt-md flex flex-col gap-xs">
+<a class="flex items-center gap-md p-md text-on-surface-variant hover:bg-surface-container-high transition-all duration-200" href="#">
+<span class="material-symbols-outlined">settings</span>
+<span class="font-label-md text-label-md">Settings</span>
+</a>
+<a class="flex items-center gap-md p-md text-on-surface-variant hover:bg-surface-container-high transition-all duration-200" href="#">
+<span class="material-symbols-outlined">help</span>
+<span class="font-label-md text-label-md">Support</span>
+</a>
+</div>
+</aside>
+<!-- Main Content Canvas -->
+<main class="md:pl-64 pt-16 min-h-screen">
+<div class="p-margin-desktop max-w-[1440px] mx-auto">
+<!-- Page Header -->
+<div class="flex flex-col md:flex-row md:items-end justify-between mb-lg gap-md">
+<div>
+<div class="flex items-center gap-sm text-on-surface-variant mb-xs">
+<span class="font-label-md text-label-md">OPERATIONS / SECURITY</span>
+</div>
+<h1 class="font-headline-lg text-headline-lg text-on-surface">Fraud Investigation Workspace</h1>
+</div>
+<div class="flex gap-sm">
+<button class="px-md py-sm border border-primary text-primary rounded-lg font-bold hover:bg-surface-container-low transition-colors flex items-center gap-xs">
+<span class="material-symbols-outlined text-[18px]">export_notes</span>
+<span>Export Logs</span>
+</button>
+<button class="px-md py-sm bg-primary text-on-primary rounded-lg font-bold hover:opacity-90 transition-opacity flex items-center gap-xs shadow-sm">
+<span class="material-symbols-outlined text-[18px]">emergency</span>
+<span>High Priority Queue</span>
+</button>
+</div>
+</div>
+<!-- Workspace Layout -->
+<div class="grid grid-cols-12 gap-gutter">
+<!-- Left Column: Active Alerts List -->
+<div class="col-span-12 lg:col-span-3 flex flex-col gap-gutter">
+<div class="bg-surface border border-outline-variant rounded-xl overflow-hidden flex flex-col h-[calc(100vh-280px)]">
+<div class="bg-surface-container-low p-md border-b border-outline-variant flex justify-between items-center">
+<h2 class="font-headline-md text-body-lg font-bold">Alert Queue</h2>
+<span class="bg-error text-on-error px-2 py-0.5 rounded-full text-[10px] font-bold">12 ACTIVE</span>
+</div>
+<div class="overflow-y-auto no-scrollbar">
+<!-- Alert Item: Active -->
+<div class="p-md bg-secondary-container/10 border-l-4 border-secondary cursor-pointer hover:bg-secondary-container/20 transition-colors">
+<div class="flex justify-between items-start mb-xs">
+<span class="font-label-md text-[10px] text-secondary font-bold uppercase">Case #8821</span>
+<span class="text-error font-bold text-body-sm">92/100</span>
+</div>
+<p class="font-bold text-on-surface mb-xs">MoMo Velocity Spike</p>
+<div class="flex justify-between text-[11px] text-on-surface-variant">
+<span>User: J. Mugisha</span>
+<span>2m ago</span>
+</div>
+</div>
+<!-- Alert Item -->
+<div class="p-md border-b border-outline-variant cursor-pointer hover:bg-surface-container-low transition-colors">
+<div class="flex justify-between items-start mb-xs">
+<span class="font-label-md text-[10px] text-on-surface-variant font-bold uppercase">Case #8819</span>
+<span class="text-primary font-bold text-body-sm">74/100</span>
+</div>
+<p class="font-bold text-on-surface mb-xs">IP Mismatch (VPN)</p>
+<div class="flex justify-between text-[11px] text-on-surface-variant">
+<span>User: K. Uwase</span>
+<span>15m ago</span>
+</div>
+</div>
+<!-- Alert Item -->
+<div class="p-md border-b border-outline-variant cursor-pointer hover:bg-surface-container-low transition-colors">
+<div class="flex justify-between items-start mb-xs">
+<span class="font-label-md text-[10px] text-on-surface-variant font-bold uppercase">Case #8815</span>
+<span class="text-on-surface-variant font-bold text-body-sm">45/100</span>
+</div>
+<p class="font-bold text-on-surface mb-xs">Account Linkage</p>
+<div class="flex justify-between text-[11px] text-on-surface-variant">
+<span>User: L. Gatera</span>
+<span>1h ago</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Middle Column: Detailed Investigation -->
+<div class="col-span-12 lg:col-span-6 flex flex-col gap-gutter">
+<!-- User Profile & Context -->
+<div class="bg-surface border border-outline-variant rounded-xl p-lg">
+<div class="flex items-start justify-between mb-lg">
+<div class="flex gap-md">
+<div class="relative">
+<img alt="Suspect Profile" class="w-20 h-20 rounded-xl border-2 border-error" data-alt="A gritty, close-up portrait of a man in a bustling marketplace, his expression guarded. The lighting is harsh midday sun, casting deep shadows. The visual style is documentary-realism with high contrast, emphasizing texture and a grounded Rwandan atmosphere, suitable for a security investigation interface." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDKkGlsU3mZyl1avTdFJnBvmtlEm_DRsT8AsxEBFx-_rcNL3LKfk07M7GZ_fGQBRwnnw0DX2JSvxqy0mdS6tXAUz4OiWULvNrsEqHjhWzFn9ma-mJmRiBMiFaHLVewDc9iYpuDR-4iZ85ntScBPqH7NLgdS7Rbu88e2-ajPvMZiZU4DCPd4NYkyt662vhX6pbx9RWJyLU0ZjSCRkRG-r2i7afC_Jw4lqcgfUAn9a4Vjx8IH_XeLgeCzv_DvW4b9MCMfwg5AGnp2wqgx"/>
+<span class="absolute -bottom-2 -right-2 bg-error text-on-error p-1 rounded-full border-2 border-surface">
+<span class="material-symbols-outlined text-[16px]" style="font-variation-settings: 'FILL' 1;">warning</span>
+</span>
+</div>
+<div>
+<h3 class="font-headline-md text-headline-md text-on-surface">Jean-Claude Mugisha</h3>
+<p class="text-on-surface-variant flex items-center gap-xs">
+<span class="material-symbols-outlined text-[16px]">person</span>
+                                        Seller (Tier 2) • Member since May 2023
+                                    </p>
+<div class="flex gap-sm mt-sm">
+<span class="px-sm py-xs bg-surface-container text-on-surface-variant rounded text-[10px] font-bold">VERIFIED RWF-ID</span>
+<span class="px-sm py-xs bg-error-container text-on-error-container rounded text-[10px] font-bold uppercase">Escrow Hold Active</span>
+</div>
+</div>
+</div>
+<div class="text-right">
+<p class="text-[10px] font-label-md text-on-surface-variant uppercase">Risk Score</p>
+<p class="text-[40px] font-bold text-error leading-none">92</p>
+<div class="w-24 h-1 risk-gradient rounded-full mt-xs"></div>
+</div>
+</div>
+<!-- Technical Evidence Grid -->
+<div class="grid grid-cols-2 gap-md border-t border-outline-variant pt-lg">
+<div class="bg-surface-container-low p-md rounded-lg border border-outline-variant">
+<div class="flex items-center gap-xs text-on-surface-variant mb-sm">
+<span class="material-symbols-outlined text-[18px]">router</span>
+<span class="font-label-md text-[11px] uppercase">IP Connectivity</span>
+</div>
+<div class="space-y-xs">
+<div class="flex justify-between">
+<span class="text-[12px]">Last IP:</span>
+<span class="font-label-md text-[12px] text-error">197.243.32.11 (VPN)</span>
+</div>
+<div class="flex justify-between">
+<span class="text-[12px]">Location:</span>
+<span class="text-[12px]">Kigali, Rwanda (Inconsistent)</span>
+</div>
+<div class="mt-sm">
+<div class="w-full h-24 bg-surface-variant rounded overflow-hidden relative">
+<!-- Map Placeholder -->
+<div class="absolute inset-0 bg-no-repeat bg-cover opacity-50" data-location="Kigali" style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuBsf4gTgXZzwWDxJswJowBiPX-kDuA5avGjwhrKauRPVz0MgTOTygK3GBszkk2pBVI2zUKv2Xdbp96FmT8iOP758x0qNLb7u8iwrBIEBNQyJOr_XaW22Q2qZBYeOFs5FAstjMLWYGSMjEkSrhF45BoKsnxXkK2WkeGwPKCfcT9mkSExuBG8MbWbNYqJmja6N66fiU0Lk8ga2cKoIloNm-5xkb-ZRwA9xd_BVi3vy_Gx97t5irzrpY1x9j7Q49Pd3OOhpLHuinfgp9ld')"></div>
+<div class="absolute top-1/2 left-1/4 w-4 h-4 bg-error rounded-full animate-ping"></div>
+<div class="absolute top-1/2 left-1/4 w-4 h-4 bg-error rounded-full border-2 border-white shadow-lg"></div>
+</div>
+</div>
+</div>
+</div>
+<div class="bg-surface-container-low p-md rounded-lg border border-outline-variant">
+<div class="flex items-center gap-xs text-on-surface-variant mb-sm">
+<span class="material-symbols-outlined text-[18px]">phonelink_setup</span>
+<span class="font-label-md text-[11px] uppercase">Device Fingerprint</span>
+</div>
+<div class="space-y-sm">
+<div class="flex items-center justify-between">
+<span class="text-[12px]">Model:</span>
+<span class="text-[12px] font-bold">Tecno Spark 8C</span>
+</div>
+<div class="flex items-center justify-between">
+<span class="text-[12px]">Shared Device:</span>
+<span class="px-xs py-0.5 bg-error text-on-error rounded text-[10px]">3 ACCOUNTS</span>
+</div>
+<div class="border-t border-outline-variant pt-xs">
+<p class="text-[10px] text-on-surface-variant uppercase mb-xs">Related IDs:</p>
+<div class="flex flex-wrap gap-xs">
+<span class="text-[11px] text-primary underline">@m_pete_22</span>
+<span class="text-[11px] text-primary underline">@jean_k_8</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Evidence Log -->
+<div class="bg-surface border border-outline-variant rounded-xl overflow-hidden">
+<div class="p-md bg-surface-container-low border-b border-outline-variant flex justify-between items-center">
+<h3 class="font-bold text-body-lg">Suspicious Activity Log</h3>
+<button class="text-primary font-bold text-label-md">FILTER BY TYPE</button>
+</div>
+<table class="w-full text-left border-collapse">
+<thead>
+<tr class="bg-surface-container-lowest border-b border-outline-variant text-[11px] uppercase text-on-surface-variant font-label-md">
+<th class="p-md">Timestamp</th>
+<th class="p-md">Event</th>
+<th class="p-md">Value</th>
+<th class="p-md text-right">Status</th>
+</tr>
+</thead>
+<tbody class="text-table-data">
+<tr class="border-b border-outline-variant hover:bg-surface-container-lowest">
+<td class="p-md text-on-surface-variant">14:22:11</td>
+<td class="p-md font-bold">MoMo Pull Attempt</td>
+<td class="p-md">50,000 RWF</td>
+<td class="p-md text-right"><span class="text-error">FAILED (INSUFFICIENT)</span></td>
+</tr>
+<tr class="border-b border-outline-variant hover:bg-surface-container-lowest bg-surface-container-low">
+<td class="p-md text-on-surface-variant">14:21:45</td>
+<td class="p-md font-bold">MoMo Pull Attempt</td>
+<td class="p-md">150,000 RWF</td>
+<td class="p-md text-right"><span class="text-error">FAILED (INSUFFICIENT)</span></td>
+</tr>
+<tr class="border-b border-outline-variant hover:bg-surface-container-lowest">
+<td class="p-md text-on-surface-variant">14:18:02</td>
+<td class="p-md font-bold">Login Location Shift</td>
+<td class="p-md">Kigali -&gt; Gisenyi</td>
+<td class="p-md text-right"><span class="text-primary font-bold">FLAGGED</span></td>
+</tr>
+<tr class="border-b border-outline-variant hover:bg-surface-container-lowest bg-surface-container-low">
+<td class="p-md text-on-surface-variant">09:05:33</td>
+<td class="p-md font-bold">Price Update (x10)</td>
+<td class="p-md">+850,000 RWF</td>
+<td class="p-md text-right"><span class="text-on-surface-variant">AUTO-REVIEW</span></td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<!-- Right Column: Audit & Actions -->
+<div class="col-span-12 lg:col-span-3 flex flex-col gap-gutter">
+<!-- Action Panel -->
+<div class="bg-surface border border-outline-variant rounded-xl p-md">
+<h3 class="font-headline-md text-body-lg font-bold mb-md border-b border-outline-variant pb-xs">Resolution Actions</h3>
+<div class="flex flex-col gap-sm">
+<button class="w-full py-md bg-error text-on-error rounded-lg font-bold flex items-center justify-center gap-xs active:scale-95 transition-transform">
+<span class="material-symbols-outlined">block</span>
+<span>Freeze Account</span>
+</button>
+<button class="w-full py-md border border-error text-error rounded-lg font-bold hover:bg-error/5 transition-colors flex items-center justify-center gap-xs">
+<span class="material-symbols-outlined">visibility_off</span>
+<span>Shadow-ban Video</span>
+</button>
+<button class="w-full py-md border border-outline text-on-surface rounded-lg font-bold hover:bg-surface-container-low transition-colors flex items-center justify-center gap-xs">
+<span class="material-symbols-outlined">perm_identity</span>
+<span>Request Re-ID</span>
+</button>
+<button class="w-full py-md border border-outline text-on-surface rounded-lg font-bold hover:bg-surface-container-low transition-colors flex items-center justify-center gap-xs">
+<span class="material-symbols-outlined">mail</span>
+<span>Contact Seller</span>
+</button>
+<div class="border-t border-outline-variant my-xs"></div>
+<button class="w-full py-md bg-surface-container-high text-on-surface-variant rounded-lg font-bold hover:bg-surface-container-highest transition-colors flex items-center justify-center gap-xs">
+<span class="material-symbols-outlined">check_circle</span>
+<span>Dismiss Alert</span>
+</button>
+</div>
+</div>
+<!-- Audit Trail & Notes -->
+<div class="bg-surface border border-outline-variant rounded-xl flex flex-col grow min-h-[300px]">
+<div class="p-md bg-surface-container-low border-b border-outline-variant">
+<h3 class="font-bold text-body-lg">Moderator Trail</h3>
+</div>
+<div class="p-md space-y-md grow">
+<div class="relative pl-6 border-l-2 border-outline-variant">
+<div class="absolute -left-[9px] top-0 w-4 h-4 bg-primary rounded-full border-2 border-surface"></div>
+<p class="text-[11px] text-on-surface-variant font-bold uppercase">System Alert • 14:22</p>
+<p class="text-[13px] leading-snug">Case opened automatically due to payment velocity. 2 attempts blocked.</p>
+</div>
+<div class="relative pl-6 border-l-2 border-outline-variant">
+<div class="absolute -left-[9px] top-0 w-4 h-4 bg-outline rounded-full border-2 border-surface"></div>
+<p class="text-[11px] text-on-surface-variant font-bold uppercase">Moderator_12 • 10:15</p>
+<p class="text-[13px] leading-snug">Note: User verified ID earlier this month. Phone number matches MoMo account.</p>
+</div>
+</div>
+<div class="p-md bg-surface-container-low">
+<textarea class="w-full bg-surface border border-outline-variant rounded-lg p-sm text-body-sm focus:ring-1 focus:ring-primary h-24 no-scrollbar" placeholder="Add a case note..."></textarea>
+<button class="mt-sm w-full py-sm bg-primary text-on-primary rounded font-bold text-label-md">SAVE NOTE</button>
+</div>
+</div>
+</div>
+</div>
+</div>
+</main>
+<!-- BottomNavBar (Mobile Only) -->
+<nav class="fixed bottom-0 w-full md:hidden z-50 bg-surface border-t border-outline-variant flex justify-around items-center h-16 px-margin-mobile">
+<div class="flex flex-col items-center justify-center text-on-surface-variant active:bg-surface-variant transition-transform duration-100 scale-95">
+<span class="material-symbols-outlined">home</span>
+<span class="font-label-md text-label-md">Home</span>
+</div>
+<div class="flex flex-col items-center justify-center text-on-surface-variant active:bg-surface-variant transition-transform duration-100 scale-95">
+<span class="material-symbols-outlined">handshake</span>
+<span class="font-label-md text-label-md">Trades</span>
+</div>
+<div class="flex flex-col items-center justify-center bg-secondary-container text-on-secondary-container rounded-full px-4 py-1 transition-transform duration-100 scale-95">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">security</span>
+<span class="font-label-md text-label-md">Alerts</span>
+</div>
+<div class="flex flex-col items-center justify-center text-on-surface-variant active:bg-surface-variant transition-transform duration-100 scale-95">
+<span class="material-symbols-outlined">forum</span>
+<span class="font-label-md text-label-md">Chat</span>
+</div>
+<div class="flex flex-col items-center justify-center text-on-surface-variant active:bg-surface-variant transition-transform duration-100 scale-95">
+<span class="material-symbols-outlined">person</span>
+<span class="font-label-md text-label-md">Account</span>
+</div>
+</nav>
+<script>
+        // Simple interaction for alert item selection
+        const alertItems = document.querySelectorAll('.col-span-12.lg\\:col-span-3 .overflow-y-auto > div');
+        alertItems.forEach(item => {
+            item.addEventListener('click', () => {
+                alertItems.forEach(i => i.classList.remove('bg-secondary-container/10', 'border-l-4', 'border-secondary'));
+                item.classList.add('bg-secondary-container/10', 'border-l-4', 'border-secondary');
+            });
+        });
+
+        // Toggle action buttons state (visual feedback only)
+        const actionButtons = document.querySelectorAll('.col-span-12.lg\\:col-span-3 .flex-col button');
+        actionButtons.forEach(btn => {
+            btn.addEventListener('click', () => {
+                if (btn.innerText.includes('Freeze')) {
+                    alert('Executing immediate account freeze. Transaction pipeline locked.');
+                }
+            });
+        });
+    </script>
+</body></html>

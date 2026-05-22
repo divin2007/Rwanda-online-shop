@@ -23,9 +23,60 @@ export const idOf = (value: unknown): string | undefined => {
   return undefined;
 };
 
+import Constants from 'expo-constants';
+import { Platform } from 'react-native';
+
+const extra = (Constants.expoConfig?.extra || {}) as Record<string, string | undefined>;
+const defaultHost = Platform.OS === 'android' ? 'http://10.0.2.2' : 'http://localhost';
+const host = process.env.EXPO_PUBLIC_RMF_API_HOST || extra.rmfApiHost || defaultHost;
+
+const serviceBase = (port: number) => {
+  const cleanHost = host.replace(/\/$/, '').replace(/:\d+$/, '');
+  return `${cleanHost}:${port}`;
+};
+
+export const normalizeMediaUrl = (url?: string | null, port = 3003): string | undefined => {
+  const value = String(url || '').trim();
+  if (!value) return undefined;
+  if (/^(data|blob):/i.test(value)) return value;
+  if (value.startsWith('//')) return `https:${value}`;
+
+  if (value.startsWith('/')) {
+    return `${serviceBase(port)}${value}`;
+  }
+
+  if (/^https?:\/\//i.test(value)) {
+    return value.replace(/^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?/i, serviceBase(port));
+  }
+
+  return `${serviceBase(port)}/${value.replace(/^\/+/, '')}`;
+};
+
+const optimizeUnsplashUrl = (url?: string): string | undefined => {
+  if (!url) return undefined;
+  if (url.includes('unsplash.com')) {
+    if (!url.includes('w=')) {
+      const separator = url.includes('?') ? '&' : '?';
+      return `${url}${separator}w=600&auto=format&fit=crop&q=80`;
+    }
+  }
+  return url;
+};
+
+export const normalizeImageUrl = (url?: string | null): string | undefined => {
+  const normalized = normalizeMediaUrl(url, 3003);
+  return normalized ? optimizeUnsplashUrl(normalized) : undefined;
+};
+
 export const imageOf = (product?: Product | null) => {
   const images = asArray<string>(product?.images);
-  return images.find(Boolean);
+  const rawImage = images.find(Boolean);
+  return normalizeImageUrl(rawImage);
+};
+
+export const normalizeMarketImageUrl = (url?: string): string | undefined => {
+  const normalized = normalizeMediaUrl(url, 3002);
+  return normalized ? optimizeUnsplashUrl(normalized) : undefined;
 };
 
 export const coordinatesOfMarket = (market?: Market | null): Coordinates | undefined => {
@@ -44,7 +95,11 @@ export const productToCartItem = (
   const variant = variantIndex >= 0 ? asArray<ProductVariant>(product.variants)[variantIndex] : undefined;
   const variantImages = asArray<string>(variant?.images);
   const imageUrl = variantImages[0] || imageOf(product);
-  const unitPrice = Number(product.price || 0) + Number(variant?.price || 0);
+  const basePrice = Number(product.price || 0);
+  const addPrice = variant?.price !== undefined && variant?.price !== null
+    ? Number(variant.price)
+    : 0;
+  const unitPrice = basePrice + addPrice;
   const sellerId = idOf(product.sellerId);
 
   if (!product._id || !sellerId) {

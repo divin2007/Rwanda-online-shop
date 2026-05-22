@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Work+Sans:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@500&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "surface-variant": "#e3e2e2",
+                    "surface-bright": "#fbf9f8",
+                    "error-container": "#ffdad6",
+                    "on-tertiary-container": "#002f6b",
+                    "on-secondary-container": "#561b00",
+                    "on-surface-variant": "#5a4136",
+                    "on-background": "#1b1c1c",
+                    "surface-container-highest": "#e3e2e2",
+                    "on-tertiary": "#ffffff",
+                    "on-primary-container": "#572000",
+                    "on-primary": "#ffffff",
+                    "tertiary-container": "#5f97ff",
+                    "error": "#ba1a1a",
+                    "on-primary-fixed": "#351000",
+                    "outline": "#8e7164",
+                    "primary-fixed-dim": "#ffb693",
+                    "on-error-container": "#93000a",
+                    "inverse-on-surface": "#f2f0f0",
+                    "surface": "#fbf9f8",
+                    "surface-tint": "#a04100",
+                    "surface-container": "#efeded",
+                    "on-error": "#ffffff",
+                    "primary": "#a04100",
+                    "surface-container-low": "#f5f3f3",
+                    "tertiary-fixed-dim": "#adc6ff",
+                    "on-primary-fixed-variant": "#7a3000",
+                    "tertiary-fixed": "#d8e2ff",
+                    "on-secondary-fixed-variant": "#7f2b00",
+                    "on-secondary-fixed": "#370e00",
+                    "tertiary": "#005ac2",
+                    "on-tertiary-fixed": "#001a42",
+                    "surface-container-lowest": "#ffffff",
+                    "on-tertiary-fixed-variant": "#004395",
+                    "inverse-primary": "#ffb693",
+                    "secondary-fixed": "#ffdbce",
+                    "secondary-container": "#fc671d",
+                    "inverse-surface": "#303030",
+                    "surface-container-high": "#e9e8e7",
+                    "surface-dim": "#dbdad9",
+                    "on-surface": "#1b1c1c",
+                    "background": "#fbf9f8",
+                    "secondary-fixed-dim": "#ffb598",
+                    "primary-container": "#ff6b00",
+                    "primary-fixed": "#ffdbcc",
+                    "outline-variant": "#e2bfb0",
+                    "on-secondary": "#ffffff",
+                    "secondary": "#a63b00"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.125rem",
+                    "lg": "0.25rem",
+                    "xl": "0.5rem",
+                    "full": "0.75rem"
+            },
+            "spacing": {
+                    "base": "4px",
+                    "xs": "4px",
+                    "md": "16px",
+                    "xl": "40px",
+                    "sm": "8px",
+                    "lg": "24px",
+                    "margin-mobile": "16px",
+                    "margin-desktop": "32px",
+                    "gutter": "16px"
+            },
+            "fontFamily": {
+                    "body-sm": ["Work Sans"],
+                    "label-md": ["JetBrains Mono"],
+                    "table-data": ["Work Sans"],
+                    "headline-lg": ["Work Sans"],
+                    "headline-lg-mobile": ["Work Sans"],
+                    "body-lg": ["Work Sans"],
+                    "headline-md": ["Work Sans"],
+                    "body-md": ["Work Sans"]
+            },
+            "fontSize": {
+                    "body-sm": ["12px", {"lineHeight": "16px", "fontWeight": "400"}],
+                    "label-md": ["12px", {"lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "500"}],
+                    "table-data": ["13px", {"lineHeight": "18px", "fontWeight": "500"}],
+                    "headline-lg": ["30px", {"lineHeight": "38px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                    "headline-lg-mobile": ["24px", {"lineHeight": "30px", "letterSpacing": "-0.01em", "fontWeight": "700"}],
+                    "body-lg": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                    "headline-md": ["20px", {"lineHeight": "28px", "fontWeight": "600"}],
+                    "body-md": ["14px", {"lineHeight": "20px", "fontWeight": "400"}]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .flat-border { border: 1px solid #ebdcd0; }
+        .zebra-stripe:nth-child(even) { background-color: #fdfaf7; }
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #e2bfb0; border-radius: 10px; }
+    </style>
+</head>
+<body class="bg-background text-on-surface font-body-md overflow-x-hidden">
+<!-- TopAppBar -->
+<header class="fixed top-0 left-0 w-full z-50 flex justify-between items-center px-margin-desktop h-16 bg-surface dark:bg-surface-dim border-b border-outline-variant dark:border-outline">
+<div class="flex items-center gap-lg">
+<span class="text-headline-md font-headline-md font-bold text-primary dark:text-primary-fixed-dim">RMF Workflow</span>
+<nav class="hidden md:flex gap-md">
+<a class="text-on-surface-variant dark:text-surface-variant hover:bg-surface-container-high transition-colors font-label-md text-label-md" href="#">Market</a>
+<a class="text-primary dark:text-primary-fixed-dim border-b-2 border-primary dark:border-primary-fixed-dim pb-1 font-label-md text-label-md" href="#">Trades</a>
+<a class="text-on-surface-variant dark:text-surface-variant hover:bg-surface-container-high transition-colors font-label-md text-label-md" href="#">Logistics</a>
+<a class="text-on-surface-variant dark:text-surface-variant hover:bg-surface-container-high transition-colors font-label-md text-label-md" href="#">Admin</a>
+</nav>
+</div>
+<div class="flex items-center gap-sm">
+<button class="p-xs hover:bg-surface-container-high rounded-full transition-colors">
+<span class="material-symbols-outlined">notifications</span>
+</button>
+<button class="p-xs hover:bg-surface-container-high rounded-full transition-colors">
+<span class="material-symbols-outlined">help</span>
+</button>
+<div class="w-8 h-8 rounded-full overflow-hidden bg-surface-container-highest">
+<img alt="User profile" data-alt="A professional headshot of a Rwandan male system administrator in a business casual environment. The lighting is bright and clean, typical of a corporate office setting, using the warm earth-toned palette of the brand. The image conveys reliability and technical expertise with a grounded and approachable feel." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBbFrBe_aArb8XZsFdel_niWiwLfvSC6sAhtCePj5aVYX-f9P8rN_incwNxK0JPhByDo55uhgMZ6otztlhZOFfRL-V0D7cOfyW8TJ3H483HYEcI2x_xz0NVFUgsYm7CHHm62ezDhBksJvsrgi_sk13gqoqUch2bT7FhvP2SVlEZ1dVppoIkPCWQ7EaYnwi4ghhUd-y38sljda0BHz26nnIF_ztu-piM0HatQV5y8ur7Erkp0BRA-8EfMZeb0HXg6KMsglvd1axelLBW"/>
+</div>
+</div>
+</header>
+<!-- SideNavBar (Hidden on small screens) -->
+<aside class="hidden lg:flex flex-col fixed left-0 top-16 bottom-0 w-64 p-md gap-sm bg-surface-container-low dark:bg-surface-dim border-r border-outline-variant dark:border-outline">
+<div class="mb-lg">
+<p class="text-label-md font-label-md text-primary">RMF Control</p>
+<p class="text-body-sm font-body-sm opacity-70">Workflow Management</p>
+</div>
+<button class="w-full bg-primary text-on-primary py-md font-bold rounded-lg mb-md hover:brightness-110 transition-all active:scale-95">
+            New Trade
+        </button>
+<div class="space-y-xs">
+<div class="flex items-center gap-md p-md bg-primary-container text-on-primary-container font-bold rounded-lg cursor-pointer">
+<span class="material-symbols-outlined">account_balance_wallet</span>
+<span class="text-label-md font-label-md">Escrow</span>
+</div>
+<div class="flex items-center gap-md p-md text-on-surface-variant hover:bg-surface-container-high transition-all rounded-lg cursor-pointer">
+<span class="material-symbols-outlined">gavel</span>
+<span class="text-label-md font-label-md">Negotiations</span>
+</div>
+<div class="flex items-center gap-md p-md text-on-surface-variant hover:bg-surface-container-high transition-all rounded-lg cursor-pointer">
+<span class="material-symbols-outlined">local_shipping</span>
+<span class="text-label-md font-label-md">Dispatch</span>
+</div>
+<div class="flex items-center gap-md p-md text-on-surface-variant hover:bg-surface-container-high transition-all rounded-lg cursor-pointer">
+<span class="material-symbols-outlined">video_library</span>
+<span class="text-label-md font-label-md">Video Assets</span>
+</div>
+<div class="flex items-center gap-md p-md text-on-surface-variant hover:bg-surface-container-high transition-all rounded-lg cursor-pointer">
+<span class="material-symbols-outlined">assessment</span>
+<span class="text-label-md font-label-md">Reports</span>
+</div>
+</div>
+</aside>
+<!-- Main Content -->
+<main class="pt-24 pb-24 lg:pb-8 lg:ml-64 px-margin-mobile md:px-margin-desktop max-w-[1280px]">
+<div class="mb-lg">
+<h1 class="font-headline-lg text-headline-lg-mobile md:text-headline-lg text-on-surface">Escrow Lifecycle States</h1>
+<p class="text-body-md text-on-surface-variant">Real-time status tracking and financial settlement management.</p>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-12 gap-lg items-start">
+<!-- 1. Buyer Escrow Timeline -->
+<section class="md:col-span-4 bg-surface-container-lowest flat-border p-lg rounded-xl flex flex-col gap-lg">
+<div class="flex items-center justify-between">
+<h2 class="font-headline-md text-headline-md">Buyer Timeline</h2>
+<span class="bg-tertiary text-on-tertiary text-[10px] px-2 py-1 font-bold rounded uppercase">Secure</span>
+</div>
+<div class="relative space-y-xl pl-md border-l-2 border-primary-fixed">
+<!-- Step 1 -->
+<div class="relative">
+<div class="absolute -left-[25px] top-0 w-4 h-4 rounded-full bg-primary border-4 border-primary-fixed"></div>
+<p class="font-label-md text-label-md text-primary">Payment Initiated</p>
+<p class="text-body-sm font-body-sm text-on-surface-variant mt-1">Confirmed via MoMo at 09:12 AM</p>
+</div>
+<!-- Step 2 -->
+<div class="relative">
+<div class="absolute -left-[25px] top-0 w-4 h-4 rounded-full bg-primary border-4 border-primary-fixed"></div>
+<p class="font-label-md text-label-md text-primary">Funds Held Safely</p>
+<p class="text-body-sm font-body-sm text-on-surface-variant mt-1">Verified by RMF Trust Engine</p>
+</div>
+<!-- Step 3 -->
+<div class="relative">
+<div class="absolute -left-[25px] top-0 w-4 h-4 rounded-full bg-primary border-4 border-primary-fixed"></div>
+<p class="font-label-md text-label-md text-primary">Seller Preparing</p>
+<p class="text-body-sm font-body-sm text-on-surface-variant mt-1">Merchant processing inventory</p>
+</div>
+<!-- Step 4 -->
+<div class="relative">
+<div class="absolute -left-[25px] top-0 w-4 h-4 rounded-full bg-outline-variant border-4 border-surface"></div>
+<p class="font-label-md text-label-md text-on-surface-variant">Rider Dispatched</p>
+<p class="text-body-sm font-body-sm text-on-surface-variant mt-1">Awaiting pick-up from Hub B</p>
+</div>
+<!-- Step 5 -->
+<div class="relative">
+<div class="absolute -left-[25px] top-0 w-4 h-4 rounded-full bg-outline-variant border-4 border-surface"></div>
+<p class="font-label-md text-label-md text-on-surface-variant">Delivered</p>
+<p class="text-body-sm font-body-sm text-on-surface-variant mt-1">Release funds on confirmation</p>
+</div>
+</div>
+</section>
+<!-- 2. Payment States & Payouts Cluster -->
+<div class="md:col-span-8 grid grid-cols-1 md:grid-cols-2 gap-lg">
+<!-- MoMo Pending Modal State (Inline) -->
+<div class="bg-surface flat-border p-lg rounded-xl relative overflow-hidden flex flex-col items-center justify-center min-h-[220px] text-center">
+<div class="mb-md animate-spin">
+<span class="material-symbols-outlined text-primary text-[48px]">autorenew</span>
+</div>
+<h3 class="font-headline-md text-headline-md mb-xs">MoMo Confirmation</h3>
+<p class="text-body-md text-on-surface-variant mb-lg">Check your phone for the PIN request to complete the transaction.</p>
+<div class="w-full h-1 bg-surface-variant overflow-hidden rounded-full">
+<div class="h-full bg-primary w-1/3 animate-[shimmer_2s_infinite]"></div>
+</div>
+<style>@keyframes shimmer { 0% { transform: translateX(-100%); } 100% { transform: translateX(300%); } }</style>
+</div>
+<!-- Payment Failed State (Inline) -->
+<div class="bg-error-container flat-border border-error p-lg rounded-xl flex flex-col gap-md">
+<div class="flex items-center gap-md text-error">
+<span class="material-symbols-outlined">error</span>
+<h3 class="font-headline-md text-headline-md">Payment Failed</h3>
+</div>
+<p class="text-body-md text-on-error-container">Insufficient balance or network timeout. Funds have not been deducted.</p>
+<div class="mt-auto flex gap-sm">
+<button class="flex-1 bg-error text-on-error py-sm rounded font-bold hover:brightness-110">Retry</button>
+<button class="flex-1 border border-error text-error py-sm rounded font-bold hover:bg-error/5">Change Method</button>
+</div>
+</div>
+<!-- 3. Seller Payout Panel -->
+<div class="bg-surface-container-lowest flat-border p-lg rounded-xl">
+<div class="flex items-center justify-between mb-lg">
+<h3 class="font-headline-md text-headline-md">Seller Payout</h3>
+<span class="text-label-md font-label-md px-2 py-1 bg-secondary-fixed text-on-secondary-fixed rounded">Pending Release</span>
+</div>
+<div class="bg-[#ffedd5] p-md rounded-lg mb-lg border border-primary-fixed">
+<div class="flex justify-between items-center mb-xs">
+<span class="text-body-sm font-body-sm opacity-70">Order ID</span>
+<span class="text-label-md font-label-md text-primary">ORD-2023-8901</span>
+</div>
+<div class="flex justify-between items-end">
+<span class="text-body-sm font-body-sm opacity-70">Amount to Release</span>
+<span class="text-headline-md font-headline-md text-primary">45,000 RWF</span>
+</div>
+</div>
+<div class="flex items-center gap-sm text-on-surface-variant">
+<span class="material-symbols-outlined text-[18px]">timer</span>
+<p class="text-body-sm font-body-sm italic">Released in <span class="font-bold text-on-surface" id="countdown">14:59:59</span></p>
+</div>
+</div>
+<!-- 4. Rider Payout Panel -->
+<div class="bg-surface-container-lowest flat-border p-lg rounded-xl">
+<h3 class="font-headline-md text-headline-md mb-lg">Rider Payout</h3>
+<div class="space-y-sm">
+<div class="flex justify-between text-body-md py-1 zebra-stripe p-sm">
+<span>Base Fee</span>
+<span class="font-label-md">2,500 RWF</span>
+</div>
+<div class="flex justify-between text-body-md py-1 zebra-stripe p-sm">
+<span>Distance Bonus</span>
+<span class="font-label-md">500 RWF</span>
+</div>
+<div class="flex justify-between text-body-md py-1 zebra-stripe p-sm">
+<span>Surge (Peak Hours)</span>
+<span class="font-label-md text-secondary">200 RWF</span>
+</div>
+<hr class="border-outline-variant my-md"/>
+<div class="flex justify-between items-center">
+<span class="font-bold">Total Earning</span>
+<span class="text-headline-md font-bold text-primary">3,200 RWF</span>
+</div>
+</div>
+</div>
+</div>
+<!-- 5. Dispute & Refund Drawer (Simulated as a prominent section) -->
+<section class="md:col-span-12 bg-surface-container-high flat-border rounded-xl overflow-hidden mt-lg shadow-sm">
+<div class="p-lg border-b border-outline-variant bg-surface flex justify-between items-center">
+<div>
+<h3 class="font-headline-md text-headline-md">Admin Dispute Review</h3>
+<p class="text-body-sm font-body-sm opacity-70">Dispute #DIS-9902 | Ticket Open</p>
+</div>
+<div class="flex gap-md">
+<button class="border border-error text-error px-lg py-md rounded font-bold hover:bg-error/5 transition-all" onclick="alert('Dispute Rejected')">Reject Claim</button>
+<button class="bg-primary text-on-primary px-lg py-md rounded font-bold hover:brightness-110 transition-all" onclick="alert('Refund Approved')">Approve Refund</button>
+</div>
+</div>
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-lg p-lg">
+<div class="space-y-md">
+<h4 class="font-label-md text-label-md uppercase tracking-wider text-on-surface-variant">Refund Reasoning</h4>
+<p class="text-body-lg text-on-surface p-md bg-white flat-border rounded-lg leading-relaxed">
+                            "The package arrived with significant crushing on the side. Upon opening, the ceramic contents were shattered. The delivery rider acknowledged the damage was present when they picked it up from the hub, but hub records show 'Good Condition'. Need refund for item value."
+                        </p>
+<div class="flex items-center gap-sm bg-tertiary-fixed text-on-tertiary-fixed p-md rounded-lg">
+<span class="material-symbols-outlined">shield</span>
+<p class="text-body-sm font-body-sm">Secure Payment Label: Escrow funds locked until admin resolution.</p>
+</div>
+</div>
+<div class="space-y-md">
+<h4 class="font-label-md text-label-md uppercase tracking-wider text-on-surface-variant">Evidence: Damaged Goods</h4>
+<div class="relative aspect-video rounded-xl overflow-hidden flat-border">
+<img alt="Damaged Goods Evidence" class="w-full h-full object-cover" data-alt="A highly detailed close-up of a damaged delivery package in a professional studio setting. The cardboard box shows visible crushing on one corner, with internal ceramic items appearing shattered. The lighting is high-contrast, professional, and clear, emphasizing the tactile textures of the damaged material. The overall color palette uses the warm tones of the RMF brand with clean, bright studio lighting." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBkKFFSDKpYnMEvl4_t92_dEUZcwPgZqIJX_-TITdvEWVopSm1r3dDhNhqS8k4EWy9DZyOmhK1969G3fR0eI0oz2X2rRC2VrVg7g_sLxJY_oXyXlbMmSzHY4tYF0aOf4u8ER_baMEDEJdmOZNDtIpl-f2IHT_43bBt58twsYrl2BLQf07onVK1tnJF3dinc7SeSwHIAHnUcnlUDdRARJRJF1TfhH9BmPY6cS9rW2KH4MhiGlQ7xDfmNSPiPxyKAEvbW2IbatuiYCGMr"/>
+<div class="absolute bottom-md left-md bg-black/60 text-white px-md py-xs rounded-full text-xs font-bold flex items-center gap-xs backdrop-blur-sm">
+<span class="material-symbols-outlined text-[14px]">photo_camera</span>
+                                Captured: Today 10:45 AM
+                            </div>
+</div>
+</div>
+</div>
+</section>
+</div>
+</main>
+<!-- BottomNavBar (Mobile Only) -->
+<nav class="lg:hidden fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-4 py-2 border-t border-outline-variant bg-surface dark:bg-surface-dim shadow-lg rounded-t-xl">
+<a class="flex flex-col items-center justify-center bg-primary-container dark:bg-primary-fixed-variant text-on-primary-container dark:text-primary-fixed rounded-full px-4 py-1 active:scale-90 duration-100" href="#">
+<span class="material-symbols-outlined">history_edu</span>
+<span class="text-label-md font-label-md">Escrow</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant dark:text-surface-variant hover:text-primary active:scale-90 duration-100" href="#">
+<span class="material-symbols-outlined">handshake</span>
+<span class="text-label-md font-label-md">Negotiate</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant dark:text-surface-variant hover:text-primary active:scale-90 duration-100" href="#">
+<span class="material-symbols-outlined">speed</span>
+<span class="text-label-md font-label-md">Logistics</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant dark:text-surface-variant hover:text-primary active:scale-90 duration-100" href="#">
+<span class="material-symbols-outlined">play_circle</span>
+<span class="text-label-md font-label-md">Feed</span>
+</a>
+</nav>
+<script>
+        // Simple countdown logic
+        let time = 15 * 3600; // 15 hours
+        const display = document.getElementById('countdown');
+        
+        setInterval(() => {
+            time--;
+            let hours = Math.floor(time / 3600);
+            let mins = Math.floor((time % 3600) / 60);
+            let secs = time % 60;
+            display.textContent = `${hours.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+        }, 1000);
+
+        // Micro-interaction for buttons
+        document.querySelectorAll('button').forEach(btn => {
+            btn.addEventListener('click', function() {
+                this.classList.add('scale-95');
+                setTimeout(() => this.classList.remove('scale-95'), 150);
+            });
+        });
+    </script>
+</body></html>

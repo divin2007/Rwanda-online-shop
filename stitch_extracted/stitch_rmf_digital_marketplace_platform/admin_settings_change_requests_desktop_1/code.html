@@ -1,0 +1,517 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Admin Settings Change Requests | RMF Governance</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Work+Sans:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@500&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "surface-variant": "#e3e2e2",
+                        "tertiary-container": "#5f97ff",
+                        "surface-bright": "#fbf9f8",
+                        "on-secondary-container": "#561b00",
+                        "surface-container-highest": "#e3e2e2",
+                        "primary-container": "#ff6b00",
+                        "on-secondary-fixed": "#370e00",
+                        "inverse-primary": "#ffb693",
+                        "surface": "#fbf9f8",
+                        "on-tertiary-fixed": "#001a42",
+                        "surface-dim": "#dbdad9",
+                        "surface-container-lowest": "#ffffff",
+                        "on-error": "#ffffff",
+                        "primary": "#a04100",
+                        "inverse-surface": "#303030",
+                        "background": "#fbf9f8",
+                        "secondary": "#a63b00",
+                        "on-primary-fixed": "#351000",
+                        "inverse-on-surface": "#f2f0f0",
+                        "on-tertiary-fixed-variant": "#004395",
+                        "on-surface-variant": "#5a4136",
+                        "on-primary": "#ffffff",
+                        "error-container": "#ffdad6",
+                        "outline": "#8e7164",
+                        "tertiary-fixed": "#d8e2ff",
+                        "surface-container": "#efeded",
+                        "surface-container-high": "#e9e8e7",
+                        "on-surface": "#1b1c1c",
+                        "on-primary-fixed-variant": "#7a3000",
+                        "on-secondary": "#ffffff",
+                        "error": "#ba1a1a",
+                        "tertiary-fixed-dim": "#adc6ff",
+                        "surface-container-low": "#f5f3f3",
+                        "tertiary": "#005ac2",
+                        "on-error-container": "#93000a",
+                        "on-background": "#1b1c1c",
+                        "on-tertiary-container": "#002f6b",
+                        "secondary-container": "#fc671d",
+                        "secondary-fixed-dim": "#ffb598",
+                        "outline-variant": "#e2bfb0",
+                        "primary-fixed": "#ffdbcc",
+                        "on-primary-container": "#572000",
+                        "surface-tint": "#a04100",
+                        "on-tertiary": "#ffffff",
+                        "on-secondary-fixed-variant": "#7f2b00",
+                        "primary-fixed-dim": "#ffb693",
+                        "secondary-fixed": "#ffdbce"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.125rem",
+                        "lg": "0.25rem",
+                        "xl": "0.5rem",
+                        "full": "0.75rem"
+                    },
+                    "spacing": {
+                        "gutter": "16px",
+                        "xs": "4px",
+                        "margin-desktop": "32px",
+                        "md": "16px",
+                        "lg": "24px",
+                        "xl": "40px",
+                        "sm": "8px",
+                        "margin-mobile": "16px",
+                        "base": "4px"
+                    },
+                    "fontFamily": {
+                        "table-data": ["Work Sans"],
+                        "body-md": ["Work Sans"],
+                        "body-lg": ["Work Sans"],
+                        "label-md": ["JetBrains Mono"],
+                        "headline-md": ["Work Sans"],
+                        "body-sm": ["Work Sans"],
+                        "headline-lg-mobile": ["Work Sans"],
+                        "headline-lg": ["Work Sans"]
+                    },
+                    "fontSize": {
+                        "table-data": ["13px", {"lineHeight": "18px", "fontWeight": "500"}],
+                        "body-md": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                        "body-lg": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                        "label-md": ["12px", {"lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "500"}],
+                        "headline-md": ["20px", {"lineHeight": "28px", "fontWeight": "600"}],
+                        "body-sm": ["12px", {"lineHeight": "16px", "fontWeight": "400"}],
+                        "headline-lg-mobile": ["24px", {"lineHeight": "30px", "letterSpacing": "-0.01em", "fontWeight": "700"}],
+                        "headline-lg": ["30px", {"lineHeight": "38px", "letterSpacing": "-0.02em", "fontWeight": "700"}]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+            vertical-align: middle;
+        }
+        .custom-scrollbar::-webkit-scrollbar { width: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #ebdcd0; border-radius: 2px; }
+    </style>
+</head>
+<body class="bg-surface font-body-md text-on-surface">
+<!-- Sidebar (Shared Component SideNavBar) -->
+<aside class="fixed left-0 top-0 h-screen w-64 flex flex-col border-r border-outline-variant bg-surface-container-low z-50">
+<div class="p-lg">
+<h1 class="text-headline-md font-headline-md font-bold text-primary">RMF Governance</h1>
+<p class="text-label-md font-label-md text-on-surface-variant opacity-70">Market Facilitator</p>
+</div>
+<nav class="flex-1 px-sm space-y-1 mt-md">
+<!-- Active Tab: Settings (Semantic mapping for Change Requests) -->
+<a class="flex items-center gap-md px-md py-sm text-on-surface-variant hover:bg-surface-variant transition-all duration-200" href="#">
+<span class="material-symbols-outlined" data-icon="dashboard">dashboard</span>
+<span class="font-label-md text-label-md">Dashboard</span>
+</a>
+<a class="flex items-center gap-md px-md py-sm text-on-surface-variant hover:bg-surface-variant transition-all duration-200" href="#">
+<span class="material-symbols-outlined" data-icon="inventory_2">inventory_2</span>
+<span class="font-label-md text-label-md">Inventory</span>
+</a>
+<a class="flex items-center gap-md px-md py-sm text-on-surface-variant hover:bg-surface-variant transition-all duration-200" href="#">
+<span class="material-symbols-outlined" data-icon="local_shipping">local_shipping</span>
+<span class="font-label-md text-label-md">Shipments</span>
+</a>
+<a class="flex items-center gap-md px-md py-sm text-on-surface-variant hover:bg-surface-variant transition-all duration-200" href="#">
+<span class="material-symbols-outlined" data-icon="payments">payments</span>
+<span class="font-label-md text-label-md">Escrow</span>
+</a>
+<a class="flex items-center gap-md px-md py-sm text-on-surface-variant hover:bg-surface-variant transition-all duration-200" href="#">
+<span class="material-symbols-outlined" data-icon="gavel">gavel</span>
+<span class="font-label-md text-label-md">Compliance</span>
+</a>
+<a class="flex items-center gap-md px-md py-sm text-on-surface-variant hover:bg-surface-variant transition-all duration-200" href="#">
+<span class="material-symbols-outlined" data-icon="analytics">analytics</span>
+<span class="font-label-md text-label-md">Analytics</span>
+</a>
+<!-- Active: Settings -->
+<a class="flex items-center gap-md px-md py-sm bg-secondary-container text-on-secondary-container font-bold rounded-lg translate-x-1 transition-transform duration-200" href="#">
+<span class="material-symbols-outlined" data-icon="settings">settings</span>
+<span class="font-label-md text-label-md">Settings</span>
+</a>
+</nav>
+<div class="p-md border-t border-outline-variant">
+<div class="flex items-center gap-md mb-lg">
+<img class="w-10 h-10 rounded-full border border-outline-variant" data-alt="Professional headshot of a mid-career African male administrator in a corporate setting. He is wearing a crisp white dress shirt and subtle glasses, looking confidently at the camera. The background is a blurred office environment with warm, natural lighting and earthy tones, maintaining a high-trust, reliable atmosphere characteristic of the RMF brand identity." src="https://lh3.googleusercontent.com/aida-public/AB6AXuD74M-3NKP59WxMtI4l8Ybgs0d_zDsFS1VD5GxWI8YQCVTs5o_x3jQlFOdO56RnKrUvtUnURNcOH1uo492pw5JMECAVrMoE0jBB0BZYYem8JEVK1eWPsdFC5fmanaprrcrMlm8z8U8F1H1fOAsZtpIMC-zHpauX6PKn60AgqhpJcplKbHZhXqmBTk6BaIXh7_vu5fLPjL5ZojSoPGLKi7F2VrDBxPsYEIh_jGGQZHT3FiDKcsXZEZP4VON2KDEFZ15272OZjPrUugoN"/>
+<div>
+<p class="font-label-md text-label-md font-bold">Admin Portal</p>
+<p class="text-body-sm font-body-sm text-on-surface-variant">Active Admin</p>
+</div>
+</div>
+<a class="flex items-center gap-md px-md py-xs text-on-surface-variant hover:bg-surface-variant transition-all" href="#">
+<span class="material-symbols-outlined" data-icon="help">help</span>
+<span class="font-label-md text-label-md">Support</span>
+</a>
+<a class="flex items-center gap-md px-md py-xs text-on-surface-variant hover:bg-surface-variant transition-all" href="#">
+<span class="material-symbols-outlined" data-icon="logout">logout</span>
+<span class="font-label-md text-label-md">Logout</span>
+</a>
+</div>
+</aside>
+<!-- Top Navigation (Shared Component TopNavBar) -->
+<header class="sticky top-0 z-40 flex justify-between items-center px-margin-desktop w-full h-16 bg-surface border-b border-outline-variant ml-0">
+<div class="flex items-center gap-xl ml-64">
+<h2 class="text-headline-md font-headline-md font-bold text-primary">Change Requests</h2>
+<div class="relative w-96">
+<span class="material-symbols-outlined absolute left-md top-1/2 -translate-y-1/2 text-on-surface-variant" data-icon="search">search</span>
+<input class="w-full pl-xl pr-md py-xs bg-surface-container border border-outline-variant rounded-lg focus:outline-none focus:border-primary text-body-md font-body-md" placeholder="Search by requester or ID..." type="text"/>
+</div>
+</div>
+<div class="flex items-center gap-md">
+<button class="w-10 h-10 flex items-center justify-center text-on-surface-variant hover:bg-surface-container-low transition-colors rounded-full">
+<span class="material-symbols-outlined" data-icon="notifications">notifications</span>
+</button>
+<button class="w-10 h-10 flex items-center justify-center text-on-surface-variant hover:bg-surface-container-low transition-colors rounded-full">
+<span class="material-symbols-outlined" data-icon="account_circle">account_circle</span>
+</button>
+</div>
+</header>
+<!-- Main Content Area -->
+<main class="ml-64 p-margin-desktop space-y-lg">
+<!-- Statistics Bar -->
+<div class="grid grid-cols-4 gap-gutter">
+<div class="bg-surface-container-lowest border border-outline-variant p-md flex items-center gap-md">
+<div class="w-12 h-12 rounded-lg bg-primary-container/10 flex items-center justify-center text-primary">
+<span class="material-symbols-outlined" data-icon="pending_actions">pending_actions</span>
+</div>
+<div>
+<p class="text-label-md font-label-md text-on-surface-variant">Pending Review</p>
+<p class="text-headline-md font-headline-md font-bold">24</p>
+</div>
+</div>
+<div class="bg-surface-container-lowest border border-outline-variant p-md flex items-center gap-md">
+<div class="w-12 h-12 rounded-lg bg-tertiary-container/10 flex items-center justify-center text-tertiary">
+<span class="material-symbols-outlined" data-icon="priority_high">priority_high</span>
+</div>
+<div>
+<p class="text-label-md font-label-md text-on-surface-variant">Critical Updates</p>
+<p class="text-headline-md font-headline-md font-bold">08</p>
+</div>
+</div>
+<div class="bg-surface-container-lowest border border-outline-variant p-md flex items-center gap-md">
+<div class="w-12 h-12 rounded-lg bg-secondary-container/10 flex items-center justify-center text-secondary">
+<span class="material-symbols-outlined" data-icon="verified_user">verified_user</span>
+</div>
+<div>
+<p class="text-label-md font-label-md text-on-surface-variant">Approved Today</p>
+<p class="text-headline-md font-headline-md font-bold">142</p>
+</div>
+</div>
+<div class="bg-surface-container-lowest border border-outline-variant p-md flex items-center gap-md">
+<div class="w-12 h-12 rounded-lg bg-surface-variant flex items-center justify-center text-outline">
+<span class="material-symbols-outlined" data-icon="history">history</span>
+</div>
+<div>
+<p class="text-label-md font-label-md text-on-surface-variant">Avg. Response Time</p>
+<p class="text-headline-md font-headline-md font-bold">4.2h</p>
+</div>
+</div>
+</div>
+<!-- Request Queue Table Section -->
+<section class="bg-surface-container-lowest border border-outline-variant">
+<div class="p-md border-b border-outline-variant bg-[#ffedd5] flex justify-between items-center">
+<div class="flex items-center gap-md">
+<h3 class="font-headline-md text-headline-md">Active Change Queue</h3>
+<span class="bg-primary text-on-primary px-sm py-xs text-label-md font-label-md rounded">Requires Attention</span>
+</div>
+<div class="flex items-center gap-sm">
+<button class="px-md py-xs border border-outline text-on-surface-variant text-label-md font-label-md hover:bg-surface-variant transition-colors flex items-center gap-xs">
+<span class="material-symbols-outlined text-[18px]" data-icon="filter_list">filter_list</span> Filter
+                    </button>
+<button class="px-md py-xs border border-outline text-on-surface-variant text-label-md font-label-md hover:bg-surface-variant transition-colors flex items-center gap-xs">
+<span class="material-symbols-outlined text-[18px]" data-icon="download">download</span> Export CSV
+                    </button>
+</div>
+</div>
+<!-- Operational Table -->
+<div class="overflow-x-auto">
+<table class="w-full text-left border-collapse">
+<thead>
+<tr class="bg-surface-container-low border-b border-outline-variant">
+<th class="px-md py-sm font-label-md text-label-md text-on-surface-variant uppercase tracking-wider">Requester / Role</th>
+<th class="px-md py-sm font-label-md text-label-md text-on-surface-variant uppercase tracking-wider">Field Type</th>
+<th class="px-md py-sm font-label-md text-label-md text-on-surface-variant uppercase tracking-wider">Comparison (Old vs New)</th>
+<th class="px-md py-sm font-label-md text-label-md text-on-surface-variant uppercase tracking-wider">Reason / Docs</th>
+<th class="px-md py-sm font-label-md text-label-md text-on-surface-variant uppercase tracking-wider text-right">Actions</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-outline-variant">
+<!-- Request Row 1 -->
+<tr class="hover:bg-surface-bright transition-colors group">
+<td class="px-md py-md">
+<div class="flex items-center gap-md">
+<div class="w-8 h-8 rounded-full bg-primary-container/20 flex items-center justify-center text-primary font-bold text-xs">JM</div>
+<div>
+<p class="font-table-data text-table-data">Jean Mutabazi</p>
+<p class="text-body-sm text-on-surface-variant">Verified Seller • Kigali Hub</p>
+</div>
+</div>
+</td>
+<td class="px-md py-md">
+<span class="bg-tertiary-container/10 text-tertiary px-sm py-1 rounded text-label-md font-label-md">Payout MoMo Number</span>
+</td>
+<td class="px-md py-md">
+<div class="flex items-center gap-sm font-label-md text-label-md">
+<span class="text-error line-through decoration-error/50 font-mono">078****432</span>
+<span class="material-symbols-outlined text-outline" data-icon="arrow_forward">arrow_forward</span>
+<span class="text-tertiary font-bold font-mono">079****110</span>
+</div>
+</td>
+<td class="px-md py-md">
+<div class="max-w-xs">
+<p class="text-body-sm italic truncate">"Lost SIM card, updated to secondary business line for secure payments."</p>
+<a class="text-primary text-label-md font-label-md flex items-center gap-xs mt-1 hover:underline" href="#">
+<span class="material-symbols-outlined text-[16px]" data-icon="attach_file">attach_file</span> affidavit_sim_loss.pdf
+                                    </a>
+</div>
+</td>
+<td class="px-md py-md text-right">
+<div class="flex justify-end gap-sm opacity-0 group-hover:opacity-100 transition-opacity">
+<button class="p-xs text-error hover:bg-error-container/20 rounded-lg title='Reject'">
+<span class="material-symbols-outlined" data-icon="close">close</span>
+</button>
+<button class="p-xs text-on-surface-variant hover:bg-surface-variant rounded-lg title='Request More Info'">
+<span class="material-symbols-outlined" data-icon="chat_bubble">chat_bubble</span>
+</button>
+<button class="px-md py-1 bg-primary text-on-primary rounded font-label-md text-label-md hover:bg-primary/90 transition-colors">
+                                        Approve
+                                    </button>
+</div>
+</td>
+</tr>
+<!-- Request Row 2 -->
+<tr class="bg-[#fdfaf7] hover:bg-surface-bright transition-colors group">
+<td class="px-md py-md">
+<div class="flex items-center gap-md">
+<div class="w-8 h-8 rounded-full bg-secondary-container/20 flex items-center justify-center text-secondary font-bold text-xs">BK</div>
+<div>
+<p class="font-table-data text-table-data">Belise Kalinganire</p>
+<p class="text-body-sm text-on-surface-variant">Fleet Rider • Musanze</p>
+</div>
+</div>
+</td>
+<td class="px-md py-md">
+<span class="bg-tertiary-container/10 text-tertiary px-sm py-1 rounded text-label-md font-label-md">Bank Account Detail</span>
+</td>
+<td class="px-md py-md">
+<div class="flex flex-col gap-xs font-label-md text-label-md">
+<div class="flex items-center gap-sm">
+<span class="text-on-surface-variant opacity-60">OLD:</span>
+<span class="font-mono">BK-MAIN-4432</span>
+</div>
+<div class="flex items-center gap-sm">
+<span class="text-tertiary font-bold">NEW:</span>
+<span class="font-mono">COG-SME-9092</span>
+</div>
+</div>
+</td>
+<td class="px-md py-md">
+<div class="max-w-xs">
+<p class="text-body-sm italic truncate">"Moving to Cogebanque for lower transaction fees for fleet operators."</p>
+<a class="text-primary text-label-md font-label-md flex items-center gap-xs mt-1 hover:underline" href="#">
+<span class="material-symbols-outlined text-[16px]" data-icon="description">description</span> bank_statement_header.jpg
+                                    </a>
+</div>
+</td>
+<td class="px-md py-md text-right">
+<div class="flex justify-end gap-sm opacity-0 group-hover:opacity-100 transition-opacity">
+<button class="p-xs text-error hover:bg-error-container/20 rounded-lg">
+<span class="material-symbols-outlined" data-icon="close">close</span>
+</button>
+<button class="p-xs text-on-surface-variant hover:bg-surface-variant rounded-lg">
+<span class="material-symbols-outlined" data-icon="chat_bubble">chat_bubble</span>
+</button>
+<button class="px-md py-1 bg-primary text-on-primary rounded font-label-md text-label-md hover:bg-primary/90 transition-colors">
+                                        Approve
+                                    </button>
+</div>
+</td>
+</tr>
+<!-- Request Row 3 (High Priority) -->
+<tr class="hover:bg-surface-bright transition-colors group">
+<td class="px-md py-md">
+<div class="flex items-center gap-md">
+<div class="w-8 h-8 rounded-full bg-error-container/20 flex items-center justify-center text-error font-bold text-xs">AW</div>
+<div>
+<p class="font-table-data text-table-data">AgroWest Ltd.</p>
+<p class="text-body-sm text-on-surface-variant">Corporate Supplier • Rubavu</p>
+</div>
+</div>
+</td>
+<td class="px-md py-md">
+<div class="flex flex-col">
+<span class="bg-tertiary-container/10 text-tertiary px-sm py-1 rounded text-label-md font-label-md inline-block mb-xs">Business TIN Update</span>
+<span class="text-[10px] text-error font-bold uppercase tracking-widest">High Priority</span>
+</div>
+</td>
+<td class="px-md py-md">
+<div class="flex items-center gap-sm font-label-md text-label-md">
+<span class="text-error line-through decoration-error/50 font-mono">102233984</span>
+<span class="material-symbols-outlined text-outline" data-icon="arrow_forward">arrow_forward</span>
+<span class="text-tertiary font-bold font-mono">200554492</span>
+</div>
+</td>
+<td class="px-md py-md">
+<div class="max-w-xs">
+<p class="text-body-sm italic truncate">"Correction of TIN after company merger and re-registration."</p>
+<div class="flex gap-md mt-1">
+<a class="text-primary text-label-md font-label-md flex items-center gap-xs hover:underline" href="#">
+<span class="material-symbols-outlined text-[16px]" data-icon="cloud_download">cloud_download</span> tin_cert.pdf
+                                        </a>
+<a class="text-primary text-label-md font-label-md flex items-center gap-xs hover:underline" href="#">
+<span class="material-symbols-outlined text-[16px]" data-icon="visibility">visibility</span> rdb_notice
+                                        </a>
+</div>
+</div>
+</td>
+<td class="px-md py-md text-right">
+<div class="flex justify-end gap-sm opacity-0 group-hover:opacity-100 transition-opacity">
+<button class="p-xs text-error hover:bg-error-container/20 rounded-lg">
+<span class="material-symbols-outlined" data-icon="close">close</span>
+</button>
+<button class="p-xs text-on-surface-variant hover:bg-surface-variant rounded-lg">
+<span class="material-symbols-outlined" data-icon="chat_bubble">chat_bubble</span>
+</button>
+<button class="px-md py-1 bg-primary text-on-primary rounded font-label-md text-label-md hover:bg-primary/90 transition-colors">
+                                        Approve
+                                    </button>
+</div>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+<!-- Pagination/Footer -->
+<div class="p-md border-t border-outline-variant flex justify-between items-center bg-surface-container-low">
+<p class="text-body-sm text-on-surface-variant">Showing 1-3 of 24 requests</p>
+<div class="flex gap-sm">
+<button class="px-sm py-1 border border-outline-variant bg-surface rounded hover:bg-surface-variant disabled:opacity-50" disabled="">
+<span class="material-symbols-outlined" data-icon="chevron_left">chevron_left</span>
+</button>
+<button class="px-sm py-1 border border-outline-variant bg-surface rounded hover:bg-surface-variant">
+<span class="material-symbols-outlined" data-icon="chevron_right">chevron_right</span>
+</button>
+</div>
+</div>
+</section>
+<!-- Sidebar Panel for Quick Review Details -->
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-gutter">
+<div class="lg:col-span-2 space-y-lg">
+<div class="bg-surface-container-lowest border border-outline-variant p-lg">
+<div class="flex items-center gap-md mb-md">
+<span class="material-symbols-outlined text-primary" data-icon="security">security</span>
+<h4 class="font-headline-md text-headline-md">Security Audit Log</h4>
+</div>
+<div class="space-y-sm">
+<div class="flex justify-between items-center py-sm border-b border-outline-variant/30">
+<div>
+<p class="text-body-md font-bold">MoMo Number Change Rejected</p>
+<p class="text-body-sm text-on-surface-variant">Request ID: #RMF-4920 • System Autoflag</p>
+</div>
+<span class="text-label-md font-label-md text-error">10:42 AM</span>
+</div>
+<div class="flex justify-between items-center py-sm border-b border-outline-variant/30">
+<div>
+<p class="text-body-md font-bold">New Supporting Doc Uploaded</p>
+<p class="text-body-sm text-on-surface-variant">By: Belise Kalinganire • Bank Statement</p>
+</div>
+<span class="text-label-md font-label-md text-on-surface-variant">09:15 AM</span>
+</div>
+<div class="flex justify-between items-center py-sm">
+<div>
+<p class="text-body-md font-bold">Admin Login: Mutoni Rose</p>
+<p class="text-body-sm text-on-surface-variant">Regional Supervisor • IP: 197.243.1.4</p>
+</div>
+<span class="text-label-md font-label-md text-on-surface-variant">08:00 AM</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Help & Governance Context Card -->
+<div class="space-y-gutter">
+<div class="bg-tertiary-container text-on-tertiary-container p-lg rounded-lg border border-tertiary shadow-sm">
+<h5 class="font-bold text-headline-md mb-sm flex items-center gap-xs">
+<span class="material-symbols-outlined" data-icon="gavel">gavel</span> Policy Reminder
+                    </h5>
+<p class="text-body-md mb-md opacity-90">Bank account and MoMo changes require a verified secondary document (Affidavit or Stamped Letter) to prevent payment redirection fraud.</p>
+<div class="bg-surface/20 p-sm rounded border border-white/20">
+<p class="text-label-md font-label-md flex items-center gap-xs">
+<span class="material-symbols-outlined text-[16px]" data-icon="shield">shield</span> Secure Payment Lock
+                        </p>
+<p class="text-body-sm">Updates are frozen for 24h after approval.</p>
+</div>
+</div>
+<div class="bg-surface-container border border-outline-variant p-md">
+<h5 class="font-bold text-body-md mb-sm">Requester Insights</h5>
+<div class="flex gap-md items-center mb-sm">
+<div class="w-2 h-12 bg-primary rounded-full"></div>
+<div>
+<p class="text-body-sm text-on-surface-variant">Last Change Requested</p>
+<p class="text-body-md font-bold">14 Days Ago</p>
+</div>
+</div>
+<div class="flex gap-md items-center">
+<div class="w-2 h-12 bg-secondary rounded-full"></div>
+<div>
+<p class="text-body-sm text-on-surface-variant">Verification Level</p>
+<p class="text-body-md font-bold">Tier 3 (Enterprise)</p>
+</div>
+</div>
+</div>
+</div>
+</div>
+</main>
+<!-- Floating Quick Action (Optional shared component logic) -->
+<button class="fixed bottom-margin-desktop right-margin-desktop bg-primary text-on-primary w-14 h-14 rounded-full shadow-lg flex items-center justify-center hover:scale-105 transition-transform active:scale-95 z-50">
+<span class="material-symbols-outlined" data-icon="history_edu">history_edu</span>
+</button>
+<!-- Toast Notification (Micro-interaction mockup) -->
+<div class="fixed bottom-margin-desktop left-1/2 -translate-x-1/2 bg-on-surface text-surface px-lg py-sm rounded-lg shadow-xl flex items-center gap-md opacity-0 translate-y-10 transition-all duration-300 z-[100] pointer-events-none" id="toast">
+<span class="material-symbols-outlined text-primary-container" data-icon="check_circle">check_circle</span>
+<p class="text-label-md font-label-md">Request Approved Successfully</p>
+</div>
+<script>
+        // Simple micro-interaction for buttons
+        document.querySelectorAll('button').forEach(btn => {
+            if (btn.innerText === 'Approve') {
+                btn.addEventListener('click', () => {
+                    const toast = document.getElementById('toast');
+                    toast.classList.remove('opacity-0', 'translate-y-10');
+                    toast.classList.add('opacity-100', 'translate-y-0');
+                    
+                    setTimeout(() => {
+                        toast.classList.add('opacity-0', 'translate-y-10');
+                        toast.classList.remove('opacity-100', 'translate-y-0');
+                    }, 3000);
+                });
+            }
+        });
+
+        // Add "fill" weight to icons that are intended to be solid
+        document.querySelectorAll('[data-weight="fill"]').forEach(el => {
+            el.style.fontVariationSettings = "'FILL' 1";
+        });
+    </script>
+</body></html>

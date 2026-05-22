@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Buyer Orders History - RMF Facilitator</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Work+Sans:wght@400;500;600;700;800;900&amp;family=JetBrains+Mono:wght@500&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+    tailwind.config = {
+      darkMode: "class",
+      theme: {
+        extend: {
+          "colors": {
+            "surface-container": "#efeded",
+            "error": "#ba1a1a",
+            "surface-tint": "#a04100",
+            "on-primary-fixed-variant": "#7a3000",
+            "surface-container-highest": "#e3e2e2",
+            "on-secondary-fixed": "#370e00",
+            "primary": "#a04100",
+            "on-primary-fixed": "#351000",
+            "secondary-container": "#fc671d",
+            "on-secondary": "#ffffff",
+            "surface-container-lowest": "#ffffff",
+            "on-surface": "#1b1c1c",
+            "on-secondary-fixed-variant": "#7f2b00",
+            "outline": "#8e7164",
+            "on-tertiary-container": "#002f6b",
+            "inverse-surface": "#303030",
+            "on-tertiary": "#ffffff",
+            "on-surface-variant": "#5a4136",
+            "tertiary-fixed": "#d8e2ff",
+            "secondary-fixed-dim": "#ffb598",
+            "on-primary": "#ffffff",
+            "primary-fixed": "#ffdbcc",
+            "primary-container": "#ff6b00",
+            "on-primary-container": "#572000",
+            "tertiary-fixed-dim": "#adc6ff",
+            "on-tertiary-fixed": "#001a42",
+            "on-secondary-container": "#561b00",
+            "inverse-primary": "#ffb693",
+            "on-error": "#ffffff",
+            "tertiary": "#005ac2",
+            "primary-fixed-dim": "#ffb693",
+            "surface-dim": "#dbdad9",
+            "inverse-on-surface": "#f2f0f0",
+            "error-container": "#ffdad6",
+            "on-error-container": "#93000a",
+            "secondary": "#a63b00",
+            "on-tertiary-fixed-variant": "#004395",
+            "surface": "#fbf9f8",
+            "surface-variant": "#e3e2e2",
+            "tertiary-container": "#5f97ff",
+            "surface-container-low": "#f5f3f3",
+            "secondary-fixed": "#ffdbce",
+            "on-background": "#1b1c1c",
+            "background": "#fbf9f8",
+            "surface-container-high": "#e9e8e7",
+            "surface-bright": "#fbf9f8",
+            "outline-variant": "#e2bfb0"
+          },
+          "borderRadius": {
+            "DEFAULT": "0.125rem",
+            "lg": "0.25rem",
+            "xl": "0.5rem",
+            "full": "0.75rem"
+          },
+          "spacing": {
+            "margin-mobile": "16px",
+            "margin-desktop": "32px",
+            "gutter": "16px",
+            "xl": "40px",
+            "lg": "24px",
+            "xs": "4px",
+            "sm": "8px",
+            "base": "4px",
+            "md": "16px"
+          },
+          "fontFamily": {
+            "headline-lg-mobile": ["Work Sans"],
+            "body-sm": ["Work Sans"],
+            "label-md": ["JetBrains Mono"],
+            "table-data": ["Work Sans"],
+            "headline-lg": ["Work Sans"],
+            "body-lg": ["Work Sans"],
+            "headline-md": ["Work Sans"],
+            "body-md": ["Work Sans"]
+          },
+          "fontSize": {
+            "headline-lg-mobile": ["24px", {"lineHeight": "30px", "letterSpacing": "-0.01em", "fontWeight": "700"}],
+            "body-sm": ["12px", {"lineHeight": "16px", "fontWeight": "400"}],
+            "label-md": ["12px", {"lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "500"}],
+            "table-data": ["13px", {"lineHeight": "18px", "fontWeight": "500"}],
+            "headline-lg": ["30px", {"lineHeight": "38px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+            "body-lg": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+            "headline-md": ["20px", {"lineHeight": "28px", "fontWeight": "600"}],
+            "body-md": ["14px", {"lineHeight": "20px", "fontWeight": "400"}]
+          }
+        }
+      }
+    }
+  </script>
+<style>
+    .material-symbols-outlined {
+      font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+      vertical-align: middle;
+    }
+    .custom-scrollbar::-webkit-scrollbar {
+      width: 4px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb {
+      background: #e2bfb0;
+      border-radius: 10px;
+    }
+  </style>
+</head>
+<body class="bg-background text-on-surface font-body-md selection:bg-primary-fixed selection:text-on-primary-fixed">
+<!-- Desktop TopNavBar Navigation Shell -->
+<header class="bg-surface border-b border-outline-variant fixed top-0 left-0 w-full z-50 h-16 hidden md:block">
+<div class="flex justify-between items-center w-full px-margin-desktop h-full max-w-[1280px] mx-auto">
+<div class="flex items-center gap-lg">
+<span class="font-headline-md text-headline-md font-black text-primary">RMF Facilitator</span>
+<nav class="flex gap-md h-full items-center">
+<a class="text-on-surface-variant font-medium hover:text-primary transition-colors py-2 px-sm" href="#">Marketplace</a>
+<a class="text-primary border-b-2 border-primary font-bold transition-colors py-2 px-sm" href="#">Orders</a>
+<a class="text-on-surface-variant font-medium hover:text-primary transition-colors py-2 px-sm" href="#">Logistics</a>
+<a class="text-on-surface-variant font-medium hover:text-primary transition-colors py-2 px-sm" href="#">Analytics</a>
+</nav>
+</div>
+<div class="flex items-center gap-md">
+<div class="relative">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant">notifications</span>
+<div class="absolute top-0 right-0 w-2 h-2 bg-error rounded-full"></div>
+</div>
+<span class="material-symbols-outlined text-on-surface-variant">account_balance_wallet</span>
+<span class="material-symbols-outlined text-on-surface-variant">chat</span>
+<div class="h-8 w-8 rounded-full overflow-hidden border border-outline-variant">
+<img alt="User profile" class="w-full h-full object-cover" data-alt="A professional studio headshot of a Rwandan entrepreneur with a friendly expression. The person is wearing a tailored earth-toned suit against a soft, neutral-colored background. The lighting is warm and cinematic, reflecting a high-end corporate identity centered on commerce and trust." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDiLatT4pmcUVVVnY9d1B0hvVoqWNDuXYi6HFlWxQXWnTA3oyvIUxc3xE3K8__AMFVLQJlSAHq5qpCzUtP_t8k3rUK7DzBqK3j3i9vI8bFgbQ_8VnAkZ_8EFYKt2M7w9E1W-ojigLOBOT4CwUgoZk5PkpNJsebOucJG0aSUfNfOx0OHxVV65udMrU1B6-jIoWEsnmY5U6_nPeusgtQ2PnKP8CjIlCNkaVpflfSNXmcI-Zl01-EirhahlAGeEjkvt1ik0O3OeWePr_YP"/>
+</div>
+</div>
+</div>
+</header>
+<!-- Mobile Header -->
+<header class="bg-surface fixed top-0 w-full z-50 md:hidden px-margin-mobile h-14 flex items-center justify-between border-b border-outline-variant">
+<span class="font-headline-md text-headline-md font-black text-primary">RMF</span>
+<div class="flex gap-md">
+<span class="material-symbols-outlined">search</span>
+<span class="material-symbols-outlined">notifications</span>
+</div>
+</header>
+<main class="pt-20 md:pt-24 pb-20 md:pb-10 max-w-[1280px] mx-auto px-margin-mobile md:px-margin-desktop">
+<!-- Hero / Title Section -->
+<div class="mb-lg">
+<h1 class="font-headline-lg text-headline-lg md:text-headline-lg text-on-surface mb-xs">Order History</h1>
+<p class="text-on-surface-variant font-body-md">Manage your trade transactions and procurement requests.</p>
+</div>
+<!-- Search & Filters -->
+<div class="flex flex-col md:flex-row md:items-center justify-between gap-md mb-lg">
+<div class="relative flex-1 max-w-md">
+<span class="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-on-surface-variant">search</span>
+<input class="w-full bg-surface-container-low border border-outline-variant rounded-xl pl-12 pr-4 py-3 focus:outline-none focus:border-primary transition-all text-body-md" placeholder="Search Order ID or Product name" type="text"/>
+</div>
+<div class="flex overflow-x-auto no-scrollbar gap-sm">
+<button class="bg-primary text-on-primary px-lg py-2.5 rounded-full font-label-md text-label-md whitespace-nowrap">All</button>
+<button class="bg-surface-container-high text-on-surface-variant px-lg py-2.5 rounded-full font-label-md text-label-md whitespace-nowrap hover:bg-surface-container-highest transition-all">Active</button>
+<button class="bg-surface-container-high text-on-surface-variant px-lg py-2.5 rounded-full font-label-md text-label-md whitespace-nowrap hover:bg-surface-container-highest transition-all">Quote Requests</button>
+<button class="bg-surface-container-high text-on-surface-variant px-lg py-2.5 rounded-full font-label-md text-label-md whitespace-nowrap hover:bg-surface-container-highest transition-all">Completed</button>
+</div>
+</div>
+<!-- Orders Grid -->
+<div class="grid grid-cols-1 gap-md">
+<!-- Order Card 1: Payment Pending -->
+<div class="bg-surface border border-outline-variant rounded-xl overflow-hidden hover:shadow-sm transition-all">
+<div class="bg-surface-container-low px-md py-sm flex flex-wrap justify-between items-center gap-sm border-b border-outline-variant">
+<div class="flex items-center gap-sm">
+<span class="font-label-md text-label-md text-on-surface-variant">ORDER ID:</span>
+<span class="font-label-md text-label-md font-bold text-on-surface">RMF-882194</span>
+</div>
+<div class="flex items-center gap-xs">
+<span class="material-symbols-outlined text-sm text-on-tertiary-fixed-variant" style="font-variation-settings: 'FILL' 1;">verified_user</span>
+<span class="font-label-md text-label-md text-on-tertiary-fixed-variant font-bold uppercase tracking-wider">Escrow Protected</span>
+</div>
+</div>
+<div class="p-md md:p-lg flex flex-col md:flex-row gap-lg">
+<!-- Product Info -->
+<div class="flex gap-md flex-1">
+<div class="w-24 h-24 rounded-lg overflow-hidden border border-outline-variant flex-shrink-0">
+<img alt="Bulk Grain" class="w-full h-full object-cover" data-alt="A high-quality close-up photograph of premium Rwandan maize grain stored in heavy-duty woven sacks. The lighting is crisp and natural, emphasizing the texture and golden color of the kernels. The setting is a clean, organized commercial warehouse with high-utility shelving visible in the blurred background." src="https://lh3.googleusercontent.com/aida-public/AB6AXuC2b6rMnJXNZndkjXkOoejejY92gnLTenyCdb03ZCJ8Q7Zi7OFIDKglmpSdul0bRtPXlVzhih5iyYUFRyGDwqbLpISlHxIgLol4eueV6ECPDaHiraonU61oYlf7nMYMse73z5vsPv-daBuzz_FXfkejrZZRMdjFEl-0AZ3pf7WNYFhYdoYbiK5QInGCUzPxDutRf6PC4LQ4ZsXbZ4I3SKlXw1z1NRhOIKBOcC75BvkWa5qD5dj7Mc6QMR1O1N_p5jH73QXnM1uwL9pQ"/>
+</div>
+<div class="flex flex-col justify-center">
+<span class="text-on-surface-variant font-label-md text-label-md uppercase mb-xs">Kigali Wholesale Hub</span>
+<h3 class="font-headline-md text-headline-md text-on-surface">Grade A White Maize (Bulk)</h3>
+<p class="text-on-surface-variant text-body-md mt-1">Quantity: 500kg • Unit: Sack</p>
+</div>
+</div>
+<!-- Pricing & Status -->
+<div class="flex flex-col md:items-end justify-center gap-sm">
+<div class="flex flex-col md:items-end">
+<span class="text-on-surface-variant text-body-sm">Total Amount</span>
+<span class="font-headline-md text-headline-md text-primary">RWF 425,000</span>
+</div>
+<div class="flex items-center gap-sm">
+<span class="bg-error-container text-on-error-container px-sm py-1 rounded font-label-md text-label-md uppercase font-bold border border-error/20">Payment Pending</span>
+</div>
+</div>
+</div>
+<div class="px-md pb-md md:px-lg md:pb-lg flex flex-wrap gap-sm">
+<button class="bg-primary text-on-primary px-lg py-2.5 rounded-full font-label-md text-label-md flex items-center gap-xs flex-1 md:flex-none justify-center">
+<span class="material-symbols-outlined text-lg">payments</span> Pay Now
+          </button>
+<button class="bg-surface-container-high text-on-surface-variant px-lg py-2.5 rounded-full font-label-md text-label-md flex items-center gap-xs flex-1 md:flex-none justify-center hover:bg-surface-container-highest transition-all">
+<span class="material-symbols-outlined text-lg">description</span> View Invoice
+          </button>
+<button class="bg-surface-container-high text-on-surface-variant px-lg py-2.5 rounded-full font-label-md text-label-md flex items-center gap-xs flex-1 md:flex-none justify-center hover:bg-surface-container-highest transition-all">
+             Contact Seller
+          </button>
+</div>
+</div>
+<!-- Order Card 2: Active / In Transit -->
+<div class="bg-surface border border-outline-variant rounded-xl overflow-hidden hover:shadow-sm transition-all">
+<div class="bg-surface-container-low px-md py-sm flex flex-wrap justify-between items-center gap-sm border-b border-outline-variant">
+<div class="flex items-center gap-sm">
+<span class="font-label-md text-label-md text-on-surface-variant">ORDER ID:</span>
+<span class="font-label-md text-label-md font-bold text-on-surface">RMF-877210</span>
+</div>
+<div class="flex items-center gap-xs">
+<span class="material-symbols-outlined text-sm text-tertiary" style="font-variation-settings: 'FILL' 1;">local_shipping</span>
+<span class="font-label-md text-label-md text-tertiary font-bold uppercase tracking-wider">In Transit</span>
+</div>
+</div>
+<div class="p-md md:p-lg flex flex-col md:flex-row gap-lg">
+<!-- Product Info -->
+<div class="flex gap-md flex-1">
+<div class="w-24 h-24 rounded-lg overflow-hidden border border-outline-variant flex-shrink-0">
+<img alt="Specialty Coffee" class="w-full h-full object-cover" data-alt="A beautiful display of roasted specialty Rwandan coffee beans in high-end kraft paper packaging. The beans are rich and glossy with a medium dark roast. The scene is shot in a sunlit artisan roastery with warm shadows and earthy tones, highlighting the premium quality of the product." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBYDAQLPHZPPm3FE8Dgg3LpiiEUFn4y5DXxouRGAblii5mirwg3yjMKZLj9C1CgcEZ-BBd-l1DRm9Nkso6edLQxZAdPNFx-vKbTvM9dWbGSHs6n88k5spUMC_6M1kNamuvm7oN6uVqYkqQXGFy8bvQsyFP732sC6CcAJe03qdnUpFSXUpHleKuZSsKFmQSB9-kD2PFCzSD6VzyprwXAXSVcTJwGb7iGSgwi8wJn5KKquJb3hQnJKOAIxVMLqkC6JV1tACFRvQ-JOv8Y"/>
+</div>
+<div class="flex flex-col justify-center">
+<span class="text-on-surface-variant font-label-md text-label-md uppercase mb-xs">Rusizi Coffee Coop</span>
+<h3 class="font-headline-md text-headline-md text-on-surface">Premium Bourbon Arabica</h3>
+<p class="text-on-surface-variant text-body-md mt-1">Quantity: 25kg • Unit: Export Grade</p>
+</div>
+</div>
+<!-- Pricing & Status -->
+<div class="flex flex-col md:items-end justify-center gap-sm">
+<div class="flex flex-col md:items-end">
+<span class="text-on-surface-variant text-body-sm">Total Amount</span>
+<span class="font-headline-md text-headline-md text-primary">RWF 1,120,000</span>
+</div>
+<div class="flex items-center gap-sm">
+<span class="bg-secondary-container text-on-secondary-container px-sm py-1 rounded font-label-md text-label-md uppercase font-bold border border-secondary/20">Preparing Shipment</span>
+</div>
+</div>
+</div>
+<div class="px-md pb-md md:px-lg md:pb-lg flex flex-wrap gap-sm">
+<button class="bg-primary text-on-primary px-lg py-2.5 rounded-full font-label-md text-label-md flex items-center gap-xs flex-1 md:flex-none justify-center">
+<span class="material-symbols-outlined text-lg">map</span> Track Order
+          </button>
+<button class="bg-surface-container-high text-on-surface-variant px-lg py-2.5 rounded-full font-label-md text-label-md flex items-center gap-xs flex-1 md:flex-none justify-center hover:bg-surface-container-highest transition-all">
+<span class="material-symbols-outlined text-lg">receipt_long</span> View Details
+          </button>
+</div>
+</div>
+<!-- Order Card 3: Quote Request -->
+<div class="bg-surface border border-outline-variant rounded-xl overflow-hidden hover:shadow-sm transition-all opacity-90">
+<div class="bg-surface-container-low px-md py-sm flex flex-wrap justify-between items-center gap-sm border-b border-outline-variant">
+<div class="flex items-center gap-sm">
+<span class="font-label-md text-label-md text-on-surface-variant">REQ ID:</span>
+<span class="font-label-md text-label-md font-bold text-on-surface">REQ-0021-9</span>
+</div>
+<div class="flex items-center gap-xs">
+<span class="material-symbols-outlined text-sm text-on-surface-variant">request_quote</span>
+<span class="font-label-md text-label-md text-on-surface-variant font-bold uppercase tracking-wider">Awaiting Quote</span>
+</div>
+</div>
+<div class="p-md md:p-lg flex flex-col md:flex-row gap-lg">
+<!-- Product Info -->
+<div class="flex gap-md flex-1">
+<div class="w-24 h-24 rounded-lg overflow-hidden border border-outline-variant flex-shrink-0 bg-surface-container-highest flex items-center justify-center">
+<span class="material-symbols-outlined text-4xl text-outline">shopping_cart</span>
+</div>
+<div class="flex flex-col justify-center">
+<span class="text-on-surface-variant font-label-md text-label-md uppercase mb-xs">Nyarugenge Textiles</span>
+<h3 class="font-headline-md text-headline-md text-on-surface">Custom Printed Cotton Fabric</h3>
+<p class="text-on-surface-variant text-body-md mt-1">Quantity: 200 Meters • Pattern: Traditional Geometric</p>
+</div>
+</div>
+<!-- Pricing & Status -->
+<div class="flex flex-col md:items-end justify-center gap-sm">
+<div class="flex flex-col md:items-end">
+<span class="text-on-surface-variant text-body-sm">Estimated Budget</span>
+<span class="font-headline-md text-headline-md text-on-surface-variant">RWF 800,000</span>
+</div>
+<div class="flex items-center gap-sm">
+<span class="bg-surface-variant text-on-surface-variant px-sm py-1 rounded font-label-md text-label-md uppercase font-bold border border-outline/20">Under Review</span>
+</div>
+</div>
+</div>
+<div class="px-md pb-md md:px-lg md:pb-lg flex flex-wrap gap-sm">
+<button class="bg-surface-container-high text-on-surface-variant px-lg py-2.5 rounded-full font-label-md text-label-md flex items-center gap-xs flex-1 md:flex-none justify-center hover:bg-surface-container-highest transition-all">
+            Edit Request
+          </button>
+<button class="bg-surface-container-high text-on-surface-variant px-lg py-2.5 rounded-full font-label-md text-label-md flex items-center gap-xs flex-1 md:flex-none justify-center hover:bg-surface-container-highest transition-all">
+            Cancel
+          </button>
+</div>
+</div>
+</div>
+<!-- Empty State Placeholder (Hidden) -->
+<div class="hidden flex-col items-center justify-center py-xl text-center">
+<div class="w-24 h-24 rounded-full bg-surface-container-high flex items-center justify-center mb-md">
+<span class="material-symbols-outlined text-5xl text-outline">history</span>
+</div>
+<h2 class="font-headline-md text-headline-md text-on-surface">No orders found</h2>
+<p class="text-on-surface-variant text-body-md max-w-xs mt-2">You haven't placed any orders yet. Visit the marketplace to start trading.</p>
+<button class="mt-lg bg-primary text-on-primary px-xl py-3 rounded-full font-label-md text-label-md uppercase font-bold">Start Shopping</button>
+</div>
+</main>
+<!-- Mobile BottomNavBar -->
+<nav class="md:hidden fixed bottom-0 left-0 w-full z-50 bg-surface border-t border-outline-variant px-4 py-2 flex justify-around items-center pb-safe">
+<div class="flex flex-col items-center justify-center text-on-surface-variant py-1">
+<span class="material-symbols-outlined">home</span>
+<span class="text-[10px] font-medium mt-1">Home</span>
+</div>
+<div class="flex flex-col items-center justify-center text-on-surface-variant py-1">
+<span class="material-symbols-outlined">map</span>
+<span class="text-[10px] font-medium mt-1">Track</span>
+</div>
+<div class="flex flex-col items-center justify-center bg-primary-container text-on-primary-container rounded-xl px-4 py-1">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">receipt_long</span>
+<span class="text-[10px] font-bold mt-1">Orders</span>
+</div>
+<div class="flex flex-col items-center justify-center text-on-surface-variant py-1">
+<span class="material-symbols-outlined">mail</span>
+<span class="text-[10px] font-medium mt-1">Inbox</span>
+</div>
+<div class="flex flex-col items-center justify-center text-on-surface-variant py-1">
+<span class="material-symbols-outlined">person</span>
+<span class="text-[10px] font-medium mt-1">Profile</span>
+</div>
+</nav>
+<script>
+    // Micro-interactions
+    document.querySelectorAll('button, .card-link').forEach(button => {
+      button.addEventListener('mousedown', () => {
+        button.style.transform = 'scale(0.98)';
+      });
+      button.addEventListener('mouseup', () => {
+        button.style.transform = 'scale(1)';
+      });
+      button.addEventListener('mouseleave', () => {
+        button.style.transform = 'scale(1)';
+      });
+    });
+
+    // Simple Tab Switching logic (simulation)
+    const tabs = document.querySelectorAll('.flex.overflow-x-auto button');
+    tabs.forEach(tab => {
+      tab.addEventListener('click', () => {
+        tabs.forEach(t => {
+          t.classList.remove('bg-primary', 'text-on-primary');
+          t.classList.add('bg-surface-container-high', 'text-on-surface-variant');
+        });
+        tab.classList.remove('bg-surface-container-high', 'text-on-surface-variant');
+        tab.classList.add('bg-primary', 'text-on-primary');
+      });
+    });
+  </script>
+</body></html>

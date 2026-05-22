@@ -1,4 +1,4 @@
-import { Controller, Get, Query, Param, Patch, Body, Req, UseGuards } from '@nestjs/common';
+import { Controller, Get, Query, Param, Patch, Body, Req, UseGuards, ForbiddenException } from '@nestjs/common';
 import { AdminService } from './admin.service';
 import { Roles, JwtAuthGuard } from '@rmf/auth';
 import { UserRole } from '@rmf/shared-types';
@@ -40,7 +40,10 @@ export class AdminController {
 
   @Get('analytics/seller/:id')
   @Roles(UserRole.ADMIN, UserRole.SELLER)
-  async getSellerAnalytics(@Param('id') id: string) {
+  async getSellerAnalytics(@Param('id') id: string, @Req() req: any) {
+    if (req.user.role === UserRole.SELLER && req.user.userId !== id) {
+      throw new ForbiddenException('Sellers can only view their own analytics');
+    }
     const analytics = await this.adminService.getSellerAnalytics(id);
     return { success: true, data: analytics };
   }
@@ -75,7 +78,10 @@ export class AdminController {
 
   @Get('seller/dashboard/analytics/:id')
   @Roles(UserRole.ADMIN, UserRole.SELLER)
-  async getSellerDashboardAnalytics(@Param('id') id: string) {
+  async getSellerDashboardAnalytics(@Param('id') id: string, @Req() req: any) {
+    if (req.user.role === UserRole.SELLER && req.user.userId !== id) {
+      throw new ForbiddenException('Sellers can only view their own dashboard analytics');
+    }
     const analytics = await this.adminService.getAnalyticsDashboard(id);
     return { success: true, data: analytics };
   }

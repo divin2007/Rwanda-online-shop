@@ -25,13 +25,25 @@ const inputValue = (value: unknown) => {
   return '';
 };
 
+const uniqueFieldsByKey = <T extends { key: string }>(fields: T[] = []) => {
+  const seen = new Set<string>();
+  return fields.filter(field => {
+    if (seen.has(field.key)) return false;
+    seen.add(field.key);
+    return true;
+  });
+};
+
 export function CatalogAttributeFields({ category, attributes, onAttributesChange, variants = [], onVariantsChange }: Props) {
+  const categoryAttributes = React.useMemo(() => uniqueFieldsByKey(category.attributes), [category.attributes]);
+  const variantAxes = React.useMemo(() => uniqueFieldsByKey(category.variantAxes), [category.variantAxes]);
+
   const updateAttribute = (key: string, value: unknown) => {
     onAttributesChange({ ...attributes, [key]: value });
   };
 
   const addVariant = () => {
-    const options = Object.fromEntries(category.variantAxes.map(axis => [axis.key, '']));
+    const options = Object.fromEntries(variantAxes.map(axis => [axis.key, '']));
     onVariantsChange?.([
       ...variants,
       { title: '', sku: '', options, price: '', unit: category.defaultUnit, stockType: 'finite', stockQuantity: '', images: [], isActive: true },
@@ -59,7 +71,7 @@ export function CatalogAttributeFields({ category, attributes, onAttributesChang
       </div>
 
       <div className="grid gap-3 sm:grid-cols-2">
-        {category.attributes.map(field => (
+        {categoryAttributes.map(field => (
           <label key={field.key} className="block">
             <span className="mb-1.5 block text-[10px] font-black uppercase tracking-[0.16em] text-[#405046]">
               {field.label}{field.required ? ' *' : ''}{field.unit ? ` (${field.unit})` : ''}
@@ -72,7 +84,7 @@ export function CatalogAttributeFields({ category, attributes, onAttributesChang
                 className={fieldClass}
               >
                 <option value="">Select...</option>
-                {(field.options || []).map(option => <option key={option} value={option}>{option}</option>)}
+                {(field.options || []).map(option => <option key={`${field.key}-${option}`} value={option}>{option}</option>)}
               </select>
             ) : field.type === 'boolean' ? (
               <label className="flex h-11 items-center gap-3 rounded-md border border-[#d9e0db] bg-white px-3 text-sm font-bold text-[#1b1c1c]">
@@ -99,7 +111,7 @@ export function CatalogAttributeFields({ category, attributes, onAttributesChang
         ))}
       </div>
 
-      {category.variantAxes.length > 0 && onVariantsChange && (
+      {variantAxes.length > 0 && onVariantsChange && (
         <div className="space-y-3 border-t border-[#d9e0db] pt-4">
           <div className="flex items-center justify-between gap-3">
             <div>
@@ -122,20 +134,20 @@ export function CatalogAttributeFields({ category, attributes, onAttributesChang
               <div className="grid gap-3 sm:grid-cols-2">
                 <input className={fieldClass} placeholder="SKU" value={variant.sku || ''} onChange={event => updateVariant(index, { sku: event.target.value })} />
                 <input className={fieldClass} placeholder="Variant title" value={variant.title || ''} onChange={event => updateVariant(index, { title: event.target.value })} />
-                {category.variantAxes.map(axis => (
+                {variantAxes.map(axis => (
                   <label key={axis.key} className="block">
                     <span className="mb-1.5 block text-[10px] font-black uppercase tracking-[0.16em] text-[#405046]">{axis.label}</span>
                     {axis.type === 'select' ? (
                       <select className={fieldClass} value={variant.options?.[axis.key] || ''} onChange={event => updateVariantOption(index, axis.key, event.target.value)}>
                         <option value="">Select...</option>
-                        {(axis.options || []).map(option => <option key={option} value={option}>{option}</option>)}
+                        {(axis.options || []).map(option => <option key={`${axis.key}-${option}`} value={option}>{option}</option>)}
                       </select>
                     ) : (
                       <input type={inputTypeFor(axis)} className={`${fieldClass} ${axis.type === 'color' ? 'h-11 p-1' : ''}`} value={variant.options?.[axis.key] || ''} onChange={event => updateVariantOption(index, axis.key, event.target.value)} />
                     )}
                   </label>
                 ))}
-                <input className={fieldClass} type="number" min="0" placeholder="Variant price override" value={variant.price || ''} onChange={event => updateVariant(index, { price: event.target.value })} />
+                <input className={fieldClass} type="number" placeholder="Variant price markup (+/- RWF relative to parent)" value={variant.price || ''} onChange={event => updateVariant(index, { price: event.target.value })} />
                 <input className={fieldClass} placeholder="Unit" value={variant.unit || category.defaultUnit} onChange={event => updateVariant(index, { unit: event.target.value })} />
                 <select className={fieldClass} value={variant.stockType || 'finite'} onChange={event => updateVariant(index, { stockType: event.target.value as ProductVariantDraft['stockType'] })}>
                   <option value="finite">Finite stock</option>

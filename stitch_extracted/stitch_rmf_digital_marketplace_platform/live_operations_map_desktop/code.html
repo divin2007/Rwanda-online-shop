@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>RMF Admin Live Operations Map</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Work+Sans:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@500&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "tertiary": "#005ac2",
+                    "primary-container": "#ff6b00",
+                    "on-secondary-container": "#561b00",
+                    "on-primary-fixed": "#351000",
+                    "surface-variant": "#e3e2e2",
+                    "on-primary-fixed-variant": "#7a3000",
+                    "secondary-container": "#fc671d",
+                    "on-primary-container": "#572000",
+                    "on-tertiary-fixed-variant": "#004395",
+                    "outline-variant": "#e2bfb0",
+                    "on-tertiary-fixed": "#001a42",
+                    "surface-container-low": "#f5f3f3",
+                    "on-background": "#1b1c1c",
+                    "on-tertiary-container": "#002f6b",
+                    "error-container": "#ffdad6",
+                    "on-surface-variant": "#5a4136",
+                    "surface-container-highest": "#e3e2e2",
+                    "on-secondary": "#ffffff",
+                    "surface-dim": "#dbdad9",
+                    "secondary": "#a63b00",
+                    "on-error-container": "#93000a",
+                    "surface-container": "#efeded",
+                    "on-tertiary": "#ffffff",
+                    "secondary-fixed": "#ffdbce",
+                    "on-error": "#ffffff",
+                    "inverse-primary": "#ffb693",
+                    "secondary-fixed-dim": "#ffb598",
+                    "surface": "#fbf9f8",
+                    "tertiary-fixed": "#d8e2ff",
+                    "inverse-on-surface": "#f2f0f0",
+                    "inverse-surface": "#303030",
+                    "error": "#ba1a1a",
+                    "primary-fixed-dim": "#ffb693",
+                    "tertiary-fixed-dim": "#adc6ff",
+                    "surface-container-high": "#e9e8e7",
+                    "primary-fixed": "#ffdbcc",
+                    "outline": "#8e7164",
+                    "primary": "#a04100",
+                    "on-surface": "#1b1c1c",
+                    "on-secondary-fixed": "#370e00",
+                    "tertiary-container": "#5f97ff",
+                    "surface-bright": "#fbf9f8",
+                    "on-primary": "#ffffff",
+                    "background": "#fbf9f8",
+                    "surface-container-lowest": "#ffffff",
+                    "surface-tint": "#a04100",
+                    "on-secondary-fixed-variant": "#7f2b00"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.125rem",
+                    "lg": "0.25rem",
+                    "xl": "0.5rem",
+                    "full": "0.75rem"
+            },
+            "spacing": {
+                    "gutter": "16px",
+                    "base": "4px",
+                    "margin-mobile": "16px",
+                    "margin-desktop": "32px",
+                    "xs": "4px",
+                    "lg": "24px",
+                    "xl": "40px",
+                    "sm": "8px",
+                    "md": "16px"
+            },
+            "fontFamily": {
+                    "table-data": ["Work Sans"],
+                    "body-md": ["Work Sans"],
+                    "label-md": ["JetBrains Mono"],
+                    "body-sm": ["Work Sans"],
+                    "headline-lg": ["Work Sans"],
+                    "headline-lg-mobile": ["Work Sans"],
+                    "body-lg": ["Work Sans"],
+                    "headline-md": ["Work Sans"]
+            },
+            "fontSize": {
+                    "table-data": ["13px", {"lineHeight": "18px", "fontWeight": "500"}],
+                    "body-md": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                    "label-md": ["12px", {"lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "500"}],
+                    "body-sm": ["12px", {"lineHeight": "16px", "fontWeight": "400"}],
+                    "headline-lg": ["30px", {"lineHeight": "38px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                    "headline-lg-mobile": ["24px", {"lineHeight": "30px", "letterSpacing": "-0.01em", "fontWeight": "700"}],
+                    "body-lg": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                    "headline-md": ["20px", {"lineHeight": "28px", "fontWeight": "600"}]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #e2bfb0;
+            border-radius: 10px;
+        }
+        .map-pulse {
+            animation: pulse-ring 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+        @keyframes pulse-ring {
+            0% { transform: scale(0.8); opacity: 0.5; }
+            50% { transform: scale(1.2); opacity: 0.2; }
+            100% { transform: scale(0.8); opacity: 0.5; }
+        }
+        .drawer-transition {
+            transition: transform 0.3s ease-in-out;
+        }
+    </style>
+</head>
+<body class="bg-background text-on-background font-body-md text-body-md overflow-hidden h-screen flex flex-col">
+<!-- TopAppBar -->
+<header class="fixed top-0 w-full z-50 bg-surface dark:bg-surface-dim flex justify-between items-center px-margin-desktop h-16 w-full border-b border-outline-variant dark:border-outline">
+<div class="flex items-center gap-md">
+<span class="font-headline-md text-headline-md text-primary dark:text-primary-fixed-dim font-extrabold tracking-tight">RMF Platform</span>
+<div class="hidden md:flex items-center ml-lg bg-surface-container-low px-sm py-xs rounded-lg border border-outline-variant">
+<span class="material-symbols-outlined text-on-surface-variant mr-xs">search</span>
+<input class="bg-transparent border-none focus:ring-0 text-body-md w-64" placeholder="Search Order IDs or Rider Names..." type="text"/>
+</div>
+</div>
+<div class="flex items-center gap-md">
+<button class="material-symbols-outlined p-sm hover:bg-surface-container-low transition-colors rounded-full text-on-surface-variant">notifications</button>
+<button class="material-symbols-outlined p-sm hover:bg-surface-container-low transition-colors rounded-full text-on-surface-variant">chat</button>
+<div class="h-8 w-8 rounded-full bg-primary-container flex items-center justify-center text-on-primary-container font-bold text-label-md">JD</div>
+</div>
+</header>
+<!-- Main Content Area -->
+<main class="flex-1 flex mt-16 overflow-hidden relative">
+<!-- SideNavBar (Contextual Map Controls) -->
+<nav class="fixed left-0 top-16 h-[calc(100vh-64px)] w-64 hidden md:flex flex-col bg-surface-container-low dark:bg-surface-container-lowest border-r border-outline-variant p-md gap-sm z-40">
+<div class="mb-lg">
+<h2 class="font-headline-md text-headline-md font-bold text-primary">RMF Portal</h2>
+<p class="text-label-md font-label-md text-on-surface-variant">Market Facilitator</p>
+</div>
+<div class="flex flex-col gap-xs flex-1">
+<a class="flex items-center gap-md p-md bg-primary-container text-on-primary-container rounded-xl font-bold duration-200 ease-in-out" href="#">
+<span class="material-symbols-outlined" data-icon="dashboard">dashboard</span>
+<span>Dashboard</span>
+</a>
+<a class="flex items-center gap-md p-md text-on-surface-variant hover:bg-surface-container-high transition-all rounded-xl duration-200 ease-in-out" href="#">
+<span class="material-symbols-outlined" data-icon="storefront">storefront</span>
+<span>Marketplace</span>
+</a>
+<a class="flex items-center gap-md p-md text-on-surface-variant hover:bg-surface-container-high transition-all rounded-xl duration-200 ease-in-out" href="#">
+<span class="material-symbols-outlined" data-icon="local_shipping">local_shipping</span>
+<span>Logistics</span>
+</a>
+<a class="flex items-center gap-md p-md text-on-surface-variant hover:bg-surface-container-high transition-all rounded-xl duration-200 ease-in-out" href="#">
+<span class="material-symbols-outlined" data-icon="analytics">analytics</span>
+<span>Analytics</span>
+</a>
+</div>
+<div class="pt-md border-t border-outline-variant flex flex-col gap-xs">
+<a class="flex items-center gap-md p-sm text-on-surface-variant hover:bg-surface-container-high rounded-lg" href="#">
+<span class="material-symbols-outlined" data-icon="settings">settings</span>
+<span class="text-label-md font-label-md">Settings</span>
+</a>
+<a class="flex items-center gap-md p-sm text-on-surface-variant hover:bg-surface-container-high rounded-lg" href="#">
+<span class="material-symbols-outlined" data-icon="help">help</span>
+<span class="text-label-md font-label-md">Support</span>
+</a>
+</div>
+</nav>
+<!-- Map Container -->
+<section class="flex-1 ml-0 md:ml-64 relative bg-surface-container h-full">
+<!-- Mock Map Background -->
+<div class="absolute inset-0 z-0">
+<img class="w-full h-full object-cover opacity-60" data-alt="A top-down satellite view of a vibrant urban landscape in Rwanda, showing organized street grids and lush green areas. The lighting is bright and clear, reflecting a professional light-mode UI aesthetic. The map features subtle digital overlays of grid lines and earth-toned terrain colors that align with a corporate modern design system." data-location="Kigali" src="https://lh3.googleusercontent.com/aida-public/AB6AXuD8i8YPconPXscm5hqKPhOAU4u81xCOTVB3FsG3h0JbPICD6NyFtXDU00UtNjW0D7uuJw3pcB_4akzt3ksuuN-efZTe2nF9SYIr_l6VhZR9tsSlz_-kp2DGJwOTyWWkDWQRqhjM7w2bLeQe0rGSyAuiqq1cYoVm9lXQ9aOqXZPWMYAYAqSAcimJ4IZIPm1pA2pgFgRUrSVCBg0T6JI__R0Ruu2_-JyE3NA8qi7HfGJU37UhI6-q2NzRT67_0S-xLghOycW3NUIQSVNE"/>
+<!-- Map Overlays: Live Elements -->
+<!-- Rider 1 -->
+<div class="absolute top-1/3 left-1/4 group cursor-pointer z-10" onclick="toggleDrawer()">
+<div class="relative">
+<div class="absolute inset-0 bg-primary opacity-30 rounded-full map-pulse w-12 h-12 -ml-2 -mt-2"></div>
+<div class="bg-primary text-white p-1 rounded-full shadow-lg border-2 border-white relative">
+<span class="material-symbols-outlined text-[20px]" style="font-variation-settings: 'FILL' 1;">electric_moped</span>
+</div>
+</div>
+</div>
+<!-- Market Hub -->
+<div class="absolute top-1/2 left-1/2 group cursor-pointer z-10">
+<div class="bg-tertiary text-white p-1 rounded-sm shadow-lg border-2 border-white transform rotate-45">
+<span class="material-symbols-outlined text-[20px] transform -rotate-45" style="font-variation-settings: 'FILL' 1;">warehouse</span>
+</div>
+<div class="absolute -bottom-8 left-1/2 -translate-x-1/2 bg-white px-2 py-0.5 rounded border border-outline-variant whitespace-nowrap shadow-sm">
+<span class="text-label-md font-label-md text-on-surface">Kigali Central Hub</span>
+</div>
+</div>
+<!-- Active Route Line (SVG) -->
+<svg class="absolute inset-0 w-full h-full pointer-events-none z-0">
+<path d="M 400 300 Q 500 400 700 500" fill="transparent" stroke="#a04100" stroke-dasharray="8 4" stroke-width="3"></path>
+</svg>
+</div>
+<!-- Side Panel: Live Alerts -->
+<div class="absolute top-md right-md bottom-md w-80 z-20 flex flex-col gap-md">
+<div class="bg-surface/90 backdrop-blur-md rounded-xl border border-outline-variant shadow-sm flex-1 flex flex-col overflow-hidden">
+<div class="p-md border-b border-outline-variant flex justify-between items-center bg-[#ffedd5]">
+<h3 class="font-bold text-primary flex items-center gap-xs">
+<span class="material-symbols-outlined text-sm">emergency</span>
+                            LIVE ALERTS
+                        </h3>
+<span class="bg-error text-white px-2 py-0.5 rounded-full text-[10px] font-bold">3 CRITICAL</span>
+</div>
+<div class="flex-1 overflow-y-auto custom-scrollbar p-sm flex flex-col gap-sm">
+<!-- Delayed Orders -->
+<div class="p-sm bg-error-container/20 border-l-4 border-error rounded-r-lg">
+<div class="flex justify-between items-start mb-xs">
+<span class="font-bold text-error text-label-md">DELAYED: #ORD-9921</span>
+<span class="text-body-sm">+14m</span>
+</div>
+<p class="text-body-sm text-on-surface-variant">Rider: Jean-Paul M. | Heavy traffic on RN3</p>
+</div>
+<!-- High Demand Zone -->
+<div class="p-sm bg-primary-container/10 border-l-4 border-primary-container rounded-r-lg">
+<div class="flex justify-between items-start mb-xs">
+<span class="font-bold text-primary text-label-md">HIGH DEMAND ZONE</span>
+<span class="bg-primary text-white text-[10px] px-1 rounded">HOT</span>
+</div>
+<p class="text-body-sm text-on-surface-variant">Kimironko Market Area: 12 pending orders.</p>
+<button class="mt-sm text-label-md text-primary font-bold hover:underline">Re-route Riders</button>
+</div>
+<!-- Idle Riders -->
+<div class="p-sm bg-surface-container-high border-l-4 border-outline rounded-r-lg">
+<div class="flex justify-between items-start mb-xs">
+<span class="font-bold text-on-surface text-label-md">IDLE RIDERS (5)</span>
+<span class="material-symbols-outlined text-sm">person_pin_circle</span>
+</div>
+<div class="flex -space-x-2 mt-xs">
+<div class="w-6 h-6 rounded-full bg-tertiary-container border border-white text-[10px] flex items-center justify-center font-bold">AN</div>
+<div class="w-6 h-6 rounded-full bg-secondary-container border border-white text-[10px] flex items-center justify-center font-bold">BK</div>
+<div class="w-6 h-6 rounded-full bg-primary-container border border-white text-[10px] flex items-center justify-center font-bold">MT</div>
+</div>
+</div>
+</div>
+<div class="p-md bg-surface border-t border-outline-variant">
+<button class="w-full py-sm bg-primary text-white rounded-lg font-bold hover:bg-secondary transition-colors flex items-center justify-center gap-xs">
+<span class="material-symbols-outlined text-sm">file_download</span>
+                            EXCEL REPORT
+                        </button>
+</div>
+</div>
+</div>
+<!-- Inspection Drawer (Selected Delivery) -->
+<div class="fixed bottom-0 right-0 left-0 md:left-64 h-72 bg-surface border-t border-outline-variant shadow-[0_-4px_20px_rgba(0,0,0,0.1)] z-40 transform translate-y-full drawer-transition p-lg" id="inspection-drawer">
+<div class="max-w-6xl mx-auto flex flex-col md:flex-row gap-xl h-full">
+<div class="flex-1">
+<div class="flex items-center gap-md mb-md">
+<div class="bg-primary-container p-md rounded-xl">
+<span class="material-symbols-outlined text-white text-3xl">local_shipping</span>
+</div>
+<div>
+<h4 class="font-headline-md text-headline-md font-bold">Order #RD-8821</h4>
+<div class="flex items-center gap-sm">
+<span class="bg-secondary-container text-on-secondary-container px-2 py-0.5 rounded text-label-md font-bold">IN TRANSIT</span>
+<span class="text-body-sm text-on-surface-variant">Kigali Central → Nyarugenge Market</span>
+</div>
+</div>
+</div>
+<div class="grid grid-cols-2 gap-md">
+<div class="p-sm bg-surface-container rounded border border-outline-variant">
+<span class="text-label-md font-label-md text-on-surface-variant block mb-xs uppercase">ETA</span>
+<span class="text-headline-md font-bold text-primary">12:45 PM</span>
+</div>
+<div class="p-sm bg-surface-container rounded border border-outline-variant">
+<span class="text-label-md font-label-md text-on-surface-variant block mb-xs uppercase">STATUS</span>
+<span class="text-body-md font-bold text-on-surface">Rider search radius expanding 500m</span>
+</div>
+</div>
+</div>
+<div class="flex-1 flex flex-col justify-center border-l border-outline-variant pl-xl">
+<div class="flex items-center gap-md mb-lg">
+<div class="w-12 h-12 rounded-full overflow-hidden border-2 border-primary">
+<img class="w-full h-full object-cover" data-alt="A portrait of a professional African delivery rider wearing a high-visibility vest and a helmet. The background is a clean, slightly blurred city street in daylight. The visual style is crisp and documentary-like, emphasizing reliability and professional service within a modern corporate UI framework." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBnrCEm-zvcq0qeZrK38-nmI7E8TsVk2NfFpgwYjWHZkTQNZIS8JXpfK6Lw7G2Zz7nA8fpo0eTD4a37rlESkkJhbybYDCMe7xFDfYDCXX4CpWF6gpiRALkyzk0lxBLmaQviud_Mx9ysIio7V7IrzXIRB_m9Pe55AwRpT1f1v2Hs11b0JPrjT1O29MdDIiY9d4RkrpDreDDw8xCp9z0mDGWGZIzWeMwlzjUrLUwZFvzQsgPeHo9uSs1-QXFFZ__Ixc5jm7wFEOeZhm0d"/>
+</div>
+<div>
+<p class="font-bold text-on-surface">Emmanuel Rukundo</p>
+<div class="flex items-center gap-xs">
+<span class="material-symbols-outlined text-tertiary text-sm" style="font-variation-settings: 'FILL' 1;">verified</span>
+<span class="text-label-md font-label-md text-tertiary">Verified Rider</span>
+</div>
+</div>
+</div>
+<div class="flex gap-md">
+<button class="flex-1 py-md border border-primary text-primary font-bold rounded-lg flex items-center justify-center gap-xs hover:bg-primary/5 transition-colors">
+<span class="material-symbols-outlined">call</span>
+                                CALL RIDER
+                            </button>
+<button class="flex-1 py-md bg-tertiary text-white font-bold rounded-lg flex items-center justify-center gap-xs hover:bg-tertiary/90 transition-colors">
+<span class="material-symbols-outlined">chat_bubble</span>
+                                MESSAGE
+                            </button>
+</div>
+</div>
+<button class="absolute top-md right-md p-sm text-on-surface-variant hover:text-on-surface" onclick="toggleDrawer()">
+<span class="material-symbols-outlined">close</span>
+</button>
+</div>
+</div>
+<!-- Floating Action Button (Contextual) -->
+<button class="fixed bottom-lg right-lg bg-primary-container text-on-primary-container h-14 w-14 rounded-full shadow-lg flex items-center justify-center transition-transform active:scale-95 z-30" title="Add New Trade/Listing">
+<span class="material-symbols-outlined text-3xl">add</span>
+</button>
+</section>
+</main>
+<!-- BottomNavBar (Mobile Only) -->
+<nav class="fixed bottom-0 w-full md:hidden z-50 bg-surface dark:bg-surface-dim border-t border-outline-variant flex justify-around items-center h-16 px-margin-mobile">
+<div class="flex flex-col items-center justify-center text-on-surface-variant">
+<span class="material-symbols-outlined" data-icon="home">home</span>
+<span class="font-label-md text-label-md">Home</span>
+</div>
+<div class="flex flex-col items-center justify-center bg-secondary-container text-on-secondary-container rounded-full px-4 py-1">
+<span class="material-symbols-outlined" data-icon="map">map</span>
+<span class="font-label-md text-label-md">Map</span>
+</div>
+<div class="flex flex-col items-center justify-center text-on-surface-variant">
+<span class="material-symbols-outlined" data-icon="handshake">handshake</span>
+<span class="font-label-md text-label-md">Trades</span>
+</div>
+<div class="flex flex-col items-center justify-center text-on-surface-variant">
+<span class="material-symbols-outlined" data-icon="person">person</span>
+<span class="font-label-md text-label-md">Account</span>
+</div>
+</nav>
+<script>
+        function toggleDrawer() {
+            const drawer = document.getElementById('inspection-drawer');
+            if (drawer.classList.contains('translate-y-full')) {
+                drawer.classList.remove('translate-y-full');
+                drawer.classList.add('translate-y-0');
+            } else {
+                drawer.classList.remove('translate-y-0');
+                drawer.classList.add('translate-y-full');
+            }
+        }
+
+        // Simulating live data updates
+        setInterval(() => {
+            const riderIcon = document.querySelector('.map-pulse').parentElement;
+            const currentTop = parseInt(riderIcon.parentElement.style.top || '33');
+            const currentLeft = parseInt(riderIcon.parentElement.style.left || '25');
+            riderIcon.parentElement.style.top = (currentTop + (Math.random() > 0.5 ? 0.2 : -0.2)) + '%';
+            riderIcon.parentElement.style.left = (currentLeft + (Math.random() > 0.5 ? 0.2 : -0.2)) + '%';
+        }, 3000);
+    </script>
+</body></html>

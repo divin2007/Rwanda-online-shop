@@ -10,6 +10,8 @@ export class BuyerProtectionService {
 
     const walletUrl = process.env.WALLET_SERVICE_URL || 'http://localhost:3007/api/v1';
     const notificationUrl = process.env.NOTIFICATION_SERVICE_URL || 'http://localhost:3009/api/v1';
+    const secret = process.env.INTERNAL_SERVICE_SECRET;
+    const headers = secret ? { 'x-internal-service-key': secret } : {};
 
     await axios.post(`${walletUrl}/wallets/transaction`, {
       transactionId: orderId,
@@ -28,13 +30,13 @@ export class BuyerProtectionService {
           description: `Buyer protection refund for order ${orderId}`
         }
       ]
-    });
+    }, { headers });
 
     await axios.post(`${notificationUrl}/notifications/in-app`, {
       userId: buyerId,
       type: 'refund.processed',
       params: { orderId, amount, referenceType: 'Order' }
-    }).catch(error => {
+    }, { headers }).catch(error => {
       this.logger.warn(`Refund notification failed for ${buyerId}: ${error.message}`);
     });
 
@@ -46,11 +48,14 @@ export class BuyerProtectionService {
     this.logger.log(`Escalating dispute for order ${orderId} (${amount} RWF) for manual Admin review.`);
     
     const notificationUrl = process.env.NOTIFICATION_SERVICE_URL || 'http://localhost:3009/api/v1';
+    const secret = process.env.INTERNAL_SERVICE_SECRET;
+    const headers = secret ? { 'x-internal-service-key': secret } : {};
+
     await axios.post(`${notificationUrl}/notifications/in-app`, {
       userId: process.env.ADMIN_USER_ID,
       type: 'dispute.manual_review',
       params: { orderId, amount, referenceType: 'Order' }
-    }).catch(error => {
+    }, { headers }).catch(error => {
       this.logger.warn(`Manual review notification failed: ${error.message}`);
     });
 
@@ -66,6 +71,9 @@ export class BuyerProtectionService {
 
     try {
       const walletUrl = process.env.WALLET_SERVICE_URL || 'http://localhost:3007/api/v1';
+      const secret = process.env.INTERNAL_SERVICE_SECRET;
+      const headers = secret ? { 'x-internal-service-key': secret } : {};
+
       await axios.post(`${walletUrl}/wallets/transaction`, {
         transactionId: `reserve-seed-${orderId}`,
         entries: [
@@ -76,7 +84,7 @@ export class BuyerProtectionService {
             description: `Reserve fund contribution (1% of ${platformCommission} RWF commission) from order ${orderId}`
           }
         ]
-      });
+      }, { headers });
       this.logger.log(`Reserve fund seeded with ${contribution} RWF from order ${orderId}`);
     } catch (error: any) {
       this.logger.warn(`Failed to seed reserve fund from order ${orderId}: ${error.message}`);

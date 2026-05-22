@@ -27,6 +27,26 @@ function OrderHistoryContent() {
   const searchParams = useSearchParams();
   const openOrderId = searchParams.get('open');
 
+  const getReceiptRole = (order: any): 'buyer' | 'seller' | 'rider' | 'admin' => {
+    if (user?.role === 'ADMIN') return 'admin';
+    if (user?.role === 'RIDER') return 'rider';
+
+    const userId = String(user?.id || '');
+    if (userId && String(order?.seller?.userId || '') === userId) return 'seller';
+    if (userId && String(order?.buyer?.userId || '') === userId) return 'buyer';
+
+    return user?.role === 'SELLER' ? 'seller' : 'buyer';
+  };
+
+  const refreshOrders = async () => {
+    const refreshed = await fetchOrders();
+    const currentOpenId = receiptOrder?._id || openOrderId;
+    if (currentOpenId && Array.isArray(refreshed)) {
+      const updatedReceiptOrder = refreshed.find((order: any) => order._id === currentOpenId);
+      if (updatedReceiptOrder) setReceiptOrder(updatedReceiptOrder);
+    }
+  };
+
   useEffect(() => {
     if (user?.id) fetchOrders();
   }, [user?.id, fetchOrders]);
@@ -73,7 +93,12 @@ function OrderHistoryContent() {
   return (
     <Layout>
       {receiptOrder && (
-        <ReceiptView order={receiptOrder} role="buyer" onClose={() => setReceiptOrder(null)} />
+        <ReceiptView
+          order={receiptOrder}
+          role={getReceiptRole(receiptOrder)}
+          onClose={() => setReceiptOrder(null)}
+          onOrderUpdated={refreshOrders}
+        />
       )}
       
       <div className="max-w-6xl mx-auto space-y-12 animate-reveal pb-24 pt-10 px-6">

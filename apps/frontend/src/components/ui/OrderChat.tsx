@@ -3,7 +3,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import dynamic from 'next/dynamic';
-import { orderApi } from '@/lib/api';
+import { orderApi, marketApi, deliveryApi } from '@/lib/api';
 import { useAuth } from '@/context/AuthContext';
 import { useSocket } from '@/hooks/useSocket';
 import { ImageUpload } from './ImageUpload';
@@ -29,16 +29,28 @@ interface OrderChatProps {
   orderStatus?: string;
   paymentStatus?: string;
   marketId?: string;
-  deliveryAddress?: { address?: string; coordinates?: { lat: number; lng: number } };
+  deliveryAddress?: { address?: string; coordinates?: { lat?: number | string; lng?: number | string } };
   deliveryFee?: number;
   onOrderUpdated?: () => void;
 }
 
 const NEGOTIATION_STATUSES = ['awaiting_quote', 'quote_sent'];
+const normalizeCoordinates = (coords?: { lat?: number | string; lng?: number | string } | null) => {
+  const lat = Number(coords?.lat);
+  const lng = Number(coords?.lng);
+  return Number.isFinite(lat) && Number.isFinite(lng) && lat !== 0 && lng !== 0 ? { lat, lng } : null;
+};
 
-export const OrderChat: React.FC<OrderChatProps> = ({
-  orderId, initialMessages, recipientName, userRole, orderStatus,
-  paymentStatus, deliveryAddress, deliveryFee: initialDeliveryFee,
+export const OrderChat: React.FC<OrderChatProps> = ({ 
+  marketId,
+  orderId, 
+  initialMessages, 
+  recipientName, 
+  userRole, 
+  orderStatus,
+  paymentStatus, 
+  deliveryAddress, 
+  deliveryFee: initialDeliveryFee,
   onOrderUpdated
 }) => {
   const { user } = useAuth();
@@ -52,13 +64,44 @@ export const OrderChat: React.FC<OrderChatProps> = ({
   const [isCountering, setIsCountering] = useState(false);
   const [showLocationPicker, setShowLocationPicker] = useState(false);
   const [selectedCoords, setSelectedCoords] = useState<{ lat: number; lng: number } | null>(
-    deliveryAddress?.coordinates?.lat ? deliveryAddress.coordinates : null
+    normalizeCoordinates(deliveryAddress?.coordinates)
   );
   const [currentDeliveryFee, setCurrentDeliveryFee] = useState(initialDeliveryFee || 0);
   const [isSavingLocation, setIsSavingLocation] = useState(false);
   const [, setError] = useState<string | null>(null);
   const [selectedMessage, setSelectedMessage] = useState<Message | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const [marketCoords, setMarketCoords] = useState<{ lat: number; lng: number } | null>(null);
+
+  useEffect(() => {
+    if (marketId) {
+      const mId = typeof marketId === 'object' ? (marketId as any)._id : marketId;
+      marketApi.get(`/markets/${mId}`).then((res: any) => {
+        const market = res.data?.data;
+        if (market?.location?.coordinates) {
+          setMarketCoords({ 
+            lat: Number(market.location.coordinates[1]), 
+            lng: Number(market.location.coordinates[0]) 
+          });
+        }
+      }).catch((e: any) => console.error('Failed to load market coordinates:', e));
+    }
+  }, [marketId]);
+
+  // Dynamically calculate delivery fee in real-time as pin is dropped/moved
+  useEffect(() => {
+    if (selectedCoords && marketCoords) {
+      deliveryApi.post('/deliveries/fee', {
+        from: marketCoords,
+        to: selectedCoords
+      }).then((res: any) => {
+        const fee = res.data?.data?.fee ?? res.data?.fee;
+        if (typeof fee === 'number') {
+          setCurrentDeliveryFee(fee);
+        }
+      }).catch((e: any) => console.error('Failed to calculate dynamic fee:', e));
+    }
+  }, [selectedCoords, marketCoords]);
 
   // Determine if we're in a negotiation phase
   const isNegotiationPhase = NEGOTIATION_STATUSES.includes(orderStatus || '') ||
@@ -90,6 +133,11 @@ export const OrderChat: React.FC<OrderChatProps> = ({
   useEffect(() => {
     setMessages(initialMessages);
   }, [initialMessages]);
+
+  useEffect(() => {
+    setSelectedCoords(normalizeCoordinates(deliveryAddress?.coordinates));
+    setCurrentDeliveryFee(initialDeliveryFee || 0);
+  }, [deliveryAddress?.coordinates?.lat, deliveryAddress?.coordinates?.lng, initialDeliveryFee]);
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -164,10 +212,8 @@ export const OrderChat: React.FC<OrderChatProps> = ({
     setError(null);
     setIsSending(true);
     try {
-      // First transition to PLACED, then initiate payment
       await orderApi.put(`/orders/${orderId}/status`, { status: 'placed', userId: user.id });
       toast.success('Quote accepted! Processing payment...');
-      // Then trigger payment
       try {
         await orderApi.post(`/orders/${orderId}/retry-payment`);
         toast.success('Payment initiated!');
@@ -311,8 +357,10 @@ export const OrderChat: React.FC<OrderChatProps> = ({
           <div className="flex-1 relative min-h-[300px]">
             <MapPinPicker
               onLocationSelected={(coords: any) => setSelectedCoords(coords)}
-              centerLat={selectedCoords?.lat || -1.9441}
-              centerLng={selectedCoords?.lng || 30.0619}
+              centerLat={selectedCoords?.lat || marketCoords?.lat || -1.9441}
+              centerLng={selectedCoords?.lng || marketCoords?.lng || 30.0619}
+              selectedLocation={selectedCoords}
+              marketLocation={marketCoords}
             />
           </div>
           <div className="p-6 bg-[#e05300] border-t border-[#ffd700]/20 flex items-center gap-6">
@@ -374,14 +422,15 @@ export const OrderChat: React.FC<OrderChatProps> = ({
                     type="button"
                     onClick={() => setSelectedMessage(msg)}
                     className={`max-w-[84%] overflow-hidden rounded-lg border text-left shadow-sm transition hover:-translate-y-0.5 ${
-                    isQuote
-                      ? 'border-[#ffedd5] bg-white'
-                      : msg.type === 'COUNTER_QUOTE'
-                        ? 'border-[#b9d7c5] bg-white'
-                        : isMe
-                          ? 'bg-[#e05300] text-white border-[#e05300]'
-                          : 'bg-white text-[#1b1c1c] border-[#e0e0e0]'
-                  }`}>
+                      isQuote
+                        ? 'border-[#ffedd5] bg-white'
+                        : msg.type === 'COUNTER_QUOTE'
+                          ? 'border-[#b9d7c5] bg-white'
+                          : isMe
+                            ? 'bg-[#e05300] text-white border-[#e05300]'
+                            : 'bg-white text-[#1b1c1c] border-[#e0e0e0]'
+                    }`}
+                  >
                     {msg.imageUrl && (
                       <div className="relative group border-b border-inherit">
                         <img src={msg.imageUrl} alt="Attachment" className="w-full max-h-80 object-cover" />
@@ -411,22 +460,22 @@ export const OrderChat: React.FC<OrderChatProps> = ({
                       {isQuote && !isMe && (
                         <div className="mt-8 space-y-3">
                           <span
-                            onClick={handleAcceptQuote}
-                            className="block w-full rounded-md bg-[#e05300] py-3 text-center text-[10px] font-black uppercase tracking-[0.18em] text-white transition-all hover:bg-[#ff6b00]"
+                            onClick={(e) => { e.stopPropagation(); handleAcceptQuote(); }}
+                            className="block w-full rounded-md bg-[#e05300] py-3 text-center text-[10px] font-black uppercase tracking-[0.18em] text-white transition-all hover:bg-[#ff6b00] cursor-pointer"
                           >
                             {(orderStatus === 'paid' || orderStatus === 'placed') ? 'Quote Accepted' : 'Accept Quote & Pay'}
                           </span>
                           {['awaiting_quote', 'quote_sent'].includes(orderStatus || '') && (
                             <div className="flex gap-4">
                               <span
-                                onClick={() => setIsCountering(!isCountering)}
-                                className="flex-1 rounded-md border border-[#e0e0e0] py-3 text-center text-[9px] font-black uppercase tracking-widest transition-all hover:bg-[#e05300] hover:text-white"
+                                onClick={(e) => { e.stopPropagation(); setIsCountering(!isCountering); }}
+                                className="flex-1 rounded-md border border-[#e0e0e0] py-3 text-center text-[9px] font-black uppercase tracking-widest transition-all hover:bg-[#e05300] hover:text-white cursor-pointer"
                               >
                                 Counter Offer
                               </span>
                               <span
-                                onClick={handleDeclineQuote}
-                                className="flex-1 rounded-md border border-[#d9b8b3] py-3 text-center text-[9px] font-black uppercase tracking-widest text-[#7b3f3f] transition-all hover:bg-[#7b3f3f] hover:text-white"
+                                onClick={(e) => { e.stopPropagation(); handleDeclineQuote(); }}
+                                className="flex-1 rounded-md border border-[#d9b8b3] py-3 text-center text-[9px] font-black uppercase tracking-widest text-[#7b3f3f] transition-all hover:bg-[#7b3f3f] hover:text-white cursor-pointer"
                               >
                                 Decline Quote
                               </span>
@@ -502,12 +551,12 @@ export const OrderChat: React.FC<OrderChatProps> = ({
                       Send Quote
                     </button>
                  </div>
-                 <div className="flex justify-between items-center px-4">
+                  <div className="flex justify-between items-center px-4">
                     <p className="text-[9px] font-bold text-[#414844] uppercase tracking-widest">
                        {currentDeliveryFee > 0 ? `Delivery fee: ${currentDeliveryFee.toLocaleString()} RWF will be added` : 'Delivery fee calculated after buyer sets location'}
                     </p>
                     <button onClick={() => setIsQuoting(false)} className="text-[9px] font-black text-[#1b1c1c] uppercase tracking-widest border-b border-[#e0e0e0]">Dismiss</button>
-                 </div>
+                  </div>
               </div>
             ) : isCountering ? (
               <div className="space-y-6 animate-reveal">

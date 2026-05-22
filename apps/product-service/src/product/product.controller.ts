@@ -14,13 +14,14 @@ import {
   UseGuards,
   Request,
   ForbiddenException,
+  UnauthorizedException,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { randomUUID } from 'crypto';
 import { extname } from 'path';
 import { Response } from 'express';
 import { ProductService } from './product.service';
-import { Roles, JwtAuthGuard, Public } from '@rmf/auth';
+import { Roles, JwtAuthGuard, OptionalJwtAuthGuard, Public } from '@rmf/auth';
 import { UserRole } from '@rmf/shared-types';
 import { StorageService } from '../storage/storage.service';
 
@@ -44,6 +45,22 @@ export class ProductController {
     'application/csv',
     'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
   ]);
+
+  private verifyInternalService(req: any) {
+    const configuredSecret = process.env.INTERNAL_SERVICE_SECRET;
+    const providedSecret = req?.headers?.['x-internal-service-key'];
+
+    if (!configuredSecret) {
+      if (process.env.NODE_ENV === 'production') {
+        throw new UnauthorizedException('Internal service key is not configured');
+      }
+      return;
+    }
+
+    if (providedSecret !== configuredSecret) {
+      throw new UnauthorizedException('Invalid internal service key');
+    }
+  }
 
   // FIX [PRODUCT-CREATE]: Was unauthenticated — anyone could create products.
   // Now requires SELLER or ADMIN role.
@@ -72,6 +89,13 @@ export class ProductController {
   async getCatalogCategories(@Query('includeInactive') includeInactive?: string) {
     const categories = await this.productService.getCatalogCategories(includeInactive === 'true');
     return { success: true, data: categories };
+  }
+
+  @Public()
+  @Get('catalog/tree')
+  async getCatalogTree() {
+    const tree = await this.productService.buildCategoryTree();
+    return { success: true, data: tree };
   }
 
   // FIX [PRODUCT-CAT-UPSERT]: Was unauthenticated — anyone could modify catalog categories.
@@ -116,7 +140,8 @@ export class ProductController {
     return { success: true, data: facets };
   }
 
-  @UseGuards(JwtAuthGuard)
+  @Public()
+  @UseGuards(OptionalJwtAuthGuard)
   @Get('recommendations/for-me')
   async getRecommendations(@Request() req: any, @Query() query: any) {
     const products = await this.productService.getRecommendedProducts(req.user?.userId, query || {});
@@ -288,5 +313,15 @@ export class ProductController {
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
     res.setHeader('Content-Disposition', 'attachment; filename=rmf_bulk_product_template.xlsx');
     res.send(buffer);
+  }
+
+  @Public()
+  @Post(':id/orders/increment')
+  async incrementOrders(@Param('id') id: string, @Body() data: { count: number }, @Request() req: any) {
+    this.verifyInternalService(req);
+    const requestedCount = Math.floor(Number(data?.count || 1));
+    const count = Math.min(Math.max(Number.isFinite(requestedCount) ? requestedCount : 1, 1), 1000);
+    const product = await this.productService.incrementOrders(id, count);
+    return { success: true, data: product };
   }
 }

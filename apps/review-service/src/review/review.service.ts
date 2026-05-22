@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException, BadRequestException, ConflictException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
+import { Model, Types } from 'mongoose';
 
 @Injectable()
 export class ReviewService {
@@ -23,6 +23,12 @@ export class ReviewService {
     if (data.rating < 1 || data.rating > 5) {
       throw new BadRequestException('Rating must be between 1 and 5');
     }
+
+    const cleanTargetId = data.targetId.includes(':') ? data.targetId.split(':')[0] : data.targetId;
+    if (!Types.ObjectId.isValid(cleanTargetId)) {
+      throw new BadRequestException(`Invalid targetId: ${data.targetId}`);
+    }
+    data.targetId = cleanTargetId;
 
     const existing = await this.reviewModel.findOne({ 
       orderId: data.orderId, 
@@ -67,7 +73,11 @@ export class ReviewService {
   }
 
   async getReviewsForTarget(targetType: 'seller' | 'rider' | 'market' | 'product', targetId: string): Promise<any[]> {
-    return this.reviewModel.find({ targetType, targetId, deletedAt: null })
+    const cleanTargetId = targetId.includes(':') ? targetId.split(':')[0] : targetId;
+    if (!Types.ObjectId.isValid(cleanTargetId)) {
+      throw new BadRequestException(`Invalid targetId: ${targetId}`);
+    }
+    return this.reviewModel.find({ targetType, targetId: cleanTargetId, deletedAt: null })
       .sort({ createdAt: -1 })
       .exec();
   }

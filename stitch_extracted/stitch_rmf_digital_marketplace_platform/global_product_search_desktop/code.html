@@ -1,0 +1,432 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>RMF Marketplace | Product Discovery</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Work+Sans:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@500&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "inverse-surface": "#303030",
+                        "secondary-fixed-dim": "#ffb598",
+                        "outline-variant": "#e2bfb0",
+                        "background": "#fbf9f8",
+                        "on-secondary-container": "#561b00",
+                        "on-primary-fixed": "#351000",
+                        "on-surface": "#1b1c1c",
+                        "surface": "#fbf9f8",
+                        "tertiary": "#005ac2",
+                        "secondary": "#a63b00",
+                        "on-secondary-fixed-variant": "#7f2b00",
+                        "error-container": "#ffdad6",
+                        "tertiary-container": "#5f97ff",
+                        "on-tertiary-fixed": "#001a42",
+                        "on-surface-variant": "#5a4136",
+                        "surface-container-lowest": "#ffffff",
+                        "tertiary-fixed-dim": "#adc6ff",
+                        "on-error-container": "#93000a",
+                        "on-tertiary-container": "#002f6b",
+                        "on-tertiary": "#ffffff",
+                        "on-secondary": "#ffffff",
+                        "secondary-container": "#fc671d",
+                        "on-background": "#1b1c1c",
+                        "primary-fixed": "#ffdbcc",
+                        "surface-bright": "#fbf9f8",
+                        "surface-container-low": "#f5f3f3",
+                        "on-tertiary-fixed-variant": "#004395",
+                        "on-primary-fixed-variant": "#7a3000",
+                        "secondary-fixed": "#ffdbce",
+                        "surface-container": "#efeded",
+                        "on-primary-container": "#572000",
+                        "error": "#ba1a1a",
+                        "tertiary-fixed": "#d8e2ff",
+                        "primary-fixed-dim": "#ffb693",
+                        "surface-container-high": "#e9e8e7",
+                        "on-secondary-fixed": "#370e00",
+                        "primary-container": "#ff6b00",
+                        "surface-tint": "#a04100",
+                        "surface-dim": "#dbdad9",
+                        "surface-variant": "#e3e2e2",
+                        "inverse-primary": "#ffb693",
+                        "primary": "#a04100",
+                        "surface-container-highest": "#e3e2e2",
+                        "on-primary": "#ffffff",
+                        "outline": "#8e7164",
+                        "on-error": "#ffffff",
+                        "inverse-on-surface": "#f2f0f0"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.125rem",
+                        "lg": "0.25rem",
+                        "xl": "0.5rem",
+                        "full": "0.75rem"
+                    },
+                    "spacing": {
+                        "md": "16px",
+                        "gutter": "16px",
+                        "margin-desktop": "32px",
+                        "sm": "8px",
+                        "base": "4px",
+                        "xl": "40px",
+                        "xs": "4px",
+                        "margin-mobile": "16px",
+                        "lg": "24px"
+                    },
+                    "fontFamily": {
+                        "headline-md": ["Work Sans"],
+                        "headline-lg": ["Work Sans"],
+                        "table-data": ["Work Sans"],
+                        "body-sm": ["Work Sans"],
+                        "label-md": ["JetBrains Mono"],
+                        "body-md": ["Work Sans"],
+                        "body-lg": ["Work Sans"],
+                        "headline-lg-mobile": ["Work Sans"]
+                    },
+                    "fontSize": {
+                        "headline-md": ["20px", {"lineHeight": "28px", "fontWeight": "600"}],
+                        "headline-lg": ["30px", {"lineHeight": "38px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                        "table-data": ["13px", {"lineHeight": "18px", "fontWeight": "500"}],
+                        "body-sm": ["12px", {"lineHeight": "16px", "fontWeight": "400"}],
+                        "label-md": ["12px", {"lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "500"}],
+                        "body-md": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                        "body-lg": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                        "headline-lg-mobile": ["24px", {"lineHeight": "30px", "letterSpacing": "-0.01em", "fontWeight": "700"}]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .ghost-border { border: 1px solid #ebdcd0; }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    </style>
+</head>
+<body class="bg-surface text-on-surface font-body-md selection:bg-primary-fixed selection:text-on-primary-fixed">
+<!-- TopNavBar -->
+<header class="fixed top-0 left-0 w-full z-50 flex justify-between items-center px-margin-desktop h-16 bg-surface dark:bg-surface-container border-b border-outline-variant dark:border-outline">
+<div class="flex items-center gap-xl">
+<span class="text-headline-md font-headline-md font-bold text-primary dark:text-primary-fixed-dim">RMF</span>
+<div class="hidden md:flex items-center bg-surface-container-low dark:bg-surface-container-high px-md py-base rounded-lg border border-outline-variant w-96">
+<span class="material-symbols-outlined text-on-surface-variant" data-icon="search">search</span>
+<input class="bg-transparent border-none focus:ring-0 w-full font-body-md text-on-surface ml-sm" placeholder="Search products, sellers, or markets..." type="text"/>
+</div>
+</div>
+<nav class="flex items-center gap-lg">
+<div class="hidden lg:flex gap-md">
+<button class="text-primary dark:text-primary-fixed-dim border-b-2 border-primary font-label-md py-base h-16 flex items-center">Inventory</button>
+<button class="text-on-surface-variant dark:text-on-surface-variant hover:bg-surface-container-low dark:hover:bg-surface-container-high transition-colors px-md py-base font-label-md">Negotiations</button>
+<button class="text-on-surface-variant dark:text-on-surface-variant hover:bg-surface-container-low dark:hover:bg-surface-container-high transition-colors px-md py-base font-label-md">Logistics</button>
+</div>
+<div class="flex items-center gap-md">
+<span class="material-symbols-outlined text-primary" data-icon="location_on">location_on</span>
+<span class="material-symbols-outlined text-primary" data-icon="language">language</span>
+<span class="material-symbols-outlined text-primary" data-icon="notifications">notifications</span>
+<span class="material-symbols-outlined text-primary" data-icon="shopping_cart">shopping_cart</span>
+<img alt="User Account" class="w-8 h-8 rounded-full border border-outline shadow-sm" data-alt="A professional headshot of a Rwandan businessman in a crisp white shirt, clean lighting, high-contrast corporate style, looking friendly and reliable, set against a blurred modern office background with warm wood accents." src="https://lh3.googleusercontent.com/aida-public/AB6AXuD0qQ6f-3CdI6Xmy-E_nF3_PUnoT6dE6LzowdklLBnYuBWQ-abWYHKAE-lRS-oOiDhgAobD-3Eiy0P91_-tyub3TdkT4JHQtL6CPMJSSSQrvjiK_v4oqknStzLShvAXTP41Yd9lhLV15SH2vPGv_3TXvq_bsCHRaoDNXqnvlmNVvoAh0NrCigAwQ--HZ9zKVfU-ZPreHdur69ixu1JHWTg-QvsmhIofGomY1ATJpZD1BZ4BI--eP07q51AdKtDBbE0CozNiqGv5Z81M"/>
+</div>
+</nav>
+</header>
+<div class="flex pt-16 min-h-screen">
+<!-- SideNavBar / Filters -->
+<aside class="hidden lg:flex flex-col w-64 fixed h-[calc(100vh-64px)] bg-surface-container-lowest dark:bg-surface-dim border-r border-outline-variant dark:border-outline p-md overflow-y-auto no-scrollbar">
+<div class="mb-xl">
+<h2 class="font-headline-md text-headline-md font-bold text-primary mb-sm">Categories</h2>
+<div class="space-y-sm">
+<details class="group" open="">
+<summary class="flex items-center justify-between cursor-pointer font-label-md text-on-surface-variant hover:text-primary py-xs">
+<span class="flex items-center gap-xs"><span class="material-symbols-outlined text-[18px]" data-icon="agriculture">agriculture</span> Agribusiness</span>
+<span class="material-symbols-outlined text-xs group-open:rotate-180 transition-transform" data-icon="expand_more">expand_more</span>
+</summary>
+<div class="pl-md mt-base space-y-base border-l border-outline-variant">
+<details class="group/sub">
+<summary class="flex items-center justify-between cursor-pointer text-body-sm text-on-surface-variant hover:text-primary py-xs">
+                                    Seeds
+                                    <span class="material-symbols-outlined text-xs group-open/sub:rotate-180 transition-transform" data-icon="expand_more">expand_more</span>
+</summary>
+<div class="pl-md space-y-base">
+<a class="block text-body-sm text-primary font-bold py-xs" href="#">Hybrid Maize</a>
+<a class="block text-body-sm text-on-surface-variant hover:text-primary py-xs" href="#">Organic Beans</a>
+<a class="block text-body-sm text-on-surface-variant hover:text-primary py-xs" href="#">Sorghum</a>
+</div>
+</details>
+<a class="block text-body-sm text-on-surface-variant hover:text-primary py-xs" href="#">Fertilizers</a>
+<a class="block text-body-sm text-on-surface-variant hover:text-primary py-xs" href="#">Farm Tools</a>
+</div>
+</details>
+<a class="flex items-center gap-xs font-label-md text-on-surface-variant hover:text-primary py-xs" href="#">
+<span class="material-symbols-outlined text-[18px]" data-icon="inventory_2">inventory_2</span> Logistics
+                    </a>
+<a class="flex items-center gap-xs font-label-md text-on-surface-variant hover:text-primary py-xs" href="#">
+<span class="material-symbols-outlined text-[18px]" data-icon="handshake">handshake</span> Equipment
+                    </a>
+</div>
+</div>
+<div class="mb-xl">
+<h2 class="font-headline-md text-headline-md font-bold text-primary mb-sm">Filters</h2>
+<div class="space-y-lg">
+<!-- Price Filter -->
+<div class="space-y-sm">
+<label class="font-label-md text-on-surface-variant block">Price Range (RWF)</label>
+<div class="flex gap-xs items-center">
+<input class="w-full ghost-border bg-surface text-body-sm px-sm py-base rounded focus:border-primary outline-none" placeholder="Min" type="number"/>
+<span class="text-outline">-</span>
+<input class="w-full ghost-border bg-surface text-body-sm px-sm py-base rounded focus:border-primary outline-none" placeholder="Max" type="number"/>
+</div>
+</div>
+<!-- Market Location -->
+<div class="space-y-sm">
+<label class="font-label-md text-on-surface-variant block">Market Location</label>
+<select class="w-full ghost-border bg-surface text-body-sm px-sm py-base rounded focus:border-primary outline-none appearance-none">
+<option>All Rwanda</option>
+<option>Kigali City</option>
+<option>Musanze</option>
+<option>Rubavu</option>
+<option>Huye</option>
+</select>
+</div>
+<!-- Rating Filter -->
+<div class="space-y-sm">
+<label class="font-label-md text-on-surface-variant block">Seller Rating</label>
+<div class="space-y-xs">
+<label class="flex items-center gap-sm text-body-sm cursor-pointer">
+<input class="rounded border-outline-variant text-primary focus:ring-primary h-4 w-4" type="checkbox"/>
+<span class="flex text-secondary"><span class="material-symbols-outlined text-sm" data-icon="star" style="font-variation-settings: 'FILL' 1;">star</span><span class="material-symbols-outlined text-sm" data-icon="star" style="font-variation-settings: 'FILL' 1;">star</span><span class="material-symbols-outlined text-sm" data-icon="star" style="font-variation-settings: 'FILL' 1;">star</span><span class="material-symbols-outlined text-sm" data-icon="star" style="font-variation-settings: 'FILL' 1;">star</span><span class="material-symbols-outlined text-sm" data-icon="star">star</span></span> &amp; Up
+                            </label>
+</div>
+</div>
+<!-- Toggles -->
+<div class="space-y-md">
+<label class="flex items-center justify-between cursor-pointer">
+<span class="text-body-md font-medium">Made in Rwanda</span>
+<div class="relative inline-block w-10 h-6">
+<input checked="" class="sr-only peer" type="checkbox"/>
+<div class="w-full h-full bg-outline-variant rounded-full peer peer-checked:bg-primary-container transition-colors"></div>
+<div class="absolute left-1 top-1 w-4 h-4 bg-white rounded-full peer-checked:translate-x-4 transition-transform"></div>
+</div>
+</label>
+<label class="flex items-center justify-between cursor-pointer">
+<span class="text-body-md font-medium">Negotiable</span>
+<div class="relative inline-block w-10 h-6">
+<input class="sr-only peer" type="checkbox"/>
+<div class="w-full h-full bg-outline-variant rounded-full peer peer-checked:bg-primary-container transition-colors"></div>
+<div class="absolute left-1 top-1 w-4 h-4 bg-white rounded-full peer-checked:translate-x-4 transition-transform"></div>
+</div>
+</label>
+</div>
+</div>
+</div>
+<div class="mt-auto pt-md border-t border-outline-variant">
+<button class="w-full py-md bg-primary text-white font-label-md rounded-lg hover:opacity-90 transition-opacity">Apply Filters</button>
+</div>
+</aside>
+<!-- Main Content Area -->
+<main class="flex-1 lg:ml-64 p-md md:p-margin-desktop bg-background">
+<!-- Header & Search (Mobile) -->
+<div class="mb-lg flex flex-col md:flex-row md:items-end justify-between gap-md">
+<div>
+<h1 class="font-headline-lg text-headline-lg text-on-surface">Agribusiness Marketplace</h1>
+<p class="text-on-surface-variant font-body-md">Showing 428 products in <span class="font-bold">Hybrid Maize</span></p>
+</div>
+<div class="flex items-center gap-sm">
+<span class="text-body-sm text-on-surface-variant">Sort by:</span>
+<select class="ghost-border bg-surface text-body-sm px-sm py-base rounded focus:border-primary outline-none">
+<option>Most Relevant</option>
+<option>Price: Low to High</option>
+<option>Price: High to Low</option>
+<option>Top Rated Sellers</option>
+</select>
+</div>
+</div>
+<!-- Product Grid -->
+<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-gutter">
+<!-- Product Card 1 -->
+<div class="ghost-border bg-surface flex flex-col group hover:border-primary transition-colors overflow-hidden rounded">
+<div class="relative aspect-square overflow-hidden bg-surface-container">
+<img class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" data-alt="Close-up of premium, golden hybrid maize seeds arranged neatly in a woven Rwandan basket. The lighting is bright and natural, suggesting a high-quality agricultural product. The aesthetic is warm and organic, with earthy tones of terracotta and deep yellow, captured in a clean, commercial photography style." src="https://lh3.googleusercontent.com/aida-public/AB6AXuD5FT8mulNg9NOItkORxFRvkFSAt-WRbWLJLdnd3u9kpyuJySO-yYuALul8D9AlRO7HEorG8w7mOdDjkMxVLnqMM4bnpVK8-bNuJ2_eJuGRK-IatYHcS8eAZsaKtpR-Xd3fIAyJS4lcpsgMv3Q9fDNu1b1MxxqMcWt_x_Pwmv72_UbrfjJTBcqR3RyhzfnUI4DJx6JoCwQDTKvjSCRyiOZ8pEsO5unLv8ZOTEQCaseCFclCA0AnhQoKaY0Vonqw5-q5ttixqXkCUdpt"/>
+<span class="absolute top-sm left-sm bg-secondary text-white text-[10px] font-label-md px-sm py-0.5 rounded-full uppercase">Verified Seller</span>
+<button class="absolute top-sm right-sm w-8 h-8 bg-surface/80 rounded-full flex items-center justify-center hover:bg-surface transition-colors">
+<span class="material-symbols-outlined text-[20px]" data-icon="favorite">favorite</span>
+</button>
+</div>
+<div class="p-md flex flex-col flex-1">
+<div class="flex justify-between items-start mb-xs">
+<h3 class="font-headline-md text-headline-md text-on-surface leading-tight">Hybrid Maize Seed H624</h3>
+<span class="font-label-md text-primary text-sm">Negotiable</span>
+</div>
+<p class="text-body-sm text-on-surface-variant mb-sm">Grown by <span class="font-medium text-on-surface">Kigali Agri-Coop</span> • Nyarugenge Market</p>
+<div class="flex items-center gap-xs mb-md">
+<span class="flex text-secondary"><span class="material-symbols-outlined text-sm" data-icon="star" style="font-variation-settings: 'FILL' 1;">star</span><span class="material-symbols-outlined text-sm" data-icon="star" style="font-variation-settings: 'FILL' 1;">star</span><span class="material-symbols-outlined text-sm" data-icon="star" style="font-variation-settings: 'FILL' 1;">star</span><span class="material-symbols-outlined text-sm" data-icon="star" style="font-variation-settings: 'FILL' 1;">star</span><span class="material-symbols-outlined text-sm" data-icon="star_half" style="font-variation-settings: 'FILL' 1;">star_half</span></span>
+<span class="text-body-sm text-on-surface-variant">(124)</span>
+</div>
+<div class="mt-auto pt-md border-t border-outline-variant flex items-center justify-between">
+<div>
+<p class="text-body-sm text-on-surface-variant uppercase tracking-tighter">Per 50kg Bag</p>
+<p class="font-headline-md text-primary">24,500 RWF</p>
+</div>
+<div class="flex gap-base">
+<button class="w-10 h-10 ghost-border flex items-center justify-center text-primary hover:bg-primary-fixed transition-colors" title="Negotiate">
+<span class="material-symbols-outlined" data-icon="chat_bubble_outline">chat_bubble_outline</span>
+</button>
+<button class="px-md h-10 bg-primary text-white font-label-md flex items-center justify-center hover:opacity-90 active:scale-95 transition-all">
+                                    Add to Cart
+                                </button>
+</div>
+</div>
+</div>
+</div>
+<!-- Product Card 2 -->
+<div class="ghost-border bg-surface flex flex-col group hover:border-primary transition-colors overflow-hidden rounded">
+<div class="relative aspect-square overflow-hidden bg-surface-container">
+<img class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" data-alt="Rows of vibrant, organic green beans freshly harvested, presented in clean wooden crates under the bright Rwandan sun. The scene conveys freshness and abundance, with high-saturation greens and natural wood textures. The mood is industrious and healthy, shot in a clear, high-definition documentary style." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBO1ZEnnssEy79SHdNpZugEToPXbeT2_L_TTXtLcBOh3UDG3VuzeJ3F1nWzz8j8YtO6FUWBYxmU2Cb8YjkNqGPtNmHbjG4sDWAkVg1OlCrf7gYV00irHjmuVIetBuyzPFP1goKX_mUZ-i3R6RS34m8uW4Cb86-olg2Ne6qkJcn1-Xsc_4xCdmQ03AXlcLgK6cyE_CPn_KAfF3fZT_VFM8Bc4b2qHvaXV_Drpg7qrU4MmbsCk861sAT_AHD4wKC2sE3FLjo5sPqhkNMt"/>
+<div class="absolute bottom-sm left-sm bg-tertiary-container text-on-tertiary-container text-[10px] font-label-md px-sm py-0.5 rounded-full uppercase flex items-center gap-xs">
+<span class="material-symbols-outlined text-[12px]" data-icon="verified" style="font-variation-settings: 'FILL' 1;">verified</span> Made in Rwanda
+                        </div>
+</div>
+<div class="p-md flex flex-col flex-1">
+<h3 class="font-headline-md text-headline-md text-on-surface leading-tight mb-xs">Organic Climbing Beans</h3>
+<p class="text-body-sm text-on-surface-variant mb-sm">Grown by <span class="font-medium text-on-surface">Musanze Organic Farms</span> • Musanze Market</p>
+<div class="flex items-center gap-xs mb-md">
+<span class="flex text-secondary"><span class="material-symbols-outlined text-sm" data-icon="star" style="font-variation-settings: 'FILL' 1;">star</span><span class="material-symbols-outlined text-sm" data-icon="star" style="font-variation-settings: 'FILL' 1;">star</span><span class="material-symbols-outlined text-sm" data-icon="star" style="font-variation-settings: 'FILL' 1;">star</span><span class="material-symbols-outlined text-sm" data-icon="star" style="font-variation-settings: 'FILL' 1;">star</span><span class="material-symbols-outlined text-sm" data-icon="star" style="font-variation-settings: 'FILL' 1;">star</span></span>
+<span class="text-body-sm text-on-surface-variant">(86)</span>
+</div>
+<div class="mt-auto pt-md border-t border-outline-variant flex items-center justify-between">
+<div>
+<p class="text-body-sm text-on-surface-variant uppercase tracking-tighter">Per KG</p>
+<p class="font-headline-md text-primary">1,200 RWF</p>
+</div>
+<div class="flex gap-base">
+<button class="px-md h-10 bg-primary text-white font-label-md flex items-center justify-center hover:opacity-90 active:scale-95 transition-all">
+                                    Add to Cart
+                                </button>
+</div>
+</div>
+</div>
+</div>
+<!-- Product Card 3 -->
+<div class="ghost-border bg-surface flex flex-col group hover:border-primary transition-colors overflow-hidden rounded">
+<div class="relative aspect-square overflow-hidden bg-surface-container">
+<img class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" data-alt="A heavy-duty manual grain thresher made of high-grade steel, painted in a durable industrial blue. The machine is set against a clean, paved outdoor workspace in an industrial zone. The lighting is sharp, highlighting the mechanical details and robust build of the equipment. Modern, functional, and reliable atmosphere." src="https://lh3.googleusercontent.com/aida-public/AB6AXuARYTUkhdFdfz4a2B4bgDqZOul-K-c0M2PvffOIb3C9IuR-5s4qsUrfehA2g4Fl_TodRcAwyz6ReaVImlf1x2FA5e4J0lx4RJhyMoBppE2sk8w2G7Wnbpcci0I8VT4UV9okv9d8amIeYxsfnMxmO4wZPOI54MVMcmv0P6QCID-MK2-Srv1AAMaaXv07RLPNu7JZsH8Z9WAsQ6YkNFpYE789-orXI7OTPm9bInVbrwEukILFOGO8FIuHfI7IwmQ8bchjof9oqi_XyUfz"/>
+</div>
+<div class="p-md flex flex-col flex-1">
+<h3 class="font-headline-md text-headline-md text-on-surface leading-tight mb-xs">Heavy-Duty Grain Thresher</h3>
+<p class="text-body-sm text-on-surface-variant mb-sm">Sold by <span class="font-medium text-on-surface">Rwanda Tools Ltd</span> • Kigali Industrial Zone</p>
+<div class="flex items-center gap-xs mb-md">
+<span class="flex text-secondary"><span class="material-symbols-outlined text-sm" data-icon="star" style="font-variation-settings: 'FILL' 1;">star</span><span class="material-symbols-outlined text-sm" data-icon="star" style="font-variation-settings: 'FILL' 1;">star</span><span class="material-symbols-outlined text-sm" data-icon="star" style="font-variation-settings: 'FILL' 1;">star</span><span class="material-symbols-outlined text-sm" data-icon="star" style="font-variation-settings: 'FILL' 1;">star</span><span class="material-symbols-outlined text-sm" data-icon="star">star</span></span>
+<span class="text-body-sm text-on-surface-variant">(42)</span>
+</div>
+<div class="mt-auto pt-md border-t border-outline-variant flex items-center justify-between">
+<div>
+<p class="text-body-sm text-on-surface-variant uppercase tracking-tighter">Per Unit</p>
+<p class="font-headline-md text-primary">185,000 RWF</p>
+</div>
+<div class="flex gap-base">
+<button class="w-10 h-10 ghost-border flex items-center justify-center text-primary hover:bg-primary-fixed transition-colors" title="Negotiate">
+<span class="material-symbols-outlined" data-icon="chat_bubble_outline">chat_bubble_outline</span>
+</button>
+<button class="px-md h-10 bg-primary text-white font-label-md flex items-center justify-center hover:opacity-90 active:scale-95 transition-all">
+                                    Inquire
+                                </button>
+</div>
+</div>
+</div>
+</div>
+<!-- Product Card 4 -->
+<div class="ghost-border bg-surface flex flex-col group hover:border-primary transition-colors overflow-hidden rounded">
+<div class="relative aspect-square overflow-hidden bg-surface-container">
+<img class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" data-alt="Large sacks of NPK fertilizer stacked in a bright, clean, well-organized warehouse with concrete floors. The bags are brightly labeled with agricultural information. Soft, diffuse industrial lighting creates a sense of scale and reliability. A professional, high-utility operational setting." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAB519NgQPiBQpBUySmS9B3x96JpziqpACMp0Rug-kcnYxuNC_6TWPvoKH2mlqh7Lmlzl-EBBwRb3hLYpoMudQ8GTNXOobfsV4F4MkgbtDUPUtswozNEeXRuIiOOQ4B-R5nZQ58boF4OtxjWz3QoN51umXwMM6khYowqn4nAYlq1dZzkx2vOItrjNpaf-MDOEZhImn5dna-Otv91T_EnlHrBViOTxpOM2iF5J3XkKeAmfISKobJECBp6m7i0Tdszltvqfioo6Z8sKPV"/>
+<span class="absolute top-sm left-sm bg-secondary text-white text-[10px] font-label-md px-sm py-0.5 rounded-full uppercase">Bulk Available</span>
+</div>
+<div class="p-md flex flex-col flex-1">
+<h3 class="font-headline-md text-headline-md text-on-surface leading-tight mb-xs">NPK 17-17-17 Fertilizer</h3>
+<p class="text-body-sm text-on-surface-variant mb-sm">Sold by <span class="font-medium text-on-surface">Agri-Input Hub</span> • Rubavu Distribution Center</p>
+<div class="flex items-center gap-xs mb-md">
+<span class="flex text-secondary"><span class="material-symbols-outlined text-sm" data-icon="star" style="font-variation-settings: 'FILL' 1;">star</span><span class="material-symbols-outlined text-sm" data-icon="star" style="font-variation-settings: 'FILL' 1;">star</span><span class="material-symbols-outlined text-sm" data-icon="star" style="font-variation-settings: 'FILL' 1;">star</span><span class="material-symbols-outlined text-sm" data-icon="star" style="font-variation-settings: 'FILL' 1;">star</span><span class="material-symbols-outlined text-sm" data-icon="star">star</span></span>
+<span class="text-body-sm text-on-surface-variant">(210)</span>
+</div>
+<div class="mt-auto pt-md border-t border-outline-variant flex items-center justify-between">
+<div>
+<p class="text-body-sm text-on-surface-variant uppercase tracking-tighter">Per 50kg Bag</p>
+<p class="font-headline-md text-primary">32,000 RWF</p>
+</div>
+<div class="flex gap-base">
+<button class="px-md h-10 bg-primary text-white font-label-md flex items-center justify-center hover:opacity-90 active:scale-95 transition-all">
+                                    Add to Cart
+                                </button>
+</div>
+</div>
+</div>
+</div>
+<!-- Repeat more cards as needed for density -->
+</div>
+<!-- Pagination -->
+<div class="mt-xl flex items-center justify-center gap-sm">
+<button class="w-10 h-10 ghost-border flex items-center justify-center text-on-surface hover:bg-surface-container-low transition-colors rounded">
+<span class="material-symbols-outlined" data-icon="chevron_left">chevron_left</span>
+</button>
+<button class="w-10 h-10 bg-primary text-white font-label-md rounded shadow-sm">1</button>
+<button class="w-10 h-10 ghost-border flex items-center justify-center text-on-surface hover:bg-surface-container-low transition-colors rounded font-label-md">2</button>
+<button class="w-10 h-10 ghost-border flex items-center justify-center text-on-surface hover:bg-surface-container-low transition-colors rounded font-label-md">3</button>
+<span class="px-sm text-outline">...</span>
+<button class="w-10 h-10 ghost-border flex items-center justify-center text-on-surface hover:bg-surface-container-low transition-colors rounded font-label-md">24</button>
+<button class="w-10 h-10 ghost-border flex items-center justify-center text-on-surface hover:bg-surface-container-low transition-colors rounded">
+<span class="material-symbols-outlined" data-icon="chevron_right">chevron_right</span>
+</button>
+</div>
+</main>
+</div>
+<!-- BottomNavBar (Mobile Only) -->
+<nav class="lg:hidden fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-4 py-2 bg-surface dark:bg-surface-container-high border-t border-outline-variant dark:border-outline shadow-lg rounded-t-xl">
+<div class="flex flex-col items-center justify-center text-on-surface-variant dark:text-on-surface-variant">
+<span class="material-symbols-outlined" data-icon="home">home</span>
+<span class="text-label-md font-label-md">Home</span>
+</div>
+<div class="flex flex-col items-center justify-center bg-secondary-container dark:bg-secondary text-on-secondary-container dark:text-on-secondary rounded-full px-4 py-1">
+<span class="material-symbols-outlined" data-icon="search">search</span>
+<span class="text-label-md font-label-md">Search</span>
+</div>
+<div class="flex flex-col items-center justify-center text-on-surface-variant dark:text-on-surface-variant">
+<span class="material-symbols-outlined" data-icon="receipt_long">receipt_long</span>
+<span class="text-label-md font-label-md">Orders</span>
+</div>
+<div class="flex flex-col items-center justify-center text-on-surface-variant dark:text-on-surface-variant">
+<span class="material-symbols-outlined" data-icon="person">person</span>
+<span class="text-label-md font-label-md">Account</span>
+</div>
+</nav>
+<!-- Micro-interactions Script -->
+<script>
+        // Simple search auto-suggestion simulation
+        const searchInput = document.querySelector('input[placeholder*="Search"]');
+        searchInput.addEventListener('focus', () => {
+            console.log('Search focused - loading Rwanda Market clusters...');
+        });
+
+        // Toggle state micro-interaction
+        document.querySelectorAll('.peer').forEach(toggle => {
+            toggle.addEventListener('change', (e) => {
+                const parent = e.target.closest('label');
+                if (e.target.checked) {
+                    console.log(`Enabled filter: ${parent.textContent.trim()}`);
+                }
+            });
+        });
+
+        // Active State Logic for Sidebar
+        document.querySelectorAll('aside a, aside details').forEach(link => {
+            link.addEventListener('click', () => {
+                // Actual routing logic would go here
+            });
+        });
+    </script>
+</body></html>

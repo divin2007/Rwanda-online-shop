@@ -239,14 +239,14 @@ export class NotificationService {
       return await this.logModel.findByIdAndUpdate(
         savedLog._id,
         { status: 'DELIVERED', deliveredAt: new Date() },
-        { new: true }
+        { returnDocument: 'after' }
       );
     } catch (error: any) {
       this.logger.error(`Failed to send SMS to ${phone}`, error);
       return await this.logModel.findByIdAndUpdate(
         savedLog._id,
         { status: 'FAILED', failureReason: error.message },
-        { new: true }
+        { returnDocument: 'after' }
       );
     }
   }
@@ -318,14 +318,14 @@ export class NotificationService {
       return await this.logModel.findByIdAndUpdate(
         savedLog._id,
         { status: 'DELIVERED', deliveredAt: new Date() },
-        { new: true }
+        { returnDocument: 'after' }
       );
     } catch (error: any) {
-      this.logger.error(`Failed to send Email to ${email}`, error);
+      this.logger.error(`Failed to send Email to ${targetEmail}`, error);
       return await this.logModel.findByIdAndUpdate(
         savedLog._id,
         { status: 'FAILED', failureReason: error.message },
-        { new: true }
+        { returnDocument: 'after' }
       );
     }
   }
@@ -368,7 +368,7 @@ export class NotificationService {
     return this.logModel.findOneAndUpdate(
       { _id: notificationId, userId },
       { isRead: true, readAt: new Date() },
-      { new: true }
+      { returnDocument: 'after' }
     );
   }
 

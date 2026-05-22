@@ -1,5 +1,6 @@
-import React, { createContext, ReactNode, useCallback, useContext, useEffect, useMemo, useState } from 'react';
-import { api } from '../lib/api';
+import React, { createContext, ReactNode, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
+import { AppState, AppStateStatus } from 'react-native';
+import { api, ApiError } from '../lib/api';
 import { tokenStore } from '../lib/tokenStore';
 import { Role, User } from '../types';
 
@@ -26,10 +27,20 @@ type AuthContextType = {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+/** Returns true when the error is a network/connectivity failure (service unreachable). */
+const isNetworkError = (err: unknown): boolean => {
+  if (err instanceof ApiError && err.status) return err.status >= 500;
+  // fetch throws TypeError on DNS / connection-refused / timeout
+  if (err instanceof TypeError) return true;
+  if (err instanceof Error && /network|ECONNREFUSED|timeout|aborted/i.test(err.message)) return true;
+  return false;
+};
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const retryTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const refreshMe = useCallback(async () => {
     const token = await tokenStore.getAccessToken();
@@ -42,19 +53,54 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return me;
   }, []);
 
+  // ── Initial session restore with smart retry ───────────────────────────────
   useEffect(() => {
     let mounted = true;
-    refreshMe()
-      .catch(async () => {
-        await tokenStore.clear();
-        if (mounted) setUser(null);
-      })
-      .finally(() => {
-        if (mounted) setIsLoading(false);
-      });
+    let attempt = 0;
+    const maxAttempts = 5;
+
+    const tryRestore = () => {
+      refreshMe()
+        .catch(async (err) => {
+          if (!mounted) return;
+
+          if (isNetworkError(err)) {
+            // Service unreachable — keep tokens, schedule retry with backoff
+            attempt += 1;
+            if (attempt < maxAttempts) {
+              const delay = Math.min(2000 * Math.pow(1.5, attempt), 15000);
+              retryTimer.current = setTimeout(tryRestore, delay);
+            }
+            // Don't clear tokens — the session is still valid once the service is back
+            return;
+          }
+
+          // Auth error (401, 403, etc.) — token is truly invalid
+          await tokenStore.clear();
+          if (mounted) setUser(null);
+        })
+        .finally(() => {
+          if (mounted) setIsLoading(false);
+        });
+    };
+
+    tryRestore();
+
     return () => {
       mounted = false;
+      if (retryTimer.current) clearTimeout(retryTimer.current);
     };
+  }, [refreshMe]);
+
+  // ── Auto-refresh when app comes back to foreground ─────────────────────────
+  useEffect(() => {
+    const handleAppState = (nextState: AppStateStatus) => {
+      if (nextState === 'active') {
+        refreshMe().catch(() => undefined);
+      }
+    };
+    const sub = AppState.addEventListener('change', handleAppState);
+    return () => sub.remove();
   }, [refreshMe]);
 
   const login = useCallback(async (email: string, password: string) => {

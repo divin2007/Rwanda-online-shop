@@ -75,7 +75,17 @@ export class PromotionService {
       endDate: { $gt: now }
     };
     
-    const promos = await this.promotionModel.find(query).populate('productId').exec();
+    let promos = await this.promotionModel.find(query).populate('productId').exec();
+    
+    if (marketId) {
+      promos = promos.filter((p: any) => {
+        if (!p.productId) return false;
+        const prodMarketId = typeof p.productId === 'object'
+          ? p.productId.marketId?.toString()
+          : p.productId.toString();
+        return prodMarketId === marketId;
+      });
+    }
     
     // Enrich with product data as a `product` field for easier frontend consumption
     return promos.map((promo: any) => {

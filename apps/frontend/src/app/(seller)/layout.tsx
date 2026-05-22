@@ -16,10 +16,17 @@ export default function SellerLayout({ children }: { children: React.ReactNode }
   const [profile, setProfile] = useState<any>(null);
   const [profileLoading, setProfileLoading] = useState(true);
 
+  const redirectForRole = (role?: string) => {
+    if (role === 'ADMIN') return '/admin';
+    if (role === 'RIDER') return '/rider/dashboard';
+    if (role === 'BUYER') return '/dashboard';
+    return '/';
+  };
+
   useEffect(() => {
-    if (user?.id) {
+    if (user?.id && user.role === 'SELLER') {
       setProfileLoading(true);
-      sellerApi.get(`/sellers/me?userId=${user.id}`)
+      sellerApi.get('/sellers/me')
         .then(res => {
           if (res.data?.success) {
             setProfile(res.data.data);
@@ -29,6 +36,9 @@ export default function SellerLayout({ children }: { children: React.ReactNode }
         })
         .catch(() => setProfile(null))
         .finally(() => setProfileLoading(false));
+    } else if (!isLoading && user?.role !== 'SELLER') {
+      setProfile(null);
+      setProfileLoading(false);
     } else if (!isLoading && !user) {
       setProfileLoading(false);
     }
@@ -37,11 +47,11 @@ export default function SellerLayout({ children }: { children: React.ReactNode }
   useEffect(() => {
     if (!isLoading) {
       if (!user) {
-        router.push('/login');
+        router.replace('/login');
       } else if (user.role !== 'SELLER') {
-        router.push('/');
+        router.replace(redirectForRole(user.role));
       } else if (!profileLoading && profile === null && !pathname.includes('/onboarding')) {
-        router.push('/seller/onboarding');
+        router.replace('/seller/onboarding');
       }
     }
   }, [user, isLoading, router, profile, profileLoading, pathname]);

@@ -1,0 +1,458 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>RMF Product Detail | Rwandan Market Facilitator</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Work+Sans:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@500&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        /* Custom scrollbar for high-density feel */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: #f5f3f3; }
+        ::-webkit-scrollbar-thumb { background: #ebdcd0; border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: #8e7164; }
+        
+        /* Sticky panel offset for TopNavBar */
+        .sticky-panel { top: 5rem; }
+    </style>
+<!-- Tailwind Config Verbatim -->
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "on-surface": "#1b1c1c",
+                    "surface-container-low": "#f5f3f3",
+                    "primary-fixed": "#ffdbcc",
+                    "secondary-fixed-dim": "#ffb598",
+                    "on-secondary": "#ffffff",
+                    "background": "#fbf9f8",
+                    "on-primary-fixed": "#351000",
+                    "surface-container": "#efeded",
+                    "on-tertiary-container": "#002f6b",
+                    "surface-container-highest": "#e3e2e2",
+                    "on-background": "#1b1c1c",
+                    "on-secondary-fixed": "#370e00",
+                    "surface-tint": "#a04100",
+                    "inverse-surface": "#303030",
+                    "surface-container-high": "#e9e8e7",
+                    "tertiary-fixed": "#d8e2ff",
+                    "tertiary-fixed-dim": "#adc6ff",
+                    "surface-container-lowest": "#ffffff",
+                    "on-secondary-fixed-variant": "#7f2b00",
+                    "secondary": "#a63b00",
+                    "surface": "#fbf9f8",
+                    "on-primary-fixed-variant": "#7a3000",
+                    "on-primary-container": "#572000",
+                    "on-primary": "#ffffff",
+                    "surface-bright": "#fbf9f8",
+                    "tertiary": "#005ac2",
+                    "primary-container": "#ff6b00",
+                    "inverse-on-surface": "#f2f0f0",
+                    "outline": "#8e7164",
+                    "primary": "#a04100",
+                    "inverse-primary": "#ffb693",
+                    "secondary-fixed": "#ffdbce",
+                    "on-tertiary-fixed-variant": "#004395",
+                    "error": "#ba1a1a",
+                    "error-container": "#ffdad6",
+                    "on-tertiary": "#ffffff",
+                    "on-error": "#ffffff",
+                    "tertiary-container": "#5f97ff",
+                    "on-error-container": "#93000a",
+                    "on-surface-variant": "#5a4136",
+                    "secondary-container": "#fc671d",
+                    "surface-dim": "#dbdad9",
+                    "surface-variant": "#e3e2e2",
+                    "on-secondary-container": "#561b00",
+                    "outline-variant": "#e2bfb0",
+                    "primary-fixed-dim": "#ffb693",
+                    "on-tertiary-fixed": "#001a42"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.125rem",
+                    "lg": "0.25rem",
+                    "xl": "0.5rem",
+                    "full": "0.75rem"
+            },
+            "spacing": {
+                    "sm": "8px",
+                    "margin-mobile": "16px",
+                    "xs": "4px",
+                    "md": "16px",
+                    "gutter": "16px",
+                    "base": "4px",
+                    "lg": "24px",
+                    "margin-desktop": "32px",
+                    "xl": "40px"
+            },
+            "fontFamily": {
+                    "headline-lg": ["Work Sans"],
+                    "body-sm": ["Work Sans"],
+                    "headline-md": ["Work Sans"],
+                    "table-data": ["Work Sans"],
+                    "body-lg": ["Work Sans"],
+                    "headline-lg-mobile": ["Work Sans"],
+                    "body-md": ["Work Sans"],
+                    "label-md": ["JetBrains Mono"]
+            },
+            "fontSize": {
+                    "headline-lg": ["30px", {"lineHeight": "38px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                    "body-sm": ["12px", {"lineHeight": "16px", "fontWeight": "400"}],
+                    "headline-md": ["20px", {"lineHeight": "28px", "fontWeight": "600"}],
+                    "table-data": ["13px", {"lineHeight": "18px", "fontWeight": "500"}],
+                    "body-lg": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                    "headline-lg-mobile": ["24px", {"lineHeight": "30px", "letterSpacing": "-0.01em", "fontWeight": "700"}],
+                    "body-md": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                    "label-md": ["12px", {"lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "500"}]
+            }
+          },
+        },
+      }
+    </script>
+</head>
+<body class="bg-background text-on-surface font-body-md overflow-x-hidden">
+<!-- TopNavBar Shell Implementation -->
+<nav class="fixed top-0 left-0 w-full z-50 flex justify-between items-center px-margin-desktop h-16 bg-surface dark:bg-surface-container border-b border-outline-variant dark:border-outline">
+<div class="flex items-center gap-lg">
+<span class="text-headline-md font-headline-md font-bold text-primary dark:text-primary-fixed-dim">RMF</span>
+<div class="hidden md:flex gap-md">
+<a class="font-label-md text-label-md text-primary dark:text-primary-fixed-dim border-b-2 border-primary transition-opacity py-base" href="#">Market</a>
+<a class="font-label-md text-label-md text-on-surface-variant dark:text-on-surface-variant hover:bg-surface-container-low dark:hover:bg-surface-container-high transition-colors py-base px-sm rounded-lg" href="#">Directory</a>
+<a class="font-label-md text-label-md text-on-surface-variant dark:text-on-surface-variant hover:bg-surface-container-low dark:hover:bg-surface-container-high transition-colors py-base px-sm rounded-lg" href="#">Trade Hub</a>
+</div>
+</div>
+<div class="flex items-center gap-md">
+<div class="hidden md:flex items-center bg-surface-container-low px-sm py-xs rounded border border-outline-variant">
+<span class="material-symbols-outlined text-on-surface-variant" data-icon="search">search</span>
+<input class="bg-transparent border-none focus:ring-0 text-body-sm w-48" placeholder="Search commodities..." type="text"/>
+</div>
+<div class="flex gap-sm">
+<button class="p-xs hover:bg-surface-container-low transition-colors rounded"><span class="material-symbols-outlined" data-icon="location_on">location_on</span></button>
+<button class="p-xs hover:bg-surface-container-low transition-colors rounded"><span class="material-symbols-outlined" data-icon="language">language</span></button>
+<button class="p-xs hover:bg-surface-container-low transition-colors rounded relative">
+<span class="material-symbols-outlined" data-icon="notifications">notifications</span>
+<span class="absolute top-1 right-1 w-2 h-2 bg-secondary rounded-full"></span>
+</button>
+<button class="p-xs hover:bg-surface-container-low transition-colors rounded"><span class="material-symbols-outlined" data-icon="shopping_cart">shopping_cart</span></button>
+</div>
+<img alt="User Account" class="w-8 h-8 rounded-full border border-outline ml-sm" data-alt="A professional headshot of a Rwandan business executive in a clean-cut suit, set against a neutral, blurred office background. The lighting is soft and professional, emphasizing a modern corporate aesthetic. The color palette is composed of warm browns, crisp whites, and deep blacks to match the RMF branding." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDCVYQ96ahgfO4xm8bRPLUYt_uD55as28TfO-AI8lIMUkvtsN2pqsyr8Fyyt0HpeiThqNsCr8BiajBkUNHLKGdhrvKKN1pq0lxLgcKfFYhwlf--WwDAu7r1DP7MPovTg5Yem78B6A7s5rUgp0Z1cL69Fu_unWH69jLsah-ELr5ObE5lbNgUY6nq55w_EHDW22OPIZodnm91vIwj8CaZVQtKZbVLT32XApZCrusVOBkNzJkJd5HLGc3LQ6gMkGrHzBygCLH3RTpdFlyq"/>
+</div>
+</nav>
+<!-- Main Content Canvas -->
+<main class="pt-24 pb-margin-desktop px-margin-mobile md:px-margin-desktop max-w-[1280px] mx-auto">
+<!-- Breadcrumbs -->
+<nav class="flex items-center gap-xs text-on-surface-variant font-label-md text-label-md mb-md">
+<a class="hover:text-primary" href="#">MARKET</a>
+<span class="material-symbols-outlined text-[12px]" data-icon="chevron_right">chevron_right</span>
+<a class="hover:text-primary" href="#">AGRICULTURAL COMMODITIES</a>
+<span class="material-symbols-outlined text-[12px]" data-icon="chevron_right">chevron_right</span>
+<span class="text-on-surface font-bold">PREMIUM ARABICA COFFEE BEANS</span>
+</nav>
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-gutter items-start">
+<!-- Left Column: Media Gallery -->
+<div class="lg:col-span-7 space-y-md">
+<div class="relative aspect-video w-full bg-surface-container-highest border border-outline-variant overflow-hidden group">
+<img class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" data-alt="A high-quality close-up of roasted premium Arabica coffee beans being poured into a rustic wooden bowl. The lighting is warm and directional, highlighting the oily texture and rich brown tones of the beans. The background is a blurred Rwandan landscape at sunrise, creating a tactile and grounded atmosphere consistent with the RMF brand." id="main-image" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDGH8eFXbfWinc-mWsgIqhvsJwLsD2Tkn5thfdNuIwxcoLyJiktITTVfOBznoRfLihICdV8n1i_yEmekEW7vvhsEZ5b1U9isrmVc9QtTeNpo7VFoHdHUxQhmwu9-CiTKkZlsfQ37clH78ACV7AV6-4IPfe_sZryQdOAVduSFQtu4VZ-qfsmeSZvBjKbe3QqSKkGEFCDaJyOkCojFYVlWM4RmT8Prmt52BUo1uCWGpV4uj9gIRGtBzx4cmdL1athrwqv1q8zIxGdC9Id"/>
+<div class="absolute bottom-md right-md bg-on-surface/80 text-surface px-sm py-xs flex items-center gap-xs font-label-md text-label-md rounded">
+<span class="material-symbols-outlined text-[14px]" data-icon="videocam">videocam</span>
+                        PRODUCT VIDEO
+                    </div>
+</div>
+<!-- Variant/Gallery Thumbnails -->
+<div class="grid grid-cols-4 md:grid-cols-6 gap-sm">
+<button class="border-2 border-primary p-xs bg-surface-container-lowest" onclick="updateMainImage(this.children[0].src)">
+<img class="w-full aspect-square object-cover" data-alt="Close up of roasted coffee beans in daylight." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBGQEgwdL5yRu-lcI-uStSHw8r8Lgb76H0UtEVwYoUHkqIu4n5aWzHOOMdXCZN4aHGlXcbnnqf72RnCLo_sRostdCg92iHjtUjd4g1TUZZI8M6FDD6xpfgzAbMR-pqR_FbrSkdGg-qmGHvzvq8DU757dunzvydUDGzAsarPDj3Z-HjXN3IzcZB0fV456f3r79b5o-RixecxB2CLydj5usCl3MwXdvoo4XccBWYDKdSR6YymTwHQPAl8zSQIz_y1WDz3xkKmfzh1eQj0"/>
+</button>
+<button class="border border-outline-variant p-xs bg-surface-container-lowest hover:border-primary transition-colors" onclick="updateMainImage(this.children[0].src)">
+<img class="w-full aspect-square object-cover" data-alt="A burlap sack filled with green unroasted coffee beans on a wooden floor." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAboRcGnXXy82YDnfC1bpx4JkHjE3fEQ_AXsEWUJUh-eum6ApvHG4HmmjZCPMauc8PCerIYShi8Tge86uJW_tmnxhxp4sd2RLV5Uao_-3VhWa2f4May1xSElkmXVDUAlS2uq9gvTZ_FU4Jf39yE0eLdiJ6JqZdFU4aD57RUwfgTzvWaiqX7gOUww3ppHSFX2g7LubhFHSul3ywtFiol1TLTSkWoZ4CkiS3YAnrUJi00qCKeBbfhlZ1InYtwbcztz8N41c4r5unTo8O3"/>
+</button>
+<button class="border border-outline-variant p-xs bg-surface-container-lowest hover:border-primary transition-colors" onclick="updateMainImage(this.children[0].src)">
+<img class="w-full aspect-square object-cover" data-alt="Rwandan coffee farmer inspecting ripe coffee cherries in a plantation." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCinNCYaG9GajfHXQO7SBqVg7Qqy7VZaOVRYu19_m-9nYvcKNOcbSGwB3rt6jxj0JmeYV-DkR5LtFRfh2l7AvgTyZnlpKKAfmqy5KPHEQG0SP8I3P7-jrJKY9Aq1GuTF6mHcELgHnh646Otxciz1m_9jNIpZZFhEfguDREUgYKvVJ8YalNR_2895qzdJLSCTl4aollww_4xM_vLbmtsEPJaOKd2IagqApJsCecK5E3QOBnojEUhZGieaYKABNzAmOrPnyrRKpWAHb8P"/>
+</button>
+<button class="border border-outline-variant p-xs bg-surface-container-lowest hover:border-primary transition-colors" onclick="updateMainImage(this.children[0].src)">
+<img class="w-full aspect-square object-cover" data-alt="A person cupping coffee in a modern, clean laboratory setting." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAhPokW7ZuIDN_f3jVWE8SBLjx09OvPoSUgEJjvLzPJL95UK7vxTxv2wu8ZSUPflVgatOSltw27Eg2FRrE1z6WnZSXUW4q9bwRo5aeB3-QtaFfDuJ3vCizc2gIjz6IBvpst2sSwQuiGoodZTUhlWTaenMYMUi_fTyo6n8DqOCa0KrE_dYlUGazI1zeCqODeFW_SbPwmBxJK6PqypNWSsOWxlqLbgQCzdG3ap5F2Lr53WrCTeE-fLDzorExo6fgJC9Ozp10MasScjJ4n"/>
+</button>
+</div>
+<!-- Product Description -->
+<div class="bg-surface-container-lowest border border-outline-variant p-lg space-y-md">
+<h2 class="font-headline-md text-headline-md text-primary">Technical Specifications</h2>
+<p class="font-body-md text-on-surface-variant leading-relaxed">
+                        Ethically sourced from the volcanic soil of the Western Province of Rwanda. Our Arabica beans are hand-picked at peak ripeness and wet-processed to ensure a vibrant acidity and notes of citrus and dark chocolate. Fully traceable through the RMF digital ledger system.
+                    </p>
+<div class="grid grid-cols-2 gap-md pt-sm border-t border-outline-variant/30">
+<div>
+<span class="block font-label-md text-label-md text-on-surface-variant">REGION</span>
+<span class="font-body-lg font-bold">Kivu Lake Belt</span>
+</div>
+<div>
+<span class="block font-label-md text-label-md text-on-surface-variant">ALTITUDE</span>
+<span class="font-body-lg font-bold">1,700m - 2,000m</span>
+</div>
+<div>
+<span class="block font-label-md text-label-md text-on-surface-variant">PROCESSING</span>
+<span class="font-body-lg font-bold">Fully Washed</span>
+</div>
+<div>
+<span class="block font-label-md text-label-md text-on-surface-variant">MOISTURE</span>
+<span class="font-body-lg font-bold">11.5% - 12.5%</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Right Column: Purchase Panel (Sticky) -->
+<aside class="lg:col-span-5">
+<div class="sticky top-24 space-y-md">
+<div class="bg-surface-container-lowest border border-outline-variant p-lg shadow-sm">
+<div class="flex justify-between items-start mb-base">
+<span class="bg-secondary-container text-on-secondary-container font-label-md text-label-md px-sm py-[2px] rounded-full">CERTIFIED ORGANIC</span>
+<div class="flex items-center gap-xs text-primary font-bold">
+<span class="material-symbols-outlined text-[16px]" data-icon="verified" style="font-variation-settings: 'FILL' 1;">verified</span>
+<span class="font-label-md text-label-md">RMF VERIFIED</span>
+</div>
+</div>
+<h1 class="font-headline-lg text-headline-lg mb-sm">Premium Arabica Coffee Beans</h1>
+<p class="font-body-sm text-on-surface-variant mb-md">Product ID: RMF-CAF-0912-KIVU</p>
+<div class="flex items-baseline gap-sm mb-lg">
+<span class="font-headline-lg text-headline-lg text-primary" id="product-price">RWF 12,500</span>
+<span class="font-body-md text-on-surface-variant">/ unit</span>
+</div>
+<!-- Variant Selectors -->
+<div class="space-y-md mb-lg">
+<div>
+<label class="block font-label-md text-label-md text-on-surface-variant mb-xs">PACK WEIGHT</label>
+<div class="flex gap-sm">
+<button class="variant-btn flex-1 py-sm border-2 border-primary bg-primary-fixed-dim/10 font-bold" onclick="updatePrice('12,500', 'In Stock', this)">500G</button>
+<button class="variant-btn flex-1 py-sm border border-outline-variant hover:border-primary transition-colors" onclick="updatePrice('22,000', 'In Stock', this)">1KG</button>
+<button class="variant-btn flex-1 py-sm border border-outline-variant hover:border-primary transition-colors" onclick="updatePrice('105,000', 'Low Stock', this)">5KG</button>
+</div>
+</div>
+<div>
+<label class="block font-label-md text-label-md text-on-surface-variant mb-xs">ROAST PROFILE</label>
+<select class="w-full border-outline-variant focus:border-primary focus:ring-0 p-sm font-body-md">
+<option>Medium Roast (Balanced)</option>
+<option>Dark Roast (Bold)</option>
+<option>Light Roast (Floral)</option>
+</select>
+</div>
+</div>
+<!-- Status Indicator -->
+<div class="flex items-center gap-sm mb-lg p-sm bg-surface-container-low border border-outline-variant/50">
+<span class="w-2 h-2 bg-green-600 rounded-full animate-pulse" id="stock-dot"></span>
+<span class="font-label-md text-label-md text-on-surface-variant" id="stock-status">AVAILABILITY: IN STOCK (45 UNITS)</span>
+</div>
+<!-- Actions -->
+<div class="space-y-sm">
+<button class="w-full bg-primary text-on-primary py-md font-bold text-headline-md flex items-center justify-center gap-sm hover:opacity-90 transition-opacity">
+<span class="material-symbols-outlined" data-icon="shopping_basket">shopping_basket</span>
+                                ADD TO CART
+                            </button>
+<div class="grid grid-cols-2 gap-sm">
+<button class="border border-primary text-primary py-md font-bold flex items-center justify-center gap-sm hover:bg-primary-fixed-dim/10 transition-colors">
+<span class="material-symbols-outlined" data-icon="handshake">handshake</span>
+                                    NEGOTIATE
+                                </button>
+<button class="border border-outline text-on-surface-variant py-md font-bold flex items-center justify-center gap-sm hover:bg-surface-container transition-colors">
+<span class="material-symbols-outlined" data-icon="share">share</span>
+                                    SHARE
+                                </button>
+</div>
+</div>
+<div class="mt-md flex items-center justify-center gap-xs py-xs bg-surface-container-highest/50">
+<span class="material-symbols-outlined text-[16px] text-tertiary" data-icon="shield_check">shield</span>
+<span class="font-label-md text-label-md text-on-surface-variant uppercase">RMF Escrow Protected Transaction</span>
+</div>
+</div>
+<!-- Seller/Market Profile Summary -->
+<div class="bg-surface-container-lowest border border-outline-variant p-md">
+<div class="flex items-center gap-md">
+<img class="w-12 h-12 rounded-lg object-cover" data-alt="A vibrant market stall in Kigali, overflowing with colorful local produce and sacks of grains. The lighting is bright and natural. The stall is managed by a smiling Rwandan woman in traditional dress, signifying the local community focus of the RMF platform." src="https://lh3.googleusercontent.com/aida-public/AB6AXuA5TqsZ12JQzuWmQQrtq2xe8RYrogSVqoIr8RjjYZhprPDBlSvkhm4J0pRZGr1sWcHqj7Hroz6c_Nl9mvBENtcx7s4Bkk4EYRYYf-_9DMKKhgv3uwRiod4yblbVuu8fJHBMnTQeNz-5GW4AJpLqCXIZPVS2aZHgtomYEVmSMncZTKI5V0t7H7jQ70osTdSEPXzORkawJw46X_MrsPSBKiRjV5jasxDDtL6HW3VxdHHDSJMVwTa1qOIXHg6UjRt5LFYCqguPJniT5CeC"/>
+<div class="flex-1">
+<h4 class="font-headline-md text-headline-md">Ingabo Farmers Coop</h4>
+<p class="font-body-sm text-on-surface-variant">Rubavu District | 98.2% Positive</p>
+</div>
+<button class="text-primary font-bold font-label-md text-label-md hover:underline">VIEW PROFILE</button>
+</div>
+</div>
+</div>
+</aside>
+</div>
+<!-- Reviews Section -->
+<section class="mt-xl">
+<div class="flex justify-between items-end mb-lg">
+<div>
+<h2 class="font-headline-lg text-headline-lg mb-xs">Trader Reviews</h2>
+<div class="flex items-center gap-sm">
+<div class="flex text-secondary">
+<span class="material-symbols-outlined" data-icon="star" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="material-symbols-outlined" data-icon="star" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="material-symbols-outlined" data-icon="star" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="material-symbols-outlined" data-icon="star" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="material-symbols-outlined" data-icon="star_half" style="font-variation-settings: 'FILL' 1;">star_half</span>
+</div>
+<span class="font-body-lg font-bold">4.8</span>
+<span class="text-on-surface-variant font-body-md">(124 verified reviews)</span>
+</div>
+</div>
+<button class="bg-surface-container-high border border-outline p-sm font-bold font-label-md text-label-md hover:bg-surface-container-highest transition-colors">
+                    WRITE A REVIEW
+                </button>
+</div>
+<!-- Review Grid (Asymmetric) -->
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-gutter">
+<!-- Review Card 1 -->
+<div class="bg-surface-container-lowest border border-outline-variant p-md flex flex-col justify-between">
+<div>
+<div class="flex justify-between mb-sm">
+<span class="font-bold font-body-md">M. Mugisha</span>
+<span class="text-on-surface-variant font-label-md text-label-md">2 days ago</span>
+</div>
+<p class="font-body-md text-on-surface-variant mb-md">"The quality of the medium roast is exceptional. Fast delivery to Kigali warehouse. Will definitely reorder for my cafe."</p>
+</div>
+<div class="grid grid-cols-3 gap-xs">
+<img class="w-full aspect-square object-cover" data-alt="A shallow depth of field shot of a latte being poured in a minimalist, modern coffee shop. The lighting is crisp and cool." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBvt2fjqhpRxr-KuaU5KaUh1DEb0j9lJwP_HEt1cY7yaNVCUexwpaT_GNdGF3paztAR_LFb9I35j8GRzdfzIIlPByNgYl_BNQdRsYnEbeJ2wf1TnGk81SNcy2Kk_o3Gg22RAdXOBP4VAGShDpSeSPI3iMEXuAS5WwNq4Wnsnt-jBB5opm9OBZNVBMQv3eAAYC-zeLxI5UTk5tYOAJkORxK44nL59ELI-m3moPqm6jn8hfIgxi9WeqQDfI-v2i230QTihkemJ4VbWmm1"/>
+</div>
+</div>
+<!-- Review Card 2 -->
+<div class="bg-surface-container-lowest border border-outline-variant p-md flex flex-col justify-between">
+<div>
+<div class="flex justify-between mb-sm">
+<span class="font-bold font-body-md">Commodity Trader X</span>
+<span class="text-on-surface-variant font-label-md text-label-md">1 week ago</span>
+</div>
+<p class="font-body-md text-on-surface-variant mb-md">"Reliable moisture content as per the technical sheet. The wet processing was done meticulously. Great for export."</p>
+</div>
+<div class="grid grid-cols-3 gap-xs">
+<img class="w-full aspect-square object-cover" data-alt="Technical moisture testing equipment on a wooden table in a well-lit commodity lab." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBdhosvC0DHXwBLWtcqc7vohqDG8DQju3-pabni4NiKvOzwAHgsRL5BvPgJK9BDoCcPvo-MzHokLRodJzQBQKFfSVAgwkMtnOIOZuDUgNyBAczXfmbffnwbWvfKZnZ8rNnHsQph6-Km1Ko2P9e6qoU_th_5KWzBG0zS3fQK8oxC9dAvTheW0SE066Qm-mTSPfaFnmvYgnmKYDmHgDhEKgp1Dp0HnoBHxqcKauWY6yWJ2TgFk5iL5-WWnJHFq1RzfnWy-IUdTmkK7ImU"/>
+<img class="w-full aspect-square object-cover" data-alt="Stacked burlap sacks of coffee in a clean, organized warehouse in Rwanda." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBhiNrxZLb6DstIymjv8t_6Ryy7ZTe38u90fmCSZX_tnSEZ20T-_DxmEH8EXnYWTiZ39MYs9lWiL5i5RT_xiVIec5TJLPsTy7ty7nCtjA0598_CTCKh6PU3MpxsNJVoNUIp7Plx-NyeCg2Lwp1ZxgntBCoupCiYop-bz3egFKrIDSRCDkXkYCki-K8LWdN95Nhr9_EFoY_-KIVOLFqojxbUfJnJ2nf9xsvBh3geEyD0BaB8VMDY0zmjECa6SHXals0k5qcDQbkyqODn"/>
+</div>
+</div>
+<!-- Review Card 3 -->
+<div class="bg-surface-container-lowest border border-outline-variant p-md flex flex-col justify-between">
+<div>
+<div class="flex justify-between mb-sm">
+<span class="font-bold font-body-md">K. Uwera</span>
+<span class="text-on-surface-variant font-label-md text-label-md">3 weeks ago</span>
+</div>
+<p class="font-body-md text-on-surface-variant mb-md">"Excellent communication from the cooperative. They provided the organic certifications immediately upon request."</p>
+</div>
+</div>
+</div>
+</section>
+<!-- Related Products (Bento Style) -->
+<section class="mt-xl">
+<h2 class="font-headline-lg text-headline-lg mb-lg">You May Also Trade</h2>
+<div class="grid grid-cols-2 lg:grid-cols-4 gap-gutter">
+<!-- Related Item 1 -->
+<div class="group bg-surface-container-lowest border border-outline-variant hover:shadow-lg transition-all cursor-pointer">
+<div class="aspect-square relative overflow-hidden bg-surface-container">
+<img class="w-full h-full object-cover group-hover:scale-105 transition-transform" data-alt="Close up of high-quality tea leaves being dried in a solar dryer. The lighting is warm and natural." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCRRABhKBLtslP5KjkiD-0uA0Ot2cEVY3r24IMQ4BlRziIAxd19MqFWvPPUSsMHovcTp6gFP_avUgiim-xfAH7mlMHDbpb76F-qsnYxxxMTvMotVpY8NEAlq-qyq9Cpm0MuU4JlYJCP5SPSkoW3MlfEUltEQmQGPWZF2dkw8aI0Lu2pWvczbFy5X35Kbipx9SqPYafCIzZu39ugJB6xwMfeV9kPFPc3iuSaOvZCS3Ui4EN3yyiAQKkxngcO1YJp5lB5duThyh5Jba0G"/>
+<span class="absolute top-sm right-sm bg-surface/90 font-label-md text-label-md px-sm py-xs">TEA</span>
+</div>
+<div class="p-md">
+<h3 class="font-headline-md text-headline-md truncate">Black CTC Tea G1</h3>
+<p class="text-primary font-bold mt-xs">RWF 4,200 <span class="text-on-surface-variant font-normal text-body-sm">/ KG</span></p>
+</div>
+</div>
+<!-- Related Item 2 -->
+<div class="group bg-surface-container-lowest border border-outline-variant hover:shadow-lg transition-all cursor-pointer">
+<div class="aspect-square relative overflow-hidden bg-surface-container">
+<img class="w-full h-full object-cover group-hover:scale-105 transition-transform" data-alt="A jar of raw, golden Rwandan honey with a honeycomb inside, placed on a wooden board. The lighting is warm and invites a sense of purity." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBetW2XtZoWLbSDDGx4WiqEVaWXek7gda-c0J4Hv2_LM7aUnsD0NAh8iSoA8QNfdGnfG2kfkCEXNUCLvZ-ieQ3TI-Pf3YXjdA7xuZM4vCsnIvqwlNeIkDsILKNQ4e_vFHnZxhmpo_L6RC6HmdLPdOsASsq6_QUJ7NQzjTfBlwAaYHC_Y_hbTOl3UdFCT4dCJU1hqKsOAUmDfJr_elB4zL8_yL9sfw74MBJlDekXLOuOFtRsd1TDYx7TZi9mo14JCAHEF-NOa1MeVpOY"/>
+<span class="absolute top-sm right-sm bg-surface/90 font-label-md text-label-md px-sm py-xs">HONEY</span>
+</div>
+<div class="p-md">
+<h3 class="font-headline-md text-headline-md truncate">Raw Organic Honey</h3>
+<p class="text-primary font-bold mt-xs">RWF 8,500 <span class="text-on-surface-variant font-normal text-body-sm">/ L</span></p>
+</div>
+</div>
+<!-- Related Item 3 -->
+<div class="group bg-surface-container-lowest border border-outline-variant hover:shadow-lg transition-all cursor-pointer">
+<div class="aspect-square relative overflow-hidden bg-surface-container">
+<img class="w-full h-full object-cover group-hover:scale-105 transition-transform" data-alt="A heap of dried red kidney beans on a rustic sack. The lighting is high-contrast and tactile, showcasing the deep red color and smooth texture of the beans." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDitWQjdDU8MDS7p3yjC-z5KHBWrVTjFI498BJRz2lYWNjVeXT0SGKGxjAU7TmKaoGNKeWBp6fbxb_cvjqB5EgNZVSIdlyP4AHvlcIC0ygeyLo480jWHs5sSv5S1YYF95PGF2NRN20gu9LZR0-uwLewrGM8lVDPG6X4kRnIoIuslcUm65vo9-m5C-QB0RI6eljkNdvhdnnRPBrtNoa8XCYcNid5XocqxirH1BMyDIsk05Im1YkNuA1e0lsF0OiijcbpgL94ta62hj3h"/>
+<span class="absolute top-sm right-sm bg-surface/90 font-label-md text-label-md px-sm py-xs">BEANS</span>
+</div>
+<div class="p-md">
+<h3 class="font-headline-md text-headline-md truncate">Red Kidney Beans</h3>
+<p class="text-primary font-bold mt-xs">RWF 1,100 <span class="text-on-surface-variant font-normal text-body-sm">/ KG</span></p>
+</div>
+</div>
+<!-- Related Item 4 -->
+<div class="group bg-surface-container-lowest border border-outline-variant hover:shadow-lg transition-all cursor-pointer">
+<div class="aspect-square relative overflow-hidden bg-surface-container">
+<img class="w-full h-full object-cover group-hover:scale-105 transition-transform" data-alt="A cluster of freshly harvested ginger roots on a market stall. The earthy tones and fibrous texture are clearly visible under bright, natural daylight." src="https://lh3.googleusercontent.com/aida-public/AB6AXuC6bAa0iz9pBX_vcJgptRaZAltRZ-c4BDs1ebr1LOYOXWMRc9qWFqGDBfxiwUMVrYim44HcH4Y4lrcx7PAS8AFmJWY9uD0DcWwSgQzjtaF6LISjWt19X8VyItLl2pexbDG8vXGJanuAGFxg2Y9OOrJX_MmUgL5CAhBjUtXV7KlO1ihk38Yfil725wBrAiOwmKOJGZsBxY2qMhFRoDEYeBzQwc87zSd1IuXw8JxMHsuzb32iOrdf89kHImd3qhsaZ_yfgOP-AyjBJZI2"/>
+<span class="absolute top-sm right-sm bg-surface/90 font-label-md text-label-md px-sm py-xs">SPICES</span>
+</div>
+<div class="p-md">
+<h3 class="font-headline-md text-headline-md truncate">Premium Fresh Ginger</h3>
+<p class="text-primary font-bold mt-xs">RWF 2,400 <span class="text-on-surface-variant font-normal text-body-sm">/ KG</span></p>
+</div>
+</div>
+</div>
+</section>
+</main>
+<!-- BottomNavBar (Mobile Shell) -->
+<nav class="lg:hidden fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-4 py-2 bg-surface dark:bg-surface-container-high border-t border-outline-variant dark:border-outline shadow-lg rounded-t-xl">
+<a class="flex flex-col items-center justify-center text-on-surface-variant dark:text-on-surface-variant hover:bg-surface-container" href="#">
+<span class="material-symbols-outlined" data-icon="home">home</span>
+<span class="font-label-md text-label-md">Home</span>
+</a>
+<a class="flex flex-col items-center justify-center bg-secondary-container dark:bg-secondary text-on-secondary-container dark:text-on-secondary rounded-full px-4 py-1" href="#">
+<span class="material-symbols-outlined" data-icon="search">search</span>
+<span class="font-label-md text-label-md">Search</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant dark:text-on-surface-variant hover:bg-surface-container" href="#">
+<span class="material-symbols-outlined" data-icon="receipt_long">receipt_long</span>
+<span class="font-label-md text-label-md">Orders</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant dark:text-on-surface-variant hover:bg-surface-container" href="#">
+<span class="material-symbols-outlined" data-icon="person">person</span>
+<span class="font-label-md text-label-md">Account</span>
+</a>
+</nav>
+<script>
+        function updateMainImage(src) {
+            const mainImg = document.getElementById('main-image');
+            mainImg.src = src;
+            
+            // Highlight active thumbnail (simplistic version)
+            const buttons = document.querySelectorAll('.lg\\:col-span-7 button');
+            buttons.forEach(btn => {
+                btn.classList.remove('border-primary');
+                btn.classList.add('border-outline-variant');
+                if(btn.querySelector('img').src === src) {
+                    btn.classList.remove('border-outline-variant');
+                    btn.classList.add('border-primary');
+                }
+            });
+        }
+
+        function updatePrice(price, stock, el) {
+            // Update UI
+            document.getElementById('product-price').innerText = 'RWF ' + price;
+            document.getElementById('stock-status').innerText = 'AVAILABILITY: ' + stock.toUpperCase() + ' (45 UNITS)';
+            
+            const dot = document.getElementById('stock-dot');
+            if (stock === 'Low Stock') {
+                dot.classList.replace('bg-green-600', 'bg-orange-600');
+            } else {
+                dot.classList.replace('bg-orange-600', 'bg-green-600');
+            }
+
+            // Update button styles
+            const buttons = document.querySelectorAll('.variant-btn');
+            buttons.forEach(btn => {
+                btn.classList.remove('border-primary', 'bg-primary-fixed-dim/10', 'font-bold');
+                btn.classList.add('border-outline-variant');
+            });
+            el.classList.add('border-primary', 'bg-primary-fixed-dim/10', 'font-bold');
+            el.classList.remove('border-outline-variant');
+        }
+    </script>
+</body></html>

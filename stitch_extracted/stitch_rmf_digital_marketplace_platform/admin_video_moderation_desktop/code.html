@@ -1,0 +1,485 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>RMF Governance | Video Moderation</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Work+Sans:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@500&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<!-- Tailwind Configuration -->
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "surface-variant": "#e3e2e2",
+                    "tertiary-container": "#5f97ff",
+                    "surface-bright": "#fbf9f8",
+                    "on-secondary-container": "#561b00",
+                    "surface-container-highest": "#e3e2e2",
+                    "primary-container": "#ff6b00",
+                    "on-secondary-fixed": "#370e00",
+                    "inverse-primary": "#ffb693",
+                    "surface": "#fbf9f8",
+                    "on-tertiary-fixed": "#001a42",
+                    "surface-dim": "#dbdad9",
+                    "surface-container-lowest": "#ffffff",
+                    "on-error": "#ffffff",
+                    "primary": "#a04100",
+                    "inverse-surface": "#303030",
+                    "background": "#fbf9f8",
+                    "secondary": "#a63b00",
+                    "on-primary-fixed": "#351000",
+                    "inverse-on-surface": "#f2f0f0",
+                    "on-tertiary-fixed-variant": "#004395",
+                    "on-surface-variant": "#5a4136",
+                    "on-primary": "#ffffff",
+                    "error-container": "#ffdad6",
+                    "outline": "#8e7164",
+                    "tertiary-fixed": "#d8e2ff",
+                    "surface-container": "#efeded",
+                    "surface-container-high": "#e9e8e7",
+                    "on-surface": "#1b1c1c",
+                    "on-primary-fixed-variant": "#7a3000",
+                    "on-secondary": "#ffffff",
+                    "error": "#ba1a1a",
+                    "tertiary-fixed-dim": "#adc6ff",
+                    "surface-container-low": "#f5f3f3",
+                    "tertiary": "#005ac2",
+                    "on-error-container": "#93000a",
+                    "on-background": "#1b1c1c",
+                    "on-tertiary-container": "#002f6b",
+                    "secondary-container": "#fc671d",
+                    "secondary-fixed-dim": "#ffb598",
+                    "outline-variant": "#e2bfb0",
+                    "primary-fixed": "#ffdbcc",
+                    "on-primary-container": "#572000",
+                    "surface-tint": "#a04100",
+                    "on-tertiary": "#ffffff",
+                    "on-secondary-fixed-variant": "#7f2b00",
+                    "primary-fixed-dim": "#ffb693",
+                    "secondary-fixed": "#ffdbce"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.125rem",
+                    "lg": "0.25rem",
+                    "xl": "0.5rem",
+                    "full": "0.75rem"
+            },
+            "spacing": {
+                    "gutter": "16px",
+                    "xs": "4px",
+                    "margin-desktop": "32px",
+                    "md": "16px",
+                    "lg": "24px",
+                    "xl": "40px",
+                    "sm": "8px",
+                    "margin-mobile": "16px",
+                    "base": "4px"
+            },
+            "fontFamily": {
+                    "table-data": ["Work Sans"],
+                    "body-md": ["Work Sans"],
+                    "body-lg": ["Work Sans"],
+                    "label-md": ["JetBrains Mono"],
+                    "headline-md": ["Work Sans"],
+                    "body-sm": ["Work Sans"],
+                    "headline-lg": ["Work Sans"]
+            },
+            "fontSize": {
+                    "table-data": ["13px", {"lineHeight": "18px", "fontWeight": "500"}],
+                    "body-md": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                    "body-lg": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                    "label-md": ["12px", {"lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "500"}],
+                    "headline-md": ["20px", {"lineHeight": "28px", "fontWeight": "600"}],
+                    "body-sm": ["12px", {"lineHeight": "16px", "fontWeight": "400"}],
+                    "headline-lg": ["30px", {"lineHeight": "38px", "letterSpacing": "-0.02em", "fontWeight": "700"}]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .scroll-hide::-webkit-scrollbar { display: none; }
+        .scroll-hide { -ms-overflow-style: none; scrollbar-width: none; }
+        
+        .glass-card {
+            background: rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(8px);
+            border: 1px solid #ebdcd0;
+        }
+    </style>
+</head>
+<body class="bg-background text-on-background font-body-md text-body-md overflow-x-hidden">
+<!-- TopNavBar -->
+<header class="sticky top-0 z-50 flex justify-between items-center px-margin-desktop w-full h-16 bg-surface dark:bg-surface-dim border-b border-outline-variant dark:border-outline">
+<div class="flex items-center gap-lg">
+<span class="text-headline-md font-headline-md font-bold text-primary dark:text-inverse-primary">RMF Governance</span>
+<div class="hidden md:flex gap-md">
+<nav class="flex items-center gap-md">
+<a class="text-label-md font-label-md text-primary dark:text-inverse-primary border-b-2 border-primary py-1 px-2" href="#">Compliance</a>
+<a class="text-label-md font-label-md text-on-surface-variant dark:text-surface-variant hover:bg-surface-container-low transition-colors py-1 px-2 rounded-lg" href="#">Audit Logs</a>
+</nav>
+</div>
+</div>
+<div class="flex items-center gap-md">
+<button class="p-2 hover:bg-surface-container-low transition-colors rounded-full">
+<span class="material-symbols-outlined" data-icon="notifications">notifications</span>
+</button>
+<button class="p-2 hover:bg-surface-container-low transition-colors rounded-full">
+<span class="material-symbols-outlined" data-icon="account_circle">account_circle</span>
+</button>
+</div>
+</header>
+<div class="flex min-h-screen">
+<!-- SideNavBar -->
+<aside class="fixed left-0 top-16 h-[calc(100vh-64px)] w-64 flex flex-col border-r border-outline-variant bg-surface-container-low overflow-y-auto hidden md:flex">
+<div class="p-md flex flex-col gap-xs flex-grow">
+<div class="px-md py-sm mb-base">
+<p class="text-label-md font-label-md text-on-surface-variant">MODERATION TOOLS</p>
+</div>
+<a class="flex items-center gap-md px-md py-3 text-on-surface-variant hover:bg-surface-variant transition-all duration-200" href="#">
+<span class="material-symbols-outlined" data-icon="dashboard">dashboard</span>
+<span class="font-label-md text-label-md">Dashboard</span>
+</a>
+<a class="flex items-center gap-md px-md py-3 bg-secondary-container text-on-secondary-container font-bold rounded-lg translate-x-1 transition-transform duration-200" href="#">
+<span class="material-symbols-outlined" data-icon="gavel">gavel</span>
+<span class="font-label-md text-label-md">Compliance</span>
+</a>
+<a class="flex items-center gap-md px-md py-3 text-on-surface-variant hover:bg-surface-variant transition-all duration-200" href="#">
+<span class="material-symbols-outlined" data-icon="inventory_2">inventory_2</span>
+<span class="font-label-md text-label-md">Inventory</span>
+</a>
+<a class="flex items-center gap-md px-md py-3 text-on-surface-variant hover:bg-surface-variant transition-all duration-200" href="#">
+<span class="material-symbols-outlined" data-icon="analytics">analytics</span>
+<span class="font-label-md text-label-md">Analytics</span>
+</a>
+<a class="flex items-center gap-md px-md py-3 text-on-surface-variant hover:bg-surface-variant transition-all duration-200" href="#">
+<span class="material-symbols-outlined" data-icon="settings">settings</span>
+<span class="font-label-md text-label-md">Settings</span>
+</a>
+</div>
+<div class="p-md border-t border-outline-variant">
+<a class="flex items-center gap-md px-md py-3 text-on-surface-variant hover:bg-surface-variant transition-all duration-200" href="#">
+<span class="material-symbols-outlined" data-icon="help">help</span>
+<span class="font-label-md text-label-md">Support</span>
+</a>
+<a class="flex items-center gap-md px-md py-3 text-error hover:bg-error-container transition-all duration-200" href="#">
+<span class="material-symbols-outlined" data-icon="logout">logout</span>
+<span class="font-label-md text-label-md">Logout</span>
+</a>
+</div>
+</aside>
+<!-- Main Content -->
+<main class="flex-grow md:ml-64 p-gutter lg:p-margin-desktop">
+<!-- Page Header -->
+<div class="flex flex-col md:flex-row md:items-end justify-between gap-md mb-xl">
+<div>
+<h1 class="font-headline-lg text-headline-lg text-on-surface mb-xs">Video Moderation Queue</h1>
+<p class="text-body-md text-on-surface-variant">Reviewing user-generated Shop Ads and Product Showcase videos.</p>
+</div>
+<div class="flex gap-sm">
+<div class="flex items-center gap-xs px-md py-sm bg-surface-container-high rounded-lg border border-outline-variant">
+<span class="material-symbols-outlined text-[18px] text-tertiary" data-icon="sync">sync</span>
+<span class="font-label-md text-label-md text-on-surface-variant uppercase">42 Pending Reviews</span>
+</div>
+</div>
+</div>
+<!-- Bento Layout Content -->
+<div class="grid grid-cols-12 gap-lg">
+<!-- Queue Stats & Filters (Top Row) -->
+<div class="col-span-12 lg:col-span-12 grid grid-cols-1 md:grid-cols-4 gap-md">
+<div class="p-lg bg-surface-container-low border border-outline-variant rounded-xl flex flex-col gap-xs">
+<span class="text-label-md font-label-md text-on-surface-variant">PROCESSING</span>
+<div class="flex items-center justify-between">
+<span class="text-headline-md font-headline-md text-tertiary">14 Videos</span>
+<span class="material-symbols-outlined text-tertiary" data-icon="hourglass_empty">hourglass_empty</span>
+</div>
+</div>
+<div class="p-lg bg-surface-container-low border border-outline-variant rounded-xl flex flex-col gap-xs">
+<span class="text-label-md font-label-md text-on-surface-variant">SUCCESS (24H)</span>
+<div class="flex items-center justify-between">
+<span class="text-headline-md font-headline-md text-on-primary-container">128 Approved</span>
+<span class="material-symbols-outlined text-on-primary-container" data-icon="check_circle">check_circle</span>
+</div>
+</div>
+<div class="p-lg bg-surface-container-low border border-outline-variant rounded-xl flex flex-col gap-xs">
+<span class="text-label-md font-label-md text-on-surface-variant">REMOVED (24H)</span>
+<div class="flex items-center justify-between">
+<span class="text-headline-md font-headline-md text-error">12 Rejected</span>
+<span class="material-symbols-outlined text-error" data-icon="block">block</span>
+</div>
+</div>
+<div class="p-lg bg-surface-container-low border border-outline-variant rounded-xl flex flex-col gap-xs">
+<span class="text-label-md font-label-md text-on-surface-variant">SYSTEM STATUS</span>
+<div class="flex items-center gap-sm">
+<div class="h-2 w-2 rounded-full bg-green-500 animate-pulse"></div>
+<span class="font-label-md text-label-md">All Engines Operational</span>
+</div>
+</div>
+</div>
+<!-- Video Grid (Primary) -->
+<div class="col-span-12 lg:col-span-8">
+<div class="flex items-center justify-between mb-md">
+<h2 class="font-headline-md text-headline-md">Moderation Queue</h2>
+<div class="flex gap-xs">
+<button class="px-sm py-xs bg-surface-container-high rounded border border-outline-variant font-label-md text-label-md">Most Recent</button>
+<button class="px-sm py-xs hover:bg-surface-container-low rounded border border-outline-variant font-label-md text-label-md">High Priority</button>
+</div>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-lg">
+<!-- Video Card 1 -->
+<div class="group relative bg-surface-container-lowest border border-outline-variant rounded-xl overflow-hidden hover:shadow-lg transition-shadow">
+<div class="aspect-video relative overflow-hidden bg-on-surface">
+<img class="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity" data-alt="A professional high-definition screen showing a modern Rwandan marketplace, with vibrant colors of local textiles and agricultural products. The lighting is warm and cinematic, suggesting a high-quality product showcase video produced for commerce. The frame is captured from a slightly elevated angle, showing bustling traders and organized stalls in a clean, corporate-modern digital aesthetic." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCZ-aLr4PPYKPrbX7XFCG-UP3Pbk3foZX3cKiRHyF29gZz7-YoFB6aCyLoA109-M9uyjCGabjsTc3pcKxSeVv8swcp3jIdDddkGqQmA43gG7L5_A37D0DumWJ-9_qwzEAc6b7Jgcy3KLF5yJ1hL9gabeHrdJ5C_KnuZZNul9Cho05rlpzb-4a_6WKmXiVY1TSTJD_7qp1CjtTDxZfHi16RcPTDqLBU_2yswWbMnWi5QoLbn4cIdCEMFGD2i-B9DcdruEFPPAdJeVXhg"/>
+<div class="absolute inset-0 flex items-center justify-center">
+<button class="h-12 w-12 bg-primary/90 text-on-primary rounded-full flex items-center justify-center shadow-xl transform group-hover:scale-110 transition-transform">
+<span class="material-symbols-outlined text-[24px]" data-icon="play_arrow" style="font-variation-settings: 'FILL' 1;">play_arrow</span>
+</button>
+</div>
+<div class="absolute top-2 right-2 flex gap-xs">
+<span class="px-sm py-xs bg-error text-on-error font-label-md text-label-md rounded flex items-center gap-xs">
+<span class="material-symbols-outlined text-[14px]" data-icon="report">report</span>
+                                        Reported
+                                    </span>
+</div>
+<div class="absolute bottom-2 left-2 px-sm py-xs bg-black/60 text-white font-label-md text-label-md rounded">00:15</div>
+</div>
+<div class="p-md">
+<div class="flex justify-between items-start mb-sm">
+<div>
+<h3 class="font-bold text-body-lg text-on-surface">Coffee Bean Promo</h3>
+<p class="text-body-sm text-on-surface-variant">Merchant: Kigali Roast Co.</p>
+</div>
+<span class="text-label-md font-label-md text-tertiary">#PROD-982</span>
+</div>
+<div class="flex gap-sm mt-md">
+<button class="flex-1 py-sm bg-primary text-on-primary rounded font-label-md text-label-md hover:bg-primary-container transition-colors flex items-center justify-center gap-xs">
+<span class="material-symbols-outlined text-[18px]" data-icon="check">check</span> APPROVE
+                                    </button>
+<button class="flex-1 py-sm border border-error text-error rounded font-label-md text-label-md hover:bg-error-container transition-colors flex items-center justify-center gap-xs">
+<span class="material-symbols-outlined text-[18px]" data-icon="delete">delete</span> REMOVE
+                                    </button>
+</div>
+</div>
+</div>
+<!-- Video Card 2 -->
+<div class="group relative bg-surface-container-lowest border border-outline-variant rounded-xl overflow-hidden hover:shadow-lg transition-shadow">
+<div class="aspect-video relative overflow-hidden bg-on-surface">
+<img class="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity" data-alt="A brightly lit, crisp close-up of a digital warehouse management system interface being used on a rugged tablet. The background shows blurred industrial shelves and logistics activity in a clean warehouse environment. The image uses a palette of oranges and deep browns, emphasizing efficiency and technological reliability in a commerce-focused setting." src="https://lh3.googleusercontent.com/aida-public/AB6AXuABLiWEMsacvID7Abv0-D9pgTSCY-_x5v0dcxf8k7A63iEc2Ap0J_S52nUkYK6vns5Xw7O0O97DX8ZFLNbcJX5-EDvWlPTY1kbthE5fACKmrANtkN-QVyX46GoSg22wptuNJFxvBgQC6P6iDJpVQDvpZgtUM-xkIAaLRQ3S8eegRQXM8oMu9Bo3D9x4RtjqmGHiG5rJDhruHiYFwe4mWF4eXqHtHF841yqSBsiJT4Bll2kdOlfWg26eKSUM0npci_5eL8HnrZakrYZ_"/>
+<div class="absolute inset-0 flex items-center justify-center">
+<button class="h-12 w-12 bg-primary/90 text-on-primary rounded-full flex items-center justify-center shadow-xl transform group-hover:scale-110 transition-transform">
+<span class="material-symbols-outlined text-[24px]" data-icon="play_arrow" style="font-variation-settings: 'FILL' 1;">play_arrow</span>
+</button>
+</div>
+<div class="absolute top-2 right-2 flex gap-xs">
+<span class="px-sm py-xs bg-error text-on-error font-label-md text-label-md rounded flex items-center gap-xs">
+<span class="material-symbols-outlined text-[14px]" data-icon="report">report</span>
+                                        Reported
+                                    </span>
+</div>
+<div class="absolute bottom-2 left-2 px-sm py-xs bg-black/60 text-white font-label-md text-label-md rounded">00:32</div>
+</div>
+<div class="p-md">
+<div class="flex justify-between items-start mb-sm">
+<div>
+<h3 class="font-bold text-body-lg text-on-surface">Logistics Hub Tour</h3>
+<p class="text-body-sm text-on-surface-variant">Merchant: Rwanda Swift Logistics</p>
+</div>
+<span class="text-label-md font-label-md text-tertiary">#AD-441</span>
+</div>
+<div class="flex gap-sm mt-md">
+<button class="flex-1 py-sm bg-primary text-on-primary rounded font-label-md text-label-md hover:bg-primary-container transition-colors flex items-center justify-center gap-xs">
+<span class="material-symbols-outlined text-[18px]" data-icon="check">check</span> APPROVE
+                                    </button>
+<button class="flex-1 py-sm border border-error text-error rounded font-label-md text-label-md hover:bg-error-container transition-colors flex items-center justify-center gap-xs">
+<span class="material-symbols-outlined text-[18px]" data-icon="delete">delete</span> REMOVE
+                                    </button>
+</div>
+</div>
+</div>
+<!-- Video Card 3 (Processing) -->
+<div class="relative bg-surface-container-low border border-outline-variant border-dashed rounded-xl overflow-hidden min-h-[320px] flex flex-col items-center justify-center text-center p-xl">
+<div class="w-16 h-16 border-4 border-primary border-t-transparent rounded-full animate-spin mb-lg"></div>
+<h3 class="font-bold text-body-lg text-on-surface">Transcoding...</h3>
+<p class="text-body-sm text-on-surface-variant mt-xs">Processing batch #V-8812 (75%)</p>
+<div class="w-full max-w-[200px] bg-surface-variant h-1 rounded-full mt-lg">
+<div class="bg-primary h-full w-[75%] rounded-full"></div>
+</div>
+</div>
+<!-- Video Card 4 (Success / Recently Restored) -->
+<div class="group relative bg-surface-container-lowest border border-outline-variant rounded-xl overflow-hidden opacity-60">
+<div class="aspect-video relative overflow-hidden bg-on-surface">
+<img class="w-full h-full object-cover" data-alt="A clean and bright studio shot of leather handcrafted shoes on a podium. The lighting is soft and neutral, highlighting textures and craftsmanship. The aesthetic is professional e-commerce, with a color palette of earth tones and warm browns that align with the RMF brand identity. High contrast and operational clarity are prioritized in the visual style." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDujMbD-__48yuVdgvjv_Tc_nK1ypHfPk5KIYpgj-R9vteXopc2B-AXGm6nGIG1nIkwH-IESMJ45lxV3UCeGn6KhWUqJ-CSmbLvU4zcxQd-rainAFNSoyKu3TUjOZ7GlIlo-CuR1nSoqjYLR2aqgsNbN04_YDgIvKJgopw9krSy-uu-Vvy3xAjzhdyFIpHaobPbbIk2dbNHeil6riYshSutgXqJGGtQ_gs2PQaiPgBZhiDD2wYoVeYLHGM_TM0OD5z51quejs0m-gV9"/>
+<div class="absolute inset-0 bg-secondary/20 flex items-center justify-center">
+<span class="px-md py-sm bg-white/90 text-secondary rounded-full font-bold text-label-md flex items-center gap-sm">
+<span class="material-symbols-outlined" data-icon="restore">restore</span>
+                                        RESTORED
+                                    </span>
+</div>
+</div>
+<div class="p-md">
+<h3 class="font-bold text-body-lg text-on-surface">Artisan Footwear</h3>
+<p class="text-body-sm text-on-surface-variant">Merchant: Craft Rwanda</p>
+<button class="mt-md w-full py-sm border border-outline text-on-surface-variant rounded font-label-md text-label-md hover:bg-surface-variant transition-colors">
+                                    VIEW LOGS
+                                </button>
+</div>
+</div>
+</div>
+</div>
+<!-- Moderation & Monitoring Sidebar -->
+<div class="col-span-12 lg:col-span-4 flex flex-col gap-lg">
+<!-- Comment Moderation -->
+<div class="bg-surface-container-low border border-outline-variant rounded-xl flex flex-col overflow-hidden">
+<div class="p-md border-b border-outline-variant bg-[#ffedd5]">
+<h2 class="font-headline-md text-headline-md flex items-center gap-sm">
+<span class="material-symbols-outlined text-primary" data-icon="forum">forum</span>
+                                Text Reports
+                            </h2>
+</div>
+<div class="max-h-[400px] overflow-y-auto scroll-hide p-md space-y-md">
+<!-- Comment Item -->
+<div class="p-md bg-surface-container-lowest border border-outline-variant rounded-lg">
+<div class="flex items-center justify-between mb-sm">
+<span class="font-bold text-primary text-label-md">User_8212</span>
+<span class="text-body-sm text-on-surface-variant">2m ago</span>
+</div>
+<p class="text-body-md bg-error-container/20 p-sm rounded border border-error-container italic mb-md">
+                                    "This product doesn't match the video description at all. Total scam!"
+                                </p>
+<div class="flex gap-xs">
+<button class="px-sm py-xs bg-secondary-container text-on-secondary-container rounded text-label-md font-bold">DISMISS</button>
+<button class="px-sm py-xs border border-error text-error rounded text-label-md font-bold">FLAG USER</button>
+</div>
+</div>
+<!-- Comment Item -->
+<div class="p-md bg-surface-container-lowest border border-outline-variant rounded-lg">
+<div class="flex items-center justify-between mb-sm">
+<span class="font-bold text-primary text-label-md">TradeWatch_Admin</span>
+<span class="text-body-sm text-on-surface-variant">15m ago</span>
+</div>
+<p class="text-body-md mb-md">
+                                    Flagged for potential misleading pricing in video subtitles.
+                                </p>
+<div class="flex gap-xs">
+<button class="px-sm py-xs bg-secondary-container text-on-secondary-container rounded text-label-md font-bold">DISMISS</button>
+<button class="px-sm py-xs border border-error text-error rounded text-label-md font-bold">INVESTIGATE</button>
+</div>
+</div>
+</div>
+<div class="p-md border-t border-outline-variant bg-surface-container-high">
+<button class="w-full text-center font-label-md text-label-md text-primary uppercase">View all 18 reports</button>
+</div>
+</div>
+<!-- Processing Status Tracker -->
+<div class="bg-surface-container-lowest border border-outline-variant rounded-xl p-lg">
+<h2 class="font-headline-md text-headline-md mb-lg">Processing Pipeline</h2>
+<div class="space-y-lg">
+<div class="flex items-start gap-md">
+<div class="mt-1 h-6 w-6 rounded-full bg-primary-container flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-[14px] text-white" data-icon="check">check</span>
+</div>
+<div>
+<p class="font-bold text-body-md text-on-surface">V-8791 Content Scrub</p>
+<span class="text-label-md font-label-md text-on-primary-container uppercase bg-primary-fixed px-2 py-0.5 rounded">Success</span>
+</div>
+</div>
+<div class="flex items-start gap-md">
+<div class="mt-1 h-6 w-6 rounded-full bg-tertiary flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-[14px] text-white animate-spin" data-icon="sync">sync</span>
+</div>
+<div class="flex-grow">
+<div class="flex justify-between items-center mb-xs">
+<p class="font-bold text-body-md text-on-surface">V-8812 Transcription</p>
+<span class="text-label-md font-label-md text-tertiary">Processing</span>
+</div>
+<div class="w-full bg-surface-variant h-1 rounded-full">
+<div class="bg-tertiary h-full w-[60%] rounded-full"></div>
+</div>
+</div>
+</div>
+<div class="flex items-start gap-md opacity-60">
+<div class="mt-1 h-6 w-6 rounded-full bg-error flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-[14px] text-white" data-icon="close">close</span>
+</div>
+<div>
+<p class="font-bold text-body-md text-on-surface">V-8789 Metadata Sync</p>
+<span class="text-label-md font-label-md text-error uppercase bg-error-container px-2 py-0.5 rounded">Failed</span>
+<button class="block mt-sm text-label-md font-label-md text-tertiary underline decoration-dotted">Retry Job</button>
+</div>
+</div>
+</div>
+</div>
+<!-- Escrow Trust Indicator -->
+<div class="p-lg bg-surface-container-highest border border-outline rounded-xl">
+<div class="flex items-center gap-sm mb-md">
+<span class="material-symbols-outlined text-secondary" data-icon="security" style="font-variation-settings: 'FILL' 1;">security</span>
+<span class="font-bold text-body-md text-on-surface">Governance Assurance</span>
+</div>
+<p class="text-body-sm text-on-surface-variant mb-lg">
+                            Content removed for policy violations is archived for 90 days. Approval triggers shop ad credit allocation.
+                        </p>
+<div class="flex justify-between items-center border-t border-outline-variant pt-md">
+<div class="flex flex-col">
+<span class="text-label-md font-label-md text-on-surface-variant">ESCROW STATUS</span>
+<span class="text-body-md font-bold text-primary">Active Protection</span>
+</div>
+<span class="material-symbols-outlined text-outline" data-icon="info">info</span>
+</div>
+</div>
+</div>
+</div>
+</main>
+</div>
+<!-- Mobile Navigation (Floating for context) -->
+<div class="md:hidden fixed bottom-0 left-0 right-0 bg-surface border-t border-outline-variant flex justify-around p-sm z-50 shadow-2xl">
+<button class="flex flex-col items-center gap-xs text-primary">
+<span class="material-symbols-outlined" data-icon="gavel" style="font-variation-settings: 'FILL' 1;">gavel</span>
+<span class="text-[10px] font-label-md">Queue</span>
+</button>
+<button class="flex flex-col items-center gap-xs text-on-surface-variant">
+<span class="material-symbols-outlined" data-icon="analytics">analytics</span>
+<span class="text-[10px] font-label-md">Stats</span>
+</button>
+<button class="flex flex-col items-center gap-xs text-on-surface-variant">
+<span class="material-symbols-outlined" data-icon="forum">forum</span>
+<span class="text-[10px] font-label-md">Chat</span>
+</button>
+<button class="flex flex-col items-center gap-xs text-on-surface-variant">
+<span class="material-symbols-outlined" data-icon="settings">settings</span>
+<span class="text-[10px] font-label-md">Config</span>
+</button>
+</div>
+<script>
+        // Simple Micro-interactions
+        document.querySelectorAll('button').forEach(btn => {
+            btn.addEventListener('mousedown', () => {
+                btn.style.transform = 'scale(0.98)';
+            });
+            btn.addEventListener('mouseup', () => {
+                btn.style.transform = 'scale(1)';
+            });
+            btn.addEventListener('mouseleave', () => {
+                btn.style.transform = 'scale(1)';
+            });
+        });
+
+        // Simulating auto-refresh indicator
+        const refreshIndicator = document.querySelector('[data-icon="sync"]');
+        if(refreshIndicator) {
+            setInterval(() => {
+                refreshIndicator.classList.add('animate-spin');
+                setTimeout(() => {
+                    refreshIndicator.classList.remove('animate-spin');
+                }, 1000);
+            }, 10000);
+        }
+    </script>
+</body></html>

@@ -1,7 +1,7 @@
 import { Injectable, NotFoundException, BadRequestException, Logger, OnModuleInit, OnModuleDestroy } from '@nestjs/common';
 import axios from 'axios';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
+import { Model, Types } from 'mongoose';
 import { OrderStatus, PaymentStatus, DisputeResolution } from '@rmf/shared-types';
 import { StateConflictError } from '@rmf/shared-utils';
 import { LocationService } from '@rmf/location';
@@ -51,6 +51,30 @@ export class OrderService implements OnModuleInit, OnModuleDestroy {
     private orderGateway: OrderGateway
   ) { }
 
+  private normalizeId(value: any): string | null {
+    if (value === null || value === undefined) return null;
+    if (typeof value === 'string') return value;
+    if (typeof value === 'number') return String(value);
+    if (typeof value.toHexString === 'function') return value.toHexString();
+    if (value._id !== undefined && value._id !== value) return this.normalizeId(value._id);
+    if (value.id !== undefined && value.id !== value) return this.normalizeId(value.id);
+    return String(value);
+  }
+
+  private idsMatch(left: any, right: any): boolean {
+    const leftId = this.normalizeId(left);
+    const rightId = this.normalizeId(right);
+    return Boolean(leftId && rightId && leftId === rightId);
+  }
+
+  private isOrderBuyer(order: any, userId: string): boolean {
+    return this.idsMatch(order?.buyer?.userId ?? order?.buyerId, userId);
+  }
+
+  private isOrderSeller(order: any, userId: string): boolean {
+    return this.idsMatch(order?.seller?.userId ?? order?.sellerUserId, userId);
+  }
+
   private productIdFromLine(line: any): string | null {
     const productId = line?.productId?._id || line?.productId;
     return productId ? productId.toString() : null;
@@ -59,7 +83,7 @@ export class OrderService implements OnModuleInit, OnModuleDestroy {
   private async attachProductSnapshots<T extends Record<string, any>>(orders: T[]): Promise<T[]> {
     const productIds = Array.from(new Set(
       orders.flatMap((order: any) => (order.products || []).map((line: any) => this.productIdFromLine(line)).filter(Boolean))
-    ));
+    )).filter(id => Types.ObjectId.isValid(id));
 
     if (productIds.length === 0) {
       return orders;
@@ -81,6 +105,7 @@ export class OrderService implements OnModuleInit, OnModuleDestroy {
         const product = productMap.get(this.productIdFromLine(line) || '');
         if (!product) return line;
 
+
         return {
           ...line,
           name: line.name || product.name,
@@ -96,8 +121,23 @@ export class OrderService implements OnModuleInit, OnModuleDestroy {
     }));
   }
 
+  private async triggerNotification(userId: string, type: string, params: any) {
+    if (!userId || userId === 'undefined' || userId === 'null') {
+      return;
+    }
+    try {
+      const url = `${process.env.NOTIFICATION_SERVICE_URL || 'http://localhost:3009/api/v1'}/notifications/in-app`;
+      const axios = require('axios');
+      const secret = process.env.INTERNAL_SERVICE_SECRET;
+      const headers = secret ? { 'x-internal-service-key': secret } : {};
+      await axios.post(url, { userId, type, params }, { headers });
+    } catch (error: any) {
+      console.error(`Failed to trigger notification: ${type}`, error.message);
+    }
+  }
+
   private async snapshotOrderProducts(products: any[] = []): Promise<any[]> {
-    const productIds = products.map(line => line?.productId).filter(Boolean);
+    const productIds = products.map(line => line?.productId).filter(Boolean).filter(id => Types.ObjectId.isValid(id));
     if (productIds.length === 0) return products;
 
     const dbProducts = await this.productModel.find({ _id: { $in: productIds }, deletedAt: null })
@@ -138,22 +178,6 @@ export class OrderService implements OnModuleInit, OnModuleDestroy {
         priceSnapshotAt: line.priceSnapshotAt || product.priceUpdatedAt || new Date(),
       };
     });
-  }
-
-  private async triggerNotification(userId: string, type: string, params: any) {
-    try {
-      const baseUrl = process.env.NOTIFICATION_SERVICE_URL || 'http://localhost:3009/api/v1';
-
-      // Send In-App Notification
-      await axios.post(`${baseUrl}/notifications/in-app`, { userId, type, params });
-
-      // Send Email Notification (Notification Service will resolve email from userId if missing)
-      await axios.post(`${baseUrl}/notifications/email`, { userId, type, params });
-
-      this.logger.log(`Notifications triggered (In-App & Email): ${type} for user ${userId}`);
-    } catch (error) {
-      this.logger.error(`Failed to trigger notifications: ${type}`, error);
-    }
   }
 
   async getPublicStats(): Promise<any> {
@@ -202,12 +226,11 @@ export class OrderService implements OnModuleInit, OnModuleDestroy {
   }
 
   async onModuleInit() {
-    // Recover payment polling for orders in PENDING status after a restart
-    this.logger.log('Recovering pending payment polls after restart...');
     try {
       const pendingOrders = await this.orderModel.find({
         'payment.status': PaymentStatus.PENDING,
-        'payment.transactionRef': { $exists: true, $ne: null }
+        'payment.transactionRef': { $exists: true, $ne: null },
+        status: OrderStatus.PLACED
       }).exec();
 
       for (const order of pendingOrders) {
@@ -442,8 +465,8 @@ export class OrderService implements OnModuleInit, OnModuleDestroy {
 
     // Authorization: buyer can place (accept quote) or cancel; seller can do fulfillment transitions
     // Added DELIVERED to buyerActions to allow "Confirm Receipt" flow
-    const isBuyer = order.buyer?.userId?.toString() === userId;
-    const isSeller = order.seller?.userId?.toString() === userId;
+    const isBuyer = this.isOrderBuyer(order, userId);
+    const isSeller = this.isOrderSeller(order, userId);
     const buyerActions = [OrderStatus.PLACED, OrderStatus.CANCELLED, OrderStatus.DELIVERED];
     const sellerActions = [
       OrderStatus.PREPARING, OrderStatus.READY_FOR_PICKUP,
@@ -501,12 +524,19 @@ export class OrderService implements OnModuleInit, OnModuleDestroy {
           this.logger.error(`Failed to trigger payout for order ${id}: ${err.message}`);
         });
 
+        // Increment totalOrders for purchased products in the database
+        this.incrementProductOrders(updated).catch(err => {
+          this.logger.error(`Failed to increment product orders count for order ${id}: ${err.message}`);
+        });
+
         // Sync delivered status to delivery-service (buyer confirmed before rider marked it)
         if (updated.deliveryId) {
           const deliveryUrl = process.env.DELIVERY_SERVICE_URL || 'http://localhost:3008/api/v1';
+          const secret = process.env.INTERNAL_SERVICE_SECRET;
+          const headers = secret ? { 'x-internal-service-key': secret } : {};
           axios.put(`${deliveryUrl}/deliveries/${updated.deliveryId}/status`, {
             status: 'delivered'
-          }).catch(err => this.logger.warn(`Failed to sync DELIVERED status to delivery service: ${err.message}`));
+          }, { headers }).catch(err => this.logger.warn(`Failed to sync DELIVERED status to delivery service: ${err.message}`));
         }
       }
 
@@ -542,12 +572,14 @@ export class OrderService implements OnModuleInit, OnModuleDestroy {
     try {
       const deliveryUrl = process.env.DELIVERY_SERVICE_URL || 'http://localhost:3008/api/v1';
       const walletUrl = process.env.WALLET_SERVICE_URL || 'http://localhost:3007/api/v1';
+      const secret = process.env.INTERNAL_SERVICE_SECRET;
+      const headers = secret ? { 'x-internal-service-key': secret } : {};
 
       const shouldPaySeller = payFor === 'seller' || payFor === 'both';
       const shouldPayRider = payFor === 'rider' || payFor === 'both';
 
       // 1. Get delivery info to find the rider
-      const deliveryRes = await axios.get(`${deliveryUrl}/deliveries/${order.deliveryId}`);
+      const deliveryRes = await axios.get(`${deliveryUrl}/deliveries/${order.deliveryId}`, { headers });
       const delivery = deliveryRes.data?.data;
 
       if (!delivery || !delivery.rider?.userId) {
@@ -579,7 +611,7 @@ export class OrderService implements OnModuleInit, OnModuleDestroy {
         sellerPayout: shouldPaySeller ? (order.financials.sellerPayout || order.financials.subtotal * 0.985) : 0,
         riderPayout: shouldPayRider ? (order.financials.riderPayout || order.financials.deliveryFee * 0.9) : 0,
         commissionFloorApplied: order.financials.platformCommission === 100
-      });
+      }, { headers });
 
       this.logger.log(`Payout (${payFor}) processed for order ${order.orderNumber}`);
     } catch (err) {
@@ -609,6 +641,30 @@ export class OrderService implements OnModuleInit, OnModuleDestroy {
     };
 
     if (status === PaymentStatus.PAID) {
+      if (!ORDER_TRANSITIONS[order.status]?.includes(OrderStatus.CONFIRMED)) {
+        this.logger.warn(
+          `Ignoring paid callback for ${orderNumber}: order is ${order.status} and cannot be confirmed before quote acceptance.`
+        );
+        return this.orderModel.findOneAndUpdate(
+          { orderNumber },
+          {
+            $set: {
+              'payment.status': PaymentStatus.FAILED,
+              'payment.transactionRef': transactionRef
+            },
+            $push: {
+              paymentAttempts: {
+                method: order.payment.method,
+                transactionRef,
+                status: 'ignored_invalid_order_state',
+                attemptedAt: new Date(),
+                failureReason: `Order status ${order.status} cannot transition to ${OrderStatus.CONFIRMED}`
+              }
+            }
+          },
+          { new: true }
+        );
+      }
       updates['payment.paidAt'] = new Date();
       // Auto-transition order to CONFIRMED
       this.validateTransition(order.status, OrderStatus.CONFIRMED, ORDER_TRANSITIONS);
@@ -655,12 +711,14 @@ export class OrderService implements OnModuleInit, OnModuleDestroy {
   private async decrementProductStock(order: any) {
     const productUrl = process.env.PRODUCT_SERVICE_URL || 'http://localhost:3003/api/v1';
     const products = order.products || (order.product ? [order.product] : []);
+    const secret = process.env.INTERNAL_SERVICE_SECRET;
+    const headers = secret ? { 'x-internal-service-key': secret } : {};
 
     for (const item of products) {
       try {
         await axios.post(`${productUrl}/products/${item.productId}/stock`, {
           change: -item.quantity
-        });
+        }, { headers });
         this.logger.log(`Decremented stock for product ${item.productId} by ${item.quantity}`);
       } catch (error) {
         this.logger.error(`Stock update failed for product ${item.productId}: ${error.response?.data?.message || error.message}`);
@@ -671,15 +729,34 @@ export class OrderService implements OnModuleInit, OnModuleDestroy {
   private async incrementProductStock(order: any) {
     const productUrl = process.env.PRODUCT_SERVICE_URL || 'http://localhost:3003/api/v1';
     const products = order.products || (order.product ? [order.product] : []);
+    const secret = process.env.INTERNAL_SERVICE_SECRET;
+    const headers = secret ? { 'x-internal-service-key': secret } : {};
 
     for (const item of products) {
       try {
         await axios.post(`${productUrl}/products/${item.productId}/stock`, {
           change: item.quantity
-        });
+        }, { headers });
         this.logger.log(`Restored stock for product ${item.productId} by ${item.quantity} (Order Cancelled)`);
       } catch (error) {
         this.logger.error(`Stock restoration failed for product ${item.productId}: ${error.response?.data?.message || error.message}`);
+      }
+    }
+  }
+
+  private async incrementProductOrders(order: any) {
+    const productUrl = process.env.PRODUCT_SERVICE_URL || 'http://localhost:3003/api/v1';
+    const products = order.products || (order.product ? [order.product] : []);
+    const secret = process.env.INTERNAL_SERVICE_SECRET;
+    const headers = secret ? { 'x-internal-service-key': secret } : {};
+
+    for (const item of products) {
+      try {
+        await axios.post(`${productUrl}/products/${item.productId}/orders/increment`, {
+          count: item.quantity || 1
+        }, { headers });
+      } catch (error: any) {
+        this.logger.error(`Failed to increment product orders for ${item.productId}: ${error.response?.data?.message || error.message}`);
       }
     }
   }
@@ -690,6 +767,8 @@ export class OrderService implements OnModuleInit, OnModuleDestroy {
     try {
       const deliveryUrl = process.env.DELIVERY_SERVICE_URL || 'http://localhost:3008/api/v1';
       this.logger.log(`Attempting to create delivery at ${deliveryUrl}/deliveries`);
+      const secret = process.env.INTERNAL_SERVICE_SECRET;
+      const headers = secret ? { 'x-internal-service-key': secret } : {};
 
       const seller = order.seller || {};
       const buyer = order.buyer || {};
@@ -698,7 +777,7 @@ export class OrderService implements OnModuleInit, OnModuleDestroy {
       let pickupCoords = { lat: -1.9441, lng: 30.0619 }; // fallback to Kigali center
       try {
         const marketUrl = process.env.MARKET_SERVICE_URL || 'http://localhost:3002/api/v1';
-        const { data: market } = await axios.get(`${marketUrl}/markets/${seller.marketId}`);
+        const { data: market } = await axios.get(`${marketUrl}/markets/${seller.marketId}`, { headers });
         if (market?.location?.coordinates) {
           pickupCoords = { lat: market.location.coordinates[1], lng: market.location.coordinates[0] };
         }
@@ -707,6 +786,7 @@ export class OrderService implements OnModuleInit, OnModuleDestroy {
       }
 
       const dropoffAddress = buyer.deliveryAddress || {};
+      const plainOrder = await this.orderModel.findById(order._id).lean().exec();
 
       const response = await axios.post(`${deliveryUrl}/deliveries`, {
         orderId: order._id,
@@ -722,11 +802,11 @@ export class OrderService implements OnModuleInit, OnModuleDestroy {
           address: dropoffAddress.address || 'Customer location'
         },
         financials: {
-          deliveryFee: order.financials?.deliveryFee,
-          totalAmount: order.financials?.totalAmount
+          deliveryFee: plainOrder?.financials?.deliveryFee ?? order.financials?.deliveryFee ?? 500,
+          totalAmount: plainOrder?.financials?.totalAmount ?? order.financials?.totalAmount ?? 0
         },
         notes: order.notes
-      });
+      }, { headers });
 
       const deliveryId = response.data?.data?._id;
       if (deliveryId) {
@@ -734,7 +814,7 @@ export class OrderService implements OnModuleInit, OnModuleDestroy {
       }
 
       this.logger.log(`Delivery created successfully for order ${orderNumber}`);
-    } catch (error) {
+    } catch (error: any) {
       this.logger.error(`Failed to create delivery for order ${orderNumber}`, error.response?.data || error.message);
     }
   }
@@ -818,13 +898,17 @@ export class OrderService implements OnModuleInit, OnModuleDestroy {
     if (!order) throw new NotFoundException('Order not found');
 
     // Authorization: only the buyer can retry payment
-    if (userId && order.buyer?.userId?.toString() !== userId) {
+    if (userId && !this.isOrderBuyer(order, userId)) {
       throw new BadRequestException('Only the buyer can retry payment');
     }
 
     // Only allow retry if payment is in FAILED or PENDING state
     if (order.payment?.status !== PaymentStatus.FAILED && order.payment?.status !== PaymentStatus.PENDING) {
       throw new BadRequestException(`Cannot retry payment for order in ${order.payment?.status} state`);
+    }
+
+    if (order.status !== OrderStatus.PLACED) {
+      throw new BadRequestException('Payment can only be started after the quote is accepted and the order is placed');
     }
 
     const shouldAutoConfirmPayments = process.env.AUTO_CONFIRM_PAYMENTS === 'true';
@@ -899,28 +983,36 @@ export class OrderService implements OnModuleInit, OnModuleDestroy {
     const paymentMethod = order?.payment?.method || 'MTN_MOMO';
 
     const poll = setInterval(async () => {
-      attempts++;
-      this.logger.log(`Polling payment status for ${orderNumber} (Attempt ${attempts}/${maxAttempts})...`);
+      try {
+        attempts++;
+        this.logger.log(`Polling payment status for ${orderNumber} (Attempt ${attempts}/${maxAttempts})...`);
 
-      const { status, transactionId } = await this.paymentService.getPaymentStatus(referenceId, paymentMethod);
+        const { status, transactionId } = await this.paymentService.getPaymentStatus(referenceId, paymentMethod);
 
-      if (status === 'SUCCESSFUL') {
-        clearInterval(poll);
-        this.paymentPollingIntervals.delete(orderNumber);
-        await this.processPaymentCallback(orderNumber, PaymentStatus.PAID, transactionId || referenceId);
-      } else if (status === 'FAILED') {
-        clearInterval(poll);
-        this.paymentPollingIntervals.delete(orderNumber);
-        await this.processPaymentCallback(orderNumber, PaymentStatus.FAILED, referenceId);
-      } else if (attempts >= maxAttempts) {
-        clearInterval(poll);
-        this.paymentPollingIntervals.delete(orderNumber);
+        if (status === 'SUCCESSFUL') {
+          clearInterval(poll);
+          this.paymentPollingIntervals.delete(orderNumber);
+          await this.processPaymentCallback(orderNumber, PaymentStatus.PAID, transactionId || referenceId);
+        } else if (status === 'FAILED') {
+          clearInterval(poll);
+          this.paymentPollingIntervals.delete(orderNumber);
+          await this.processPaymentCallback(orderNumber, PaymentStatus.FAILED, referenceId);
+        } else if (attempts >= maxAttempts) {
+          clearInterval(poll);
+          this.paymentPollingIntervals.delete(orderNumber);
 
-        if (shouldAutoConfirm) {
-          this.logger.warn(`Sandbox Timeout: Auto-confirming order ${orderNumber} for testing.`);
-          await this.processPaymentCallback(orderNumber, PaymentStatus.PAID, 'SANDBOX-SUCCESS-' + referenceId);
-        } else {
-          this.logger.error(`Payment polling timed out for order ${orderNumber}`);
+          if (shouldAutoConfirm) {
+            this.logger.warn(`Sandbox Timeout: Auto-confirming order ${orderNumber} for testing.`);
+            await this.processPaymentCallback(orderNumber, PaymentStatus.PAID, 'SANDBOX-SUCCESS-' + referenceId);
+          } else {
+            this.logger.error(`Payment polling timed out for order ${orderNumber}`);
+          }
+        }
+      } catch (error: any) {
+        this.logger.error(`Payment polling error for ${orderNumber}: ${error.message}`, error.stack);
+        if (error?.code === 'STATE_CONFLICT' || attempts >= maxAttempts) {
+          clearInterval(poll);
+          this.paymentPollingIntervals.delete(orderNumber);
         }
       }
     }, 5000);
@@ -930,11 +1022,25 @@ export class OrderService implements OnModuleInit, OnModuleDestroy {
   }
 
   async findAll(query: any): Promise<any> {
-    const { sellerId, buyerId, status, isDisputed, 'dispute.resolvedAt': resolvedAt } = query;
+    const { sellerId, sellerUserId, buyerId, riderUserId, status, isDisputed, 'dispute.resolvedAt': resolvedAt } = query;
     const filter: any = {};
-    if (sellerId && sellerId !== 'all') filter['seller.userId'] = sellerId;
+    if (sellerUserId && sellerUserId !== 'all') filter['seller.userId'] = sellerUserId;
+    if (sellerId && sellerId !== 'all') {
+      filter.$or = [
+        { 'seller.userId': sellerId },
+        { 'seller.sellerId': sellerId },
+      ];
+    }
     if (buyerId && buyerId !== 'all') filter['buyer.userId'] = buyerId;
-    if (status && status !== 'all') filter.status = { $in: status.split(',') };
+    if (riderUserId && riderUserId !== 'all') filter['rider.userId'] = riderUserId;
+    
+    if (status && status !== 'all') {
+      const statusArray = typeof status === 'string' 
+        ? status.split(',') 
+        : (Array.isArray(status) ? status : [status]);
+      filter.status = { $in: statusArray };
+    }
+    
     if (isDisputed === 'true') filter['dispute.isDisputed'] = true;
     if (resolvedAt === 'null') filter['dispute.resolvedAt'] = null;
 
@@ -953,7 +1059,7 @@ export class OrderService implements OnModuleInit, OnModuleDestroy {
     if (!order) throw new NotFoundException('Order not found');
 
     // Authorization: only the seller of this order can send a quote
-    if (order.seller?.userId?.toString() !== userId) {
+    if (!this.isOrderSeller(order, userId)) {
       throw new BadRequestException('Only the seller of this order can send a quote');
     }
 
@@ -1030,7 +1136,11 @@ export class OrderService implements OnModuleInit, OnModuleDestroy {
       this.orderGateway.sendOrderUpdate({ type: 'STATUS_UPDATE', orderId: id, status: OrderStatus.QUOTE_SENT });
 
       // Notify Buyer about new Quote
-      this.triggerNotification(updated.buyer.userId, 'order.ready', { orderNumber: updated.orderNumber, orderId: id });
+      this.triggerNotification(updated.buyer.userId, 'quote.sent', { 
+        orderNumber: updated.orderNumber, 
+        orderId: id,
+        amount: subtotal
+      });
     }
 
     return updated;
@@ -1041,7 +1151,7 @@ export class OrderService implements OnModuleInit, OnModuleDestroy {
     if (!order) throw new NotFoundException('Order not found');
 
     // Authorization: only the buyer of this order can send a counter-offer
-    if (order.buyer?.userId?.toString() !== userId) {
+    if (!this.isOrderBuyer(order, userId)) {
       throw new BadRequestException('Only the buyer can send a counter-offer');
     }
 
@@ -1114,7 +1224,7 @@ export class OrderService implements OnModuleInit, OnModuleDestroy {
     if (!order) throw new NotFoundException('Order not found');
 
     // Authorization: only the buyer can reject a quote
-    if (order.buyer?.userId?.toString() !== userId) {
+    if (!this.isOrderBuyer(order, userId)) {
       throw new BadRequestException('Only the buyer can reject a quote');
     }
 
@@ -1158,8 +1268,16 @@ export class OrderService implements OnModuleInit, OnModuleDestroy {
       if (!order) throw new NotFoundException('Order not found');
 
       // Authorization: only the buyer or seller of this order can add messages
-      const isBuyer = order.buyer?.userId?.toString() === authenticatedUserId;
-      const isSeller = order.seller?.userId?.toString() === authenticatedUserId;
+      const isBuyer = this.isOrderBuyer(order, authenticatedUserId);
+      const isSeller = this.isOrderSeller(order, authenticatedUserId);
+      if (!isBuyer && !isSeller) {
+        throw new BadRequestException('You are not a participant in this order');
+      }
+
+      // Validate senderRole matches the authenticated user
+      if ((isBuyer && messageData.senderRole !== 'BUYER') || (isSeller && messageData.senderRole !== 'SELLER')) {
+        throw new BadRequestException('Sender role does not match authenticated user');
+      }
       if (!isBuyer && !isSeller) {
         throw new BadRequestException('You are not a participant in this order');
       }
@@ -1199,7 +1317,6 @@ export class OrderService implements OnModuleInit, OnModuleDestroy {
           message: lastMessage
         });
       }
-
       return plainOrder;
     } catch (error) {
       this.logger.error(`Error adding message to order ${id}: ${error.message}`, error.stack);
@@ -1213,7 +1330,7 @@ export class OrderService implements OnModuleInit, OnModuleDestroy {
     if (!order) throw new NotFoundException('Order not found');
 
     // Authorization: only the buyer can update delivery address
-    if (order.buyer?.userId?.toString() !== userId) {
+    if (!this.isOrderBuyer(order, userId)) {
       throw new BadRequestException('Only the buyer can update the delivery address');
     }
 
@@ -1227,18 +1344,83 @@ export class OrderService implements OnModuleInit, OnModuleDestroy {
     // duplicating the Haversine formula here.
     let deliveryFee = 500; // minimum 500 RWF
     try {
-      const market = await this.marketModel.findById(order.seller?.marketId).exec();
-      if (market?.location?.coordinates) {
-        const marketPoint = { lat: market.location.coordinates[1], lng: market.location.coordinates[0] };
-        // calculateDistance returns km
-        const dist = this.locationService.calculateDistance(marketPoint, coordinates);
-        // M9 fix: fee per 5km band read from env; defaults to 500 RWF
-        const feePerBand = Number(process.env.DELIVERY_FEE_PER_5KM) || 500;
-        deliveryFee = Math.max(Math.ceil(dist / 5) * feePerBand, feePerBand);
+      let marketPoint: { lat: number; lng: number } | null = null;
+      const marketId = order.seller?.marketId;
+
+      // Safely query the database ONLY if the marketId is a valid ObjectId, otherwise use slug query or HTTP fallback
+      if (marketId && Types.ObjectId.isValid(marketId)) {
+        try {
+          const market = await this.marketModel.findById(marketId).exec();
+          if (market?.location?.coordinates) {
+            marketPoint = { lat: market.location.coordinates[1], lng: market.location.coordinates[0] };
+          }
+        } catch (dbErr: any) {
+          this.logger.warn(`Direct DB lookup failed for marketId ${marketId}: ${dbErr.message}`);
+        }
       }
-    } catch {
-      this.logger.warn(`Could not calculate delivery fee from market for order ${id}`);
+
+      // If we couldn't resolve the marketPoint directly, try lookup by slug in the database
+      if (!marketPoint && marketId) {
+        try {
+          const marketBySlug = await this.marketModel.findOne({ slug: marketId, deletedAt: null }).exec();
+          if (marketBySlug?.location?.coordinates) {
+            marketPoint = { lat: marketBySlug.location.coordinates[1], lng: marketBySlug.location.coordinates[0] };
+          }
+        } catch (slugDbErr: any) {
+          this.logger.warn(`DB slug lookup failed for ${marketId}: ${slugDbErr.message}`);
+        }
+      }
+
+      // Finally fallback to HTTP call to market-service
+      if (!marketPoint && marketId) {
+        try {
+          const marketUrl = process.env.MARKET_SERVICE_URL || 'http://localhost:3002/api/v1';
+          const secret = process.env.INTERNAL_SERVICE_SECRET;
+          const headers = secret ? { 'x-internal-service-key': secret } : {};
+          const { data: marketRes } = await axios.get(`${marketUrl}/markets/${marketId}`, { headers });
+          const marketData = marketRes?.data || marketRes;
+          if (marketData?.location?.coordinates) {
+            marketPoint = {
+              lat: marketData.location.coordinates[1],
+              lng: marketData.location.coordinates[0],
+            };
+          }
+        } catch (httpErr: any) {
+          this.logger.warn(`HTTP lookup failed for marketId ${marketId}: ${httpErr.message}`);
+        }
+      }
+
+      if (marketPoint) {
+        // Query delivery-service fee calculation endpoint for exact pricing
+        try {
+          const deliveryUrl = process.env.DELIVERY_SERVICE_URL || 'http://localhost:3008/api/v1';
+          const secret = process.env.INTERNAL_SERVICE_SECRET;
+          const headers = secret ? { 'x-internal-service-key': secret } : {};
+          const { data: feeRes } = await axios.post(`${deliveryUrl}/deliveries/fee`, {
+            from: marketPoint,
+            to: coordinates
+          }, { headers });
+          const feeData = feeRes?.data || feeRes;
+          if (feeData?.fee !== undefined) {
+            deliveryFee = feeData.fee;
+          }
+        } catch (feeErr: any) {
+          this.logger.warn(`Failed to fetch fee from delivery-service: ${feeErr.message}. Falling back to straight-line...`);
+          const dist = this.locationService.calculateDistance(marketPoint, coordinates);
+          const feePerBand = Number(process.env.DELIVERY_FEE_PER_5KM) || 500;
+          deliveryFee = Math.max(Math.ceil(dist / 5) * feePerBand, feePerBand);
+        }
+      }
+    } catch (err: any) {
+      this.logger.warn(`Could not calculate delivery fee from market for order ${id}: ${err.message}`);
     }
+
+    const subtotal = order.financials?.subtotal || 0;
+    const platformCommission = order.financials?.platformCommission || Math.max(subtotal * 0.015, 100);
+    const gatewayFee = Math.ceil((subtotal + deliveryFee) * 0.02);
+    const totalAmount = subtotal + deliveryFee + gatewayFee;
+    const riderPayout = Math.ceil(deliveryFee * 0.9);
+    const sellerPayout = subtotal - platformCommission;
 
     const updated = await this.orderModel.findByIdAndUpdate(
       id,
@@ -1246,6 +1428,10 @@ export class OrderService implements OnModuleInit, OnModuleDestroy {
         $set: {
           'buyer.deliveryAddress': { address, coordinates },
           'financials.deliveryFee': deliveryFee,
+          'financials.gatewayFee': gatewayFee,
+          'financials.totalAmount': totalAmount,
+          'financials.riderPayout': riderPayout,
+          'financials.sellerPayout': sellerPayout,
         },
         $push: {
           messages: {

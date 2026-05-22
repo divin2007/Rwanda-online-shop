@@ -1,0 +1,450 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>RMF Platform - Buyer Wallet &amp; Payment History</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Work+Sans:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@500&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f1f1;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #8e7164;
+            border-radius: 10px;
+        }
+        .flat-card {
+            border: 1px solid #ebdcd0;
+            background: #ffffff;
+        }
+    </style>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "tertiary": "#005ac2",
+                        "primary-container": "#ff6b00",
+                        "on-secondary-container": "#561b00",
+                        "on-primary-fixed": "#351000",
+                        "surface-variant": "#e3e2e2",
+                        "on-primary-fixed-variant": "#7a3000",
+                        "secondary-container": "#fc671d",
+                        "on-primary-container": "#572000",
+                        "on-tertiary-fixed-variant": "#004395",
+                        "outline-variant": "#e2bfb0",
+                        "on-tertiary-fixed": "#001a42",
+                        "surface-container-low": "#f5f3f3",
+                        "on-background": "#1b1c1c",
+                        "on-tertiary-container": "#002f6b",
+                        "error-container": "#ffdad6",
+                        "on-surface-variant": "#5a4136",
+                        "surface-container-highest": "#e3e2e2",
+                        "on-secondary": "#ffffff",
+                        "surface-dim": "#dbdad9",
+                        "secondary": "#a63b00",
+                        "on-error-container": "#93000a",
+                        "surface-container": "#efeded",
+                        "on-tertiary": "#ffffff",
+                        "secondary-fixed": "#ffdbce",
+                        "on-error": "#ffffff",
+                        "inverse-primary": "#ffb693",
+                        "secondary-fixed-dim": "#ffb598",
+                        "surface": "#fbf9f8",
+                        "tertiary-fixed": "#d8e2ff",
+                        "inverse-on-surface": "#f2f0f0",
+                        "inverse-surface": "#303030",
+                        "error": "#ba1a1a",
+                        "primary-fixed-dim": "#ffb693",
+                        "tertiary-fixed-dim": "#adc6ff",
+                        "surface-container-high": "#e9e8e7",
+                        "primary-fixed": "#ffdbcc",
+                        "outline": "#8e7164",
+                        "primary": "#a04100",
+                        "on-surface": "#1b1c1c",
+                        "on-secondary-fixed": "#370e00",
+                        "tertiary-container": "#5f97ff",
+                        "surface-bright": "#fbf9f8",
+                        "on-primary": "#ffffff",
+                        "background": "#fbf9f8",
+                        "surface-container-lowest": "#ffffff",
+                        "surface-tint": "#a04100",
+                        "on-secondary-fixed-variant": "#7f2b00"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.125rem",
+                        "lg": "0.25rem",
+                        "xl": "0.5rem",
+                        "full": "0.75rem"
+                    },
+                    "spacing": {
+                        "gutter": "16px",
+                        "base": "4px",
+                        "margin-mobile": "16px",
+                        "margin-desktop": "32px",
+                        "xs": "4px",
+                        "lg": "24px",
+                        "xl": "40px",
+                        "sm": "8px",
+                        "md": "16px"
+                    },
+                    "fontFamily": {
+                        "table-data": ["Work Sans"],
+                        "body-md": ["Work Sans"],
+                        "label-md": ["JetBrains Mono"],
+                        "body-sm": ["Work Sans"],
+                        "headline-lg": ["Work Sans"],
+                        "headline-lg-mobile": ["Work Sans"],
+                        "body-lg": ["Work Sans"],
+                        "headline-md": ["Work Sans"]
+                    },
+                    "fontSize": {
+                        "table-data": ["13px", {"lineHeight": "18px", "fontWeight": "500"}],
+                        "body-md": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                        "label-md": ["12px", {"lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "500"}],
+                        "body-sm": ["12px", {"lineHeight": "16px", "fontWeight": "400"}],
+                        "headline-lg": ["30px", {"lineHeight": "38px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                        "headline-lg-mobile": ["24px", {"lineHeight": "30px", "letterSpacing": "-0.01em", "fontWeight": "700"}],
+                        "body-lg": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                        "headline-md": ["20px", {"lineHeight": "28px", "fontWeight": "600"}]
+                    }
+                },
+            },
+        }
+    </script>
+</head>
+<body class="bg-background text-on-background font-body-md antialiased">
+<!-- TopAppBar -->
+<header class="fixed top-0 w-full z-50 bg-surface border-b border-outline-variant flex justify-between items-center px-margin-desktop h-16 w-full">
+<div class="flex items-center gap-md">
+<span class="text-headline-md font-headline-md text-primary font-bold">RMF Platform</span>
+<div class="hidden md:flex items-center bg-surface-container-low px-sm py-xs rounded-lg border border-outline-variant ml-md">
+<span class="material-symbols-outlined text-on-surface-variant mr-xs">search</span>
+<input class="bg-transparent border-none focus:ring-0 text-body-md w-64" placeholder="Search orders..." type="text"/>
+</div>
+</div>
+<div class="flex items-center gap-md">
+<button class="material-symbols-outlined text-on-surface-variant hover:bg-surface-container-low p-2 rounded-full transition-colors">notifications</button>
+<button class="material-symbols-outlined text-on-surface-variant hover:bg-surface-container-low p-2 rounded-full transition-colors">chat</button>
+<div class="flex items-center gap-xs ml-xs cursor-pointer active:opacity-80">
+<span class="material-symbols-outlined text-primary" style="font-variation-settings: 'FILL' 1;">account_circle</span>
+<span class="font-label-md text-label-md hidden md:block">John Doe</span>
+</div>
+</div>
+</header>
+<!-- SideNavBar -->
+<aside class="fixed left-0 top-0 h-full w-64 hidden md:flex flex-col bg-surface-container-low border-r border-outline-variant p-md gap-sm pt-20">
+<div class="mb-lg px-xs">
+<p class="font-label-md text-label-md text-primary uppercase tracking-widest opacity-70">Market Facilitator</p>
+<h2 class="font-headline-md text-headline-md font-bold text-primary">RMF Portal</h2>
+</div>
+<nav class="flex-1 flex flex-col gap-xs">
+<a class="flex items-center gap-sm px-md py-sm text-on-surface-variant hover:bg-surface-container-high rounded-xl transition-all" href="#">
+<span class="material-symbols-outlined">dashboard</span>
+<span class="font-label-md text-label-md">Dashboard</span>
+</a>
+<a class="flex items-center gap-sm px-md py-sm text-on-surface-variant hover:bg-surface-container-high rounded-xl transition-all" href="#">
+<span class="material-symbols-outlined">storefront</span>
+<span class="font-label-md text-label-md">Marketplace</span>
+</a>
+<a class="flex items-center gap-sm px-md py-sm bg-primary-container text-on-primary-container rounded-xl font-bold transition-all" href="#">
+<span class="material-symbols-outlined">account_balance_wallet</span>
+<span class="font-label-md text-label-md">Wallet &amp; Payments</span>
+</a>
+<a class="flex items-center gap-sm px-md py-sm text-on-surface-variant hover:bg-surface-container-high rounded-xl transition-all" href="#">
+<span class="material-symbols-outlined">receipt_long</span>
+<span class="font-label-md text-label-md">Orders</span>
+</a>
+<a class="flex items-center gap-sm px-md py-sm text-on-surface-variant hover:bg-surface-container-high rounded-xl transition-all" href="#">
+<span class="material-symbols-outlined">analytics</span>
+<span class="font-label-md text-label-md">Analytics</span>
+</a>
+</nav>
+<div class="mt-auto border-t border-outline-variant pt-md flex flex-col gap-xs">
+<a class="flex items-center gap-sm px-md py-sm text-on-surface-variant hover:bg-surface-container-high rounded-xl transition-all" href="#">
+<span class="material-symbols-outlined">settings</span>
+<span class="font-label-md text-label-md">Settings</span>
+</a>
+<a class="flex items-center gap-sm px-md py-sm text-on-surface-variant hover:bg-surface-container-high rounded-xl transition-all" href="#">
+<span class="material-symbols-outlined">help</span>
+<span class="font-label-md text-label-md">Support</span>
+</a>
+</div>
+</aside>
+<!-- Main Content Canvas -->
+<main class="md:ml-64 pt-20 pb-24 px-margin-mobile md:px-margin-desktop">
+<div class="max-w-6xl mx-auto">
+<!-- Page Header -->
+<div class="flex flex-col md:flex-row md:items-end justify-between mb-lg gap-md">
+<div>
+<h1 class="font-headline-lg text-headline-lg text-on-background">Wallet &amp; Payment History</h1>
+<p class="text-on-surface-variant mt-xs">Manage your funds, escrowed payments, and transaction records.</p>
+</div>
+<div class="flex items-center gap-sm bg-tertiary/10 border border-tertiary/20 px-md py-sm rounded-lg">
+<span class="material-symbols-outlined text-tertiary" style="font-variation-settings: 'FILL' 1;">verified_user</span>
+<div class="text-body-sm font-medium">
+<span class="text-tertiary">RMF Escrow Protection Active</span>
+<p class="text-[10px] text-on-surface-variant leading-tight">Funds are held securely until delivery confirmation.</p>
+</div>
+</div>
+</div>
+<!-- Bento Grid Dashboard -->
+<div class="grid grid-cols-1 md:grid-cols-12 gap-gutter mb-xl">
+<!-- Current Balance Card -->
+<div class="md:col-span-4 flat-card p-lg flex flex-col justify-between rounded-xl relative overflow-hidden">
+<div class="absolute top-0 right-0 w-32 h-32 bg-primary/5 rounded-full -mr-16 -mt-16"></div>
+<div>
+<p class="font-label-md text-label-md text-on-surface-variant uppercase tracking-wider mb-xs">Current Balance</p>
+<h2 class="font-headline-lg text-headline-lg text-primary">1,240,500 RWF</h2>
+</div>
+<div class="mt-lg flex gap-sm">
+<button class="flex-1 bg-primary text-on-primary py-sm font-label-md text-label-md rounded-lg active:opacity-80 transition-opacity">Add Funds</button>
+<button class="flex-1 border border-primary text-primary py-sm font-label-md text-label-md rounded-lg active:bg-surface-container-low transition-colors">Withdraw</button>
+</div>
+</div>
+<!-- Escrow in Progress Card -->
+<div class="md:col-span-4 flat-card p-lg bg-surface-container-low rounded-xl">
+<div class="flex items-center justify-between mb-md">
+<p class="font-label-md text-label-md text-on-surface-variant uppercase tracking-wider">Escrow in Progress</p>
+<span class="material-symbols-outlined text-secondary">lock</span>
+</div>
+<h2 class="font-headline-lg text-headline-lg text-secondary">485,000 RWF</h2>
+<div class="mt-md flex items-center gap-xs">
+<div class="flex -space-x-2">
+<div class="w-6 h-6 rounded-full bg-outline-variant border-2 border-surface"></div>
+<div class="w-6 h-6 rounded-full bg-primary-fixed border-2 border-surface"></div>
+</div>
+<span class="text-body-sm text-on-surface-variant">3 Active Trade Escrows</span>
+</div>
+<p class="text-[11px] text-on-surface-variant mt-sm leading-relaxed">Funds release automatically upon buyer confirmation or successful dispute resolution.</p>
+</div>
+<!-- Saved Payment Methods -->
+<div class="md:col-span-4 flat-card p-lg rounded-xl">
+<p class="font-label-md text-label-md text-on-surface-variant uppercase tracking-wider mb-md">Saved Methods</p>
+<div class="space-y-sm">
+<div class="flex items-center justify-between p-sm bg-surface-container border border-outline-variant rounded-lg">
+<div class="flex items-center gap-md">
+<div class="w-10 h-6 bg-[#ffcc00] rounded-sm flex items-center justify-center font-bold text-[10px] text-black">MoMo</div>
+<div>
+<p class="font-label-md text-label-md">MTN Rwanda</p>
+<p class="text-[10px] text-on-surface-variant">078****901</p>
+</div>
+</div>
+<span class="material-symbols-outlined text-tertiary text-sm">verified</span>
+</div>
+<div class="flex items-center justify-between p-sm bg-surface rounded-lg border border-outline-variant border-dashed">
+<div class="flex items-center gap-md">
+<span class="material-symbols-outlined text-on-surface-variant">credit_card</span>
+<div>
+<p class="font-label-md text-label-md text-on-surface-variant">Visa Corporate</p>
+<p class="text-[10px] text-on-surface-variant">**** 4421</p>
+</div>
+</div>
+<button class="text-primary font-label-md text-[10px] hover:underline">Manage</button>
+</div>
+</div>
+<button class="mt-md w-full py-xs border border-outline text-on-surface-variant font-label-md text-label-md rounded hover:bg-surface-container transition-colors">
+                        + Add New Method
+                    </button>
+</div>
+</div>
+<!-- Transactions Section -->
+<div class="flat-card rounded-xl overflow-hidden">
+<div class="px-lg py-md bg-surface-container-low border-b border-outline-variant flex items-center justify-between">
+<h3 class="font-headline-md text-headline-md text-on-surface">Payment History</h3>
+<div class="flex items-center gap-sm">
+<button class="flex items-center gap-xs px-sm py-1 border border-outline rounded text-body-sm hover:bg-surface transition-colors">
+<span class="material-symbols-outlined text-sm">filter_list</span>
+                            Filter
+                        </button>
+<button class="flex items-center gap-xs px-sm py-1 border border-outline rounded text-body-sm hover:bg-surface transition-colors">
+<span class="material-symbols-outlined text-sm">download</span>
+                            Export CSV
+                        </button>
+</div>
+</div>
+<div class="overflow-x-auto">
+<table class="w-full text-left border-collapse">
+<thead>
+<tr class="bg-surface-container-highest/30">
+<th class="px-lg py-md font-label-md text-label-md text-on-surface-variant uppercase">Date</th>
+<th class="px-lg py-md font-label-md text-label-md text-on-surface-variant uppercase">Type</th>
+<th class="px-lg py-md font-label-md text-label-md text-on-surface-variant uppercase">Order ID</th>
+<th class="px-lg py-md font-label-md text-label-md text-on-surface-variant uppercase">Amount (RWF)</th>
+<th class="px-lg py-md font-label-md text-label-md text-on-surface-variant uppercase">Status</th>
+<th class="px-lg py-md font-label-md text-label-md text-on-surface-variant uppercase text-right">Actions</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-outline-variant">
+<!-- Row 1 -->
+<tr class="hover:bg-surface-container-lowest transition-colors group">
+<td class="px-lg py-md font-table-data text-table-data">Oct 24, 2023</td>
+<td class="px-lg py-md">
+<div class="flex items-center gap-xs">
+<span class="material-symbols-outlined text-primary text-lg">shopping_cart</span>
+<span class="font-table-data text-table-data">Purchase</span>
+</div>
+</td>
+<td class="px-lg py-md font-label-md text-[11px] text-tertiary">#RMF-9921-X</td>
+<td class="px-lg py-md font-table-data text-table-data text-on-surface">320,000</td>
+<td class="px-lg py-md">
+<span class="bg-green-100 text-green-800 text-[10px] px-2 py-0.5 rounded-full font-bold">COMPLETED</span>
+</td>
+<td class="px-lg py-md text-right">
+<button class="text-primary font-label-md text-label-md flex items-center gap-xs ml-auto group-hover:bg-primary/5 px-sm py-1 rounded transition-all">
+<span class="material-symbols-outlined text-sm">download_for_offline</span>
+                                        Receipt
+                                    </button>
+</td>
+</tr>
+<!-- Row 2 -->
+<tr class="hover:bg-surface-container-lowest transition-colors group">
+<td class="px-lg py-md font-table-data text-table-data">Oct 21, 2023</td>
+<td class="px-lg py-md">
+<div class="flex items-center gap-xs">
+<span class="material-symbols-outlined text-secondary text-lg">history</span>
+<span class="font-table-data text-table-data">Refund</span>
+</div>
+</td>
+<td class="px-lg py-md font-label-md text-[11px] text-tertiary">#RMF-8804-K</td>
+<td class="px-lg py-md font-table-data text-table-data text-green-600">+45,000</td>
+<td class="px-lg py-md">
+<span class="bg-green-100 text-green-800 text-[10px] px-2 py-0.5 rounded-full font-bold">COMPLETED</span>
+</td>
+<td class="px-lg py-md text-right">
+<button class="text-primary font-label-md text-label-md flex items-center gap-xs ml-auto group-hover:bg-primary/5 px-sm py-1 rounded transition-all">
+<span class="material-symbols-outlined text-sm">download_for_offline</span>
+                                        Receipt
+                                    </button>
+</td>
+</tr>
+<!-- Row 3 -->
+<tr class="hover:bg-surface-container-lowest transition-colors group">
+<td class="px-lg py-md font-table-data text-table-data">Oct 19, 2023</td>
+<td class="px-lg py-md">
+<div class="flex items-center gap-xs">
+<span class="material-symbols-outlined text-error text-lg">gavel</span>
+<span class="font-table-data text-table-data">Dispute Adjustment</span>
+</div>
+</td>
+<td class="px-lg py-md font-label-md text-[11px] text-tertiary">#RMF-7712-P</td>
+<td class="px-lg py-md font-table-data text-table-data">-12,500</td>
+<td class="px-lg py-md">
+<span class="bg-yellow-100 text-yellow-800 text-[10px] px-2 py-0.5 rounded-full font-bold uppercase">Processing</span>
+</td>
+<td class="px-lg py-md text-right">
+<span class="text-on-surface-variant text-[10px] italic">Pending Finalization</span>
+</td>
+</tr>
+<!-- Row 4 -->
+<tr class="bg-surface-container-low/20 hover:bg-surface-container-lowest transition-colors group">
+<td class="px-lg py-md font-table-data text-table-data">Oct 15, 2023</td>
+<td class="px-lg py-md">
+<div class="flex items-center gap-xs">
+<span class="material-symbols-outlined text-primary text-lg">shopping_cart</span>
+<span class="font-table-data text-table-data">Purchase</span>
+</div>
+</td>
+<td class="px-lg py-md font-label-md text-[11px] text-tertiary">#RMF-6651-Z</td>
+<td class="px-lg py-md font-table-data text-table-data">165,000</td>
+<td class="px-lg py-md">
+<span class="bg-secondary-container/20 text-on-secondary-container text-[10px] px-2 py-0.5 rounded-full font-bold">IN ESCROW</span>
+</td>
+<td class="px-lg py-md text-right">
+<button class="text-on-surface-variant font-label-md text-label-md opacity-50 cursor-not-allowed flex items-center gap-xs ml-auto">
+<span class="material-symbols-outlined text-sm">lock</span>
+                                        Locked
+                                    </button>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="px-lg py-md border-t border-outline-variant flex items-center justify-between">
+<p class="text-body-sm text-on-surface-variant">Showing 4 of 128 transactions</p>
+<div class="flex gap-xs">
+<button class="w-8 h-8 flex items-center justify-center border border-outline-variant rounded hover:bg-surface-container transition-colors"><span class="material-symbols-outlined text-sm">chevron_left</span></button>
+<button class="w-8 h-8 flex items-center justify-center bg-primary text-on-primary rounded text-xs font-bold">1</button>
+<button class="w-8 h-8 flex items-center justify-center border border-outline-variant rounded hover:bg-surface-container transition-colors text-xs">2</button>
+<button class="w-8 h-8 flex items-center justify-center border border-outline-variant rounded hover:bg-surface-container transition-colors text-xs">3</button>
+<button class="w-8 h-8 flex items-center justify-center border border-outline-variant rounded hover:bg-surface-container transition-colors"><span class="material-symbols-outlined text-sm">chevron_right</span></button>
+</div>
+</div>
+</div>
+<!-- Trust Footer Section -->
+<div class="mt-xl grid grid-cols-1 md:grid-cols-3 gap-gutter">
+<div class="flex gap-md">
+<span class="material-symbols-outlined text-primary text-3xl">shield_with_heart</span>
+<div>
+<h4 class="font-label-md text-label-md text-on-surface font-bold">Buyer Protection</h4>
+<p class="text-body-sm text-on-surface-variant">Secure escrow ensures you get what you ordered or your money back.</p>
+</div>
+</div>
+<div class="flex gap-md">
+<span class="material-symbols-outlined text-primary text-3xl">lock_reset</span>
+<div>
+<h4 class="font-label-md text-label-md text-on-surface font-bold">Encrypted Payments</h4>
+<p class="text-body-sm text-on-surface-variant">All MoMo and Card transactions are processed via 256-bit SSL encryption.</p>
+</div>
+</div>
+<div class="flex gap-md">
+<span class="material-symbols-outlined text-primary text-3xl">support_agent</span>
+<div>
+<h4 class="font-label-md text-label-md text-on-surface font-bold">24/7 Mediation</h4>
+<p class="text-body-sm text-on-surface-variant">Dedicated team to resolve trade disputes within 48 hours.</p>
+</div>
+</div>
+</div>
+</div>
+</main>
+<!-- BottomNavBar (Mobile Only) -->
+<nav class="fixed bottom-0 w-full md:hidden z-50 bg-surface border-t border-outline-variant flex justify-around items-center h-16 px-margin-mobile">
+<a class="flex flex-col items-center justify-center text-on-surface-variant active:bg-surface-variant transition-transform duration-100 scale-95" href="#">
+<span class="material-symbols-outlined">home</span>
+<span class="font-label-md text-[10px]">Home</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant active:bg-surface-variant transition-transform duration-100 scale-95" href="#">
+<span class="material-symbols-outlined">handshake</span>
+<span class="font-label-md text-[10px]">Trades</span>
+</a>
+<a class="flex flex-col items-center justify-center bg-secondary-container text-on-secondary-container rounded-full px-4 py-1 transition-transform duration-100 scale-95" href="#">
+<span class="material-symbols-outlined">account_balance_wallet</span>
+<span class="font-label-md text-[10px]">Wallet</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant active:bg-surface-variant transition-transform duration-100 scale-95" href="#">
+<span class="material-symbols-outlined">forum</span>
+<span class="font-label-md text-[10px]">Chat</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant active:bg-surface-variant transition-transform duration-100 scale-95" href="#">
+<span class="material-symbols-outlined">person</span>
+<span class="font-label-md text-[10px]">Account</span>
+</a>
+</nav>
+<!-- Simple Interactivity -->
+<script>
+        document.querySelectorAll('button').forEach(btn => {
+            btn.addEventListener('click', function(e) {
+                if(this.innerText.includes('Receipt')) {
+                    const originalContent = this.innerHTML;
+                    this.innerHTML = '<span class="material-symbols-outlined animate-spin text-sm">sync</span> Generating...';
+                    setTimeout(() => {
+                        this.innerHTML = '<span class="material-symbols-outlined text-sm text-green-600">check_circle</span> Ready';
+                        setTimeout(() => {
+                            this.innerHTML = originalContent;
+                        }, 2000);
+                    }, 1500);
+                }
+            });
+        });
+    </script>
+</body></html>

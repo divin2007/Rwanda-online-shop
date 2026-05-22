@@ -1,0 +1,448 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>RMF Governance - Admin Category Attribute Governance</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Work+Sans:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@500&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "surface-variant": "#e3e2e2",
+                        "tertiary-container": "#5f97ff",
+                        "surface-bright": "#fbf9f8",
+                        "on-secondary-container": "#561b00",
+                        "surface-container-highest": "#e3e2e2",
+                        "primary-container": "#ff6b00",
+                        "on-secondary-fixed": "#370e00",
+                        "inverse-primary": "#ffb693",
+                        "surface": "#fbf9f8",
+                        "on-tertiary-fixed": "#001a42",
+                        "surface-dim": "#dbdad9",
+                        "surface-container-lowest": "#ffffff",
+                        "on-error": "#ffffff",
+                        "primary": "#a04100",
+                        "inverse-surface": "#303030",
+                        "background": "#fbf9f8",
+                        "secondary": "#a63b00",
+                        "on-primary-fixed": "#351000",
+                        "inverse-on-surface": "#f2f0f0",
+                        "on-tertiary-fixed-variant": "#004395",
+                        "on-surface-variant": "#5a4136",
+                        "on-primary": "#ffffff",
+                        "error-container": "#ffdad6",
+                        "outline": "#8e7164",
+                        "tertiary-fixed": "#d8e2ff",
+                        "surface-container": "#efeded",
+                        "surface-container-high": "#e9e8e7",
+                        "on-surface": "#1b1c1c",
+                        "on-primary-fixed-variant": "#7a3000",
+                        "on-secondary": "#ffffff",
+                        "error": "#ba1a1a",
+                        "tertiary-fixed-dim": "#adc6ff",
+                        "surface-container-low": "#f5f3f3",
+                        "tertiary": "#005ac2",
+                        "on-error-container": "#93000a",
+                        "on-background": "#1b1c1c",
+                        "on-tertiary-container": "#002f6b",
+                        "secondary-container": "#fc671d",
+                        "secondary-fixed-dim": "#ffb598",
+                        "outline-variant": "#e2bfb0",
+                        "primary-fixed": "#ffdbcc",
+                        "on-primary-container": "#572000",
+                        "surface-tint": "#a04100",
+                        "on-tertiary": "#ffffff",
+                        "on-secondary-fixed-variant": "#7f2b00",
+                        "primary-fixed-dim": "#ffb693",
+                        "secondary-fixed": "#ffdbce"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.125rem",
+                        "lg": "0.25rem",
+                        "xl": "0.5rem",
+                        "full": "0.75rem"
+                    },
+                    "spacing": {
+                        "gutter": "16px",
+                        "xs": "4px",
+                        "margin-desktop": "32px",
+                        "md": "16px",
+                        "lg": "24px",
+                        "xl": "40px",
+                        "sm": "8px",
+                        "margin-mobile": "16px",
+                        "base": "4px"
+                    },
+                    "fontFamily": {
+                        "table-data": ["Work Sans"],
+                        "body-md": ["Work Sans"],
+                        "body-lg": ["Work Sans"],
+                        "label-md": ["JetBrains Mono"],
+                        "headline-md": ["Work Sans"],
+                        "body-sm": ["Work Sans"],
+                        "headline-lg-mobile": ["Work Sans"],
+                        "headline-lg": ["Work Sans"]
+                    },
+                    "fontSize": {
+                        "table-data": ["13px", {"lineHeight": "18px", "fontWeight": "500"}],
+                        "body-md": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                        "body-lg": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                        "label-md": ["12px", {"lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "500"}],
+                        "headline-md": ["20px", {"lineHeight": "28px", "fontWeight": "600"}],
+                        "body-sm": ["12px", {"lineHeight": "16px", "fontWeight": "400"}],
+                        "headline-lg-mobile": ["24px", {"lineHeight": "30px", "letterSpacing": "-0.01em", "fontWeight": "700"}],
+                        "headline-lg": ["30px", {"lineHeight": "38px", "letterSpacing": "-0.02em", "fontWeight": "700"}]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+            vertical-align: middle;
+        }
+        .bento-grid {
+            display: grid;
+            grid-template-columns: repeat(12, 1fr);
+            gap: 16px;
+        }
+        .bento-item {
+            border: 1px solid #ebdcd0;
+            background: #ffffff;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body class="bg-background text-on-background font-body-md overflow-x-hidden">
+<!-- TopNavBar -->
+<header class="sticky top-0 z-50 flex justify-between items-center px-margin-desktop w-full h-16 bg-surface dark:bg-surface-dim border-b border-outline-variant dark:border-outline">
+<div class="flex items-center gap-lg">
+<span class="text-headline-md font-headline-md font-bold text-primary dark:text-inverse-primary">RMF Governance</span>
+<div class="hidden md:flex items-center bg-surface-container-low px-sm py-xs border border-outline-variant rounded">
+<span class="material-symbols-outlined text-on-surface-variant px-xs">search</span>
+<input class="bg-transparent border-none focus:ring-0 text-body-md w-64" placeholder="Search taxonomy..." type="text"/>
+</div>
+</div>
+<div class="flex items-center gap-md">
+<button class="material-symbols-outlined text-on-surface-variant p-xs hover:bg-surface-container-low transition-colors rounded-full" data-icon="notifications">notifications</button>
+<button class="material-symbols-outlined text-on-surface-variant p-xs hover:bg-surface-container-low transition-colors rounded-full" data-icon="account_circle">account_circle</button>
+</div>
+</header>
+<div class="flex min-h-[calc(100vh-64px)]">
+<!-- SideNavBar -->
+<aside class="fixed left-0 top-16 h-[calc(100vh-64px)] w-64 flex flex-col border-r border-outline-variant dark:border-outline bg-surface-container-low dark:bg-surface-container-highest hidden md:flex">
+<div class="p-lg">
+<div class="flex items-center gap-sm mb-lg">
+<div class="w-10 h-10 rounded-full bg-secondary-container flex items-center justify-center text-on-secondary-container font-bold">A</div>
+<div>
+<div class="text-label-md font-label-md text-on-surface">Admin Portal</div>
+<div class="text-body-sm font-body-sm text-on-surface-variant">Market Facilitator</div>
+</div>
+</div>
+<nav class="space-y-xs">
+<a class="flex items-center gap-sm px-md py-sm text-on-surface-variant hover:bg-surface-variant transition-all rounded-lg" href="#">
+<span class="material-symbols-outlined" data-icon="dashboard">dashboard</span>
+<span class="text-label-md font-label-md">Dashboard</span>
+</a>
+<a class="flex items-center gap-sm px-md py-sm bg-secondary-container dark:bg-secondary text-on-secondary-container dark:text-on-secondary font-bold rounded-lg translate-x-1 transition-transform" href="#">
+<span class="material-symbols-outlined" data-icon="inventory_2">inventory_2</span>
+<span class="text-label-md font-label-md">Inventory</span>
+</a>
+<a class="flex items-center gap-sm px-md py-sm text-on-surface-variant hover:bg-surface-variant transition-all rounded-lg" href="#">
+<span class="material-symbols-outlined" data-icon="local_shipping">local_shipping</span>
+<span class="text-label-md font-label-md">Shipments</span>
+</a>
+<a class="flex items-center gap-sm px-md py-sm text-on-surface-variant hover:bg-surface-variant transition-all rounded-lg" href="#">
+<span class="material-symbols-outlined" data-icon="payments">payments</span>
+<span class="text-label-md font-label-md">Escrow</span>
+</a>
+<a class="flex items-center gap-sm px-md py-sm text-on-surface-variant hover:bg-surface-variant transition-all rounded-lg" href="#">
+<span class="material-symbols-outlined" data-icon="gavel">gavel</span>
+<span class="text-label-md font-label-md">Compliance</span>
+</a>
+<a class="flex items-center gap-sm px-md py-sm text-on-surface-variant hover:bg-surface-variant transition-all rounded-lg" href="#">
+<span class="material-symbols-outlined" data-icon="analytics">analytics</span>
+<span class="text-label-md font-label-md">Analytics</span>
+</a>
+<a class="flex items-center gap-sm px-md py-sm text-on-surface-variant hover:bg-surface-variant transition-all rounded-lg" href="#">
+<span class="material-symbols-outlined" data-icon="settings">settings</span>
+<span class="text-label-md font-label-md">Settings</span>
+</a>
+</nav>
+</div>
+<div class="mt-auto p-lg border-t border-outline-variant">
+<a class="flex items-center gap-sm px-md py-sm text-on-surface-variant hover:bg-surface-variant transition-all rounded-lg" href="#">
+<span class="material-symbols-outlined" data-icon="help">help</span>
+<span class="text-label-md font-label-md">Support</span>
+</a>
+<a class="flex items-center gap-sm px-md py-sm text-on-surface-variant hover:bg-surface-variant transition-all rounded-lg" href="#">
+<span class="material-symbols-outlined" data-icon="logout">logout</span>
+<span class="text-label-md font-label-md">Logout</span>
+</a>
+</div>
+</aside>
+<!-- Main Content Canvas -->
+<main class="flex-1 md:ml-64 p-gutter md:p-margin-desktop bg-background">
+<!-- Page Header & Global Compliance Score -->
+<div class="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-lg mb-xl">
+<div>
+<h1 class="text-headline-lg font-headline-lg text-on-surface">Category Attribute Governance</h1>
+<p class="text-body-md text-on-surface-variant">Manage taxonomy health, required attributes, and catalog normalization.</p>
+</div>
+<div class="flex items-center gap-lg bg-surface-container-low p-md border border-outline-variant rounded-xl shadow-sm">
+<div class="relative w-16 h-16">
+<svg class="w-full h-full" viewbox="0 0 36 36">
+<path class="text-surface-variant stroke-current" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke-width="3"></path>
+<path class="text-primary stroke-current" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke-dasharray="82, 100" stroke-linecap="round" stroke-width="3"></path>
+</svg>
+<div class="absolute inset-0 flex items-center justify-center text-label-md font-bold text-primary">82%</div>
+</div>
+<div>
+<div class="text-label-md font-label-md uppercase tracking-wider text-on-surface-variant">Catalog Health Score</div>
+<div class="text-headline-md font-headline-md text-on-surface">Compliance High</div>
+<div class="flex items-center gap-xs text-body-sm text-secondary">
+<span class="material-symbols-outlined text-[16px]" data-icon="trending_up">trending_up</span>
+<span>+4.2% from last audit</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Bento Dashboard Grid -->
+<div class="bento-grid">
+<!-- Card 1: Missing Required Attributes -->
+<div class="bento-item col-span-12 lg:col-span-8 flex flex-col">
+<div class="bg-surface-container-high/30 p-md flex justify-between items-center border-b border-outline-variant">
+<div class="flex items-center gap-sm">
+<span class="material-symbols-outlined text-primary" data-icon="error">error</span>
+<span class="text-headline-md font-headline-md">Missing Required Attributes</span>
+</div>
+<button class="text-label-md font-label-md text-primary hover:underline">View All 1,204</button>
+</div>
+<div class="p-gutter overflow-x-auto">
+<table class="w-full text-left">
+<thead>
+<tr class="text-label-md text-on-surface-variant border-b border-outline-variant">
+<th class="py-sm">CATEGORY</th>
+<th class="py-sm">MISSING ATTRIBUTE</th>
+<th class="py-sm">IMPACTED PRODUCTS</th>
+<th class="py-sm">PRIORITY</th>
+<th class="py-sm text-right">ACTION</th>
+</tr>
+</thead>
+<tbody class="text-table-data font-table-data">
+<tr class="border-b border-surface-variant hover:bg-surface-container-low transition-colors">
+<td class="py-md">Produce (Root)</td>
+<td class="py-md"><span class="bg-error-container text-on-error-container px-xs py-[2px] rounded text-[11px]">WEIGHT_UNIT</span></td>
+<td class="py-md">452 items</td>
+<td class="py-md text-error">High</td>
+<td class="py-md text-right"><button class="text-primary hover:bg-primary-fixed-dim p-xs rounded">Fix</button></td>
+</tr>
+<tr class="border-b border-surface-variant hover:bg-surface-container-low transition-colors">
+<td class="py-md">Dried Grains</td>
+<td class="py-md"><span class="bg-error-container text-on-error-container px-xs py-[2px] rounded text-[11px]">MOISTURE_CONTENT</span></td>
+<td class="py-md">128 items</td>
+<td class="py-md text-secondary">Medium</td>
+<td class="py-md text-right"><button class="text-primary hover:bg-primary-fixed-dim p-xs rounded">Fix</button></td>
+</tr>
+<tr class="border-b border-surface-variant hover:bg-surface-container-low transition-colors">
+<td class="py-md">Artisan Textiles</td>
+<td class="py-md"><span class="bg-error-container text-on-error-container px-xs py-[2px] rounded text-[11px]">MATERIAL_COMP</span></td>
+<td class="py-md">89 items</td>
+<td class="py-md text-on-surface-variant">Low</td>
+<td class="py-md text-right"><button class="text-primary hover:bg-primary-fixed-dim p-xs rounded">Fix</button></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="mt-auto p-md bg-surface-container-low flex justify-between items-center border-t border-outline-variant">
+<p class="text-body-sm text-on-surface-variant">Auto-fix available for "Standard Weight" entries.</p>
+<button class="bg-primary text-on-primary px-lg py-sm rounded-lg text-label-md font-bold hover:opacity-90 transition-opacity">Bulk-Fix All High Priority</button>
+</div>
+</div>
+<!-- Card 2: Invalid Variant Data -->
+<div class="bento-item col-span-12 lg:col-span-4 p-md">
+<div class="flex items-center gap-sm mb-lg">
+<span class="material-symbols-outlined text-secondary" data-icon="data_exploration">data_exploration</span>
+<span class="text-headline-md font-headline-md">Variant Integrity</span>
+</div>
+<div class="space-y-lg">
+<div class="p-md bg-surface-container border border-outline-variant rounded">
+<div class="flex justify-between items-center mb-xs">
+<span class="text-label-md font-label-md">Invalid Values</span>
+<span class="text-error font-bold text-label-md">42 Items</span>
+</div>
+<div class="w-full bg-surface-variant h-1 rounded">
+<div class="bg-error h-1 rounded" style="width: 15%"></div>
+</div>
+<p class="text-body-sm text-on-surface-variant mt-sm">Values outside approved taxonomy (e.g. "Kg." vs "kg")</p>
+</div>
+<div class="p-md bg-surface-container border border-outline-variant rounded">
+<div class="flex justify-between items-center mb-xs">
+<span class="text-label-md font-label-md">Duplicate Attributes</span>
+<span class="text-secondary font-bold text-label-md">115 Pairs</span>
+</div>
+<div class="w-full bg-surface-variant h-1 rounded">
+<div class="bg-secondary h-1 rounded" style="width: 35%"></div>
+</div>
+<p class="text-body-sm text-on-surface-variant mt-sm">Redundant definitions found in 'Hardware' hierarchy.</p>
+</div>
+</div>
+<button class="w-full mt-xl border border-primary text-primary py-md rounded-lg text-label-md font-bold hover:bg-primary-fixed transition-colors">Start De-duplication Wizard</button>
+</div>
+<!-- Card 3: Unmapped Legacy Items (Large) -->
+<div class="bento-item col-span-12 p-lg">
+<div class="flex flex-col md:flex-row gap-xl items-start">
+<div class="w-full md:w-1/3">
+<h3 class="text-headline-md font-headline-md mb-md">Unmapped Legacy Items</h3>
+<p class="text-body-md text-on-surface-variant mb-lg">These products were imported from the 2022 regional database and haven't been assigned to the new RMF taxonomy.</p>
+<div class="flex items-center gap-md mb-xl">
+<div class="text-headline-lg font-headline-lg text-on-surface">3,492</div>
+<span class="bg-primary-fixed text-on-primary-fixed-variant px-sm py-xs rounded text-label-md">Pending Review</span>
+</div>
+<div class="space-y-sm">
+<div class="flex justify-between text-body-sm border-b border-surface-variant pb-xs">
+<span>East Region Import</span>
+<span class="font-bold">2,104</span>
+</div>
+<div class="flex justify-between text-body-sm border-b border-surface-variant pb-xs">
+<span>West Region Import</span>
+<span class="font-bold">855</span>
+</div>
+<div class="flex justify-between text-body-sm pb-xs">
+<span>Legacy CSV Uploads</span>
+<span class="font-bold">533</span>
+</div>
+</div>
+</div>
+<div class="w-full md:w-2/3 border border-outline-variant rounded-xl overflow-hidden bg-surface-bright p-md relative">
+<img alt="Legacy Data Visualization" class="w-full h-64 object-cover opacity-80 mix-blend-multiply filter grayscale rounded-lg" data-alt="A complex network diagram or heat map representing legacy data points scattered across a digital grid. The visualization uses a muted earthy palette of browns and deep oranges to reflect the Rwandan context, with glowing nodes indicating unmapped items. The background is a clean off-white with subtle tech-inspired geometric patterns, maintaining a professional and grounded UI aesthetic for data governance." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBsfbsoqU5FAiyi3Hgr3Gma7wKGuV0QqDdTkmGRqG67-2hly76t3DX92Ya-cJ8IM3dC1BCeLIEYeABrVvgFbWXwfU2DPAnTNgxSibBFyi7St3tPMow_t2oBwA72AZHTkkxHKJl8dMkYnc_OvB_VfeEdC20_Oh8WeAtGDvmy9qOizOYjnz44UoqIP2ROkuPADcTznulVogOtQ2_XFMvegDF99VuliZuLNgTPeEeG-skOOmzxIfaLfnY6_dDV50p_hRh2WMZW_nJY-t_z"/>
+<div class="absolute inset-0 flex flex-col items-center justify-center bg-surface-dim/40 backdrop-blur-[2px]">
+<span class="material-symbols-outlined text-primary text-5xl mb-md" data-icon="category">category</span>
+<h4 class="text-headline-md font-bold mb-sm text-on-surface">Auto-Mapping AI is Ready</h4>
+<p class="text-body-md text-on-surface-variant text-center max-w-sm mb-lg">Predictive mapping can resolve 88% of these entries based on product titles.</p>
+<button class="bg-primary text-on-primary px-xl py-md rounded-full shadow-lg font-bold flex items-center gap-sm hover:scale-105 transition-transform">
+<span class="material-symbols-outlined" data-icon="auto_fix_high" style="font-variation-settings: 'FILL' 1;">auto_fix_high</span>
+                                    Run Smart Mapper
+                                </button>
+</div>
+</div>
+</div>
+</div>
+<!-- Card 4: Quick-Action Cleanup Tools -->
+<div class="bento-item col-span-12 lg:col-span-6 p-md">
+<div class="flex items-center gap-sm mb-md">
+<span class="material-symbols-outlined text-on-surface" data-icon="cleaning_services">cleaning_services</span>
+<span class="text-headline-md font-headline-md">Quick Cleanup Tools</span>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-md">
+<button class="flex flex-col items-start p-md bg-surface-container-low hover:bg-surface-variant transition-colors rounded-lg border border-outline-variant text-left group">
+<span class="material-symbols-outlined text-secondary mb-xs group-hover:scale-110 transition-transform" data-icon="format_letter_case">format_letter_spacing</span>
+<span class="text-label-md font-bold">Normalize Casing</span>
+<span class="text-body-sm text-on-surface-variant">Fixes 'KG', 'Kg', 'kg' variants.</span>
+</button>
+<button class="flex flex-col items-start p-md bg-surface-container-low hover:bg-surface-variant transition-colors rounded-lg border border-outline-variant text-left group">
+<span class="material-symbols-outlined text-secondary mb-xs group-hover:scale-110 transition-transform" data-icon="rule">rule</span>
+<span class="text-label-md font-bold">Apply Required Tags</span>
+<span class="text-body-sm text-on-surface-variant">Batch add missing attributes.</span>
+</button>
+<button class="flex flex-col items-start p-md bg-surface-container-low hover:bg-surface-variant transition-colors rounded-lg border border-outline-variant text-left group">
+<span class="material-symbols-outlined text-secondary mb-xs group-hover:scale-110 transition-transform" data-icon="merge_type">merge_type</span>
+<span class="text-label-md font-bold">Merge Synonyms</span>
+<span class="text-body-sm text-on-surface-variant">Combine 'Fruit' and 'Fresh Fruit'.</span>
+</button>
+<button class="flex flex-col items-start p-md bg-surface-container-low hover:bg-surface-variant transition-colors rounded-lg border border-outline-variant text-left group">
+<span class="material-symbols-outlined text-secondary mb-xs group-hover:scale-110 transition-transform" data-icon="history_edu">history_edu</span>
+<span class="text-label-md font-bold">Audit History</span>
+<span class="text-body-sm text-on-surface-variant">View last 30 days of changes.</span>
+</button>
+</div>
+</div>
+<!-- Card 5: Governance Timeline -->
+<div class="bento-item col-span-12 lg:col-span-6 p-md">
+<div class="flex items-center gap-sm mb-md">
+<span class="material-symbols-outlined text-on-surface" data-icon="event_note">event_note</span>
+<span class="text-headline-md font-headline-md">Escrow &amp; Governance Timeline</span>
+</div>
+<div class="relative space-y-lg mt-lg">
+<div class="absolute left-[11px] top-0 bottom-0 w-[2px] bg-outline-variant"></div>
+<div class="relative pl-lg flex gap-md">
+<div class="absolute left-0 top-1 w-6 h-6 rounded-full bg-primary border-4 border-surface flex items-center justify-center"></div>
+<div>
+<div class="text-label-md font-bold">Current Audit: Q3 Product Refresh</div>
+<p class="text-body-sm text-on-surface-variant">Active verification of 'Coffee &amp; Tea' exports. 65% complete.</p>
+<span class="text-body-sm font-label-md text-secondary">Ends in 4 days</span>
+</div>
+</div>
+<div class="relative pl-lg flex gap-md">
+<div class="absolute left-0 top-1 w-6 h-6 rounded-full bg-surface-variant border-4 border-surface flex items-center justify-center"></div>
+<div>
+<div class="text-label-md font-bold text-on-surface-variant">Upcoming: Logistics Attribute Lock</div>
+<p class="text-body-sm text-on-surface-variant opacity-60">Enforcing dimension fields across all bulky goods.</p>
+<span class="text-body-sm font-label-md text-on-surface-variant">Scheduled Oct 15</span>
+</div>
+</div>
+<div class="relative pl-lg flex gap-md">
+<div class="absolute left-0 top-1 w-6 h-6 rounded-full bg-surface-variant border-4 border-surface flex items-center justify-center"></div>
+<div>
+<div class="text-label-md font-bold text-on-surface-variant">Annual Taxonomy Review</div>
+<p class="text-body-sm text-on-surface-variant opacity-60">Board review of category expansions for 2024.</p>
+<span class="text-body-sm font-label-md text-on-surface-variant">Scheduled Dec 01</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Trust Indicator Footer -->
+<footer class="mt-xl pt-lg border-t border-outline-variant flex flex-col md:flex-row justify-between items-center gap-md">
+<div class="flex items-center gap-sm text-on-surface-variant">
+<span class="material-symbols-outlined text-tertiary" data-icon="verified_user">verified_user</span>
+<span class="text-label-md">Secure Data Governance Protocol v4.2</span>
+</div>
+<div class="flex items-center gap-lg">
+<span class="text-body-sm text-on-surface-variant">RMF Systems • Rwanda Commercial Agency</span>
+<div class="flex gap-sm">
+<div class="w-8 h-8 rounded bg-surface-container flex items-center justify-center"><span class="material-symbols-outlined text-[18px]" data-icon="lock">lock</span></div>
+<div class="w-8 h-8 rounded bg-surface-container flex items-center justify-center"><span class="material-symbols-outlined text-[18px]" data-icon="shield">shield</span></div>
+</div>
+</div>
+</footer>
+</main>
+</div>
+<!-- Floating Action Button (Suppressed as per rules for Governance/Settings screens) -->
+<script>
+        // Micro-interactions
+        document.querySelectorAll('.bento-item').forEach(item => {
+            item.addEventListener('mouseenter', () => {
+                item.classList.add('shadow-sm');
+                item.style.borderColor = '#a04100';
+                item.style.transition = 'all 0.2s ease-in-out';
+            });
+            item.addEventListener('mouseleave', () => {
+                item.classList.remove('shadow-sm');
+                item.style.borderColor = '#ebdcd0';
+            });
+        });
+
+        // Search Bar focus effect
+        const searchInput = document.querySelector('input[placeholder="Search taxonomy..."]');
+        if(searchInput) {
+            searchInput.addEventListener('focus', () => {
+                searchInput.parentElement.classList.add('border-primary');
+                searchInput.parentElement.classList.add('ring-1');
+                searchInput.parentElement.classList.add('ring-primary');
+            });
+            searchInput.addEventListener('blur', () => {
+                searchInput.parentElement.classList.remove('border-primary');
+                searchInput.parentElement.classList.remove('ring-1');
+                searchInput.parentElement.classList.remove('ring-primary');
+            });
+        }
+    </script>
+</body></html>

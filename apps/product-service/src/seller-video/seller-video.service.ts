@@ -30,6 +30,216 @@ export class SellerVideoService {
     @InjectModel('User') private userModel: Model<any>,
   ) {}
 
+  async onModuleInit() {
+    return;
+  }
+
+  private async autoSeed() {
+    try {
+      // 1. Ensure markets exist
+      const marketCount = await this.marketModel.countDocuments().exec();
+      if (marketCount === 0) {
+        console.log('No markets found. Seeding default markets first...');
+        const marketsData = [
+          { name: 'Kimironko Elite Hub', code: 'KIM', slug: 'kimironko-elite', type: 'public', description: 'The premier artisanal hub of Kigali, specializing in textiles and fresh produce.', imageUrl: 'https://images.unsplash.com/photo-1533900298318-6b8da08a523e', lat: -1.935, lng: 30.125 },
+          { name: 'Nyabugogo Logistics Terminal', code: 'NYA', slug: 'nyabugogo-terminal', type: 'public', description: 'Central logistics node for regional trade and bulk commodities.', imageUrl: 'https://images.unsplash.com/photo-1488459716781-31db52582fe9', lat: -1.942, lng: 30.051 },
+          { name: 'Nyamirambo Cultural Market', code: 'NYM', slug: 'nyamirambo-cultural', type: 'public', description: 'Rich heritage artifacts and traditional Rwandan handcrafts.', imageUrl: 'https://images.unsplash.com/photo-1605371924599-2d0365da1ae0', lat: -1.965, lng: 30.055 },
+          { name: 'Kigali Heights Artisanal', code: 'KGH', slug: 'kigali-heights', type: 'public', description: 'Upscale facilitator hub for premium Made in Rwanda goods.', imageUrl: 'https://images.unsplash.com/photo-1441986300917-64674bd600d8', lat: -1.951, lng: 30.091 },
+          { name: 'Musanze Regional Hub', code: 'MUS', slug: 'musanze-hub', type: 'public', description: 'Primary gateway for volcanic-soil produce and highland artifacts.', imageUrl: 'https://images.unsplash.com/photo-1506484334402-40f2fc958f6d', lat: -1.507, lng: 29.633 },
+          { name: 'Rubavu Border Trade Center', code: 'RUB', slug: 'rubavu-border', type: 'public', description: 'International facilitator terminal for cross-border commerce.', imageUrl: 'https://images.unsplash.com/photo-1531058240690-006c446962d8', lat: -1.696, lng: 29.261 },
+          { name: 'Huye Knowledge Market', code: 'HUY', slug: 'huye-market', type: 'public', description: 'Academic and artisanal intersection specializing in traditional weaving.', imageUrl: 'https://images.unsplash.com/photo-1516594708146-07c5171b9c8a', lat: -2.597, lng: 29.740 },
+          { name: 'Rwamagana Agri Terminal', code: 'RWA', slug: 'rwamagana-agri', type: 'public', description: 'Strategic agricultural hub for Eastern Province distribution.', imageUrl: 'https://images.unsplash.com/photo-1464226184884-fa280b87c399', lat: -1.949, lng: 30.435 },
+          { name: 'Gicumbi Highland Hub', code: 'GIC', slug: 'gicumbi-highland', type: 'public', description: 'Specialized node for high-altitude dairy and organic spices.', imageUrl: 'https://images.unsplash.com/photo-1500937386664-56d1dfef3854', lat: -1.594, lng: 30.061 },
+          { name: 'Muhanga Central Facilitation', code: 'MUH', slug: 'muhanga-central', type: 'public', description: 'Geographic center node for inter-provincial trade logistics.', imageUrl: 'https://images.unsplash.com/photo-1495570689269-d883b1224443', lat: -2.077, lng: 29.756 }
+        ];
+        for (const m of marketsData) {
+          await this.marketModel.create({
+            name: m.name,
+            code: m.code,
+            slug: m.slug,
+            type: m.type,
+            description: m.description,
+            imageUrl: m.imageUrl,
+            location: {
+              type: 'Point',
+              coordinates: [m.lng, m.lat],
+              address: `${m.name}, Rwanda`
+            },
+            operatingHours: {
+              open: '07:00',
+              close: '19:00',
+              daysOpen: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+            },
+            totalSellers: Math.floor(Math.random() * 100) + 50
+          });
+        }
+      }
+
+      const markets = await this.marketModel.find().exec();
+      
+      // 2. Ensure seller users and profiles exist for each market
+      for (let i = 0; i < markets.length; i++) {
+        const market = markets[i];
+        const email = `merchant.${market.code.toLowerCase()}@rmf.rw`;
+        const phone = `+250788${String(i).padStart(6, '0')}`;
+        
+        let user = await this.userModel.findOne({ email }).exec();
+        if (!user) {
+          user = await this.userModel.create({
+            fullName: `Merchant ${market.name.split(' ')[0]}`,
+            email,
+            phone,
+            passwordHash: '$2b$10$Z3mO9p53C9eG4z67f/9vKeH4.YjTkyUo0WqB.oV3vP.R98yX4Fp/S',
+            role: 'SELLER',
+            isActive: true,
+            isVerified: true,
+          });
+        }
+        
+        let sellerProfile = await this.sellerModel.findOne({ userId: user._id }).exec();
+        if (!sellerProfile) {
+          sellerProfile = await this.sellerModel.create({
+            userId: user._id,
+            marketId: market._id,
+            stallId: `${market.code}-${100 + i}`,
+            stallName: `${market.name.split(' ')[0]} Verified Merchant`,
+            description: `Authorized seller at ${market.name}. Sells quality products.`,
+            shopDetails: {
+              name: `${market.name.split(' ')[0]} Elite Shop`,
+              slug: `${market.slug}-elite-shop`,
+              code: `${market.code}-ELITE`,
+              description: `Quality goods sourced from ${market.name}.`,
+              operatingHours: { open: '08:00', close: '18:00', daysOpen: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'] },
+              categories: ['Produce', 'Textiles', 'Handcrafts', 'Spices']
+            },
+            isApproved: true,
+            rating: 4.5 + (i % 5) * 0.1,
+            totalSales: 120 + i * 15,
+            totalOrders: 90 + i * 12,
+          });
+        }
+        
+        // Ensure products exist and point to this seller!
+        const prodCount = await this.productModel.countDocuments({ marketId: market._id }).exec();
+        if (prodCount === 0) {
+          console.log(`Seeding default products for ${market.name}...`);
+          const categories = ['Produce', 'Handcrafts', 'Textiles', 'Spices', 'Dairy', 'Artisan', 'Household'];
+          for (let p = 1; p <= 5; p++) {
+            const cat = categories[(p + i) % categories.length];
+            const prodName = `${market.name.split(' ')[0]} ${cat} Item #${p}`;
+            await this.productModel.create({
+              name: prodName,
+              slug: `${market.slug}-item-${p}`,
+              description: `Premium ${cat} sourced from the ${market.name}. Verified Made in Rwanda.`,
+              price: (Math.floor(Math.random() * 20) + 1) * 1000,
+              category: cat,
+              categoryLabel: cat,
+              categoryId: cat.toLowerCase(),
+              marketId: market._id,
+              sellerId: sellerProfile._id,
+              images: [market.imageUrl || 'https://images.unsplash.com/photo-1533900298318-6b8da08a523e'],
+              stockType: 'infinite',
+              stockQuantity: 999,
+              unit: p % 2 === 0 ? 'kg' : 'pcs',
+              isApproved: true,
+              isActive: true,
+              isMadeInRwanda: true
+            });
+          }
+        } else {
+          // If products exist but don't have sellerId, update them
+          const products = await this.productModel.find({ marketId: market._id }).exec();
+          for (const prod of products) {
+            if (!prod.sellerId) {
+              prod.sellerId = sellerProfile._id;
+              await prod.save();
+            }
+          }
+        }
+      }
+
+      // 3. Seed Seller Videos
+      console.log('Seeding seller videos with high-speed CDN MP4s...');
+      const allSellers = await this.sellerModel.find().exec();
+      const videoTemplates = [
+        {
+          title: 'Crafting Traditional Looming & Weaving',
+          caption: 'Watch how our authentic Rwandan textiles are woven by hand with natural fibers. Order today!',
+          videoUrl: 'https://assets.mixkit.co/videos/preview/mixkit-weaving-with-traditional-loom-41584-large.mp4',
+          tags: ['weaving', 'loom', 'textiles', 'handcrafts'],
+        },
+        {
+          title: 'Artisanal Clay Pottery Masterclass',
+          caption: 'Handmade pottery direct from Muhanga clay artisans. Perfectly shaped and dried.',
+          videoUrl: 'https://assets.mixkit.co/videos/preview/mixkit-hands-of-potter-shaping-clay-34586-large.mp4',
+          tags: ['pottery', 'clay', 'artisan', 'handcrafts'],
+        },
+        {
+          title: 'Premium Organic Spices & Herbs',
+          caption: 'Fresh Rwandan spices ground from local agricultural hubs. Adds incredible flavor to your dishes.',
+          videoUrl: 'https://assets.mixkit.co/videos/preview/mixkit-fresh-spices-in-bowls-41982-large.mp4',
+          tags: ['spices', 'organic', 'cooking', 'agriculture'],
+        },
+        {
+          title: 'Fresh Volcanic Soil Carrot Harvest',
+          caption: 'Freshly harvested carrots from the highland soils of Musanze. Crisp, sweet and 100% organic.',
+          videoUrl: 'https://assets.mixkit.co/videos/preview/mixkit-farmer-hands-holding-fresh-carrots-41983-large.mp4',
+          tags: ['fresh', 'carrots', 'organic', 'musanze'],
+        },
+        {
+          title: 'Custom Rwandan Fashion Boutique',
+          caption: 'Preview our latest handcraft and textile garments. Visit our stall for custom tailoring.',
+          videoUrl: 'https://assets.mixkit.co/videos/preview/mixkit-woman-shopping-in-a-clothing-store-42410-large.mp4',
+          tags: ['fashion', 'clothes', 'shopping', 'local'],
+        },
+        {
+          title: 'Rwandan Single Origin Coffee Brewing',
+          caption: 'Experience the rich aroma of single-origin coffee beans grown in the Western Province.',
+          videoUrl: 'https://assets.mixkit.co/videos/preview/mixkit-barista-pouring-milk-into-coffee-cup-43187-large.mp4',
+          tags: ['coffee', 'brewing', 'local', 'beverage'],
+        }
+      ];
+
+      for (let j = 0; j < videoTemplates.length; j++) {
+        const template = videoTemplates[j];
+        const seller = allSellers[j % allSellers.length];
+        if (!seller) continue;
+        
+        const product = await this.productModel.findOne({ sellerId: seller._id }).exec();
+        
+        const videoPayload = {
+          sellerId: seller._id,
+          sellerUserId: seller.userId,
+          marketId: seller.marketId,
+          productId: product ? product._id : undefined,
+          placement: 'PRODUCT_AD',
+          title: template.title,
+          caption: template.caption,
+          videoUrl: template.videoUrl,
+          thumbnailUrl: product && product.images && product.images[0] ? product.images[0] : 'https://images.unsplash.com/photo-1533900298318-6b8da08a523e',
+          durationSeconds: 15 + j * 5,
+          tags: template.tags,
+          isActive: true,
+          viewCount: 150 + j * 42,
+          likeCount: 45 + j * 12,
+          dislikeCount: 2 + j,
+          commentCount: 4,
+          comments: [
+            { userId: seller.userId, userRole: 'BUYER', fullName: 'Gaspard N.', text: 'Outstanding quality, highly recommended!' },
+            { userId: seller.userId, userRole: 'BUYER', fullName: 'Liliane U.', text: 'Is this available in custom sizes?' },
+            { userId: seller.userId, userRole: 'SELLER', fullName: seller.stallName, text: 'Yes Liliane! We do custom sizes if you contact us.' },
+            { userId: seller.userId, userRole: 'BUYER', fullName: 'Christian R.', text: 'Fast shipping to Kigali heights!' }
+          ]
+        };
+
+        await this.sellerVideoModel.create(videoPayload);
+      }
+      console.log('✅ Auto-seeding completed successfully.');
+    } catch (e) {
+      console.error('❌ Auto-seeding error:', e);
+    }
+  }
+
   private toObjectId(value: string, field: string) {
     if (!Types.ObjectId.isValid(value)) {
       throw new BadRequestException(`Invalid ${field}`);

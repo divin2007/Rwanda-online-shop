@@ -8,12 +8,19 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const { user, isLoading } = useAuth();
   const router = useRouter();
 
+  const redirectForRole = (role?: string) => {
+    if (role === 'SELLER') return '/seller/dashboard';
+    if (role === 'RIDER') return '/rider/dashboard';
+    if (role === 'BUYER') return '/dashboard';
+    return '/';
+  };
+
   useEffect(() => {
     if (!isLoading) {
       if (!user) {
-        router.push('/login');
+        router.replace('/login');
       } else if (user.role !== 'ADMIN') {
-        router.push('/');
+        router.replace(redirectForRole(user.role));
       }
     }
   }, [user, isLoading, router]);

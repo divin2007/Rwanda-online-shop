@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>RMF - Secure Checkout</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Work+Sans:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@500&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-surface": "#1b1c1c",
+                        "surface-container-low": "#f5f3f3",
+                        "primary-fixed": "#ffdbcc",
+                        "secondary-fixed-dim": "#ffb598",
+                        "on-secondary": "#ffffff",
+                        "background": "#fbf9f8",
+                        "on-primary-fixed": "#351000",
+                        "surface-container": "#efeded",
+                        "on-tertiary-container": "#002f6b",
+                        "surface-container-highest": "#e3e2e2",
+                        "on-background": "#1b1c1c",
+                        "on-secondary-fixed": "#370e00",
+                        "surface-tint": "#a04100",
+                        "inverse-surface": "#303030",
+                        "surface-container-high": "#e9e8e7",
+                        "tertiary-fixed": "#d8e2ff",
+                        "tertiary-fixed-dim": "#adc6ff",
+                        "surface-container-lowest": "#ffffff",
+                        "on-secondary-fixed-variant": "#7f2b00",
+                        "secondary": "#a63b00",
+                        "surface": "#fbf9f8",
+                        "on-primary-fixed-variant": "#7a3000",
+                        "on-primary-container": "#572000",
+                        "on-primary": "#ffffff",
+                        "surface-bright": "#fbf9f8",
+                        "tertiary": "#005ac2",
+                        "primary-container": "#ff6b00",
+                        "inverse-on-surface": "#f2f0f0",
+                        "outline": "#8e7164",
+                        "primary": "#a04100",
+                        "inverse-primary": "#ffb693",
+                        "secondary-fixed": "#ffdbce",
+                        "on-tertiary-fixed-variant": "#004395",
+                        "error": "#ba1a1a",
+                        "error-container": "#ffdad6",
+                        "on-tertiary": "#ffffff",
+                        "on-error": "#ffffff",
+                        "tertiary-container": "#5f97ff",
+                        "on-error-container": "#93000a",
+                        "on-surface-variant": "#5a4136",
+                        "secondary-container": "#fc671d",
+                        "surface-dim": "#dbdad9",
+                        "surface-variant": "#e3e2e2",
+                        "on-secondary-container": "#561b00",
+                        "outline-variant": "#e2bfb0",
+                        "primary-fixed-dim": "#ffb693",
+                        "on-tertiary-fixed": "#001a42"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.125rem",
+                        "lg": "0.25rem",
+                        "xl": "0.5rem",
+                        "full": "0.75rem"
+                    },
+                    "spacing": {
+                        "sm": "8px",
+                        "margin-mobile": "16px",
+                        "xs": "4px",
+                        "md": "16px",
+                        "gutter": "16px",
+                        "base": "4px",
+                        "lg": "24px",
+                        "margin-desktop": "32px",
+                        "xl": "40px"
+                    },
+                    "fontFamily": {
+                        "headline-lg": ["Work Sans"],
+                        "body-sm": ["Work Sans"],
+                        "headline-md": ["Work Sans"],
+                        "table-data": ["Work Sans"],
+                        "body-lg": ["Work Sans"],
+                        "headline-lg-mobile": ["Work Sans"],
+                        "body-md": ["Work Sans"],
+                        "label-md": ["JetBrains Mono"]
+                    },
+                    "fontSize": {
+                        "headline-lg": ["30px", {"lineHeight": "38px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                        "body-sm": ["12px", {"lineHeight": "16px", "fontWeight": "400"}],
+                        "headline-md": ["20px", {"lineHeight": "28px", "fontWeight": "600"}],
+                        "table-data": ["13px", {"lineHeight": "18px", "fontWeight": "500"}],
+                        "body-lg": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                        "headline-lg-mobile": ["24px", {"lineHeight": "30px", "letterSpacing": "-0.01em", "fontWeight": "700"}],
+                        "body-md": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                        "label-md": ["12px", {"lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "500"}]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .ghost-border {
+            border: 1px solid #ebdcd0;
+        }
+        .escrow-step::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            right: -50%;
+            width: 100%;
+            height: 2px;
+            background: #e2bfb0;
+            z-index: 0;
+        }
+        .escrow-step:last-child::after {
+            display: none;
+        }
+    </style>
+</head>
+<body class="bg-background text-on-surface font-body-md">
+<!-- Top Navigation Bar (Simplified for Transactional Checkout) -->
+<header class="fixed top-0 left-0 w-full z-50 flex justify-between items-center px-4 md:px-margin-desktop h-16 bg-surface border-b border-outline-variant">
+<div class="flex items-center gap-4">
+<button class="flex items-center justify-center p-2 hover:bg-surface-container-low transition-colors" onclick="window.history.back()">
+<span class="material-symbols-outlined text-primary">arrow_back</span>
+</button>
+<span class="text-headline-md font-headline-md font-bold text-primary">RMF</span>
+</div>
+<div class="flex items-center gap-sm">
+<span class="material-symbols-outlined text-primary" data-weight="fill">verified_user</span>
+<span class="font-label-md text-label-md text-primary uppercase">Secure Checkout</span>
+</div>
+</header>
+<main class="mt-16 pb-margin-desktop px-4 md:px-margin-desktop max-w-[1280px] mx-auto grid grid-cols-1 lg:grid-cols-12 gap-gutter pt-lg">
+<!-- Left Column: Address & Payment Methods -->
+<div class="lg:col-span-8 space-y-gutter">
+<!-- Delivery Address Confirmation -->
+<section class="ghost-border bg-surface-container-lowest p-md lg:p-lg space-y-md">
+<div class="flex justify-between items-center">
+<h2 class="font-headline-md text-headline-md text-on-surface">Delivery Address</h2>
+<button class="text-primary font-label-md text-label-md hover:underline">Change</button>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-3 gap-md">
+<div class="md:col-span-2 space-y-xs">
+<p class="font-body-lg text-body-lg font-bold">Kigali Business Park</p>
+<p class="text-on-surface-variant text-body-md">KN 3 Rd, Kigali, Rwanda</p>
+<p class="text-on-surface-variant text-body-md">Building A, Suite 402</p>
+<p class="text-on-surface-variant text-body-md">+250 788 123 456</p>
+</div>
+<!-- Map Pin Component -->
+<div class="relative h-32 md:h-full ghost-border overflow-hidden bg-surface-container">
+<img class="w-full h-full object-cover grayscale-[0.5] opacity-80" data-alt="A clean, minimalist digital map of Kigali, Rwanda, showing simplified city streets and a prominent, vibrant orange map pin centered over a business district. The map uses a neutral, soft beige and grey color palette consistent with a professional corporate modern UI. The lighting is bright and even, conveying a sense of clarity and precision." data-location="Kigali" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAFKimwulkdr0xwdFyHLuWsROKD8ZElEXTDgZRfBF7A6LYMavINJUg_uJRxibrAqZrNhFG_v4V98U2QhBh0bmurutSIJSkfjR6rsXxneITVZQtNfsxVF5Sohj_bnEw5qbcRSJwkbWT5nwcVq1ZHccJnFNfgQaC0fxAwr1rnRbGxBaBkpQlmkfNDVeZbuil3aWV1j2QZ_N6I98H787_IMFb3qpj9XuR2JUZoyG_kaht7prrlUeUG7_PptF0YiF6R-k7frkvXYLpac-ee"/>
+<div class="absolute inset-0 flex items-center justify-center pointer-events-none">
+<div class="bg-primary text-white rounded-full p-2 shadow-lg scale-125">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">location_on</span>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- Payment Method Selection -->
+<section class="ghost-border bg-surface-container-lowest p-md lg:p-lg space-y-md">
+<h2 class="font-headline-md text-headline-md text-on-surface">Payment Method</h2>
+<div class="space-y-base">
+<!-- MoMo Option -->
+<label class="flex items-center p-md ghost-border cursor-pointer hover:bg-surface-container-low transition-all active:scale-[0.99] group">
+<input checked="" class="w-5 h-5 text-primary border-outline focus:ring-primary" name="payment" type="radio"/>
+<div class="ml-md flex flex-1 items-center justify-between">
+<div class="flex flex-col">
+<span class="font-body-lg text-body-lg font-bold">MTN Mobile Money (MoMo)</span>
+<span class="text-body-sm text-on-surface-variant">Pay directly with your mobile number</span>
+</div>
+<img class="h-8 object-contain" data-alt="A professional, high-resolution close-up of a mobile payment interface icon on a clean white background. The style is flat and corporate, featuring the distinctive yellow and blue branding associated with African mobile money services. The lighting is studio-quality, emphasizing a crisp and reliable financial technology brand image." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBSPj5EOMUIZdGf4zLMlYe9vYA4_lsVMNtYiPqpCxnE26yldAwGquQuprVs5OA0RlF8r8H7ofwg5HDk0JS7wrVcOFXVXkvJsodnWxwijFyoZzhwU5PoChan5NtOP4Wo8mTZ4JS4n8SkMm1wheq_yOZ8jfDBHfHR5CYi_eOcq8yj_uy6whOQb9yyicN_BnyLrnUsjytLK9ZN5Pk4Jkc_bF9LR0QrUzizrfCiHoX_PJYsFtG9-WrwPCEBT9-Jv4IU5j0wa9-upoBJqtCE"/>
+</div>
+</label>
+<!-- Card Option -->
+<label class="flex items-center p-md ghost-border cursor-pointer hover:bg-surface-container-low transition-all active:scale-[0.99] group">
+<input class="w-5 h-5 text-primary border-outline focus:ring-primary" name="payment" type="radio"/>
+<div class="ml-md flex flex-1 items-center justify-between">
+<div class="flex flex-col">
+<span class="font-body-lg text-body-lg font-bold">Credit / Debit Card</span>
+<span class="text-body-sm text-on-surface-variant">Visa, Mastercard, Amex</span>
+</div>
+<div class="flex gap-2">
+<span class="material-symbols-outlined text-on-surface-variant">credit_card</span>
+</div>
+</div>
+</label>
+<!-- Paypack Option -->
+<label class="flex items-center p-md ghost-border cursor-pointer hover:bg-surface-container-low transition-all active:scale-[0.99] group">
+<input class="w-5 h-5 text-primary border-outline focus:ring-primary" name="payment" type="radio"/>
+<div class="ml-md flex flex-1 items-center justify-between">
+<div class="flex flex-col">
+<span class="font-body-lg text-body-lg font-bold">Paypack</span>
+<span class="text-body-sm text-on-surface-variant">Local Rwandan payment aggregator</span>
+</div>
+<span class="material-symbols-outlined text-primary">account_balance_wallet</span>
+</div>
+</label>
+</div>
+</section>
+<!-- Trust Cues: Escrow Explanation -->
+<section class="ghost-border bg-surface-container-high p-md lg:p-lg">
+<div class="flex items-start gap-md mb-lg">
+<div class="bg-primary/10 p-2 rounded-lg">
+<span class="material-symbols-outlined text-primary" style="font-variation-settings: 'FILL' 1;">shield_with_heart</span>
+</div>
+<div class="space-y-xs">
+<h3 class="font-headline-md text-headline-md text-on-surface">Escrow Protection</h3>
+<p class="text-body-md text-on-surface-variant">Your funds are held safely until you confirm delivery of your trade goods.</p>
+</div>
+</div>
+<div class="relative flex justify-between px-md pb-xs">
+<div class="escrow-step relative z-10 flex flex-col items-center flex-1">
+<div class="w-8 h-8 rounded-full bg-primary text-white flex items-center justify-center font-bold text-body-sm mb-xs">1</div>
+<span class="text-body-sm font-bold text-center">Payment Sent</span>
+</div>
+<div class="escrow-step relative z-10 flex flex-col items-center flex-1">
+<div class="w-8 h-8 rounded-full bg-outline-variant text-on-surface-variant flex items-center justify-center font-bold text-body-sm mb-xs">2</div>
+<span class="text-body-sm text-on-surface-variant text-center">In Escrow</span>
+</div>
+<div class="escrow-step relative z-10 flex flex-col items-center flex-1">
+<div class="w-8 h-8 rounded-full bg-outline-variant text-on-surface-variant flex items-center justify-center font-bold text-body-sm mb-xs">3</div>
+<span class="text-body-sm text-on-surface-variant text-center">Released</span>
+</div>
+</div>
+</section>
+</div>
+<!-- Right Column: Order Summary -->
+<aside class="lg:col-span-4 space-y-gutter">
+<div class="ghost-border bg-surface-container-lowest p-md sticky top-24">
+<div class="bg-surface-container p-sm mb-md flex items-center gap-base">
+<span class="material-symbols-outlined text-primary text-body-lg">receipt_long</span>
+<h2 class="font-headline-md text-headline-md">Order Summary</h2>
+</div>
+<div class="space-y-md mb-lg">
+<div class="flex justify-between items-start">
+<div class="flex gap-md">
+<div class="w-12 h-12 bg-surface-container rounded ghost-border flex items-center justify-center text-xs text-on-surface-variant font-bold">2x</div>
+<div>
+<p class="font-body-md font-bold">Wholesale Maize Grain</p>
+<p class="text-body-sm text-on-surface-variant">50kg Sacks</p>
+</div>
+</div>
+<span class="font-label-md text-label-md">RWF 85,000</span>
+</div>
+<div class="flex justify-between items-start">
+<div class="flex gap-md">
+<div class="w-12 h-12 bg-surface-container rounded ghost-border flex items-center justify-center text-xs text-on-surface-variant font-bold">1x</div>
+<div>
+<p class="font-body-md font-bold">Refined Sunflower Oil</p>
+<p class="text-body-sm text-on-surface-variant">20L Jerrycan</p>
+</div>
+</div>
+<span class="font-label-md text-label-md">RWF 42,500</span>
+</div>
+</div>
+<div class="border-t border-outline-variant py-md space-y-sm">
+<div class="flex justify-between text-body-md text-on-surface-variant">
+<span>Subtotal</span>
+<span>RWF 127,500</span>
+</div>
+<div class="flex justify-between text-body-md text-on-surface-variant">
+<span>Logistics (Standard)</span>
+<span>RWF 5,000</span>
+</div>
+<div class="flex justify-between text-body-md text-on-surface-variant">
+<span>Service Fee</span>
+<span>RWF 1,200</span>
+</div>
+</div>
+<div class="border-t-2 border-primary py-md flex justify-between items-center mb-lg">
+<span class="font-headline-md text-headline-md">Total</span>
+<span class="font-headline-md text-headline-lg text-primary">RWF 133,700</span>
+</div>
+<!-- Primary Action -->
+<button class="w-full bg-primary text-white py-lg font-headline-md text-headline-md hover:bg-on-primary-container transition-colors active:scale-95 flex items-center justify-center gap-md mb-md group">
+<span>Pay Now</span>
+<span class="material-symbols-outlined group-hover:translate-x-1 transition-transform">arrow_forward</span>
+</button>
+<!-- Trust Badges -->
+<div class="flex flex-col items-center gap-sm">
+<div class="flex items-center gap-xs text-on-surface-variant">
+<span class="material-symbols-outlined text-body-lg" style="font-variation-settings: 'FILL' 1;">lock</span>
+<span class="font-label-md text-label-md uppercase">Payment Secure</span>
+</div>
+<p class="text-center text-body-sm text-on-surface-variant leading-tight">
+                        Payments processed securely via encrypted Rwandan banking protocols.
+                    </p>
+</div>
+</div>
+<!-- Promotion / Code -->
+<div class="ghost-border bg-surface-container-lowest p-md flex items-center gap-md">
+<input class="flex-1 bg-surface border-outline focus:border-primary px-md py-sm text-body-md" placeholder="Promo Code" type="text"/>
+<button class="px-lg py-sm border border-primary text-primary font-bold hover:bg-primary-fixed transition-colors">Apply</button>
+</div>
+</aside>
+</main>
+<!-- Success Message (Hidden by default) -->
+<div class="fixed inset-0 bg-on-surface/50 backdrop-blur-sm z-[100] flex items-center justify-center p-4 hidden" id="success-overlay">
+<div class="bg-surface-container-lowest max-w-md w-full p-xl ghost-border text-center space-y-lg scale-90 opacity-0 transition-all duration-300" id="success-card">
+<div class="w-20 h-20 bg-primary/10 rounded-full flex items-center justify-center mx-auto">
+<span class="material-symbols-outlined text-primary text-[48px]" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+</div>
+<div class="space-y-sm">
+<h2 class="font-headline-lg text-headline-lg">Order Confirmed!</h2>
+<p class="text-body-md text-on-surface-variant">Your payment of RWF 133,700 is now in escrow. You can track your shipment under "My Orders".</p>
+</div>
+<button class="w-full bg-primary text-white py-md font-bold hover:bg-on-primary-container transition-colors" onclick="window.location.reload()">
+                Go to Dashboard
+            </button>
+</div>
+</div>
+<script>
+        // Micro-interaction for Pay Now button
+        const payButton = document.querySelector('button.bg-primary');
+        const overlay = document.getElementById('success-overlay');
+        const successCard = document.getElementById('success-card');
+
+        payButton.addEventListener('click', () => {
+            payButton.innerHTML = '<span class="material-symbols-outlined animate-spin">progress_activity</span> Processing...';
+            payButton.disabled = true;
+
+            setTimeout(() => {
+                overlay.classList.remove('hidden');
+                setTimeout(() => {
+                    successCard.classList.remove('scale-90', 'opacity-0');
+                    successCard.classList.add('scale-100', 'opacity-100');
+                }, 50);
+            }, 1500);
+        });
+
+        // Hover animations for payment methods
+        const radios = document.querySelectorAll('input[type="radio"]');
+        radios.forEach(radio => {
+            radio.addEventListener('change', (e) => {
+                document.querySelectorAll('label').forEach(l => l.classList.remove('bg-primary-fixed'));
+                if (e.target.checked) {
+                    e.target.closest('label').classList.add('bg-primary-fixed');
+                }
+            });
+        });
+    </script>
+</body></html>

@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Work+Sans:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@500&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "tertiary-container": "#5f97ff",
+                        "on-secondary-fixed-variant": "#7f2b00",
+                        "outline": "#8e7164",
+                        "on-background": "#1b1c1c",
+                        "surface": "#fbf9f8",
+                        "primary-container": "#ff6b00",
+                        "on-tertiary-fixed-variant": "#004395",
+                        "on-primary-fixed-variant": "#7a3000",
+                        "inverse-surface": "#303030",
+                        "secondary-container": "#fc671d",
+                        "on-tertiary-container": "#002f6b",
+                        "error-container": "#ffdad6",
+                        "on-error": "#ffffff",
+                        "surface-container-highest": "#e3e2e2",
+                        "on-error-container": "#93000a",
+                        "on-surface": "#1b1c1c",
+                        "surface-container-high": "#e9e8e7",
+                        "tertiary-fixed": "#d8e2ff",
+                        "background": "#fbf9f8",
+                        "surface-variant": "#e3e2e2",
+                        "surface-tint": "#a04100",
+                        "secondary-fixed-dim": "#ffb598",
+                        "primary": "#a04100",
+                        "primary-fixed": "#ffdbcc",
+                        "inverse-on-surface": "#f2f0f0",
+                        "error": "#ba1a1a",
+                        "on-secondary-fixed": "#370e00",
+                        "on-secondary-container": "#561b00",
+                        "on-primary-fixed": "#351000",
+                        "outline-variant": "#e2bfb0",
+                        "on-surface-variant": "#5a4136",
+                        "on-tertiary": "#ffffff",
+                        "secondary-fixed": "#ffdbce",
+                        "surface-container": "#efeded",
+                        "on-primary": "#ffffff",
+                        "tertiary-fixed-dim": "#adc6ff",
+                        "surface-container-lowest": "#ffffff",
+                        "on-primary-container": "#572000",
+                        "inverse-primary": "#ffb693",
+                        "tertiary": "#005ac2",
+                        "primary-fixed-dim": "#ffb693",
+                        "surface-container-low": "#f5f3f3",
+                        "secondary": "#a63b00",
+                        "on-tertiary-fixed": "#001a42",
+                        "on-secondary": "#ffffff",
+                        "surface-bright": "#fbf9f8",
+                        "surface-dim": "#dbdad9"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.125rem",
+                        "lg": "0.25rem",
+                        "xl": "0.5rem",
+                        "full": "0.75rem"
+                    },
+                    "spacing": {
+                        "margin-mobile": "16px",
+                        "xl": "40px",
+                        "md": "16px",
+                        "sm": "8px",
+                        "margin-desktop": "32px",
+                        "lg": "24px",
+                        "xs": "4px",
+                        "gutter": "16px",
+                        "base": "4px"
+                    },
+                    "fontFamily": {
+                        "body-sm": ["Work Sans"],
+                        "body-md": ["Work Sans"],
+                        "headline-lg-mobile": ["Work Sans"],
+                        "headline-lg": ["Work Sans"],
+                        "table-data": ["Work Sans"],
+                        "body-lg": ["Work Sans"],
+                        "headline-md": ["Work Sans"],
+                        "label-md": ["JetBrains Mono"]
+                    },
+                    "fontSize": {
+                        "body-sm": ["12px", {"lineHeight": "16px", "fontWeight": "400"}],
+                        "body-md": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                        "headline-lg-mobile": ["24px", {"lineHeight": "30px", "letterSpacing": "-0.01em", "fontWeight": "700"}],
+                        "headline-lg": ["30px", {"lineHeight": "38px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                        "table-data": ["13px", {"lineHeight": "18px", "fontWeight": "500"}],
+                        "body-lg": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                        "headline-md": ["20px", {"lineHeight": "28px", "fontWeight": "600"}],
+                        "label-md": ["12px", {"lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "500"}]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        body { font-family: 'Work Sans', sans-serif; }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+            vertical-align: middle;
+        }
+        .flat-card {
+            border: 1px solid #ebdcd0;
+            background-color: #ffffff;
+        }
+    </style>
+</head>
+<body class="bg-surface text-on-surface">
+<!-- Top Navigation Bar -->
+<header class="fixed top-0 left-0 w-full z-50 flex justify-between items-center px-margin-mobile md:px-margin-desktop h-16 bg-surface border-b border-outline-variant">
+<div class="flex items-center gap-base">
+<span class="material-symbols-outlined text-primary">local_shipping</span>
+<h1 class="text-headline-md font-headline-md font-bold text-primary">RMF</h1>
+</div>
+<div class="flex items-center gap-md">
+<button class="material-symbols-outlined text-on-surface-variant hover:bg-surface-container-low transition-colors p-base">notifications</button>
+<div class="w-8 h-8 rounded-full overflow-hidden border border-outline">
+<img alt="User Account" class="w-full h-full object-cover" data-alt="A professional close-up portrait of a Rwandan delivery rider wearing a high-visibility orange vest and a branded helmet. The background is a soft-focus urban environment with warm sunlight filtering through. The rider has a friendly, reliable expression. The lighting is crisp and modern, reflecting a Corporate Modern aesthetic with earthy tones and high clarity." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCLTtayZR_c380Onu5tC0Q3EhzO0LNFTVEE9kOjVdDkt1wOqRntXlCv0HJ9HQOZHHdyclmT0DGRlDKkn8cO7cSA4eZPvMotTWyZAKj7I05pWJAttOHyakJg89b-vfigiqxXvrO2byZOOVhVqNMWFr4MlYB_u60h6Yi0KjVVNE1iiwPCL60q3faLPDydz_kz876s2jcT7zS6McVzxuYjPYGxeXxgH07WRnc5TDqsT3zxn68MGnpAirImastewJcBULqLmk-MJGRqmZUm"/>
+</div>
+</div>
+</header>
+<!-- Main Content Area -->
+<main class="pt-16 pb-24 md:pb-8 max-w-[1280px] mx-auto min-h-screen">
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-gutter px-margin-mobile md:px-margin-desktop py-md">
+<!-- Left Column: Map and Controls (8 columns on Desktop) -->
+<div class="lg:col-span-8 flex flex-col gap-gutter">
+<!-- Map Section -->
+<section class="flat-card relative h-[400px] md:h-[500px] rounded-lg overflow-hidden group">
+<div class="absolute inset-0 bg-surface-container-high animate-pulse"></div>
+<img class="absolute inset-0 w-full h-full object-cover z-0" data-alt="A high-detail aerial map view of Kigali city streets at dusk, showing illuminated road networks and building footprints. Overlaid are digital GPS route markers in bright orange connecting two specific pins. The style is flat and functional with a muted earth-toned color palette of tans and ochres, maintaining high contrast for operational clarity." data-location="Kigali" src="https://lh3.googleusercontent.com/aida-public/AB6AXuD8wpiwqZHLj8yAjJ3tkIYDI5RpTvCk7mAHjGWA77plDWbg7abyaiQsbIh-wGr8ETfPOy8oHyUdvwl_O4TvhVSYvRDhWstJwHv1msQPk0hSkcXv3CHkSG6lNrYMnq1uoltqwS97rmQhQzHMMjJP0tyhuuXt6AMur6mfh8itTp9AjbsqCXPyrGJNnbElGoWI0cjkLvztBZevi6QHxQH5p4NNCKLIVs0V0Bf4fsstgn7h8txrigUjbSH2sDyJtfCymc5OgxgyJd6MMh6r"/>
+<!-- ETA Overlay -->
+<div class="absolute top-md left-md z-10 bg-surface/90 backdrop-blur-sm p-md flat-card rounded-lg flex items-center gap-md">
+<div class="bg-primary-container p-sm rounded-lg text-on-primary-container">
+<span class="material-symbols-outlined">timer</span>
+</div>
+<div>
+<p class="font-label-md text-label-md text-on-surface-variant">ESTIMATED ARRIVAL</p>
+<p class="font-headline-md text-headline-md text-primary">14:45 • 12 mins</p>
+</div>
+</div>
+<!-- Map Legend / Controls -->
+<div class="absolute bottom-md right-md z-10 flex flex-col gap-base">
+<button class="bg-surface p-sm flat-card rounded hover:bg-surface-container-high shadow-sm material-symbols-outlined">my_location</button>
+<button class="bg-surface p-sm flat-card rounded hover:bg-surface-container-high shadow-sm material-symbols-outlined">layers</button>
+</div>
+</section>
+<!-- Rider Quick Actions Grid -->
+<section class="grid grid-cols-1 md:grid-cols-3 gap-md">
+<button class="flat-card p-lg flex flex-col items-center justify-center gap-sm bg-surface-container-lowest hover:bg-primary-fixed transition-all active:scale-95 group">
+<span class="material-symbols-outlined text-primary text-3xl">add_a_photo</span>
+<span class="font-label-md text-label-md text-on-surface uppercase">Upload Pickup Proof</span>
+</button>
+<button class="flat-card p-lg flex flex-col items-center justify-center gap-sm bg-surface-container-lowest hover:bg-primary-fixed transition-all active:scale-95 group">
+<span class="material-symbols-outlined text-primary text-3xl">qr_code_scanner</span>
+<span class="font-label-md text-label-md text-on-surface uppercase">Scan QR Code</span>
+</button>
+<button class="flat-card p-lg flex flex-col items-center justify-center gap-sm bg-error-container/20 border-error/20 hover:bg-error-container transition-all active:scale-95 group">
+<span class="material-symbols-outlined text-error text-3xl">report_problem</span>
+<span class="font-label-md text-label-md text-error uppercase">Report Issue</span>
+</button>
+</section>
+</div>
+<!-- Right Column: Details & Timeline (4 columns on Desktop) -->
+<div class="lg:col-span-4 flex flex-col gap-gutter">
+<!-- Order Card -->
+<section class="flat-card p-lg rounded-lg space-y-lg">
+<div class="flex justify-between items-start">
+<div>
+<p class="font-label-md text-label-md text-on-surface-variant">ORDER #RMF-99210</p>
+<h2 class="font-headline-md text-headline-md">Sorghum Bulk (500kg)</h2>
+</div>
+<span class="bg-tertiary-container text-on-tertiary-container px-sm py-xs text-[10px] font-bold rounded uppercase">In Transit</span>
+</div>
+<div class="space-y-md">
+<!-- Contact Seller -->
+<div class="p-md bg-surface-container-low rounded-lg border border-outline-variant flex justify-between items-center">
+<div class="flex items-center gap-md">
+<span class="material-symbols-outlined text-primary">storefront</span>
+<div>
+<p class="font-label-md text-label-md text-on-surface-variant">SELLER</p>
+<p class="font-body-md text-body-md font-bold">Nyabugogo Ag-Coop</p>
+</div>
+</div>
+<button class="material-symbols-outlined text-primary p-sm hover:bg-primary-fixed rounded-full">call</button>
+</div>
+<!-- Contact Buyer -->
+<div class="p-md bg-surface-container-low rounded-lg border border-outline-variant flex justify-between items-center">
+<div class="flex items-center gap-md">
+<span class="material-symbols-outlined text-primary">person</span>
+<div>
+<p class="font-label-md text-label-md text-on-surface-variant">BUYER</p>
+<p class="font-body-md text-body-md font-bold">Jean-Claude Bizimana</p>
+</div>
+</div>
+<button class="material-symbols-outlined text-primary p-sm hover:bg-primary-fixed rounded-full">chat</button>
+</div>
+</div>
+<hr class="border-outline-variant"/>
+<!-- Delivery Timeline -->
+<div class="space-y-lg">
+<h3 class="font-label-md text-label-md text-on-surface-variant uppercase tracking-widest">Delivery Progress</h3>
+<div class="relative space-y-lg pl-lg">
+<div class="absolute left-[7px] top-2 bottom-2 w-0.5 bg-outline-variant"></div>
+<!-- Timeline Point 1: Complete -->
+<div class="relative">
+<span class="absolute -left-[23px] w-4 h-4 bg-primary rounded-full flex items-center justify-center">
+<span class="material-symbols-outlined text-[10px] text-on-primary">check</span>
+</span>
+<div class="space-y-base">
+<p class="font-body-md text-body-md font-bold">Order Assigned</p>
+<p class="font-body-sm text-body-sm text-on-surface-variant">08:30 AM • System Log</p>
+</div>
+</div>
+<!-- Timeline Point 2: Complete -->
+<div class="relative">
+<span class="absolute -left-[23px] w-4 h-4 bg-primary rounded-full flex items-center justify-center">
+<span class="material-symbols-outlined text-[10px] text-on-primary">check</span>
+</span>
+<div class="space-y-base">
+<p class="font-body-md text-body-md font-bold">Picked Up</p>
+<p class="font-body-sm text-body-sm text-on-surface-variant">09:15 AM • Nyabugogo Warehouse</p>
+</div>
+</div>
+<!-- Timeline Point 3: Active -->
+<div class="relative">
+<span class="absolute -left-[23px] w-4 h-4 bg-primary border-4 border-primary-fixed rounded-full"></span>
+<div class="space-y-base">
+<p class="font-body-md text-body-md font-bold text-primary">In Transit</p>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Heading to Kimironko Market</p>
+</div>
+</div>
+<!-- Timeline Point 4: Pending -->
+<div class="relative opacity-50">
+<span class="absolute -left-[23px] w-4 h-4 bg-outline-variant rounded-full"></span>
+<div class="space-y-base">
+<p class="font-body-md text-body-md">Handover Confirmation</p>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Estimated 02:45 PM</p>
+</div>
+</div>
+</div>
+</div>
+<div class="pt-lg">
+<div class="bg-secondary-container/10 p-md rounded-lg flex items-center gap-md">
+<span class="material-symbols-outlined text-secondary" style="font-variation-settings: 'FILL' 1;">verified_user</span>
+<p class="font-body-sm text-body-sm text-on-secondary-container">Secure Payment: Escrow will be released upon buyer confirmation.</p>
+</div>
+</div>
+</section>
+</div>
+</div>
+</main>
+<!-- Bottom Navigation Bar (Mobile only) -->
+<nav class="lg:hidden fixed bottom-0 left-0 w-full z-50 bg-surface border-t border-outline-variant shadow-lg flex justify-around items-center px-4 py-2 rounded-t-xl">
+<a class="flex flex-col items-center justify-center text-on-surface-variant" href="#">
+<span class="material-symbols-outlined" data-icon="home">home</span>
+<span class="font-label-md text-[10px]">Home</span>
+</a>
+<a class="flex flex-col items-center justify-center bg-secondary-container text-on-secondary-container rounded-full px-4 py-1" href="#">
+<span class="material-symbols-outlined" data-icon="local_shipping">local_shipping</span>
+<span class="font-label-md text-[10px]">Orders</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant" href="#">
+<span class="material-symbols-outlined" data-icon="receipt_long">receipt_long</span>
+<span class="font-label-md text-[10px]">Earnings</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant" href="#">
+<span class="material-symbols-outlined" data-icon="person">person</span>
+<span class="font-label-md text-[10px]">Account</span>
+</a>
+</nav>
+<!-- Floating Action Button (Only for specific contexts) -->
+<button class="fixed bottom-24 right-margin-mobile md:bottom-8 md:right-margin-desktop bg-primary text-on-primary w-14 h-14 rounded-full flex items-center justify-center shadow-lg transition-transform hover:scale-105 active:scale-95 z-40">
+<span class="material-symbols-outlined">support_agent</span>
+</button>
+<script>
+        // Micro-interactions for button presses
+        document.querySelectorAll('button').forEach(btn => {
+            btn.addEventListener('mousedown', () => {
+                btn.style.transform = 'scale(0.98)';
+            });
+            btn.addEventListener('mouseup', () => {
+                btn.style.transform = 'scale(1)';
+            });
+        });
+
+        // Simple mock for "Uploading" proof
+        const uploadBtn = document.querySelector('button:has(span:contains("add_a_photo"))');
+        if(uploadBtn) {
+            uploadBtn.addEventListener('click', () => {
+                const span = uploadBtn.querySelector('span:first-child');
+                const text = uploadBtn.querySelector('span:last-child');
+                const originalIcon = span.innerText;
+                const originalText = text.innerText;
+                
+                span.innerText = 'sync';
+                span.classList.add('animate-spin');
+                text.innerText = 'UPLOADING...';
+                
+                setTimeout(() => {
+                    span.innerText = 'check_circle';
+                    span.classList.remove('animate-spin');
+                    text.innerText = 'PROOF UPLOADED';
+                    uploadBtn.classList.add('bg-green-100', 'border-green-500');
+                }, 2000);
+            });
+        }
+
+        // Polyfill for :contains selector in JS since it's not standard CSS
+        function containsText(selector, text) {
+            const elements = document.querySelectorAll(selector);
+            return Array.from(elements).find(el => el.textContent.includes(text));
+        }
+    </script>
+</body></html>

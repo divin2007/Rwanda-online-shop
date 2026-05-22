@@ -206,6 +206,9 @@ export class ProductService implements OnModuleInit {
       attributes: (Array.isArray(input.attributes) ? input.attributes : existing?.attributes || []).map((field: any) => this.sanitizeCatalogField(field)).slice(0, 80),
       isActive: input.isActive === undefined ? existing?.isActive !== false : this.parseBooleanFlag(input.isActive) !== false,
       version: Number(existing?.version || input.version || 1),
+      parentId: input.parentId !== undefined
+        ? (input.parentId ? String(input.parentId).trim().toLowerCase() : null)
+        : (existing?.parentId || null),
     };
   }
 
@@ -264,6 +267,71 @@ export class ProductService implements OnModuleInit {
     const categories = rows.map(row => this.sanitizeCatalogCategory(row));
     await this.cacheManager.set(cacheKey, categories, 6 * 60 * 60 * 1000);
     return categories;
+  }
+
+  async getDescendantLeafCategoryIds(categoryId: string): Promise<string[]> {
+    const categories = await this.getCatalogCategories(false);
+    const categoryMap = new Map<string, CatalogCategory>();
+    const parentToChildren = new Map<string, string[]>();
+
+    for (const cat of categories) {
+      categoryMap.set(cat.id, cat);
+      if (cat.parentId) {
+        const children = parentToChildren.get(cat.parentId) || [];
+        children.push(cat.id);
+        parentToChildren.set(cat.parentId, children);
+      }
+    }
+
+    const leafIds: string[] = [];
+    const visited = new Set<string>();
+
+    const traverse = (currentId: string) => {
+      if (visited.has(currentId)) return;
+      visited.add(currentId);
+
+      const children = parentToChildren.get(currentId) || [];
+      if (children.length === 0) {
+        leafIds.push(currentId);
+      } else {
+        for (const childId of children) {
+          traverse(childId);
+        }
+      }
+    };
+
+    traverse(categoryId);
+    return leafIds;
+  }
+
+  async buildCategoryTree(): Promise<any[]> {
+    const categories = await this.getCatalogCategories(false);
+    const categoryMap = new Map<string, any>();
+    const roots: any[] = [];
+
+    for (const cat of categories) {
+      categoryMap.set(cat.id, {
+        id: cat.id,
+        label: cat.label,
+        productType: cat.productType,
+        parentId: cat.parentId,
+        variantAxes: cat.variantAxes,
+        attributes: cat.attributes,
+        children: []
+      });
+    }
+
+    for (const cat of categories) {
+      const node = categoryMap.get(cat.id);
+      if (cat.parentId && categoryMap.has(cat.parentId)) {
+        const parentNode = categoryMap.get(cat.parentId);
+        parentNode.children.push(node);
+      } else {
+        roots.push(node);
+      }
+    }
+
+    return roots;
   }
 
   async getCategorySchema(categoryId: string): Promise<CatalogCategory> {
@@ -493,6 +561,16 @@ export class ProductService implements OnModuleInit {
   private async normalizeProductData(input: any, existing?: any): Promise<any> {
     const productData = { ...input };
     const category = await this.resolveCatalogCategoryDynamic(productData.categoryId || productData.category || existing?.categoryId || existing?.category);
+
+    // Verify that the assigned category is a leaf node (has no children)
+    const allCategories = await this.getCatalogCategories(false);
+    const hasChildren = allCategories.some(cat => cat.parentId === category.id);
+    if (hasChildren) {
+      throw new BadRequestException(
+        `Cannot assign product to branch category '${category.label}'. Products must be associated with a leaf category.`
+      );
+    }
+
     const nextPrice = productData.price !== undefined ? Number(productData.price) : existing?.price;
     const previousPrice = existing?.price;
 
@@ -653,17 +731,17 @@ export class ProductService implements OnModuleInit {
   }
 
   async getRecommendedProducts(userId: string | undefined, query: any = {}): Promise<any[]> {
-    const limit = Math.min(Math.max(Number(query.limit || 24), 1), 60);
+    const limit = Math.min(Math.max(Number(query.limit || 24), 1), 200);
+    const skip = Number(query.skip || 0);
+    const { limit: _, skip: __, sortBy: ___, ...restQuery } = query;
     const products = await this.findAll({
       approvedOnly: true,
       isActive: true,
-      limit: Math.max(limit * 4, 80),
-      search: query.search,
-      marketId: query.marketId,
-      categoryId: query.categoryId,
+      ...restQuery,
+      limit: 1000,
     });
     const ranked = await this.applyRecommendationRanking(products, userId);
-    return ranked.slice(0, limit);
+    return ranked.slice(skip, skip + limit);
   }
 
   async recordProductInteraction(userId: string, productId: string, action = 'product_view'): Promise<any> {
@@ -924,11 +1002,16 @@ export class ProductService implements OnModuleInit {
 
     if (categoryId || category) {
       const resolved = await this.resolveCatalogCategoryDynamic(categoryId || category);
+      const leafIds = await this.getDescendantLeafCategoryIds(resolved.id);
       this.addAndFilter(filter, {
         $or: [
-          { categoryId: resolved.id },
+          { categoryId: { $in: leafIds } },
           { productType: resolved.productType },
-          { category: { $in: this.legacyCategoryValues(resolved) } },
+          { category: { $in: leafIds } },
+          ...leafIds.map(leafId => {
+            const leafCat = catalogCategories.find(c => c.id === leafId) || resolved;
+            return { category: { $in: this.legacyCategoryValues(leafCat) } };
+          })
         ],
       });
     }
@@ -1304,6 +1387,27 @@ export class ProductService implements OnModuleInit {
     }
 
     return updated;
+  }
+
+  async incrementOrders(id: string, count: number): Promise<any> {
+    const safeCount = Math.min(Math.max(Math.floor(Number(count) || 1), 1), 1000);
+    const product = await this.productModel.findByIdAndUpdate(
+      id,
+      { $inc: { totalOrders: safeCount } },
+      { new: true }
+    ).exec();
+
+    if (product && product.sellerId) {
+      await this.sellerModel.findByIdAndUpdate(
+        product.sellerId,
+        { $inc: { totalOrders: safeCount } }
+      ).exec();
+
+      if (this.cacheManager) {
+        await (this.cacheManager as any).reset();
+      }
+    }
+    return product;
   }
 
   private plainSpreadsheetValue(value: any): any {

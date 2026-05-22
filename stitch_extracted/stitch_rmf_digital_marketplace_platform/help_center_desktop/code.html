@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Work+Sans:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@500&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "surface": "#fbf9f8",
+                    "on-tertiary-container": "#002f6b",
+                    "inverse-surface": "#303030",
+                    "error-container": "#ffdad6",
+                    "secondary-container": "#fc671d",
+                    "on-tertiary": "#ffffff",
+                    "on-error-container": "#93000a",
+                    "on-surface-variant": "#5a4136",
+                    "on-background": "#1b1c1c",
+                    "on-secondary-fixed": "#370e00",
+                    "surface-container-highest": "#e3e2e2",
+                    "secondary-fixed-dim": "#ffb598",
+                    "on-surface": "#1b1c1c",
+                    "primary-fixed": "#ffdbcc",
+                    "on-primary-fixed-variant": "#7a3000",
+                    "on-primary": "#ffffff",
+                    "on-secondary-container": "#561b00",
+                    "surface-tint": "#a04100",
+                    "surface-bright": "#fbf9f8",
+                    "error": "#ba1a1a",
+                    "surface-container": "#efeded",
+                    "inverse-primary": "#ffb693",
+                    "surface-variant": "#e3e2e2",
+                    "on-error": "#ffffff",
+                    "outline": "#8e7164",
+                    "tertiary-fixed-dim": "#adc6ff",
+                    "surface-container-high": "#e9e8e7",
+                    "on-primary-fixed": "#351000",
+                    "outline-variant": "#e2bfb0",
+                    "on-tertiary-fixed": "#001a42",
+                    "primary-container": "#ff6b00",
+                    "surface-dim": "#dbdad9",
+                    "surface-container-low": "#f5f3f3",
+                    "on-primary-container": "#572000",
+                    "surface-container-lowest": "#ffffff",
+                    "primary-fixed-dim": "#ffb693",
+                    "tertiary-fixed": "#d8e2ff",
+                    "tertiary-container": "#5f97ff",
+                    "inverse-on-surface": "#f2f0f0",
+                    "secondary": "#a63b00",
+                    "tertiary": "#005ac2",
+                    "primary": "#a04100",
+                    "on-tertiary-fixed-variant": "#004395",
+                    "background": "#fbf9f8",
+                    "secondary-fixed": "#ffdbce",
+                    "on-secondary": "#ffffff",
+                    "on-secondary-fixed-variant": "#7f2b00"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.125rem",
+                    "lg": "0.25rem",
+                    "xl": "0.5rem",
+                    "full": "0.75rem"
+            },
+            "spacing": {
+                    "sm": "8px",
+                    "xl": "40px",
+                    "md": "16px",
+                    "margin-desktop": "32px",
+                    "base": "4px",
+                    "lg": "24px",
+                    "margin-mobile": "16px",
+                    "xs": "4px",
+                    "gutter": "16px"
+            },
+            "fontFamily": {
+                    "body-sm": ["Work Sans"],
+                    "body-lg": ["Work Sans"],
+                    "headline-md": ["Work Sans"],
+                    "label-md": ["JetBrains Mono"],
+                    "table-data": ["Work Sans"],
+                    "headline-lg": ["Work Sans"],
+                    "body-md": ["Work Sans"],
+                    "headline-lg-mobile": ["Work Sans"]
+            },
+            "fontSize": {
+                    "body-sm": ["12px", {"lineHeight": "16px", "fontWeight": "400"}],
+                    "body-lg": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                    "headline-md": ["20px", {"lineHeight": "28px", "fontWeight": "600"}],
+                    "label-md": ["12px", {"lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "500"}],
+                    "table-data": ["13px", {"lineHeight": "18px", "fontWeight": "500"}],
+                    "headline-lg": ["30px", {"lineHeight": "38px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                    "body-md": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                    "headline-lg-mobile": ["24px", {"lineHeight": "30px", "letterSpacing": "-0.01em", "fontWeight": "700"}]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+            vertical-align: middle;
+        }
+        .hide-scrollbar::-webkit-scrollbar { display: none; }
+        .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    </style>
+</head>
+<body class="bg-surface text-on-surface font-body-md min-h-screen flex flex-col">
+<!-- TopNavBar -->
+<header class="fixed top-0 w-full z-50 flex justify-between items-center px-margin-desktop bg-surface border-b border-outline-variant h-16">
+<div class="flex items-center gap-lg">
+<span class="font-headline-md text-headline-md font-bold text-primary">RMF Market</span>
+<nav class="hidden md:flex items-center gap-md">
+<a class="font-body-md text-body-md text-on-surface-variant hover:text-primary transition-colors" href="#">Browse</a>
+<a class="font-body-md text-body-md text-on-surface-variant hover:text-primary transition-colors" href="#">Bulk Orders</a>
+<a class="font-body-md text-body-md text-on-surface-variant hover:text-primary transition-colors" href="#">Logistics</a>
+<a class="font-body-md text-body-md text-on-surface-variant hover:text-primary transition-colors" href="#">Escrow</a>
+</nav>
+</div>
+<div class="flex items-center gap-md">
+<div class="flex items-center gap-sm">
+<span class="material-symbols-outlined text-on-surface-variant p-base cursor-pointer hover:bg-surface-container-high rounded-full transition-all">notifications</span>
+<span class="material-symbols-outlined text-on-surface-variant p-base cursor-pointer hover:bg-surface-container-high rounded-full transition-all">shopping_cart</span>
+</div>
+<div class="flex items-center gap-sm cursor-pointer hover:bg-surface-container-high p-xs pr-sm rounded-full transition-all">
+<div class="w-8 h-8 rounded-full overflow-hidden border border-outline-variant">
+<img alt="Buyer Profile Avatar" class="w-full h-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAb3BIcoaW9mRpf3Xgk5IH6XLa_56IeiJseMZYrLTXB_EBysmLzSP4gWEKy-Wg1L8ehhFUUpGmi1AnEJFnZS6qZEK4NBFnSxTVXWdpK-AvotZ3HlMj7x_aQgtLx5QuAQmnY9HJlaEUhX4x0uQCVFpu7rJsmyU0FQc1hS4XXLzB6EgIRFn8xk_ww_H_aETE4HCgyGdYnLY2orlYVioS2wSxQsT8cR4fwCQEFUhDb_VVPtEE-uflOorw2kiVy7RUurv_O2wERYpFZelql"/>
+</div>
+<span class="font-label-md text-label-md hidden sm:inline">Account</span>
+</div>
+</div>
+</header>
+<div class="flex pt-16 flex-1">
+<!-- SideNavBar -->
+<aside class="hidden lg:flex flex-col h-[calc(100vh-64px)] sticky top-16 p-md w-64 border-r border-outline-variant bg-surface-container-low">
+<div class="flex items-center gap-md px-sm mb-lg">
+<img alt="Buyer Profile Picture" class="w-10 h-10 rounded-full border border-outline-variant" src="https://lh3.googleusercontent.com/aida-public/AB6AXuC5VtLw-UNNIOY6NLAZn9Ilwcln-jvC6mU3OfjYSjqBkN-Gw_cXqmXAHw9LtFfKGW5TqVA08L7LiKJLFoo5mMh55HESIQ-Fo6TU5CL8RmEp3qSo_gd0PHhjujnY73VSMOpaqfSfQLBDI5hlQafhecCis1CJf3Yz8c7L1zd3winYqJgXs5dmEbXNoYODE67zWkeuRX7n5gkyV2l-O_odkBES0OQkIasSRw1GwbjBve3uMOAbRAQo7ZUWp-nFSY00Yocnw7OJ3QQ9st_X"/>
+<div>
+<h3 class="font-label-md text-label-md font-bold text-on-surface">Jean Bahizi</h3>
+<p class="text-[10px] text-on-surface-variant uppercase tracking-wider">Verified Buyer</p>
+</div>
+</div>
+<nav class="space-y-1 flex-1">
+<div class="flex items-center gap-md px-md py-sm text-on-surface-variant hover:bg-surface-container-high rounded-lg cursor-pointer transition-all">
+<span class="material-symbols-outlined">dashboard</span>
+<span class="font-label-md">Dashboard</span>
+</div>
+<div class="flex items-center gap-md px-md py-sm text-on-surface-variant hover:bg-surface-container-high rounded-lg cursor-pointer transition-all">
+<span class="material-symbols-outlined">package_2</span>
+<span class="font-label-md">Orders</span>
+</div>
+<div class="flex items-center gap-md px-md py-sm text-on-surface-variant hover:bg-surface-container-high rounded-lg cursor-pointer transition-all">
+<span class="material-symbols-outlined">favorite</span>
+<span class="font-label-md">Wishlist</span>
+</div>
+<div class="flex items-center gap-md px-md py-sm text-on-surface-variant hover:bg-surface-container-high rounded-lg cursor-pointer transition-all">
+<span class="material-symbols-outlined">payments</span>
+<span class="font-label-md">Payments</span>
+</div>
+<div class="flex items-center gap-md px-md py-sm bg-secondary-container text-on-secondary-container font-bold rounded-lg cursor-pointer transition-all">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">support_agent</span>
+<span class="font-label-md">Support</span>
+</div>
+<div class="flex items-center gap-md px-md py-sm text-on-surface-variant hover:bg-surface-container-high rounded-lg cursor-pointer transition-all">
+<span class="material-symbols-outlined">settings</span>
+<span class="font-label-md">Settings</span>
+</div>
+</nav>
+<div class="mt-auto pt-md space-y-md">
+<button class="w-full bg-primary text-on-primary py-md px-lg rounded-lg font-label-md font-bold transition-all active:scale-95">Contact Support</button>
+<div class="flex items-center gap-md px-md py-sm text-error hover:bg-error-container rounded-lg cursor-pointer transition-all">
+<span class="material-symbols-outlined">logout</span>
+<span class="font-label-md">Logout</span>
+</div>
+</div>
+</aside>
+<!-- Main Content Area -->
+<main class="flex-1 w-full max-w-5xl mx-auto px-margin-mobile md:px-margin-desktop py-xl">
+<!-- Hero Section / Search -->
+<section class="text-center mb-xl">
+<h1 class="font-headline-lg text-headline-lg mb-md text-on-surface">How can we help you today?</h1>
+<p class="font-body-lg text-body-lg text-on-surface-variant mb-lg">Search for articles, guides, or common fixes for your RMF trade experience.</p>
+<div class="max-w-2xl mx-auto relative group">
+<span class="material-symbols-outlined absolute left-md top-1/2 -translate-y-1/2 text-on-surface-variant group-focus-within:text-primary transition-colors">search</span>
+<input class="w-full pl-xl pr-md py-lg bg-surface-container border border-outline-variant rounded-xl focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all font-body-md text-on-surface" placeholder="Search for 'escrow rules', 'delivery delay', 'payment methods'..." type="text"/>
+</div>
+</section>
+<!-- Popular Topics Bento Grid -->
+<section class="mb-xl">
+<h2 class="font-headline-md text-headline-md mb-lg border-l-4 border-primary pl-md">Popular Topics</h2>
+<div class="grid grid-cols-1 md:grid-cols-3 gap-md">
+<!-- Orders Card -->
+<div class="bg-surface border border-outline-variant p-lg rounded-xl hover:bg-surface-container transition-all cursor-pointer group flex flex-col justify-between">
+<div>
+<div class="w-12 h-12 rounded-lg bg-primary-fixed flex items-center justify-center mb-md group-hover:scale-110 transition-transform">
+<span class="material-symbols-outlined text-primary text-3xl">package_2</span>
+</div>
+<h3 class="font-headline-md text-headline-md mb-sm">Orders</h3>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Track shipments, manage bulk orders, and handle delivery confirmations across Rwanda.</p>
+</div>
+<div class="mt-md flex items-center text-primary font-label-md">
+                            6 articles <span class="material-symbols-outlined ml-base text-sm">chevron_right</span>
+</div>
+</div>
+<!-- Payments Card -->
+<div class="bg-surface border border-outline-variant p-lg rounded-xl hover:bg-surface-container transition-all cursor-pointer group flex flex-col justify-between">
+<div>
+<div class="w-12 h-12 rounded-lg bg-tertiary-fixed flex items-center justify-center mb-md group-hover:scale-110 transition-transform">
+<span class="material-symbols-outlined text-tertiary text-3xl">payments</span>
+</div>
+<h3 class="font-headline-md text-headline-md mb-sm">Payments</h3>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Mobile money integration, bank transfers, and billing history details.</p>
+</div>
+<div class="mt-md flex items-center text-primary font-label-md">
+                            12 articles <span class="material-symbols-outlined ml-base text-sm">chevron_right</span>
+</div>
+</div>
+<!-- Escrow Card -->
+<div class="bg-surface border border-outline-variant p-lg rounded-xl hover:bg-surface-container transition-all cursor-pointer group flex flex-col justify-between">
+<div>
+<div class="w-12 h-12 rounded-lg bg-secondary-fixed flex items-center justify-center mb-md group-hover:scale-110 transition-transform">
+<span class="material-symbols-outlined text-secondary text-3xl">verified_user</span>
+</div>
+<h3 class="font-headline-md text-headline-md mb-sm">Escrow</h3>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Understanding funds protection, release triggers, and dispute resolution.</p>
+</div>
+<div class="mt-md flex items-center text-primary font-label-md">
+                            8 articles <span class="material-symbols-outlined ml-base text-sm">chevron_right</span>
+</div>
+</div>
+</div>
+</section>
+<!-- FAQ Section -->
+<section class="mb-xl">
+<div class="flex justify-between items-end mb-lg">
+<div>
+<h2 class="font-headline-md text-headline-md border-l-4 border-primary pl-md">Frequently Asked Questions</h2>
+<p class="font-body-sm text-body-sm text-on-surface-variant ml-md mt-xs">Quick answers to common trader inquiries</p>
+</div>
+</div>
+<div class="space-y-sm">
+<!-- FAQ Item 1 -->
+<div class="border border-outline-variant rounded-xl overflow-hidden bg-surface">
+<button class="w-full flex items-center justify-between p-lg text-left hover:bg-surface-container-low transition-colors" onclick="toggleAccordion('faq-1')">
+<span class="font-body-lg font-bold">How does the RMF Escrow service protect my trade?</span>
+<span class="material-symbols-outlined transition-transform" id="icon-faq-1">expand_more</span>
+</button>
+<div class="hidden px-lg pb-lg text-on-surface-variant font-body-md border-t border-outline-variant pt-md" id="content-faq-1">
+                            RMF Escrow holds your payment in a secure neutral account until you confirm the receipt and quality of the goods. Only after the buyer's approval or the expiration of the inspection period are funds released to the seller. This ensures trust in high-value Rwandan marketplace transactions.
+                        </div>
+</div>
+<!-- FAQ Item 2 -->
+<div class="border border-outline-variant rounded-xl overflow-hidden bg-surface">
+<button class="w-full flex items-center justify-between p-lg text-left hover:bg-surface-container-low transition-colors" onclick="toggleAccordion('faq-2')">
+<span class="font-body-lg font-bold">What should I do if my shipment is delayed beyond the estimated time?</span>
+<span class="material-symbols-outlined transition-transform" id="icon-faq-2">expand_more</span>
+</button>
+<div class="hidden px-lg pb-lg text-on-surface-variant font-body-md border-t border-outline-variant pt-md" id="content-faq-2">
+                            First, check the "Logistics" tab to see real-time GPS tracking. If the delay exceeds 48 hours without update, you can trigger a "Delay Notification" in the order panel which alerts our logistics supervisors to investigate the transit hub.
+                        </div>
+</div>
+<!-- FAQ Item 3 -->
+<div class="border border-outline-variant rounded-xl overflow-hidden bg-surface">
+<button class="w-full flex items-center justify-between p-lg text-left hover:bg-surface-container-low transition-colors" onclick="toggleAccordion('faq-3')">
+<span class="font-body-lg font-bold">Are there fees for using Mobile Money for large transactions?</span>
+<span class="material-symbols-outlined transition-transform" id="icon-faq-3">expand_more</span>
+</button>
+<div class="hidden px-lg pb-lg text-on-surface-variant font-body-md border-t border-outline-variant pt-md" id="content-faq-3">
+                            RMF negotiates flat-rate fees with major local telcos for trade-specific transfers. For amounts over 1,000,000 RWF, we recommend using the RMF Integrated Bank Transfer which offers lower fixed processing costs compared to tiered mobile money percentages.
+                        </div>
+</div>
+<!-- FAQ Item 4 -->
+<div class="border border-outline-variant rounded-xl overflow-hidden bg-surface">
+<button class="w-full flex items-center justify-between p-lg text-left hover:bg-surface-container-low transition-colors" onclick="toggleAccordion('faq-4')">
+<span class="font-body-lg font-bold">How do I verify a seller's credentials before buying?</span>
+<span class="material-symbols-outlined transition-transform" id="icon-faq-4">expand_more</span>
+</button>
+<div class="hidden px-lg pb-lg text-on-surface-variant font-body-md border-t border-outline-variant pt-md" id="content-faq-4">
+                            Look for the blue "RMF Verified" badge on seller profiles. This badge indicates that we have verified their RDB registration, physical warehouse location, and tax compliance history in Rwanda.
+                        </div>
+</div>
+</div>
+</section>
+<!-- Contact Section -->
+<section class="bg-surface-container rounded-2xl p-xl flex flex-col md:flex-row items-center justify-between gap-lg border border-outline-variant relative overflow-hidden">
+<div class="relative z-10 text-center md:text-left">
+<h2 class="font-headline-lg text-headline-lg mb-sm">Still need help?</h2>
+<p class="font-body-lg text-body-lg text-on-surface-variant mb-md">Our support team is available Mon-Fri, 8 AM - 6 PM CAT.</p>
+<div class="flex flex-wrap gap-md justify-center md:justify-start">
+<button class="bg-primary text-on-primary py-md px-xl rounded-lg font-bold flex items-center gap-sm active:scale-95 transition-all">
+<span class="material-symbols-outlined">chat</span>
+                            Live Chat
+                        </button>
+<button class="bg-surface border border-primary text-primary py-md px-xl rounded-lg font-bold active:scale-95 transition-all">
+                            Email Support
+                        </button>
+</div>
+</div>
+<div class="relative w-full md:w-1/3 aspect-video rounded-xl overflow-hidden shadow-sm border border-outline-variant">
+<img class="w-full h-full object-cover" data-alt="A diverse and professional customer support team working in a bright, modern office in Kigali. They are wearing headsets and looking at computer screens with a warm, focused expression. The environment is clean and professional with corporate modern styling, reflecting a high-reliability Rwandan business context with soft daylight streaming in." src="https://lh3.googleusercontent.com/aida-public/AB6AXuATPW9OsrXF1XmmXw9aHU6HCCZ2Jir4oZaKLA6ECxOAQk6O5gH4N4R3WOxKrucgrH-4XDKbkkg8CtDlodHoP7U_7PqILeLBCcbCC3VLDgmbsanVrcyW-dXgiDUPROUSLIuucLqb-YZwegKEVlwgLyjjd1lEjWkx3iWxHahzZcTKMLyakb3LHI7j-GGhaAPB3iRboqQMqbIgkQMUYoPctwHhLm377V-ci4MEIPJ15I9BAPUDV2sy12IOIC5tDc-3LXrpkd9GYgqZIb8f"/>
+<div class="absolute inset-0 bg-primary/10 mix-blend-multiply"></div>
+</div>
+</section>
+</main>
+</div>
+<!-- Mobile Bottom Navigation -->
+<nav class="md:hidden fixed bottom-0 left-0 w-full bg-surface border-t border-outline-variant flex justify-around items-center h-16 z-50">
+<div class="flex flex-col items-center gap-xs text-on-surface-variant">
+<span class="material-symbols-outlined">home</span>
+<span class="text-[10px] font-label-md">Home</span>
+</div>
+<div class="flex flex-col items-center gap-xs text-on-surface-variant">
+<span class="material-symbols-outlined">search</span>
+<span class="text-[10px] font-label-md">Explore</span>
+</div>
+<div class="flex flex-col items-center gap-xs text-primary">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">help</span>
+<span class="text-[10px] font-label-md">Help</span>
+</div>
+<div class="flex flex-col items-center gap-xs text-on-surface-variant">
+<span class="material-symbols-outlined">person</span>
+<span class="text-[10px] font-label-md">Profile</span>
+</div>
+</nav>
+<script>
+        function toggleAccordion(id) {
+            const content = document.getElementById(`content-${id}`);
+            const icon = document.getElementById(`icon-${id}`);
+            
+            const isOpen = !content.classList.contains('hidden');
+            
+            // Close all first for true accordion behavior
+            document.querySelectorAll('[id^="content-"]').forEach(el => el.classList.add('hidden'));
+            document.querySelectorAll('[id^="icon-"]').forEach(el => el.style.transform = 'rotate(0deg)');
+            
+            if (!isOpen) {
+                content.classList.remove('hidden');
+                icon.style.transform = 'rotate(180deg)';
+            }
+        }
+
+        // Search Bar Micro-interaction
+        const searchInput = document.querySelector('input[type="text"]');
+        searchInput.addEventListener('focus', () => {
+            searchInput.parentElement.classList.add('scale-[1.02]');
+        });
+        searchInput.addEventListener('blur', () => {
+            searchInput.parentElement.classList.remove('scale-[1.02]');
+        });
+    </script>
+</body></html>

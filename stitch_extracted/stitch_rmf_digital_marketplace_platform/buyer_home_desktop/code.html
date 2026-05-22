@@ -1,0 +1,476 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Work+Sans:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@500&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-surface": "#1b1c1c",
+                        "surface-container-low": "#f5f3f3",
+                        "primary-fixed": "#ffdbcc",
+                        "secondary-fixed-dim": "#ffb598",
+                        "on-secondary": "#ffffff",
+                        "background": "#fbf9f8",
+                        "on-primary-fixed": "#351000",
+                        "surface-container": "#efeded",
+                        "on-tertiary-container": "#002f6b",
+                        "surface-container-highest": "#e3e2e2",
+                        "on-background": "#1b1c1c",
+                        "on-secondary-fixed": "#370e00",
+                        "surface-tint": "#a04100",
+                        "inverse-surface": "#303030",
+                        "surface-container-high": "#e9e8e7",
+                        "tertiary-fixed": "#d8e2ff",
+                        "tertiary-fixed-dim": "#adc6ff",
+                        "surface-container-lowest": "#ffffff",
+                        "on-secondary-fixed-variant": "#7f2b00",
+                        "secondary": "#a63b00",
+                        "surface": "#fbf9f8",
+                        "on-primary-fixed-variant": "#7a3000",
+                        "on-primary-container": "#572000",
+                        "on-primary": "#ffffff",
+                        "surface-bright": "#fbf9f8",
+                        "tertiary": "#005ac2",
+                        "primary-container": "#ff6b00",
+                        "inverse-on-surface": "#f2f0f0",
+                        "outline": "#8e7164",
+                        "primary": "#a04100",
+                        "inverse-primary": "#ffb693",
+                        "secondary-fixed": "#ffdbce",
+                        "on-tertiary-fixed-variant": "#004395",
+                        "error": "#ba1a1a",
+                        "error-container": "#ffdad6",
+                        "on-tertiary": "#ffffff",
+                        "on-error": "#ffffff",
+                        "tertiary-container": "#5f97ff",
+                        "on-error-container": "#93000a",
+                        "on-surface-variant": "#5a4136",
+                        "secondary-container": "#fc671d",
+                        "surface-dim": "#dbdad9",
+                        "surface-variant": "#e3e2e2",
+                        "on-secondary-container": "#561b00",
+                        "outline-variant": "#e2bfb0",
+                        "primary-fixed-dim": "#ffb693",
+                        "on-tertiary-fixed": "#001a42"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.125rem",
+                        "lg": "0.25rem",
+                        "xl": "0.5rem",
+                        "full": "0.75rem"
+                    },
+                    "spacing": {
+                        "sm": "8px",
+                        "margin-mobile": "16px",
+                        "xs": "4px",
+                        "md": "16px",
+                        "gutter": "16px",
+                        "base": "4px",
+                        "lg": "24px",
+                        "margin-desktop": "32px",
+                        "xl": "40px"
+                    },
+                    "fontFamily": {
+                        "headline-lg": ["Work Sans"],
+                        "body-sm": ["Work Sans"],
+                        "headline-md": ["Work Sans"],
+                        "table-data": ["Work Sans"],
+                        "body-lg": ["Work Sans"],
+                        "headline-lg-mobile": ["Work Sans"],
+                        "body-md": ["Work Sans"],
+                        "label-md": ["JetBrains Mono"]
+                    },
+                    "fontSize": {
+                        "headline-lg": ["30px", {"lineHeight": "38px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                        "body-sm": ["12px", {"lineHeight": "16px", "fontWeight": "400"}],
+                        "headline-md": ["20px", {"lineHeight": "28px", "fontWeight": "600"}],
+                        "table-data": ["13px", {"lineHeight": "18px", "fontWeight": "500"}],
+                        "body-lg": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                        "headline-lg-mobile": ["24px", {"lineHeight": "30px", "letterSpacing": "-0.01em", "fontWeight": "700"}],
+                        "body-md": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                        "label-md": ["12px", {"lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "500"}]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .hide-scrollbar::-webkit-scrollbar { display: none; }
+        .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        .ghost-border { border: 1px solid #ebdcd0; }
+    </style>
+</head>
+<body class="bg-background text-on-surface font-body-md selection:bg-primary-container selection:text-on-primary-container">
+<!-- TopNavBar -->
+<header class="fixed top-0 left-0 w-full z-50 flex justify-between items-center px-margin-desktop h-16 bg-surface border-b border-outline-variant">
+<div class="flex items-center gap-xl">
+<span class="text-headline-md font-headline-md font-bold text-primary">RMF</span>
+<div class="hidden md:flex items-center bg-surface-container-low ghost-border px-md py-base w-96">
+<span class="material-symbols-outlined text-on-surface-variant mr-sm">search</span>
+<input class="bg-transparent border-none focus:ring-0 text-body-md w-full" placeholder="Search for markets or products..." type="text"/>
+</div>
+</div>
+<nav class="hidden md:flex items-center space-x-lg h-full">
+<a class="h-full flex items-center text-primary border-b-2 border-primary font-body-md px-base transition-opacity hover:opacity-80" href="#">Home</a>
+<a class="h-full flex items-center text-on-surface-variant font-body-md px-base hover:bg-surface-container-low transition-colors" href="#">Explore</a>
+<a class="h-full flex items-center text-on-surface-variant font-body-md px-base hover:bg-surface-container-low transition-colors" href="#">Orders</a>
+</nav>
+<div class="flex items-center space-x-md">
+<button class="p-base hover:bg-surface-container-low transition-colors rounded-full flex items-center">
+<span class="material-symbols-outlined text-primary">location_on</span>
+<span class="hidden lg:inline ml-xs text-label-md">Kigali</span>
+</button>
+<button class="p-base hover:bg-surface-container-low transition-colors rounded-full">
+<span class="material-symbols-outlined text-primary">language</span>
+</button>
+<button class="p-base hover:bg-surface-container-low transition-colors rounded-full relative">
+<span class="material-symbols-outlined text-primary">notifications</span>
+<span class="absolute top-1 right-1 w-2 h-2 bg-error rounded-full"></span>
+</button>
+<button class="p-base hover:bg-surface-container-low transition-colors rounded-full">
+<span class="material-symbols-outlined text-primary">shopping_cart</span>
+</button>
+<img alt="User Account" class="w-8 h-8 rounded-full ghost-border" data-alt="A professional close-up portrait of a young Rwandan entrepreneur in a clean workspace. The lighting is soft and natural, emphasizing a trustworthy and successful persona. The background is slightly blurred to keep focus on the individual, using a warm and neutral color palette consistent with a corporate modern aesthetic." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCav-6g6lTgHnNYoC272uQX9MZGby6zHxsES63e4yIk7GwtbfOJyn37Edqv5_bes-NwAEkG0BoTQT6o81SvsvbQ5shMxqzPnZEgLnH0pCsYyHpwwRPtXsgSkUa-JgpiTiv5AbxvRZFnIYWPZcFyhjEk5KzLFd7nSwwSjMRlfUFhR5-iJoXPHZrimdgUituRDMeo7o7I36XBiwouQvb4lGuT0E7V-GOSYvzlctK8oWSKgpfDn5vGDwC4ym0j7zVxkftzf2GyiQBssKhB"/>
+</div>
+</header>
+<main class="pt-16 pb-20 lg:pb-0">
+<!-- Hero Section -->
+<section class="relative w-full h-[400px] lg:h-[520px] overflow-hidden">
+<img class="w-full h-full object-cover" data-alt="A vibrant and busy open-air Rwandan marketplace filled with stalls of colorful fresh vegetables, grains, and handmade crafts. The scene is captured during golden hour, bathing the commerce-driven atmosphere in warm, earthly sunlight. The composition is dynamic and full of life, showcasing the bustling trade activity with high clarity and detail." src="https://lh3.googleusercontent.com/aida-public/AB6AXuD3EO-NA7PhNDRSMljXNzf9Nu6oTbjx_Q1wFLPpKgJifL0O5WU3qwbMIFRD4SrSIYHrHqU2ThtkwBYLflVuVB7XswXJdPLnD7Cgz-ZmDpsmLmL1B02C0UwIo-WJKYCW-0I3bAnPe4KlJisSg9FEcJwN49BftHkV0XYAzX5hIZK8sdnJ0tpb6jTvYA7Of8JcfCONMd8G_kkf6hLvxTwOjuVeqg8lC6FSRY_5-JLPS7iC4nc-4Li4AvEjzK5Ssfow7SPrh5elBn78b591"/>
+<div class="absolute inset-0 bg-gradient-to-r from-on-surface/60 to-transparent flex items-center px-margin-mobile lg:px-margin-desktop">
+<div class="max-w-2xl text-surface">
+<h1 class="font-headline-lg text-headline-lg-mobile lg:text-headline-lg mb-md">Direct Access to Rwanda's finest Markets.</h1>
+<p class="font-body-lg text-body-lg mb-lg opacity-90">Facilitating secure, transparent trade between local producers and global buyers. Experience the heartbeat of Rwandan commerce.</p>
+<div class="flex gap-md">
+<button class="bg-primary text-on-primary px-lg py-sm font-label-md rounded-lg hover:scale-95 transition-transform">Start Trading</button>
+<button class="border border-surface text-surface px-lg py-sm font-label-md rounded-lg hover:bg-surface/10 transition-colors">Learn More</button>
+</div>
+</div>
+</div>
+</section>
+<!-- Main Content Grid -->
+<div class="max-w-[1280px] mx-auto px-margin-mobile lg:px-margin-desktop py-xl space-y-xl">
+<!-- Bento Layout: Nearby Markets & Map -->
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-gutter">
+<!-- Nearby Markets -->
+<div class="lg:col-span-8 space-y-md">
+<div class="flex justify-between items-end">
+<div>
+<h2 class="font-headline-md text-headline-md">Nearby Markets</h2>
+<p class="text-on-surface-variant font-body-sm">Operational hubs within your current radius</p>
+</div>
+<button class="text-primary font-label-md hover:underline">View All</button>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-md">
+<!-- Market Card 1 -->
+<div class="bg-surface ghost-border p-md flex gap-md hover:bg-surface-container-low transition-colors group">
+<img class="w-24 h-24 object-cover rounded-lg" data-alt="A close-up of fresh organic Rwandan coffee beans in a rustic wooden bowl at a local market stall. The image is brightly lit with a clean, high-utility aesthetic. Textures are crisp, and the warm brown tones of the coffee are highlighted against a neutral background." src="https://lh3.googleusercontent.com/aida-public/AB6AXuD4rEwHt9eDOftjnrLHAkd7fPRC7kB0lbvc2skraj75qNskSFJCn0n6e3-T6VikriBoKFo52-XO1rOyLj9ceGLq0E0-0laYodeypy5er5D1VYnPUdOgT1QTan_pNkzxexSgepqL1-F5BZ2Bdl7_IOdQnn0dZOaR8qwSU0o4dsqHq5fMZaQULoPTMqWBRk6TnH_NO3WXnXsbonYzg1PnsiF1pjU1j7iR_kGg2zOewEGpS0G-tqSfF2uH23rUUt18dlF7M2IyFh3M7aVe"/>
+<div class="flex-1 space-y-xs">
+<div class="flex justify-between">
+<span class="text-label-md text-primary font-bold">KIMIRONKO MARKET</span>
+<span class="flex items-center text-[#3b82f6] text-[10px] font-bold uppercase tracking-wider">
+<span class="material-symbols-outlined text-[14px] mr-base" style="font-variation-settings: 'FILL' 1;">verified</span>Verified
+                                    </span>
+</div>
+<h3 class="font-headline-md text-body-lg">Kigali Central Hub</h3>
+<div class="flex items-center gap-base text-on-surface-variant text-body-sm">
+<span class="material-symbols-outlined text-[16px]">distance</span>
+<span>1.2 km away</span>
+</div>
+<div class="flex items-center justify-between pt-base">
+<span class="bg-tertiary-container/20 text-on-tertiary-container px-base py-[2px] text-[10px] font-bold rounded">OPEN UNTIL 19:00</span>
+<button class="material-symbols-outlined text-primary group-hover:translate-x-1 transition-transform">arrow_forward</button>
+</div>
+</div>
+</div>
+<!-- Market Card 2 -->
+<div class="bg-surface ghost-border p-md flex gap-md hover:bg-surface-container-low transition-colors group">
+<img class="w-24 h-24 object-cover rounded-lg" data-alt="A neatly organized row of handcrafted Rwandan baskets, known as Agaseke, displayed in a modern marketplace setting. The lighting is professional and focused, highlighting the intricate patterns and natural fibers. The overall mood is grounded, reliable, and celebrates local craftsmanship." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAPuRoRSbYmZUuEEarEEJ7H5frhjLH53BacKX_OeZneBebx9bLksprPfXafAm2Mymi1RS3sCEoCnW-uMfXCx-jz4RRPHaaJT-s9WL-nOefA41gKFuTsm3Qli8I3fYsliSSdOEZ9Fp8tpD0YjRYbQuhVs2byM_KL5MzxWuD0mMcekZYyMb6BeUspVGnJj1tzGSKek0NKtO5ow9zQ_5cQzh_rvcoA_WVMn-H3QAefmC8mksWIP5_lOtfq1sHb1gmt_PrXjQK5xmtVJReY"/>
+<div class="flex-1 space-y-xs">
+<div class="flex justify-between">
+<span class="text-label-md text-primary font-bold">NYABUGOGO</span>
+<span class="flex items-center text-[#3b82f6] text-[10px] font-bold uppercase tracking-wider">
+<span class="material-symbols-outlined text-[14px] mr-base" style="font-variation-settings: 'FILL' 1;">verified</span>Verified
+                                    </span>
+</div>
+<h3 class="font-headline-md text-body-lg">Transport Logistics Hub</h3>
+<div class="flex items-center gap-base text-on-surface-variant text-body-sm">
+<span class="material-symbols-outlined text-[16px]">distance</span>
+<span>3.8 km away</span>
+</div>
+<div class="flex items-center justify-between pt-base">
+<span class="bg-tertiary-container/20 text-on-tertiary-container px-base py-[2px] text-[10px] font-bold rounded">OPEN 24 HOURS</span>
+<button class="material-symbols-outlined text-primary group-hover:translate-x-1 transition-transform">arrow_forward</button>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Map Preview -->
+<div class="lg:col-span-4 space-y-md">
+<h2 class="font-headline-md text-headline-md">Interactive View</h2>
+<div class="relative h-[240px] lg:h-full ghost-border bg-surface-container-low overflow-hidden rounded-lg">
+<img class="w-full h-full object-cover opacity-50 grayscale" data-alt="A clean, minimalist topographical map of Kigali, Rwanda, showing major road networks and commerce zones. The visual style is functional and clear, utilizing a palette of soft greys and muted earth tones. Stylized orange pins indicate key marketplace locations across the city grid." data-location="Kigali" src="https://lh3.googleusercontent.com/aida-public/AB6AXuC576ZYqiMuGUEFDjwmK9YpXwB99-9XwHj4oTvZgzPKbQxXdTHycZFyyFbKtmcAaRH6pSVERfu6UeMot8H27WTxxwBR5dMWyxPkkp5pWqJM2ZiqJkF92tHrLCvQ_zaAIO3hDZcY0LNO0iT0_XNZb9bOQsXxf0HuhAsKrFRq-IQWKgiCf9B35XViMVQNeDq6RJMLx0VfksytwtYCxRr_-MJzS6wxu8S-7QR9ivehDbksNinJD3OMTNEK5ccL6rlr6_9n_y7eFsObL1jk"/>
+<div class="absolute inset-0 flex items-center justify-center pointer-events-none">
+<div class="bg-surface p-sm ghost-shadow rounded flex items-center gap-sm shadow-xl animate-bounce">
+<span class="material-symbols-outlined text-primary">location_on</span>
+<span class="text-label-md font-bold">Current Location</span>
+</div>
+</div>
+<div class="absolute bottom-md left-md right-md bg-surface/90 backdrop-blur p-sm ghost-border flex items-center justify-between">
+<span class="text-body-sm font-bold">6 Active Markets Pinpointed</span>
+<button class="bg-on-surface text-surface text-[10px] px-sm py-xs uppercase font-bold">Expand Map</button>
+</div>
+</div>
+</div>
+</div>
+<!-- Recommended for You Rail -->
+<section class="space-y-md">
+<div class="flex justify-between items-end">
+<div>
+<h2 class="font-headline-md text-headline-md">Recommended for You</h2>
+<p class="text-on-surface-variant font-body-sm">Based on your recent search for agribusiness</p>
+</div>
+</div>
+<div class="flex gap-gutter overflow-x-auto hide-scrollbar pb-base">
+<!-- Product Card -->
+<div class="min-w-[200px] bg-surface ghost-border overflow-hidden hover:bg-surface-container-low transition-all">
+<div class="relative h-40">
+<img class="w-full h-full object-cover" data-alt="Professional studio shot of organic Rwandan highland tea leaves in a contemporary ceramic container. The lighting is soft and even, highlighting the deep green color and fine texture of the tea. The composition is minimalist and high-end, evoking a sense of premium quality." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDEUqR9pLKCDEJCkIru-HNcYG5ei92EFg3AI--6yrl0ZQGIalE6Mo1wp4sbIFSsgrUdEvBcRe7_9P-HXkZxELgCckUIIJsHrG3IICZb42dz42al32k7yIH-3YtCTaGJtdTaYsr3S7fGwpd_hGNLczMYrDXkS8sfPwJQFu4lOI9e56vm3DfAl0ZbCiNhgoEutJjE8L9akH0EmiXqqEIwD2hxOaw7938QnXb703YIBjo64PH7bLOfiJsWVPagjlskYJ9J_XxXEHHtuR9F"/>
+<span class="absolute top-sm left-sm bg-primary text-on-primary text-[10px] font-bold px-base py-[2px]">BULK ONLY</span>
+</div>
+<div class="p-sm space-y-xs">
+<p class="text-on-surface-variant text-label-md uppercase">Agribusiness</p>
+<h4 class="font-headline-md text-body-md truncate">Premium Highland Tea</h4>
+<p class="text-primary font-bold text-body-lg">RWF 45,000 / Box</p>
+<div class="flex items-center gap-xs text-[10px] text-on-surface-variant font-bold">
+<span class="material-symbols-outlined text-[14px]">inventory</span>
+                                500+ Units Available
+                            </div>
+</div>
+</div>
+<!-- Product Card 2 -->
+<div class="min-w-[200px] bg-surface ghost-border overflow-hidden hover:bg-surface-container-low transition-all">
+<div class="relative h-40">
+<img class="w-full h-full object-cover" data-alt="A variety of vibrant, high-quality Rwandan spices including chili, turmeric, and ginger arranged in geometric patterns on a neutral surface. The lighting is high-key and bright, emphasizing the rich colors and freshness. The image reflects a high-utility, professional marketplace aesthetic." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDxNC0JEEdjAB-8-vsejyAP5HJ5_gdiX9DagL8lP3Hd1joX9oN1ATCjXKG0TCVB8aiK3syKIm7hc9HsPQAThPyn5TBnMeitJ8XX4VlQNhMoVW_wnOU1ymUcXsmyk_p7dZvgrHG1CeuHQM33d7u_gfDFgSP0aHvP4fxmBnwbTgbC97ElHynT_EocFeDQNzb5VhCfU-aQxrTLsMWCqQeFn5FqA0Dy-X5ITQ5zOHHCOG2kqhPsCxkFuAi05vv7ieCMtnDFUSScE6KAzxWz"/>
+</div>
+<div class="p-sm space-y-xs">
+<p class="text-on-surface-variant text-label-md uppercase">Export Goods</p>
+<h4 class="font-headline-md text-body-md truncate">Mixed Export Spices</h4>
+<p class="text-primary font-bold text-body-lg">RWF 12,500 / KG</p>
+<div class="flex items-center gap-xs text-[10px] text-on-surface-variant font-bold">
+<span class="material-symbols-outlined text-[14px]">local_shipping</span>
+                                Ready to Ship
+                            </div>
+</div>
+</div>
+<!-- Product Card 3 -->
+<div class="min-w-[200px] bg-surface ghost-border overflow-hidden hover:bg-surface-container-low transition-all">
+<div class="relative h-40">
+<img class="w-full h-full object-cover" data-alt="A pair of expertly crafted, high-quality leather shoes made in Rwanda, presented on a polished wooden surface. The lighting is dramatic yet clear, showcasing the stitching detail and premium leather texture. The visual style is sophisticated and grounded in local excellence." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAY6siJZuTkoQmNB068goKeNLzj_C74E8yT3xNLPPZsK1nhWELvAIiOeKw_jdNpEXEUphCw976wWVtCV66sXI1Qpag14zjpM5m5-U3HycQbY8rfKYuXrfv6B3YJUdCuz_38XEKbBh0WFE_XfEHP-ZCWRNA3MI4VKQDw21bnP3ZLRwCWX5Rg-2aylxpVoDDFbAm9FkJZLv20BkW7Kzq43nsVTWrOIz1Kuf-XjKx89e03nuNEiFkxDKATct5DQ2FOUJLLC_M1C8ip5tD3"/>
+</div>
+<div class="p-sm space-y-xs">
+<p class="text-on-surface-variant text-label-md uppercase">Apparel</p>
+<h4 class="font-headline-md text-body-md truncate">Artisan Leather Shoes</h4>
+<p class="text-primary font-bold text-body-lg">RWF 35,000 / Pair</p>
+<div class="flex items-center gap-xs text-[10px] text-on-surface-variant font-bold">
+<span class="material-symbols-outlined text-[14px]">shield</span>
+                                Certified Maker
+                            </div>
+</div>
+</div>
+<!-- Product Card 4 -->
+<div class="min-w-[200px] bg-surface ghost-border overflow-hidden hover:bg-surface-container-low transition-all">
+<div class="relative h-40">
+<img class="w-full h-full object-cover" data-alt="A modern bicycle transport setup used for logistics in Rwanda, featuring a clean, well-maintained bike with integrated carrying racks. The setting is an urban Rwandan street during a clear day with bright, natural lighting. The style is functional and represents efficient local logistics solutions." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDQVxd8qC3pYGONtQS78YCV0cPhc85R6IRx8cfCUJbrSScTiC0NZvBuQBg4BM9PMVkDNKx9VlQUbWEilhPzRED46lWGxXC9f9hh9ORI0fJbfflR3LOldBgs6VQclACTPzgs1RG59pUp9-BZODpdXYp8BI2kdUhbsHAp1vy3Qh-4Yaw99rqpwpR6kisUhQfnR-l3bDESf9F4uPi6szSuodua2r407ZBdI0_fpBQC_rcyuQhfueGD4y1naiUJvm_P1CuZpMZ6t9EBjbaj"/>
+</div>
+<div class="p-sm space-y-xs">
+<p class="text-on-surface-variant text-label-md uppercase">Logistics</p>
+<h4 class="font-headline-md text-body-md truncate">Last-Mile Delivery Service</h4>
+<p class="text-primary font-bold text-body-lg">RWF 2,000 / Trip</p>
+<div class="flex items-center gap-xs text-[10px] text-on-surface-variant font-bold">
+<span class="material-symbols-outlined text-[14px]">timer</span>
+                                Average 30m response
+                            </div>
+</div>
+</div>
+</div>
+</section>
+<!-- Trending Videos & Made in Rwanda Section -->
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-gutter">
+<!-- Made in Rwanda Section -->
+<div class="lg:col-span-9 bg-surface-container-low p-lg ghost-border relative overflow-hidden">
+<div class="absolute top-0 right-0 w-32 h-32 opacity-10 pointer-events-none">
+<svg class="fill-primary" viewbox="0 0 100 100">
+<path d="M50 0 L100 50 L50 100 L0 50 Z"></path>
+</svg>
+</div>
+<div class="flex flex-col md:flex-row justify-between md:items-center mb-lg gap-md">
+<div>
+<h2 class="font-headline-md text-headline-md">Made in Rwanda</h2>
+<p class="text-on-surface-variant font-body-sm">Supporting local industry and manufacturing excellence</p>
+</div>
+<button class="bg-primary text-on-primary px-md py-base font-label-md rounded flex items-center gap-sm self-start">
+                            View All Local Brands
+                            <span class="material-symbols-outlined text-[18px]">trending_up</span>
+</button>
+</div>
+<div class="grid grid-cols-2 md:grid-cols-4 gap-md">
+<div class="text-center space-y-sm group cursor-pointer">
+<div class="aspect-square bg-surface ghost-border rounded-full flex items-center justify-center p-md group-hover:bg-primary-container/10 transition-colors">
+<img alt="Brand Logo" class="w-full h-full object-contain mix-blend-multiply" data-alt="A clean, professional logo for a Rwandan textile company. The design is minimalist and modern, featuring geometric patterns inspired by traditional Rwandan art. The color palette is earth-toned and sophisticated, presented on a white background." src="https://lh3.googleusercontent.com/aida-public/AB6AXuD11UnznH-T0j8KmWsPo1mPsi6XkeKHaG9TA6JL8zolBKXbW__QpxpDs1Kgy3cymxcnmZ5MS97bqpqDP_zqrV13OsIiBuZfpqGSsmpApVfN-LT8oC6ExTBmoPt0csfjQ40to1c7KiFhevCtJLag9m-_STawy3I1Q_4naf0CGeCvdnVTz46L4ym1_HQw850DV65IrXlL2fQVQx-IOq4-p8Sj78wHhtaikWAOBUzeMHtM1TptRrWNO2zX_WTkXSXO97uNOfrJ9vpQNGpT"/>
+</div>
+<span class="font-label-md text-[10px] uppercase font-bold text-on-surface-variant">Textiles</span>
+</div>
+<div class="text-center space-y-sm group cursor-pointer">
+<div class="aspect-square bg-surface ghost-border rounded-full flex items-center justify-center p-md group-hover:bg-primary-container/10 transition-colors">
+<img alt="Brand Logo" class="w-full h-full object-contain mix-blend-multiply" data-alt="A modern and professional logo for a Rwandan electronics manufacturer. The design is sleek, using sharp lines and a high-tech corporate blue and white color palette. It conveys reliability and technological advancement within a minimalist framework." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCWxfVjS97a8eEegX8egZZ9oHpgsUV94EWCzystWvu-Z4tfUkveAXApbUQAXIfqi9oR3cQDCrjn_0ApBo4UFWqODdLAbI6AgzsOOI3HDzKJv99ugsp2l5UY7elGnuc7ftV-IFS93AuriKVAyge15qM42UehwWYXIq7EIZDu55DDuAF8rDcDUAtzGHrrYIZhnSudAircmt99KjjhNr_Qu5ryx_isU0IE5tkpAyvTosPNOTB1xQGiLLSrg-V1bhOB7Dv3cS0-lxLMpvi7"/>
+</div>
+<span class="font-label-md text-[10px] uppercase font-bold text-on-surface-variant">Tech</span>
+</div>
+<div class="text-center space-y-sm group cursor-pointer">
+<div class="aspect-square bg-surface ghost-border rounded-full flex items-center justify-center p-md group-hover:bg-primary-container/10 transition-colors">
+<img alt="Brand Logo" class="w-full h-full object-contain mix-blend-multiply" data-alt="A sophisticated corporate logo for a Rwandan furniture brand. The design features elegant serif typography and a minimalist graphic element representing a structured wood joint. The palette is rich brown and ivory, suggesting premium handcrafted quality." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAVXAvruzLl-oOmmLm9gdOQDex6uLuJE8uQqkDKHmBDcl7-XKlYJWLd9VLakxycN7JC5RZRK3fW4IMdX_FaoEOBAYEU_LQ53NVa-QG5qnrpbdsRwhDeJSTKAduJsW-cmwJHtba_w3_eJs1bohEPLXDH2y1FVZf0a72_QME56ziMw9CVh57QWoVs54tbDv0UOzVNMq6r62_8qk_Sr1FcPY1RVmztyBMY-kq_Dzt06RLe562jOdtks7P_sTGWrQ68PiixlB_WUwWI0Bef"/>
+</div>
+<span class="font-label-md text-[10px] uppercase font-bold text-on-surface-variant">Furniture</span>
+</div>
+<div class="text-center space-y-sm group cursor-pointer">
+<div class="aspect-square bg-surface ghost-border rounded-full flex items-center justify-center p-md group-hover:bg-primary-container/10 transition-colors">
+<img alt="Brand Logo" class="w-full h-full object-contain mix-blend-multiply" data-alt="A clean and reliable logo for a Rwandan food processing cooperative. The design uses natural, earth-toned colors like ochre and deep green. It features a minimalist icon of a sun rising over hills, symbolizing growth and sustainability in a corporate modern style." src="https://lh3.googleusercontent.com/aida-public/AB6AXuC42SfnRA2CUVWAoqVEYmm_4CCEdnQFloIQUWCiTCsr89BW1MAdzjmBMdXS_aRyfxPhdY6n3SCnkSqyg5qsf9jXxIDfrM9fQyJ3yl-jAABNY4Ymo5HzS7ezWAhUUo6ZVPyD9pXqPxpeyVIc1MYEKWtEnvSKZJG8EjIbYquL-8EsstAdgyie2hQ2jGJco1mqGUTc99UFri0s_7QA7DeA5CGNmvlIe06lZIDnEDTW9iRpiYQYcgPN83Js85g5hHFAqEcZ6qzt7DTHSSn6"/>
+</div>
+<span class="font-label-md text-[10px] uppercase font-bold text-on-surface-variant">Agri-Processing</span>
+</div>
+</div>
+</div>
+<!-- Trending Market Videos (Vertical Carousel) -->
+<div class="lg:col-span-3 space-y-md">
+<h2 class="font-headline-md text-headline-md">Market Stories</h2>
+<div class="relative bg-on-surface aspect-[9/16] rounded-xl overflow-hidden shadow-xl group">
+<img class="w-full h-full object-cover opacity-80" data-alt="A vertical video still showing a smiling Rwandan trader presenting fresh avocados at her stall. The shot is high-definition with vibrant colors and natural lighting. The market background is busy but slightly blurred, creating a social-media style 'stories' look that is both authentic and professional." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAeaco0-q3kEmLQL1Ty52JeVCrJY98uuu2LetdRho87naOVdWwTTTb8HPLMD_5JYt50lncBkCvR75DPozJcXVfHdH1KrPt_sN5qGI7f1LGZaoioSidy3Sb06Z8m6JFUR302PkN1GziUYYnRYoTf0XpoUyRxhb8W8rKQp2HCFkxZsBXxQkTR5FyUREbQeoW7wd2LwI4L40wOwxaPzD3BJwihLUWn21HOr9hlHziZtBv6Y2jrC317RpxdGFsbfhwPeRn85hSA0gs2MgFI"/>
+<div class="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent flex flex-col justify-end p-md">
+<div class="flex items-center gap-base mb-sm">
+<img alt="Avatar" class="w-6 h-6 rounded-full border border-white" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCrqz4-Dr4_g5swvUVoBpa8vb_5jHf1JVlfEmHe-FLHlY-l_6evs20zto49tgaGUmimf5aAWrm_bmiaBd2yhPU3DodgnDUsmHsfVj6RWrxAF4gmMJqsjQ1RMVqu1fLzUBsLguKTa25aiX-BSorwCa5fQ4NxWnp3kDRNmpVTNsogBLgqzGn-tFt-tzSAJpJAU1W29drxki5hnoRhKWiikVhtdO5AqNWQWxRlKOZ_KaRl-DYb7kqJ0PFbMwVyQjKF-5x0PIP3IgUtSp-2"/>
+<span class="text-surface text-[10px] font-bold">@HuyeProducer</span>
+</div>
+<h4 class="text-surface font-bold text-body-md line-clamp-2 mb-sm">Morning harvest ready for Kigali transport!</h4>
+<div class="flex justify-between items-center text-surface/80 text-[10px] font-bold uppercase tracking-tighter">
+<span>12.4k Views</span>
+<span class="material-symbols-outlined">favorite</span>
+</div>
+</div>
+<div class="absolute right-md top-1/2 -translate-y-1/2 flex flex-col gap-sm opacity-0 group-hover:opacity-100 transition-opacity">
+<button class="w-8 h-8 bg-surface/20 backdrop-blur rounded-full flex items-center justify-center text-surface hover:bg-surface/40 transition-colors">
+<span class="material-symbols-outlined">arrow_upward</span>
+</button>
+<button class="w-8 h-8 bg-surface/20 backdrop-blur rounded-full flex items-center justify-center text-surface hover:bg-surface/40 transition-colors">
+<span class="material-symbols-outlined">arrow_downward</span>
+</button>
+</div>
+</div>
+</div>
+</div>
+</div>
+</main>
+<!-- Footer -->
+<footer class="bg-surface-container-highest mt-xl py-xl border-t border-outline-variant">
+<div class="max-w-[1280px] mx-auto px-margin-mobile lg:px-margin-desktop grid grid-cols-1 md:grid-cols-4 gap-xl">
+<div class="space-y-md col-span-1 md:col-span-1">
+<span class="text-headline-md font-headline-md font-bold text-primary">RMF</span>
+<p class="text-on-surface-variant font-body-sm max-w-xs">Connecting Rwandan producers to local and international buyers with efficiency and transparency.</p>
+<div class="flex gap-md">
+<span class="material-symbols-outlined text-primary">social_leaderboard</span>
+<span class="material-symbols-outlined text-primary">alternate_email</span>
+<span class="material-symbols-outlined text-primary">public</span>
+</div>
+</div>
+<div class="space-y-sm">
+<h5 class="font-bold text-body-md uppercase tracking-wide">Resources</h5>
+<ul class="text-on-surface-variant text-body-sm space-y-xs">
+<li><a class="hover:text-primary" href="#">Seller Guide</a></li>
+<li><a class="hover:text-primary" href="#">Buyer Protection</a></li>
+<li><a class="hover:text-primary" href="#">Logistics Partners</a></li>
+<li><a class="hover:text-primary" href="#">Escrow Services</a></li>
+</ul>
+</div>
+<div class="space-y-sm">
+<h5 class="font-bold text-body-md uppercase tracking-wide">Trust &amp; Security</h5>
+<div class="space-y-md">
+<div class="flex items-center gap-md ghost-border p-sm bg-surface">
+<span class="material-symbols-outlined text-tertiary" style="font-variation-settings: 'FILL' 1;">security</span>
+<div class="flex flex-col">
+<span class="text-[10px] font-bold uppercase text-on-surface-variant">Secure Payment</span>
+<span class="text-body-sm">Escrow Protected</span>
+</div>
+</div>
+<div class="flex items-center gap-md ghost-border p-sm bg-surface">
+<span class="material-symbols-outlined text-[#3b82f6]" style="font-variation-settings: 'FILL' 1;">verified_user</span>
+<div class="flex flex-col">
+<span class="text-[10px] font-bold uppercase text-on-surface-variant">Verified Sellers</span>
+<span class="text-body-sm">Vetted Community</span>
+</div>
+</div>
+</div>
+</div>
+<div class="space-y-sm">
+<h5 class="font-bold text-body-md uppercase tracking-wide">Newsletter</h5>
+<p class="text-on-surface-variant text-body-sm">Get weekly market reports and price trends.</p>
+<div class="flex">
+<input class="bg-surface border border-outline-variant px-sm py-xs text-body-sm w-full focus:ring-1 focus:ring-primary focus:border-primary" placeholder="Email address" type="email"/>
+<button class="bg-primary text-on-primary px-md font-label-md">Join</button>
+</div>
+</div>
+</div>
+<div class="max-w-[1280px] mx-auto px-margin-mobile lg:px-margin-desktop pt-xl mt-xl border-t border-outline-variant flex flex-col md:flex-row justify-between items-center gap-md">
+<span class="text-[10px] font-label-md text-on-surface-variant">© 2024 RWANDAN MARKET FACILITATOR. ALL RIGHTS RESERVED.</span>
+<div class="flex gap-lg text-[10px] font-label-md text-on-surface-variant uppercase">
+<a class="hover:text-primary" href="#">Privacy Policy</a>
+<a class="hover:text-primary" href="#">Terms of Trade</a>
+<a class="hover:text-primary" href="#">Cookies</a>
+</div>
+</div>
+</footer>
+<!-- BottomNavBar (Mobile only) -->
+<nav class="lg:hidden fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-4 py-2 bg-surface shadow-lg border-t border-outline-variant rounded-t-xl">
+<button class="flex flex-col items-center justify-center bg-secondary-container text-on-secondary-container rounded-full px-4 py-1 duration-150 scale-90">
+<span class="material-symbols-outlined">home</span>
+<span class="font-label-md text-[10px]">Home</span>
+</button>
+<button class="flex flex-col items-center justify-center text-on-surface-variant hover:bg-surface-container transition-colors p-base">
+<span class="material-symbols-outlined">search</span>
+<span class="font-label-md text-[10px]">Search</span>
+</button>
+<button class="flex flex-col items-center justify-center text-on-surface-variant hover:bg-surface-container transition-colors p-base">
+<span class="material-symbols-outlined">receipt_long</span>
+<span class="font-label-md text-[10px]">Orders</span>
+</button>
+<button class="flex flex-col items-center justify-center text-on-surface-variant hover:bg-surface-container transition-colors p-base">
+<span class="material-symbols-outlined">person</span>
+<span class="font-label-md text-[10px]">Account</span>
+</button>
+</nav>
+<script>
+        // Micro-interactions and simple state handling
+        document.querySelectorAll('button, a').forEach(el => {
+            el.addEventListener('mousedown', () => {
+                el.classList.add('scale-95');
+            });
+            el.addEventListener('mouseup', () => {
+                el.classList.remove('scale-95');
+            });
+            el.addEventListener('mouseleave', () => {
+                el.classList.remove('scale-95');
+            });
+        });
+    </script>
+</body></html>

@@ -23,6 +23,7 @@ interface MapPinPickerProps {
   onLocationSelected: (coords: { lat: number; lng: number }) => void;
   centerLat?: number;
   centerLng?: number;
+  selectedLocation?: { lat: number; lng: number } | null;
   marketLocation?: { lat: number; lng: number } | null;
 }
 
@@ -54,9 +55,19 @@ export const MapPinPicker = ({
   onLocationSelected, 
   centerLat = -1.9441, // Default Kigali
   centerLng = 30.0619,
+  selectedLocation,
   marketLocation
 }: MapPinPickerProps) => {
-  const [position, setPosition] = useState<L.LatLng | null>(null);
+  const [position, setPosition] = useState<L.LatLng | null>(
+    selectedLocation ? new L.LatLng(selectedLocation.lat, selectedLocation.lng) : null
+  );
+
+  useEffect(() => {
+    if (selectedLocation) {
+      setPosition(new L.LatLng(selectedLocation.lat, selectedLocation.lng));
+    }
+  }, [selectedLocation]);
+
   const [roadGeometry, setRoadGeometry] = useState<[number, number][]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<any[]>([]);
@@ -131,7 +142,11 @@ export const MapPinPicker = ({
   if (!isClient || !mapInstanceKey) return <div className="w-full h-full bg-background-surface animate-pulse flex items-center justify-center">Loading Map...</div>;
 
   const handleSelectResult = (result: any) => {
-    setFlyToLocation({ lat: parseFloat(result.lat), lon: parseFloat(result.lon) });
+    const lat = parseFloat(result.lat);
+    const lng = parseFloat(result.lon);
+    setFlyToLocation({ lat, lon: lng });
+    setPosition(new L.LatLng(lat, lng));
+    onLocationSelected({ lat, lng });
     setSearchResults([]);
     setSearchQuery(result.display_name);
   };

@@ -21,6 +21,7 @@ export type CatalogCategory = {
   aliases: string[];
   variantAxes: CatalogField[];
   attributes: CatalogField[];
+  parentId?: string | null;
 };
 
 export type ProductVariantDraft = {
@@ -38,6 +39,79 @@ export type ProductVariantDraft = {
 };
 
 export const fallbackCatalogCategories: CatalogCategory[] = [
+  {
+    id: 'cosmetics',
+    label: 'Cosmetics & Beauty',
+    productType: 'health_and_beauty',
+    defaultUnit: 'pcs',
+    aliases: ['cosmetics', 'beauty', 'makeup', 'skin care', 'perfume'],
+    parentId: null,
+    variantAxes: [],
+    attributes: [],
+  },
+  {
+    id: 'cosmetics-babies',
+    label: 'For Babies',
+    productType: 'health_and_beauty',
+    defaultUnit: 'pcs',
+    aliases: ['baby cosmetics', 'baby skin care', 'infant care'],
+    parentId: 'cosmetics',
+    variantAxes: [],
+    attributes: [],
+  },
+  {
+    id: 'cosmetics-skin-care',
+    label: 'Baby Skin Care',
+    productType: 'health_and_beauty',
+    defaultUnit: 'pcs',
+    aliases: ['skin care', 'lotions', 'baby skin'],
+    parentId: 'cosmetics-babies',
+    variantAxes: [],
+    attributes: [],
+  },
+  {
+    id: 'baby-soap',
+    label: 'Baby Soap',
+    productType: 'health_and_beauty',
+    defaultUnit: 'pcs',
+    aliases: ['soap', 'baby soap', 'shampoo', 'wash'],
+    parentId: 'cosmetics-skin-care',
+    variantAxes: [
+      { key: 'brand', label: 'Brand', type: 'select', options: ['Johnson & Johnson', 'Sebamed', 'Cetaphil', 'CeraVe', 'Aveeno', 'Baby Dove', 'Other'], filterable: true, searchable: true },
+      { key: 'packSize', label: 'Pack Size', type: 'select', options: ['Single Bar', 'Pack of 2', 'Pack of 3', 'Pack of 6', '100ml Bottle', '200ml Bottle', '500ml Bottle'], filterable: true }
+    ],
+    attributes: [
+      { key: 'skinType', label: 'Skin Type Recommendation', type: 'select', options: ['All Skin Types', 'Sensitive Skin', 'Dry Skin', 'Eczema Prone'], filterable: true },
+      { key: 'organic', label: 'Organic / Natural', type: 'boolean', filterable: true },
+      { key: 'hypoallergenic', label: 'Hypoallergenic', type: 'boolean', filterable: true }
+    ],
+  },
+  {
+    id: 'cosmetics-baby-food',
+    label: 'Baby Food & Nutrition',
+    productType: 'fresh_food',
+    defaultUnit: 'pcs',
+    aliases: ['baby food', 'infant nutrition', 'baby cereal'],
+    parentId: 'cosmetics-babies',
+    variantAxes: [],
+    attributes: [],
+  },
+  {
+    id: 'baby-cereal',
+    label: 'Baby Cereal',
+    productType: 'fresh_food',
+    defaultUnit: 'pcs',
+    aliases: ['cereal', 'baby cereal', 'porridge', 'cerelac'],
+    parentId: 'cosmetics-baby-food',
+    variantAxes: [
+      { key: 'brand', label: 'Brand', type: 'select', options: ['Cerelac', 'Nestle', 'Gerber', 'Ella\'s Kitchen', 'Holle', 'Other'], filterable: true, searchable: true },
+      { key: 'flavor', label: 'Flavor', type: 'select', options: ['Wheat & Milk', 'Rice', 'Oatmeal', 'Banana', 'Honey', 'Apple & Berry', 'Mixed Grains'], filterable: true }
+    ],
+    attributes: [
+      { key: 'ageStage', label: 'Age Stage', type: 'select', options: ['Stage 1 (6+ months)', 'Stage 2 (8+ months)', 'Stage 3 (10+ months)', 'Stage 4 (12+ months)'], filterable: true },
+      { key: 'shelfLifeDays', label: 'Shelf Life (Days)', type: 'number', min: 1, max: 730 }
+    ],
+  },
   {
     id: 'grocery',
     label: 'Fresh Produce & Groceries',

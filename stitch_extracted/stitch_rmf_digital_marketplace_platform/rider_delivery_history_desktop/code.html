@@ -1,0 +1,497 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Delivery History | RMF Facilitator</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Work+Sans:wght@400;500;600;700;900&amp;family=JetBrains+Mono:wght@500&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "surface": "#fbf9f8",
+                        "on-secondary-container": "#561b00",
+                        "on-primary-fixed": "#351000",
+                        "on-surface": "#1b1c1c",
+                        "secondary-fixed-dim": "#ffb598",
+                        "outline-variant": "#e2bfb0",
+                        "background": "#fbf9f8",
+                        "inverse-surface": "#303030",
+                        "tertiary-container": "#5f97ff",
+                        "on-tertiary-fixed": "#001a42",
+                        "secondary": "#a63b00",
+                        "on-secondary-fixed-variant": "#7f2b00",
+                        "error-container": "#ffdad6",
+                        "tertiary": "#005ac2",
+                        "on-tertiary-container": "#002f6b",
+                        "on-tertiary": "#ffffff",
+                        "on-secondary": "#ffffff",
+                        "surface-container-lowest": "#ffffff",
+                        "tertiary-fixed-dim": "#adc6ff",
+                        "on-error-container": "#93000a",
+                        "on-surface-variant": "#5a4136",
+                        "primary-fixed": "#ffdbcc",
+                        "surface-bright": "#fbf9f8",
+                        "on-background": "#1b1c1c",
+                        "secondary-container": "#fc671d",
+                        "on-tertiary-fixed-variant": "#004395",
+                        "on-primary-fixed-variant": "#7a3000",
+                        "secondary-fixed": "#ffdbce",
+                        "surface-container-low": "#f5f3f3",
+                        "tertiary-fixed": "#d8e2ff",
+                        "primary-fixed-dim": "#ffb693",
+                        "error": "#ba1a1a",
+                        "surface-container": "#efeded",
+                        "on-primary-container": "#572000",
+                        "primary-container": "#ff6b00",
+                        "surface-tint": "#a04100",
+                        "surface-dim": "#dbdad9",
+                        "surface-container-high": "#e9e8e7",
+                        "on-secondary-fixed": "#370e00",
+                        "outline": "#8e7164",
+                        "on-error": "#ffffff",
+                        "inverse-on-surface": "#f2f0f0",
+                        "surface-container-highest": "#e3e2e2",
+                        "on-primary": "#ffffff",
+                        "surface-variant": "#e3e2e2",
+                        "inverse-primary": "#ffb693",
+                        "primary": "#a04100"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.125rem",
+                        "lg": "0.25rem",
+                        "xl": "0.5rem",
+                        "full": "0.75rem"
+                    },
+                    "spacing": {
+                        "xs": "4px",
+                        "margin-mobile": "16px",
+                        "lg": "24px",
+                        "margin-desktop": "32px",
+                        "sm": "8px",
+                        "md": "16px",
+                        "gutter": "16px",
+                        "xl": "40px",
+                        "base": "4px"
+                    },
+                    "fontFamily": {
+                        "table-data": ["Work Sans"],
+                        "body-sm": ["Work Sans"],
+                        "label-md": ["JetBrains Mono"],
+                        "headline-md": ["Work Sans"],
+                        "headline-lg": ["Work Sans"],
+                        "headline-lg-mobile": ["Work Sans"],
+                        "body-md": ["Work Sans"],
+                        "body-lg": ["Work Sans"]
+                    },
+                    "fontSize": {
+                        "table-data": ["13px", {"lineHeight": "18px", "fontWeight": "500"}],
+                        "body-sm": ["12px", {"lineHeight": "16px", "fontWeight": "400"}],
+                        "label-md": ["12px", {"lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "500"}],
+                        "headline-md": ["20px", {"lineHeight": "28px", "fontWeight": "600"}],
+                        "headline-lg": ["30px", {"lineHeight": "38px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                        "headline-lg-mobile": ["24px", {"lineHeight": "30px", "letterSpacing": "-0.01em", "fontWeight": "700"}],
+                        "body-md": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                        "body-lg": ["16px", {"lineHeight": "24px", "fontWeight": "400"}]
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .hide-scrollbar::-webkit-scrollbar { display: none; }
+        .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    </style>
+</head>
+<body class="bg-surface font-body-md text-on-surface">
+<!-- TopNavBar (Desktop) -->
+<header class="hidden md:flex flex justify-between items-center w-full px-margin-desktop h-16 max-w-[1280px] mx-auto bg-surface border-b border-outline-variant sticky top-0 z-50">
+<div class="flex items-center gap-xl">
+<span class="font-headline-md text-headline-md font-black text-primary">RMF Facilitator</span>
+<nav class="flex items-center gap-lg">
+<a class="text-on-surface-variant font-medium hover:text-primary transition-colors" href="#">Marketplace</a>
+<a class="text-on-surface-variant font-medium hover:text-primary transition-colors" href="#">Orders</a>
+<a class="text-primary border-b-2 border-primary font-bold transition-colors" href="#">Logistics</a>
+<a class="text-on-surface-variant font-medium hover:text-primary transition-colors" href="#">Analytics</a>
+</nav>
+</div>
+<div class="flex items-center gap-md">
+<button class="material-symbols-outlined text-on-surface-variant p-2 hover:bg-surface-variant rounded-full">notifications</button>
+<button class="material-symbols-outlined text-on-surface-variant p-2 hover:bg-surface-variant rounded-full">account_balance_wallet</button>
+<button class="material-symbols-outlined text-on-surface-variant p-2 hover:bg-surface-variant rounded-full">chat</button>
+<div class="h-8 w-8 rounded-full overflow-hidden ml-2 border border-outline">
+<img alt="User profile" data-alt="A professional close-up portrait of a Rwandan logistics coordinator in a bright office environment. The subject is smiling warmly, wearing a neat orange polo shirt that reflects the corporate colors. The lighting is soft and natural, emphasizing a clean and high-trust light-mode aesthetic with warm earth-toned background elements." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAuFv-GqwoftGeAHUHwrdRnAiCZfMP8RvB6m7_3fpNM4dcRAIPx1vFPNDMzFZkJKMbQ_h2KXh6Oq_fREVvH98zYzhoPOm2EBQo11iJ_Ynp_L3h-Q-Rf3iIgKr67nYSt6VKUbX39Z0evUacucduqqjrN5TkhO-VNAy3p4v-q882xOKhiXlhamNEua6M6aKozYHkL8c3mr6-79IXkH4pj7B03Q_mkK3gg_owCzev21Idr0raXcb7WUl7PZbmXz6fHJkClOeBvFfhW3NVh"/>
+</div>
+</div>
+</header>
+<div class="flex max-w-[1280px] mx-auto">
+<!-- SideNavBar (Desktop) -->
+<aside class="hidden md:flex flex-col h-[calc(100vh-64px)] w-64 sticky top-16 bg-surface-container-low border-r border-outline-variant py-md overflow-y-auto">
+<div class="px-md mb-xl">
+<div class="flex items-center gap-sm p-sm">
+<div class="w-10 h-10 bg-primary-container rounded flex items-center justify-center">
+<span class="material-symbols-outlined text-on-primary-container">local_shipping</span>
+</div>
+<div>
+<p class="font-headline-md text-label-md font-bold text-on-surface">Admin Portal</p>
+<p class="text-[10px] text-on-surface-variant uppercase tracking-widest">Market Oversight</p>
+</div>
+</div>
+</div>
+<nav class="flex-1 space-y-1 px-sm">
+<a class="flex items-center gap-md px-md py-3 text-on-surface-variant hover:bg-surface-container-high transition-all rounded" href="#">
+<span class="material-symbols-outlined">dashboard</span>
+<span class="font-label-md text-label-md">Dashboard</span>
+</a>
+<a class="flex items-center gap-md px-md py-3 text-on-surface-variant hover:bg-surface-container-high transition-all rounded" href="#">
+<span class="material-symbols-outlined">inventory_2</span>
+<span class="font-label-md text-label-md">Inventory</span>
+</a>
+<a class="flex items-center gap-md px-md py-3 bg-secondary-container text-on-secondary-container font-bold border-r-4 border-primary transition-all rounded" href="#">
+<span class="material-symbols-outlined">local_shipping</span>
+<span class="font-label-md text-label-md">Shipments</span>
+</a>
+<a class="flex items-center gap-md px-md py-3 text-on-surface-variant hover:bg-surface-container-high transition-all rounded" href="#">
+<span class="material-symbols-outlined">verified_user</span>
+<span class="font-label-md text-label-md">Escrow</span>
+</a>
+<a class="flex items-center gap-md px-md py-3 text-on-surface-variant hover:bg-surface-container-high transition-all rounded" href="#">
+<span class="material-symbols-outlined">gavel</span>
+<span class="font-label-md text-label-md">Compliance</span>
+</a>
+<a class="flex items-center gap-md px-md py-3 text-on-surface-variant hover:bg-surface-container-high transition-all rounded" href="#">
+<span class="material-symbols-outlined">settings</span>
+<span class="font-label-md text-label-md">Settings</span>
+</a>
+</nav>
+<div class="px-md mt-xl">
+<button class="w-full bg-primary text-on-primary py-3 rounded-lg font-bold text-label-md hover:opacity-90 active:scale-95 transition-all">
+                    Generate Report
+                </button>
+</div>
+<div class="mt-auto px-sm border-t border-outline-variant pt-md">
+<a class="flex items-center gap-md px-md py-3 text-on-surface-variant hover:bg-surface-container-high transition-all rounded" href="#">
+<span class="material-symbols-outlined">help</span>
+<span class="font-label-md text-label-md">Help Center</span>
+</a>
+<a class="flex items-center gap-md px-md py-3 text-on-surface-variant hover:bg-surface-container-high transition-all rounded" href="#">
+<span class="material-symbols-outlined">logout</span>
+<span class="font-label-md text-label-md">Logout</span>
+</a>
+</div>
+</aside>
+<!-- Main Content -->
+<main class="flex-1 min-w-0 p-margin-mobile md:p-margin-desktop pb-32 md:pb-margin-desktop">
+<!-- Header & Summary Stats -->
+<div class="mb-xl">
+<div class="flex flex-col md:flex-row md:items-end justify-between gap-md mb-lg">
+<div>
+<h1 class="font-headline-lg text-headline-lg-mobile md:text-headline-lg text-on-surface">Delivery History</h1>
+<p class="text-on-surface-variant font-body-md mt-1">Track your performance and earnings across all routes.</p>
+</div>
+<div class="flex items-center gap-sm">
+<span class="material-symbols-outlined text-tertiary">verified</span>
+<span class="text-tertiary font-bold font-label-md uppercase tracking-wider">Top Tier Rider Badge</span>
+</div>
+</div>
+<!-- Summary Bento -->
+<div class="grid grid-cols-1 md:grid-cols-4 gap-gutter">
+<div class="bg-surface-container-low border border-outline-variant p-lg rounded-xl flex flex-col justify-between h-32">
+<span class="text-on-surface-variant font-label-md uppercase tracking-wider text-[10px]">Total Deliveries</span>
+<div class="flex items-baseline gap-xs">
+<span class="text-3xl font-black text-on-surface">412</span>
+<span class="text-tertiary font-bold text-xs">↑ 12%</span>
+</div>
+</div>
+<div class="bg-surface-container-low border border-outline-variant p-lg rounded-xl flex flex-col justify-between h-32">
+<span class="text-on-surface-variant font-label-md uppercase tracking-wider text-[10px]">Earned this Week</span>
+<div>
+<span class="text-2xl font-black text-on-surface">48,500 <span class="text-sm font-medium">RWF</span></span>
+<div class="flex items-center gap-xs text-xs text-on-surface-variant mt-1">
+<span class="material-symbols-outlined text-sm">schedule</span> Pending: 12,000 RWF
+                            </div>
+</div>
+</div>
+<div class="bg-primary-container text-on-primary-container p-lg rounded-xl flex flex-col justify-between h-32 col-span-1 md:col-span-2">
+<div class="flex justify-between items-start">
+<span class="font-label-md uppercase tracking-wider text-[10px]">Incentive Bonus</span>
+<span class="material-symbols-outlined">stars</span>
+</div>
+<div>
+<p class="font-bold text-lg leading-tight">Complete 5 more deliveries to unlock the Weekend Premium Payout!</p>
+<div class="w-full bg-on-primary-container/20 h-2 rounded-full mt-2 overflow-hidden">
+<div class="bg-on-primary-container h-full w-[70%]"></div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Filters -->
+<div class="bg-white border border-outline-variant rounded-xl p-md mb-gutter flex flex-col md:flex-row items-center gap-md">
+<div class="relative flex-1 w-full">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant">search</span>
+<input class="w-full pl-10 pr-4 py-2 bg-surface-container border border-outline-variant rounded focus:outline-none focus:ring-1 focus:ring-primary font-body-md" placeholder="Search by ID, Market or Shop..." type="text"/>
+</div>
+<div class="flex items-center gap-sm w-full md:w-auto">
+<select class="flex-1 md:w-40 px-3 py-2 bg-surface border border-outline-variant rounded font-body-md focus:outline-none focus:ring-1 focus:ring-primary">
+<option>All Statuses</option>
+<option>Completed</option>
+<option>Cancelled</option>
+<option>Failed</option>
+<option>Disputed</option>
+</select>
+<div class="flex-1 md:w-48 relative">
+<span class="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-sm">calendar_month</span>
+<input class="w-full pl-3 pr-8 py-2 bg-surface border border-outline-variant rounded font-body-md focus:outline-none cursor-pointer" readonly="" type="text" value="Oct 01 - Oct 24"/>
+</div>
+<button class="p-2 border border-outline-variant rounded bg-surface hover:bg-surface-variant">
+<span class="material-symbols-outlined">filter_list</span>
+</button>
+</div>
+</div>
+<!-- Table (Desktop) / Cards (Mobile) -->
+<div class="md:block hidden bg-white border border-outline-variant rounded-xl overflow-hidden">
+<table class="w-full text-left">
+<thead>
+<tr class="bg-surface-container-high border-b border-outline-variant">
+<th class="px-md py-3 text-[11px] font-bold text-on-surface-variant uppercase tracking-widest">Delivery ID</th>
+<th class="px-md py-3 text-[11px] font-bold text-on-surface-variant uppercase tracking-widest">Market / Shop</th>
+<th class="px-md py-3 text-[11px] font-bold text-on-surface-variant uppercase tracking-widest">Route Info</th>
+<th class="px-md py-3 text-[11px] font-bold text-on-surface-variant uppercase tracking-widest">Payout</th>
+<th class="px-md py-3 text-[11px] font-bold text-on-surface-variant uppercase tracking-widest">Status</th>
+<th class="px-md py-3 text-[11px] font-bold text-on-surface-variant uppercase tracking-widest">Actions</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-outline-variant">
+<!-- Row 1 -->
+<tr class="hover:bg-surface-container-low transition-colors font-table-data text-table-data">
+<td class="px-md py-4">#DEL-9921</td>
+<td class="px-md py-4">
+<div class="font-bold text-on-surface">Kimironko Market</div>
+<div class="text-xs text-on-surface-variant">Murekezi Grains</div>
+</td>
+<td class="px-md py-4">
+<div class="flex items-center gap-xs">
+<span class="material-symbols-outlined text-xs">location_on</span> Gasabo
+                                </div>
+<div class="text-xs text-on-surface-variant mt-1">4.2km • 22 Oct, 14:15</div>
+</td>
+<td class="px-md py-4">
+<div class="font-bold">1,200 RWF</div>
+<div class="text-[10px] text-tertiary font-bold uppercase">Paid</div>
+</td>
+<td class="px-md py-4">
+<span class="bg-green-100 text-green-800 px-2 py-1 rounded-full text-[10px] font-bold uppercase tracking-wide">Completed</span>
+</td>
+<td class="px-md py-4">
+<div class="flex items-center gap-sm">
+<button class="text-primary hover:underline font-bold text-xs">Receipt</button>
+<button class="text-on-surface-variant hover:text-on-surface"><span class="material-symbols-outlined text-sm">support_agent</span></button>
+</div>
+</td>
+</tr>
+<!-- Row 2 -->
+<tr class="bg-surface-container-lowest hover:bg-surface-container-low transition-colors font-table-data text-table-data">
+<td class="px-md py-4">#DEL-9810</td>
+<td class="px-md py-4">
+<div class="font-bold text-on-surface">Nyabugogo</div>
+<div class="text-xs text-on-surface-variant">Tuzamurane Co-op</div>
+</td>
+<td class="px-md py-4">
+<div class="flex items-center gap-xs">
+<span class="material-symbols-outlined text-xs">location_on</span> Nyarugenge
+                                </div>
+<div class="text-xs text-on-surface-variant mt-1">8.5km • 22 Oct, 09:30</div>
+</td>
+<td class="px-md py-4">
+<div class="font-bold">2,450 RWF</div>
+<div class="text-[10px] text-on-surface-variant font-bold uppercase">Pending</div>
+</td>
+<td class="px-md py-4">
+<span class="bg-green-100 text-green-800 px-2 py-1 rounded-full text-[10px] font-bold uppercase tracking-wide">Completed</span>
+</td>
+<td class="px-md py-4">
+<div class="flex items-center gap-sm">
+<button class="text-primary hover:underline font-bold text-xs">Receipt</button>
+<button class="text-on-surface-variant hover:text-on-surface"><span class="material-symbols-outlined text-sm">support_agent</span></button>
+</div>
+</td>
+</tr>
+<!-- Row 3 -->
+<tr class="hover:bg-surface-container-low transition-colors font-table-data text-table-data">
+<td class="px-md py-4">#DEL-9765</td>
+<td class="px-md py-4">
+<div class="font-bold text-on-surface">Gisementi</div>
+<div class="text-xs text-on-surface-variant">Sawa City Mini</div>
+</td>
+<td class="px-md py-4">
+<div class="flex items-center gap-xs">
+<span class="material-symbols-outlined text-xs">location_on</span> Remera
+                                </div>
+<div class="text-xs text-on-surface-variant mt-1-- 21 Oct, 18:45&lt;/div&gt; &lt;/td&gt; &lt;td class=" px-md="" py-4"="">
+<div class="font-bold text-on-surface-variant opacity-50">0 RWF</div>
+<div class="text-[10px] text-on-surface-variant font-bold uppercase">N/A</div>
+</div></td>
+<td class="px-md py-4">
+<span class="bg-error-container text-error px-2 py-1 rounded-full text-[10px] font-bold uppercase tracking-wide">Cancelled</span>
+</td>
+<td class="px-md py-4">
+<div class="flex items-center gap-sm">
+<button class="text-on-surface-variant/50 cursor-not-allowed font-bold text-xs">No Receipt</button>
+<button class="text-primary hover:text-primary-variant"><span class="material-symbols-outlined text-sm">support_agent</span></button>
+</div>
+</td>
+</tr>
+<!-- Row 4 -->
+<tr class="bg-surface-container-lowest hover:bg-surface-container-low transition-colors font-table-data text-table-data">
+<td class="px-md py-4">#DEL-9642</td>
+<td class="px-md py-4">
+<div class="font-bold text-on-surface">Remera Market</div>
+<div class="text-xs text-on-surface-variant">Habimana Wholesale</div>
+</td>
+<td class="px-md py-4">
+<div class="flex items-center gap-xs">
+<span class="material-symbols-outlined text-xs">location_on</span> Kicukiro
+                                </div>
+<div class="text-xs text-on-surface-variant mt-1">3.1km • 20 Oct, 11:10</div>
+</td>
+<td class="px-md py-4">
+<div class="font-bold">1,000 RWF</div>
+<div class="text-[10px] text-error font-bold uppercase">Disputed</div>
+</td>
+<td class="px-md py-4">
+<span class="bg-orange-100 text-orange-800 px-2 py-1 rounded-full text-[10px] font-bold uppercase tracking-wide">Disputed</span>
+</td>
+<td class="px-md py-4">
+<div class="flex items-center gap-sm">
+<button class="text-primary hover:underline font-bold text-xs">History</button>
+<button class="text-on-surface-variant hover:text-on-surface"><span class="material-symbols-outlined text-sm">support_agent</span></button>
+</div>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+<!-- Cards (Mobile) -->
+<div class="md:hidden space-y-gutter">
+<!-- Mobile Card 1 -->
+<div class="bg-white border border-outline-variant p-md rounded-xl shadow-sm">
+<div class="flex justify-between items-start mb-md">
+<div>
+<span class="font-label-md text-primary font-bold">#DEL-9921</span>
+<h3 class="font-bold text-on-surface">Kimironko Market</h3>
+<p class="text-xs text-on-surface-variant">Murekezi Grains</p>
+</div>
+<span class="bg-green-100 text-green-800 px-2 py-1 rounded-full text-[10px] font-bold uppercase tracking-wide">Completed</span>
+</div>
+<div class="flex items-center justify-between text-sm py-sm border-t border-dashed border-outline-variant">
+<div class="flex flex-col">
+<span class="text-[10px] text-on-surface-variant uppercase">Payout</span>
+<span class="font-black text-on-surface">1,200 RWF</span>
+</div>
+<div class="flex flex-col text-right">
+<span class="text-[10px] text-on-surface-variant uppercase text-tertiary">Paid</span>
+<span class="text-xs text-on-surface-variant">Gasabo • 4.2km</span>
+</div>
+</div>
+<div class="flex gap-sm mt-md">
+<button class="flex-1 py-2 bg-primary text-on-primary rounded text-xs font-bold">View Receipt</button>
+<button class="px-3 py-2 border border-primary text-primary rounded"><span class="material-symbols-outlined text-sm block">support_agent</span></button>
+</div>
+</div>
+<!-- Mobile Card 2 -->
+<div class="bg-white border border-outline-variant p-md rounded-xl shadow-sm">
+<div class="flex justify-between items-start mb-md">
+<div>
+<span class="font-label-md text-primary font-bold">#DEL-9810</span>
+<h3 class="font-bold text-on-surface">Nyabugogo</h3>
+<p class="text-xs text-on-surface-variant">Tuzamurane Co-op</p>
+</div>
+<span class="bg-green-100 text-green-800 px-2 py-1 rounded-full text-[10px] font-bold uppercase tracking-wide">Completed</span>
+</div>
+<div class="flex items-center justify-between text-sm py-sm border-t border-dashed border-outline-variant">
+<div class="flex flex-col">
+<span class="text-[10px] text-on-surface-variant uppercase">Payout</span>
+<span class="font-black text-on-surface">2,450 RWF</span>
+</div>
+<div class="flex flex-col text-right text-on-surface-variant">
+<span class="text-[10px] uppercase font-bold">Pending</span>
+<span class="text-xs">Nyarugenge • 8.5km</span>
+</div>
+</div>
+<div class="flex gap-sm mt-md">
+<button class="flex-1 py-2 bg-primary text-on-primary rounded text-xs font-bold">View Receipt</button>
+<button class="px-3 py-2 border border-primary text-primary rounded"><span class="material-symbols-outlined text-sm block">support_agent</span></button>
+</div>
+</div>
+</div>
+<!-- Pagination -->
+<div class="flex items-center justify-between mt-xl">
+<span class="text-xs text-on-surface-variant font-label-md">Showing 1-10 of 412 entries</span>
+<div class="flex gap-xs">
+<button class="w-8 h-8 flex items-center justify-center rounded border border-outline-variant bg-surface hover:bg-surface-variant disabled:opacity-50">
+<span class="material-symbols-outlined text-sm">chevron_left</span>
+</button>
+<button class="w-8 h-8 flex items-center justify-center rounded border border-primary bg-primary text-on-primary font-bold text-xs">1</button>
+<button class="w-8 h-8 flex items-center justify-center rounded border border-outline-variant bg-surface hover:bg-surface-variant text-xs">2</button>
+<button class="w-8 h-8 flex items-center justify-center rounded border border-outline-variant bg-surface hover:bg-surface-variant text-xs">3</button>
+<button class="w-8 h-8 flex items-center justify-center rounded border border-outline-variant bg-surface hover:bg-surface-variant">
+<span class="material-symbols-outlined text-sm">chevron_right</span>
+</button>
+</div>
+</div>
+</main>
+</div>
+<!-- BottomNavBar (Mobile) -->
+<nav class="md:hidden fixed bottom-0 left-0 w-full flex justify-around items-center px-4 py-2 pb-safe bg-surface border-t border-outline-variant z-50">
+<a class="flex flex-col items-center justify-center text-on-surface-variant" href="#">
+<span class="material-symbols-outlined">home</span>
+<span class="text-[10px] font-label-md">Home</span>
+</a>
+<a class="flex flex-col items-center justify-center bg-primary-container text-on-primary-container rounded-xl px-4 py-1" href="#">
+<span class="material-symbols-outlined">map</span>
+<span class="text-[10px] font-label-md">Track</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant relative" href="#">
+<span class="material-symbols-outlined">mail</span>
+<span class="text-[10px] font-label-md">Inbox</span>
+<div class="absolute top-0 right-0 w-2 h-2 bg-error rounded-full"></div>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant" href="#">
+<span class="material-symbols-outlined">person</span>
+<span class="text-[10px] font-label-md">Profile</span>
+</a>
+</nav>
+<script>
+        // Micro-interactions
+        document.querySelectorAll('button, a').forEach(el => {
+            el.addEventListener('mousedown', () => {
+                el.style.transform = 'scale(0.95)';
+                el.style.transition = 'transform 0.1s ease-out';
+            });
+            el.addEventListener('mouseup', () => {
+                el.style.transform = 'scale(1)';
+            });
+            el.addEventListener('mouseleave', () => {
+                el.style.transform = 'scale(1)';
+            });
+        });
+
+        // Search highlight effect
+        const searchInput = document.querySelector('input[type="text"]');
+        searchInput.addEventListener('focus', () => {
+            searchInput.parentElement.classList.add('ring-2', 'ring-primary/20');
+        });
+        searchInput.addEventListener('blur', () => {
+            searchInput.parentElement.classList.remove('ring-2', 'ring-primary/20');
+        });
+    </script>
+</body></html>

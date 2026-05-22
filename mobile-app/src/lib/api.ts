@@ -47,6 +47,7 @@ const serviceUrl = (service: ServiceName) => {
 };
 
 export const socketUrl = () => process.env.EXPO_PUBLIC_DELIVERY_SOCKET_URL || extra.deliverySocketUrl || `${host}:3008`;
+export const orderSocketUrl = () => process.env.EXPO_PUBLIC_ORDER_SOCKET_URL || extra.orderSocketUrl || `${host}:3006`;
 
 class ApiError extends Error {
   status?: number;

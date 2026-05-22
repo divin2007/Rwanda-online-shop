@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>RMF Rider Registration &amp; Onboarding</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Work+Sans:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@500&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "tertiary-container": "#5f97ff",
+                      "on-secondary-fixed-variant": "#7f2b00",
+                      "outline": "#8e7164",
+                      "on-background": "#1b1c1c",
+                      "surface": "#fbf9f8",
+                      "primary-container": "#ff6b00",
+                      "on-tertiary-fixed-variant": "#004395",
+                      "on-primary-fixed-variant": "#7a3000",
+                      "inverse-surface": "#303030",
+                      "secondary-container": "#fc671d",
+                      "on-tertiary-container": "#002f6b",
+                      "error-container": "#ffdad6",
+                      "on-error": "#ffffff",
+                      "surface-container-highest": "#e3e2e2",
+                      "on-error-container": "#93000a",
+                      "on-surface": "#1b1c1c",
+                      "surface-container-high": "#e9e8e7",
+                      "tertiary-fixed": "#d8e2ff",
+                      "background": "#fbf9f8",
+                      "surface-variant": "#e3e2e2",
+                      "surface-tint": "#a04100",
+                      "secondary-fixed-dim": "#ffb598",
+                      "primary": "#a04100",
+                      "primary-fixed": "#ffdbcc",
+                      "inverse-on-surface": "#f2f0f0",
+                      "error": "#ba1a1a",
+                      "on-secondary-fixed": "#370e00",
+                      "on-secondary-container": "#561b00",
+                      "on-primary-fixed": "#351000",
+                      "outline-variant": "#e2bfb0",
+                      "on-surface-variant": "#5a4136",
+                      "on-tertiary": "#ffffff",
+                      "secondary-fixed": "#ffdbce",
+                      "surface-container": "#efeded",
+                      "on-primary": "#ffffff",
+                      "tertiary-fixed-dim": "#adc6ff",
+                      "surface-container-lowest": "#ffffff",
+                      "on-primary-container": "#572000",
+                      "inverse-primary": "#ffb693",
+                      "tertiary": "#005ac2",
+                      "primary-fixed-dim": "#ffb693",
+                      "surface-container-low": "#f5f3f3",
+                      "secondary": "#a63b00",
+                      "on-tertiary-fixed": "#001a42",
+                      "on-secondary": "#ffffff",
+                      "surface-bright": "#fbf9f8",
+                      "surface-dim": "#dbdad9"
+              },
+              "borderRadius": {
+                      "DEFAULT": "0.125rem",
+                      "lg": "0.25rem",
+                      "xl": "0.5rem",
+                      "full": "0.75rem"
+              },
+              "spacing": {
+                      "margin-mobile": "16px",
+                      "xl": "40px",
+                      "md": "16px",
+                      "sm": "8px",
+                      "margin-desktop": "32px",
+                      "lg": "24px",
+                      "xs": "4px",
+                      "gutter": "16px",
+                      "base": "4px"
+              },
+              "fontFamily": {
+                      "body-sm": ["Work Sans"],
+                      "body-md": ["Work Sans"],
+                      "headline-lg-mobile": ["Work Sans"],
+                      "headline-lg": ["Work Sans"],
+                      "table-data": ["Work Sans"],
+                      "body-lg": ["Work Sans"],
+                      "headline-md": ["Work Sans"],
+                      "label-md": ["JetBrains Mono"]
+              },
+              "fontSize": {
+                      "body-sm": ["12px", {"lineHeight": "16px", "fontWeight": "400"}],
+                      "body-md": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                      "headline-lg-mobile": ["24px", {"lineHeight": "30px", "letterSpacing": "-0.01em", "fontWeight": "700"}],
+                      "headline-lg": ["30px", {"lineHeight": "38px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                      "table-data": ["13px", {"lineHeight": "18px", "fontWeight": "500"}],
+                      "body-lg": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                      "headline-md": ["20px", {"lineHeight": "28px", "fontWeight": "600"}],
+                      "label-md": ["12px", {"lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "500"}]
+              }
+            },
+          },
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .ghost-border {
+            border: 1px solid #ebdcd0;
+        }
+        input:focus, select:focus {
+            outline: none;
+            border-color: #a04100 !important;
+            box-shadow: 0 0 0 2px rgba(160, 65, 0, 0.1);
+        }
+    </style>
+</head>
+<body class="bg-background text-on-background font-body-md text-body-md overflow-x-hidden">
+<!-- TopNavBar -->
+<header class="fixed top-0 left-0 w-full z-50 flex justify-between items-center px-margin-desktop h-16 bg-surface border-b border-outline-variant">
+<div class="flex items-center gap-md">
+<span class="text-headline-md font-headline-md font-bold text-primary">RMF</span>
+<div class="hidden md:flex items-center gap-lg ml-xl">
+<a class="text-on-surface-variant font-label-md text-label-md hover:bg-surface-container-low transition-colors px-2 py-1" href="#">Dashboard</a>
+<a class="text-primary border-b-2 border-primary font-label-md text-label-md px-2 py-1" href="#">Onboarding</a>
+</div>
+</div>
+<div class="flex items-center gap-md">
+<span class="material-symbols-outlined text-on-surface-variant cursor-pointer hover:bg-surface-container-low p-2 rounded-full">notifications</span>
+<div class="w-8 h-8 rounded-full bg-surface-container-highest flex items-center justify-center border border-outline-variant">
+<span class="material-symbols-outlined text-on-surface-variant">person</span>
+</div>
+</div>
+</header>
+<main class="pt-24 pb-32 px-margin-mobile md:px-margin-desktop max-w-[1280px] mx-auto">
+<!-- Hero Header -->
+<div class="mb-xl">
+<div class="flex flex-col md:flex-row md:items-end justify-between gap-md">
+<div>
+<h1 class="font-headline-lg text-headline-lg text-on-surface">Become an RMF Partner</h1>
+<p class="text-on-surface-variant mt-xs">Complete your registration to start fulfilling logistics across Rwanda.</p>
+</div>
+<div class="flex items-center gap-sm bg-surface-container-high px-md py-sm rounded-lg border border-outline-variant">
+<span class="material-symbols-outlined text-primary" data-weight="fill" style="font-variation-settings: 'FILL' 1;">info</span>
+<span class="font-label-md text-label-md text-primary">Status: Approval Pending</span>
+</div>
+</div>
+</div>
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-gutter">
+<!-- Registration Form Canvas -->
+<div class="lg:col-span-8 space-y-gutter">
+<!-- Section 1: Identity -->
+<section class="bg-surface-container-lowest ghost-border p-lg rounded-xl">
+<div class="flex items-center gap-sm mb-lg border-b border-outline-variant pb-base">
+<span class="material-symbols-outlined text-primary">person_outline</span>
+<h2 class="font-headline-md text-headline-md text-on-surface">Personal Identity</h2>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-md">
+<div class="space-y-xs">
+<label class="font-label-md text-label-md text-on-surface-variant">FULL NAME</label>
+<input class="w-full ghost-border bg-surface px-md py-sm rounded-lg text-body-md" placeholder="John Doe" type="text"/>
+</div>
+<div class="space-y-xs">
+<label class="font-label-md text-label-md text-on-surface-variant">PHONE NUMBER</label>
+<input class="w-full ghost-border bg-surface px-md py-sm rounded-lg text-body-md" placeholder="+250 7XX XXX XXX" type="tel"/>
+</div>
+<div class="space-y-xs">
+<label class="font-label-md text-label-md text-on-surface-variant">NATIONAL ID NUMBER</label>
+<input class="w-full ghost-border bg-surface px-md py-sm rounded-lg text-body-md" placeholder="1 19XX X XXXXXXX X XX" type="text"/>
+</div>
+<div class="space-y-xs">
+<label class="font-label-md text-label-md text-on-surface-variant">MOMO PAYOUT NUMBER</label>
+<div class="relative">
+<input class="w-full ghost-border bg-surface px-md py-sm rounded-lg text-body-md pl-12" placeholder="078 XXX XXXX" type="text"/>
+<span class="absolute left-3 top-1/2 -translate-y-1/2 font-bold text-primary">MoMo</span>
+</div>
+</div>
+</div>
+</section>
+<!-- Section 2: Vehicle & Operations -->
+<section class="bg-surface-container-lowest ghost-border p-lg rounded-xl">
+<div class="flex items-center gap-sm mb-lg border-b border-outline-variant pb-base">
+<span class="material-symbols-outlined text-primary">local_shipping</span>
+<h2 class="font-headline-md text-headline-md text-on-surface">Vehicle &amp; Operations</h2>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-md">
+<div class="space-y-xs">
+<label class="font-label-md text-label-md text-on-surface-variant">VEHICLE TYPE</label>
+<select class="w-full ghost-border bg-surface px-md py-sm rounded-lg text-body-md appearance-none">
+<option>Motorcycle</option>
+<option>Bicycle</option>
+<option>Truck (Light)</option>
+<option>Truck (Heavy)</option>
+</select>
+</div>
+<div class="space-y-xs">
+<label class="font-label-md text-label-md text-on-surface-variant">PLATE NUMBER</label>
+<input class="w-full ghost-border bg-surface px-md py-sm rounded-lg text-body-md" placeholder="RAE 000 A" type="text"/>
+</div>
+<div class="space-y-xs md:col-span-2">
+<label class="font-label-md text-label-md text-on-surface-variant">PREFERRED OPERATING ZONE</label>
+<select class="w-full ghost-border bg-surface px-md py-sm rounded-lg text-body-md appearance-none">
+<option>Kigali Metropolitan</option>
+<option>Northern Province</option>
+<option>Southern Province</option>
+<option>Eastern Province</option>
+<option>Western Province</option>
+</select>
+</div>
+</div>
+</section>
+<!-- Section 3: Document Uploads -->
+<section class="bg-surface-container-lowest ghost-border p-lg rounded-xl">
+<div class="flex items-center gap-sm mb-lg border-b border-outline-variant pb-base">
+<span class="material-symbols-outlined text-primary">cloud_upload</span>
+<h2 class="font-headline-md text-headline-md text-on-surface">Secure Document Upload</h2>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-md">
+<!-- Upload Card 1 -->
+<div class="border-2 border-dashed border-outline-variant p-lg rounded-lg text-center hover:bg-surface-container-low transition-all cursor-pointer">
+<span class="material-symbols-outlined text-primary-container text-4xl mb-sm">badge</span>
+<p class="font-body-md font-bold text-on-surface">Rwandan Identity Card</p>
+<p class="text-body-sm text-on-surface-variant">Front and back (JPEG or PDF)</p>
+<div class="mt-md text-primary font-label-md">CLICK TO UPLOAD</div>
+</div>
+<!-- Upload Card 2 -->
+<div class="border-2 border-dashed border-outline-variant p-lg rounded-lg text-center hover:bg-surface-container-low transition-all cursor-pointer">
+<span class="material-symbols-outlined text-primary-container text-4xl mb-sm">license</span>
+<p class="font-body-md font-bold text-on-surface">Driving License</p>
+<p class="text-body-sm text-on-surface-variant">Valid Class A or B (JPEG or PDF)</p>
+<div class="mt-md text-primary font-label-md">CLICK TO UPLOAD</div>
+</div>
+</div>
+<div class="mt-lg flex items-center gap-sm bg-surface-container-high p-sm rounded border border-outline-variant">
+<span class="material-symbols-outlined text-tertiary">lock</span>
+<p class="text-body-sm text-on-surface-variant">Documents are encrypted and stored according to RMF data privacy standards.</p>
+</div>
+</section>
+<!-- Section 4: Emergency Contact -->
+<section class="bg-surface-container-lowest ghost-border p-lg rounded-xl">
+<div class="flex items-center gap-sm mb-lg border-b border-outline-variant pb-base">
+<span class="material-symbols-outlined text-primary">contact_emergency</span>
+<h2 class="font-headline-md text-headline-md text-on-surface">Emergency Contact</h2>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-md">
+<div class="space-y-xs">
+<label class="font-label-md text-label-md text-on-surface-variant">CONTACT NAME</label>
+<input class="w-full ghost-border bg-surface px-md py-sm rounded-lg text-body-md" placeholder="Full name of next of kin" type="text"/>
+</div>
+<div class="space-y-xs">
+<label class="font-label-md text-label-md text-on-surface-variant">RELATIONSHIP</label>
+<input class="w-full ghost-border bg-surface px-md py-sm rounded-lg text-body-md" placeholder="e.g. Spouse, Parent" type="text"/>
+</div>
+<div class="space-y-xs md:col-span-2">
+<label class="font-label-md text-label-md text-on-surface-variant">EMERGENCY PHONE</label>
+<input class="w-full ghost-border bg-surface px-md py-sm rounded-lg text-body-md" placeholder="+250 7XX XXX XXX" type="tel"/>
+</div>
+</div>
+</section>
+<div class="pt-lg">
+<button class="w-full bg-primary text-on-primary font-bold py-md rounded-xl hover:opacity-90 transition-opacity flex items-center justify-center gap-sm">
+                        SUBMIT FOR VERIFICATION
+                        <span class="material-symbols-outlined">send</span>
+</button>
+</div>
+</div>
+<!-- Sidebar Info/Status -->
+<div class="lg:col-span-4 space-y-gutter">
+<!-- Trust Indicator Card -->
+<div class="bg-surface-container-high ghost-border p-lg rounded-xl">
+<h3 class="font-headline-md text-headline-md text-on-surface mb-md">Why Join RMF?</h3>
+<ul class="space-y-md">
+<li class="flex gap-sm">
+<span class="material-symbols-outlined text-secondary">verified_user</span>
+<div>
+<p class="font-bold text-on-surface">Guaranteed Payments</p>
+<p class="text-body-sm text-on-surface-variant">Automatic MoMo settlements upon delivery confirmation.</p>
+</div>
+</li>
+<li class="flex gap-sm">
+<span class="material-symbols-outlined text-secondary">support_agent</span>
+<div>
+<p class="font-bold text-on-surface">24/7 Field Support</p>
+<p class="text-body-sm text-on-surface-variant">Direct access to help centers in every province.</p>
+</div>
+</li>
+<li class="flex gap-sm">
+<span class="material-symbols-outlined text-secondary">health_and_safety</span>
+<div>
+<p class="font-bold text-on-surface">Rider Insurance</p>
+<p class="text-body-sm text-on-surface-variant">Comprehensive accident coverage while on active duty.</p>
+</div>
+</li>
+</ul>
+</div>
+<!-- Verification Steps -->
+<div class="bg-surface-container-lowest ghost-border p-lg rounded-xl">
+<h3 class="font-label-md text-label-md text-primary mb-md uppercase tracking-wider">Verification Steps</h3>
+<div class="space-y-lg relative">
+<!-- Vertical Line -->
+<div class="absolute left-3 top-2 bottom-2 w-0.5 bg-outline-variant"></div>
+<div class="flex gap-md relative">
+<div class="w-6 h-6 rounded-full bg-secondary text-white flex items-center justify-center z-10 text-[10px]">1</div>
+<div>
+<p class="font-bold text-on-surface">Identity Check</p>
+<p class="text-body-sm text-on-surface-variant">National ID &amp; Bio verification</p>
+</div>
+</div>
+<div class="flex gap-md relative">
+<div class="w-6 h-6 rounded-full bg-outline-variant text-on-surface-variant flex items-center justify-center z-10 text-[10px]">2</div>
+<div>
+<p class="font-bold text-on-surface-variant">Vehicle Inspection</p>
+<p class="text-body-sm text-on-surface-variant">Visual inspection of hardware</p>
+</div>
+</div>
+<div class="flex gap-md relative opacity-50">
+<div class="w-6 h-6 rounded-full bg-outline-variant text-on-surface-variant flex items-center justify-center z-10 text-[10px]">3</div>
+<div>
+<p class="font-bold text-on-surface-variant">Orientation</p>
+<p class="text-body-sm text-on-surface-variant">Brief training on platform usage</p>
+</div>
+</div>
+</div>
+</div>
+<!-- Image / Context -->
+<div class="rounded-xl overflow-hidden ghost-border h-48 relative">
+<img class="w-full h-full object-cover" data-alt="A professional-looking courier standing proudly next to a clean, modern motorcycle on a paved street in Kigali, Rwanda. The scene is bathed in warm afternoon sunlight, creating high-contrast shadows. The rider wears a high-visibility orange vest and a helmet, symbolizing safety and reliability. The overall mood is optimistic and professional, reflecting the brand's earthy and corporate-modern aesthetic." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCFrFlGQB8-cy9sUk0hJ6U9YuTiJKitxXL3oGfHAHkQ7rWhMn_1QlV2vBfDGezFG8QU1KHtjoRhMI-7TrpLl5Y5Pkh8xi51dTEADBktvRB8B1A1DshTr3FPpEkKmPjz_vP9aMW_GIcQaA0ndp8f-gxPh7JlnGfW1pZWsn4LG8jXP1DM_DEHCq0UC9hdAygTbvTyZZaKH1H3SIORshVKK7JEh1ga-TB0usiqKUHIHZxAU0xtl8uyl4llyufqENLtpWHB6hfGhMqXnJYT"/>
+<div class="absolute inset-0 bg-gradient-to-t from-on-surface/80 to-transparent flex items-end p-md">
+<p class="text-white text-body-sm italic">"RMF has transformed how I manage my deliveries across Kigali." - Habimana, Rider Partner</p>
+</div>
+</div>
+</div>
+</div>
+</main>
+<!-- BottomNavBar (Mobile Only) -->
+<nav class="lg:hidden fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-4 py-2 bg-surface shadow-lg border-t border-outline-variant">
+<div class="flex flex-col items-center justify-center text-on-surface-variant">
+<span class="material-symbols-outlined">home</span>
+<span class="font-label-md text-label-md">Home</span>
+</div>
+<div class="flex flex-col items-center justify-center text-on-surface-variant">
+<span class="material-symbols-outlined">search</span>
+<span class="font-label-md text-label-md">Search</span>
+</div>
+<div class="flex flex-col items-center justify-center bg-secondary-container text-on-secondary-container rounded-full px-4 py-1">
+<span class="material-symbols-outlined">person</span>
+<span class="font-label-md text-label-md">Account</span>
+</div>
+</nav>
+<script>
+        // Simple micro-interaction for input highlighting
+        const inputs = document.querySelectorAll('input, select');
+        inputs.forEach(input => {
+            input.addEventListener('focus', () => {
+                input.parentElement.classList.add('scale-[1.01]');
+                input.parentElement.style.transition = 'transform 0.2s ease-out';
+            });
+            input.addEventListener('blur', () => {
+                input.parentElement.classList.remove('scale-[1.01]');
+            });
+        });
+    </script>
+</body></html>

@@ -193,6 +193,8 @@ export class UsersService {
     try {
       const axios = require('axios');
       const notificationUrl = process.env.NOTIFICATION_SERVICE_URL || 'http://localhost:3009/api/v1';
+      const secret = process.env.INTERNAL_SERVICE_SECRET;
+      const headers = secret ? { 'x-internal-service-key': secret } : {};
       await axios.post(`${notificationUrl}/notifications/email`, {
         email: 'admin@rwanda-online-shop.com', // fallback admin email
         type: 'admin.support_ticket_created',
@@ -203,7 +205,7 @@ export class UsersService {
           subject: ticketData.subject,
           message: ticketData.message
         }
-      });
+      }, { headers });
     } catch (e: any) {
       console.warn(`[UsersService] Failed to send admin notification for ticket ${savedTicket._id}: ${e.message}`);
     }
@@ -286,7 +288,9 @@ export class UsersService {
     try {
       const axios = require('axios');
       const walletUrl = process.env.WALLET_SERVICE_URL || 'http://localhost:3007/api/v1';
-      await axios.get(`${walletUrl}/wallets/${userId}/balance`);
+      const secret = process.env.INTERNAL_SERVICE_SECRET;
+      const headers = secret ? { 'x-internal-service-key': secret } : {};
+      await axios.post(`${walletUrl}/wallets/user/${userId}`, {}, { headers });
     } catch (e: any) {
       console.warn(`[UsersService] Wallet init for ${userId}: ${e.message}`);
     }
@@ -297,11 +301,13 @@ export class UsersService {
     try {
       const axios = require('axios');
       const notificationUrl = process.env.NOTIFICATION_SERVICE_URL || 'http://localhost:3009/api/v1';
+      const secret = process.env.INTERNAL_SERVICE_SECRET;
+      const headers = secret ? { 'x-internal-service-key': secret } : {};
       await axios.post(`${notificationUrl}/notifications/in-app`, {
         userId,
         type: 'welcome',
         params: { fullName, message: `Welcome to Rwanda Marketplace, ${fullName}! Start exploring local markets and products.` }
-      });
+      }, { headers });
     } catch (e: any) {
       console.warn(`[UsersService] Welcome notification for ${userId}: ${e.message}`);
     }
@@ -556,12 +562,14 @@ export class UsersService {
     try {
       const axios = require('axios');
       const notificationUrl = process.env.NOTIFICATION_SERVICE_URL || 'http://localhost:3009/api/v1';
+      const secret = process.env.INTERNAL_SERVICE_SECRET;
+      const headers = secret ? { 'x-internal-service-key': secret } : {};
       await axios.post(`${notificationUrl}/notifications/email`, {
         userId,
         email: user.email,
         type: 'email.verification',
         params: { code, fullName: user.fullName, expiresInMinutes: 15 }
-      });
+      }, { headers });
     } catch (e: any) {
       console.warn(`[UsersService] Verification email failed for ${userId}: ${e.message}`);
     }

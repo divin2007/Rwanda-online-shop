@@ -80,6 +80,7 @@ export class RiderController {
   }
 
   @UseGuards(JwtAuthGuard)
+  @Roles(UserRole.RIDER)
   @Post('settings/change-request')
   async createSettingsChangeRequest(@Request() req: any, @Body() body: any) {
     const request = await this.riderService.createSettingsChangeRequest(req.user.userId, body || {});
@@ -194,6 +195,24 @@ export class RiderController {
       success: true,
       data: { url: `${publicBaseUrl}/uploads/rider-documents/${fileName}` },
     };
+  }
+
+  @Get('nearby')
+  async getNearbyRiders(
+    @Query('lat') lat: string,
+    @Query('lng') lng: string,
+    @Query('radius') radius?: string,
+  ) {
+    const latNum = Number(lat);
+    const lngNum = Number(lng);
+    const radiusNum = radius ? Number(radius) : 5000;
+
+    if (!Number.isFinite(latNum) || !Number.isFinite(lngNum)) {
+      throw new BadRequestException('lat and lng query parameters must be valid numbers');
+    }
+
+    const nearby = await this.riderService.findNearbyRiders(latNum, lngNum, radiusNum);
+    return { success: true, data: nearby };
   }
 
   private extensionFromMime(mimeType: string): string {

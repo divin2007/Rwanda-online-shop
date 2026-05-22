@@ -3,7 +3,7 @@ import { io, Socket } from 'socket.io-client';
 import { socketUrl } from '../lib/api';
 import { tokenStore } from '../lib/tokenStore';
 
-export function useOrderSocket(channel?: string) {
+export function useOrderSocket(channel?: string, customUrl?: string, onConnect?: (socket: Socket) => void) {
   const [payload, setPayload] = useState<any>(null);
   const [connected, setConnected] = useState(false);
 
@@ -14,7 +14,7 @@ export function useOrderSocket(channel?: string) {
 
     tokenStore.getAccessToken().then(token => {
       if (cancelled) return;
-      socket = io(socketUrl(), {
+      socket = io(customUrl || socketUrl(), {
         transports: ['polling', 'websocket'],
         reconnection: true,
         reconnectionDelay: 1000,
@@ -22,7 +22,12 @@ export function useOrderSocket(channel?: string) {
         auth: token ? { token } : undefined,
       });
 
-      socket.on('connect', () => setConnected(true));
+      socket.on('connect', () => {
+        setConnected(true);
+        if (onConnect && socket) {
+          onConnect(socket);
+        }
+      });
       socket.on('disconnect', () => setConnected(false));
       socket.on(channel, setPayload);
     });
@@ -31,7 +36,7 @@ export function useOrderSocket(channel?: string) {
       cancelled = true;
       socket?.disconnect();
     };
-  }, [channel]);
+  }, [channel, customUrl]);
 
   return { payload, connected };
 }

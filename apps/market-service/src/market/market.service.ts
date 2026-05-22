@@ -199,7 +199,11 @@ export class MarketService implements OnModuleInit {
 
   async findById(id: string): Promise<any> {
     if (!Types.ObjectId.isValid(id)) {
-      throw new BadRequestException('Invalid market ID');
+      try {
+        return await this.findBySlug(id);
+      } catch {
+        throw new BadRequestException('Invalid market ID');
+      }
     }
 
     const [market] = await this.marketModel.aggregate(this.buildMarketStatsPipeline({

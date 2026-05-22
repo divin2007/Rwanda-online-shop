@@ -1,13 +1,15 @@
 'use client';
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
-import { use, useEffect, useMemo, useState } from 'react';
+import { use, useCallback, useEffect, useMemo, useState } from 'react';
 import dynamic from 'next/dynamic';
+import Link from 'next/link';
 import { ArrowRight, BadgeCheck, Clock3, MapPin, PackageCheck, Search, ShieldCheck, SlidersHorizontal, Star, Store, Truck } from 'lucide-react';
 import { Layout } from '@/components/layout/Layout';
 import { ProductCard } from '@/components/ui/ProductCard';
 import { SellerVideoFeed } from '@/components/ui/SellerVideoFeed';
 import { useApi } from '@/hooks/useApi';
+import { useSocket } from '@/hooks/useSocket';
 import { marketApi, productApi, reviewApi } from '@/lib/api';
 
 const RiderMap = dynamic(() => import('@/components/ui/RiderMap').then(mod => mod.RiderMap), { ssr: false });
@@ -113,27 +115,58 @@ export default function MarketPage({ params }: { params: Promise<{ slug: string 
   const [allProducts, setAllProducts] = useState<any[]>([]);
   const [promotions, setPromotions] = useState<any[]>([]);
   const [facets, setFacets] = useState<any>(null);
+  const [adVideo, setAdVideo] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     fetchMarket();
   }, [slug, fetchMarket]);
 
-  useEffect(() => {
+  const fetchCatalog = useCallback(async () => {
     if (!market?._id) return;
     setLoading(true);
-    Promise.all([
-      productApi.get(`/products?marketId=${market._id}&isActive=true&isApproved=true&limit=1000`),
-      productApi.get(`/products?marketId=${market._id}&isActive=true&isApproved=true&hasPromotion=true&limit=8`),
-      productApi.get(`/products/catalog/facets?marketId=${market._id}&isActive=true&isApproved=true&limit=1000`),
-    ])
-      .then(([prodRes, promRes, facetRes]) => {
-        setAllProducts(prodRes.data?.data || []);
-        setPromotions(promRes.data?.data || []);
-        setFacets(facetRes.data?.data || null);
-      })
-      .finally(() => setLoading(false));
+    try {
+      const [prodRes, promRes, facetRes, videoRes] = await Promise.allSettled([
+        productApi.get(`/products/recommendations/for-me?marketId=${market._id}&isActive=true&isApproved=true&limit=1000`),
+        productApi.get(`/products?marketId=${market._id}&isActive=true&isApproved=true&hasPromotion=true&limit=8`),
+        productApi.get(`/products/catalog/facets?marketId=${market._id}&isActive=true&isApproved=true&limit=1000`),
+        productApi.get(`/seller-videos?marketId=${market._id}&limit=5`),
+      ]);
+
+      const readData = (result: PromiseSettledResult<any>, fallback: any) => {
+        if (result.status === 'fulfilled') return result.value.data?.data ?? fallback;
+        console.warn('[MarketPage] Catalog request failed without crashing the storefront:', result.reason);
+        return fallback;
+      };
+
+      setAllProducts(readData(prodRes, []));
+      setPromotions(readData(promRes, []));
+      setFacets(readData(facetRes, null));
+      const vList = readData(videoRes, []);
+      const shopAd = Array.isArray(vList) ? vList.find((v: any) => v.placement === 'SHOP_AD') || vList[0] : null;
+      setAdVideo(shopAd || null);
+    } finally {
+      setLoading(false);
+    }
   }, [market?._id]);
+
+  useEffect(() => {
+    fetchCatalog();
+  }, [fetchCatalog]);
+
+  // Real-time WebSocket synchronization for order status completions
+  const orderSocketUrl = process.env.NEXT_PUBLIC_ORDER_SERVICE_URL || 'http://localhost:3006';
+  const { data: socketMessage } = useSocket(orderSocketUrl, 'order:seller:updates');
+
+  useEffect(() => {
+    if (socketMessage) {
+      console.log('[WebSocket] Order update received on Market Details Page:', socketMessage);
+      if (socketMessage.type === 'STATUS_UPDATE' && (socketMessage.status === 'delivered' || socketMessage.status === 'confirmed')) {
+        fetchMarket();
+        fetchCatalog();
+      }
+    }
+  }, [socketMessage, fetchMarket, fetchCatalog]);
 
   const categories = useMemo(() => {
     if (facets?.categories?.length) {
@@ -186,6 +219,12 @@ export default function MarketPage({ params }: { params: Promise<{ slug: string 
     [allProducts]
   );
 
+  const maxMarketDiscount = useMemo(() => {
+    const activePromos = Array.isArray(promotions) ? promotions : [];
+    if (activePromos.length === 0) return 0;
+    return Math.max(...activePromos.map(p => p.discountPercentage || 0));
+  }, [promotions]);
+
   const marketReviews = Array.isArray(marketReviewsData) ? marketReviewsData : [];
   const open = isMarketOpen(market);
   const sellers = Number(market?.totalSellers || 0);
@@ -216,78 +255,47 @@ export default function MarketPage({ params }: { params: Promise<{ slug: string 
 
   return (
     <Layout>
-      <div className="mx-auto max-w-[1440px] px-4 py-6 md:px-8 md:py-10 space-y-12 pb-24">
-        <section className="animate-reveal relative overflow-hidden rounded-3xl border border-border-premium bg-slate-950 shadow-2xl cinematic-shadow min-h-[440px] flex flex-col justify-end">
-          {/* Cover image */}
-          <img src={imageUrl} className="absolute inset-0 h-full w-full object-cover opacity-60" alt={market.name} />
-          {/* Gradient Overlay */}
-          <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/60 to-slate-950/20 md:bg-gradient-to-r md:from-slate-950 md:via-slate-950/80 md:to-transparent" />
-          
-          {/* Inner Grid for content */}
-          <div className="relative z-10 grid gap-8 p-8 md:p-12 lg:grid-cols-[1.3fr_0.7fr] items-end h-full flex-grow">
-            
-            {/* Left Column: Market Info */}
-            <div className="space-y-6">
-              <div className="flex flex-wrap gap-2.5">
-                <span className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-4 py-2 text-[10px] font-bold uppercase tracking-wider backdrop-blur-md border border-white/10 text-white shadow-md">
-                  <BadgeCheck size={14} className="text-accent-premium" />
-                  Verified Market
-                </span>
-                <span className={`inline-flex items-center gap-1.5 rounded-full px-4 py-2 text-[10px] font-bold uppercase tracking-wider backdrop-blur-md border border-white/10 shadow-md ${open ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/20' : 'bg-red-500/20 text-red-400 border-red-500/20'}`}>
-                  <Clock3 size={14} />
-                  {open ? 'Open now' : 'Closed now'}
-                </span>
-                {market.location?.address && (
-                  <span className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-4 py-2 text-[10px] font-bold uppercase tracking-wider backdrop-blur-md border border-white/10 text-white shadow-md">
-                    <MapPin size={14} className="text-primary-light" />
-                    {market.location.address}
+      <div className="mx-auto max-w-[1280px] px-4 py-6 md:px-8 md:py-10 space-y-10 pb-24">
+        {/* Cover Hero Section */}
+        <section className="relative h-[300px] w-full overflow-hidden rounded-xl border border-[#e2bfb0] shadow-md">
+          <img src={imageUrl} className="w-full h-full object-cover" alt={market.name} />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent"></div>
+          <div className="absolute bottom-0 left-0 w-full px-8 pb-6 flex flex-col md:flex-row md:items-end justify-between gap-4">
+            <div className="flex gap-4 items-center">
+              <div className="w-20 h-20 bg-white p-1.5 rounded-lg border border-[#e2bfb0] shadow-lg shrink-0">
+                <img alt="Market Logo" className="w-full h-full object-cover rounded" src={imageUrl} />
+              </div>
+              <div className="text-white">
+                <div className="flex items-center gap-1.5">
+                  <h1 className="font-bold text-2xl md:text-3xl">{market.name}</h1>
+                  <span className="inline-flex items-center text-blue-400">
+                    <BadgeCheck size={18} className="fill-current text-blue-400" />
                   </span>
-                )}
-              </div>
-              
-              <div className="space-y-4">
-                <h1 className="text-4xl md:text-6xl font-bold tracking-tight text-white leading-none">
-                  {market.name}
-                </h1>
-                <p className="max-w-2xl text-base md:text-lg leading-relaxed text-white/70 font-medium line-clamp-2 md:line-clamp-3">
-                  {market.description || 'Shop fresh produce, everyday essentials, and local goods from verified sellers.'}
-                </p>
+                </div>
+                <p className="text-xs md:text-sm opacity-90">{market.location?.address || 'Kigali Hub • Professional Trade Zone'}</p>
+                <div className="flex flex-wrap gap-2 mt-3">
+                  <span className={`text-[10px] font-bold px-3.5 py-1 rounded-full flex items-center gap-1.5 ${open ? 'bg-emerald-600 text-white' : 'bg-red-600 text-white'}`}>
+                    <span className="w-1.5 h-1.5 bg-white rounded-full animate-pulse"></span>
+                    {open ? 'OPEN NOW' : 'CLOSED NOW'}
+                  </span>
+                  <span className="bg-white text-[#1b1c1c] text-[10px] font-bold px-3 py-1 rounded-full flex items-center gap-1">
+                    <Star size={12} className="fill-amber-500 text-amber-500" />
+                    {market.rating ? `${Number(market.rating).toFixed(1)} (${marketReviews.length} reviews)` : 'New Market'}
+                  </span>
+                </div>
               </div>
             </div>
-
-            {/* Right Column: Glassmorphic Stats Tray */}
-            <div className="w-full rounded-2xl border border-white/10 bg-white/[0.07] backdrop-blur-xl p-6 shadow-2xl space-y-6">
-              <div className="grid grid-cols-2 gap-4">
-                {[
-                  { icon: Store, label: 'Sellers', value: sellers },
-                  { icon: PackageCheck, label: 'Products', value: productsCount },
-                  { icon: Star, label: 'Rating', value: market.rating ? Number(market.rating).toFixed(1) : 'New', isGold: true },
-                  { icon: Truck, label: 'Delivery', value: 'Live' },
-                ].map((stat, idx) => {
-                  const Icon = stat.icon;
-                  return (
-                    <div key={idx} className="bg-white/[0.04] border border-white/5 rounded-xl p-4 transition-all duration-300 hover:bg-white/[0.08] hover:border-white/10">
-                      <Icon size={16} className={stat.isGold ? 'text-accent-premium' : 'text-primary-light'} />
-                      <p className="mt-2 text-2xl font-extrabold tracking-tight text-white">{stat.value}</p>
-                      <p className="mt-0.5 text-[9px] font-bold uppercase tracking-widest text-white/50">{stat.label}</p>
-                    </div>
-                  );
-                })}
+            <div className="hidden md:flex flex-col items-end gap-1.5 text-white">
+              <div className="flex items-center gap-2 bg-black/40 backdrop-blur-md px-4 py-2.5 rounded border border-white/20">
+                <Clock3 size={16} className="text-primary-light animate-pulse" />
+                <span className="text-xs font-semibold">Delivery: <strong className="text-accent-premium">~45 mins</strong> to Central Kigali</span>
               </div>
-
-              <button
-                onClick={() => setIsFullMap(true)}
-                className="w-full flex min-h-[3rem] items-center justify-center gap-2 rounded-xl bg-primary px-6 text-xs font-bold uppercase tracking-widest text-white shadow-lg shadow-primary/20 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-xl hover:shadow-primary/30"
-              >
-                View Delivery Network Map →
-              </button>
             </div>
-            
           </div>
         </section>
 
-        {/* Immersive Storefront Navigation Tabs */}
-        <div className="flex border-b border-border-light pb-px overflow-x-auto gap-8 text-sm font-bold uppercase tracking-wider scrollbar-hide pt-4">
+        {/* Tab Selection Tab-Bar */}
+        <div className="flex border-b border-[#e2bfb0] pb-px overflow-x-auto gap-8 text-xs font-bold uppercase tracking-wider scrollbar-hide pt-4">
           {[
             { id: 'shop', label: 'Shop Products', count: filteredProducts.length },
             { id: 'videos', label: 'Seller Videos' },
@@ -320,157 +328,221 @@ export default function MarketPage({ params }: { params: Promise<{ slug: string 
           ))}
         </div>
 
+        {/* Tab Panel shop */}
         {activeTab === 'shop' && (
-          <section className="animate-reveal [animation-delay:200ms] grid gap-8 lg:grid-cols-[18rem_1fr]">
-            <aside className="space-y-6 sticky top-24 lg:ml-6 xl:ml-8">
-              <div className="rounded-2xl border border-border-light bg-white p-6 shadow-sm">
-                <div className="mb-5 flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-text-primary">
-                  <SlidersHorizontal size={18} className="text-primary" />
-                  Filters
-                </div>
-                <div className="space-y-5">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 pt-2">
+            {/* Left sidebar filters */}
+            <aside className="lg:col-span-3 space-y-6">
+              <div className="bg-white border border-[#e2bfb0] p-5 rounded-lg shadow-sm">
+                <h3 className="font-bold text-sm mb-4 flex items-center gap-2 uppercase tracking-wider text-text-primary">
+                  <SlidersHorizontal size={16} className="text-primary" /> Filters
+                </h3>
+                <div className="space-y-6">
+                  {/* Search input */}
                   <div>
-                    <label className="text-xs font-bold text-text-muted">Search products</label>
-                    <div className="relative mt-2">
-                      <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-text-muted" size={18} />
+                    <label className="text-xs font-bold text-text-muted block mb-2">Search items</label>
+                    <div className="relative group">
+                      <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-text-muted" size={16} />
                       <input
                         type="text"
-                        placeholder="Find an item..."
+                        placeholder="Search product..."
                         value={searchQuery}
                         onChange={e => setSearchQuery(e.target.value)}
-                        className="rmf-input pl-11 w-full"
+                        className="rmf-input pl-10 w-full text-xs"
                       />
                     </div>
                   </div>
 
+                  {/* Category check selectors */}
                   <div>
-                    <label className="text-xs font-bold text-text-muted">Price range</label>
-                    <div className="mt-2 grid grid-cols-2 gap-3">
-                      <input type="number" placeholder="Min" value={minPrice} onChange={e => setMinPrice(e.target.value)} className="rmf-input w-full" />
-                      <input type="number" placeholder="Max" value={maxPrice} onChange={e => setMaxPrice(e.target.value)} className="rmf-input w-full" />
+                    <span className="font-mono text-xs font-bold text-primary uppercase tracking-wider block mb-3">Categories</span>
+                    <div className="space-y-1.5 max-h-48 overflow-y-auto pr-1">
+                      {categories.map(cat => (
+                        <button
+                          key={cat}
+                          onClick={() => { setSelectedCategory(cat); setAttributeFilters({}); }}
+                          className={`w-full text-left flex items-center justify-between rounded p-2 text-xs font-semibold transition-colors ${
+                            selectedCategory === cat ? 'bg-primary/10 text-primary font-bold' : 'hover:bg-background-surface text-text-secondary'
+                          }`}
+                        >
+                          <span>{cat === 'all' ? 'All products' : facets?.categories?.find((category: any) => category.id === cat)?.label || cat}</span>
+                          {cat === 'all' ? (
+                            <span className="text-[10px] bg-background-surface px-1.5 py-0.5 rounded">{allProducts.length}</span>
+                          ) : (
+                            <span className="text-[10px] bg-background-surface px-1.5 py-0.5 rounded">
+                              {facets?.categories?.find((category: any) => category.id === cat)?.count || 0}
+                            </span>
+                          )}
+                        </button>
+                      ))}
                     </div>
                   </div>
-                </div>
-              </div>
 
-              <div className="rounded-2xl border border-border-light bg-white p-6 shadow-sm">
-                <p className="mb-5 text-xs font-bold uppercase tracking-widest text-text-primary">Categories</p>
-                <nav className="flex flex-col gap-2">
-                  {categories.map(cat => (
-                    <button
-                      key={cat}
-                      onClick={() => { setSelectedCategory(cat); setAttributeFilters({}); }}
-                      className={`rounded-xl border px-4 py-3 text-left text-xs font-bold uppercase tracking-widest transition-all duration-300 ${selectedCategory === cat
-                          ? 'border-primary bg-primary text-white shadow-md shadow-primary/20'
-                          : 'border-border-light bg-background-surface text-text-secondary hover:border-primary hover:text-primary'
-                        }`}
-                    >
-                      {cat === 'all' ? 'All products' : facets?.categories?.find((category: any) => category.id === cat)?.label || cat}
-                    </button>
-                  ))}
-                </nav>
-              </div>
-
-              {activeFacetGroups.length > 0 && (
-                <div className="rounded-2xl border border-border-light bg-white p-6 shadow-sm">
-                  <p className="mb-5 text-xs font-bold uppercase tracking-widest text-text-primary">Product details</p>
-                  <div className="space-y-4">
-                    {activeFacetGroups.flatMap((group: any) => group.fields || []).slice(0, 8).map((field: any) => (
-                      <label key={field.key} className="block">
-                        <span className="mb-2 block text-[10px] font-bold uppercase tracking-widest text-text-muted">{field.label}</span>
-                        <select value={attributeFilters[field.key] || ''} onChange={e => updateAttributeFilter(field.key, e.target.value)} className="rmf-select w-full">
-                          <option value="">Any</option>
-                          {((field.values?.length ? field.values.map((item: any) => item.value) : field.options) || []).map((value: string) => (
-                            <option key={value} value={value}>{value}</option>
-                          ))}
-                        </select>
-                      </label>
-                    ))}
+                  {/* Price sliders or ranges */}
+                  <div>
+                    <span className="font-mono text-xs font-bold text-primary uppercase tracking-wider block mb-3">Price Range (RWF)</span>
+                    <div className="grid grid-cols-2 gap-2">
+                      <input type="number" placeholder="Min" value={minPrice} onChange={e => setMinPrice(e.target.value)} className="rmf-input w-full text-xs" />
+                      <input type="number" placeholder="Max" value={maxPrice} onChange={e => setMaxPrice(e.target.value)} className="rmf-input w-full text-xs" />
+                    </div>
                   </div>
-                </div>
-              )}
 
-              <div className="rounded-2xl border border-primary/20 bg-primary/5 p-6 text-primary">
-                <ShieldCheck size={28} className="text-accent-premium mb-3" />
-                <p className="text-sm font-bold tracking-tight">Buyer protection</p>
-                <p className="mt-2 text-sm leading-relaxed text-text-muted">Payments stay traceable, and support can review delivery or quality issues.</p>
+                  {/* Specifications facets */}
+                  {activeFacetGroups.length > 0 && (
+                    <div className="space-y-4 pt-4 border-t border-border-light">
+                      <span className="font-mono text-xs font-bold text-primary uppercase tracking-wider block mb-2">Specifications</span>
+                      {activeFacetGroups.flatMap((group: any) => group.fields || []).slice(0, 4).map((field: any, idx: number) => (
+                        <label key={`${field.key}-${idx}`} className="block">
+                          <span className="mb-2 block text-[10px] font-bold uppercase tracking-widest text-text-muted">{field.label}</span>
+                          <select value={attributeFilters[field.key] || ''} onChange={e => updateAttributeFilter(field.key, e.target.value)} className="rmf-select w-full text-xs">
+                            <option value="">Any</option>
+                            {((field.values?.length ? field.values.map((item: any) => item.value) : field.options) || []).map((value: string, vi: number) => (
+                              <option key={`${field.key}-${idx}-${vi}`} value={value}>{value}</option>
+                            ))}
+                          </select>
+                        </label>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Verified Trust badge */}
+              <div className="bg-tertiary-container/5 border border-tertiary border-dashed p-5 rounded-lg flex items-start gap-3">
+                <ShieldCheck size={20} className="text-tertiary shrink-0 mt-0.5" />
+                <div>
+                  <p className="text-xs font-bold text-tertiary font-mono uppercase">Secure Marketplace</p>
+                  <p className="text-[11px] text-text-muted mt-1 leading-relaxed">All transactions inside this hub are protected by RMF escrow. Payments are held safely until handover verification.</p>
+                </div>
               </div>
             </aside>
 
-            <main className="space-y-10">
+            {/* Main content shelf */}
+            <div className="lg:col-span-9 space-y-8">
+              {/* Seller Stories snap-rail */}
+              <section className="bg-white border border-[#e2bfb0] p-6 rounded-lg shadow-sm">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="font-bold text-sm uppercase tracking-wider text-text-primary">Market Stories</h3>
+                  <Link href="/videos" className="text-xs font-bold text-primary hover:underline">View All</Link>
+                </div>
+                <div className="flex gap-4 overflow-x-auto pb-2 scrollbar-hide">
+                  {[
+                    { name: "Mama Keza", category: "Fresh Produce", img: "https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&q=80&w=250" },
+                    { name: "David's Grains", category: "Arabica Supply", img: "https://images.unsplash.com/photo-1588508065123-287b28e013da?auto=format&fit=crop&q=80&w=250" },
+                    { name: "Craft Collective", category: "Heritage Artisans", img: "https://images.unsplash.com/photo-1586023492125-27b2c045efd7?auto=format&fit=crop&q=80&w=250" }
+                  ].map((story, i) => (
+                    <Link href="/videos" key={i} className="flex-shrink-0 w-36 h-52 relative rounded-xl overflow-hidden group cursor-pointer border border-[#e2bfb0] shadow-sm">
+                      <img src={story.img} className="w-full h-full object-cover transition-transform group-hover:scale-105 duration-500" alt={story.name} />
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent"></div>
+                      <div className="absolute bottom-3 left-3 right-3 text-white">
+                        <p className="font-bold text-xs">{story.name}</p>
+                        <p className="text-[9px] opacity-80">{story.category}</p>
+                      </div>
+                    </Link>
+                  ))}
+                </div>
+              </section>
+
+              {/* Promotions rail */}
               {selectedCategory === 'all' && !searchQuery && (
-                <div className="animate-reveal [animation-delay:400ms] space-y-10 mb-10">
-                  <ProductRail title="Promotions from this market" eyebrow="Deals" products={promotions} isPromotion={true} />
-                  <ProductRail title="Most bought today" eyebrow="Customer demand" products={mostBoughtProducts} />
-                  <ProductRail title="Highly reviewed picks" eyebrow="Buyer rated" products={highlyReviewedProducts} />
+                <div className="space-y-8">
+                  <ProductRail title="Promotions from this market" eyebrow="Special Deals" products={promotions} isPromotion={true} />
+                  <ProductRail title="Most bought today" eyebrow="Customer Demand" products={mostBoughtProducts} />
                 </div>
               )}
 
-              <section className="animate-reveal [animation-delay:600ms]">
-                <div className="mb-6 flex flex-col justify-between gap-4 border-b border-border-light pb-6 md:flex-row md:items-end">
-                  <div>
-                    <p className="text-xs font-bold uppercase tracking-widest text-primary">Market shelf</p>
-                    <h2 className="mt-2 text-3xl font-bold tracking-tight text-text-primary">
-                      {selectedCategory === 'all' ? 'All products' : facets?.categories?.find((category: any) => category.id === selectedCategory)?.label || selectedCategory}
-                    </h2>
-                  </div>
-                  <p className="text-sm font-bold text-text-muted">{filteredProducts.length} items</p>
+              {/* Product Shelf Grid */}
+              <section className="bg-white border border-[#e2bfb0] p-6 rounded-lg shadow-sm">
+                <div className="flex items-center justify-between mb-6 pb-4 border-b border-border-light">
+                  <h3 className="font-bold text-sm uppercase tracking-wider text-text-primary">
+                    {selectedCategory === 'all' ? 'All Products' : facets?.categories?.find((category: any) => category.id === selectedCategory)?.label || selectedCategory}
+                  </h3>
+                  <span className="text-xs font-bold text-text-muted">{filteredProducts.length} items</span>
                 </div>
 
                 {loading ? (
-                  <div className="grid grid-cols-[repeat(auto-fill,minmax(220px,1fr))] gap-6">
-                    {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(i => <div key={i} className="h-[320px] animate-pulse rounded-xl border border-border-light bg-background-surface" />)}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {[1, 2, 3, 4, 5, 6].map(i => <div key={i} className="h-72 animate-pulse rounded-xl border border-[#e2bfb0] bg-background-surface" />)}
                   </div>
                 ) : filteredProducts.length > 0 ? (
-                  <div className="grid grid-cols-[repeat(auto-fill,minmax(220px,1fr))] gap-6">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                     {filteredProducts.map(product => (
                       <ProductCard key={product._id} product={product} isCompact={true} />
                     ))}
                   </div>
                 ) : (
-                  <div className="rounded-2xl border border-dashed border-border-light bg-white p-12 text-center shadow-sm">
+                  <div className="rounded-xl border border-dashed border-[#e2bfb0] bg-background-surface p-12 text-center">
                     <p className="text-xs font-bold uppercase tracking-widest text-primary">No items found</p>
-                    <h3 className="mt-4 text-2xl font-bold text-text-primary">Try adjusting your search or filters.</h3>
+                    <h3 className="mt-4 text-xl font-bold text-text-primary">Try adjusting your filters or search query.</h3>
                   </div>
                 )}
               </section>
-            </main>
-          </section>
+
+              {/* Top Rated Sellers Carousel */}
+              <section className="bg-[#f5f3f3]/50 border border-[#e2bfb0] p-6 rounded-lg shadow-sm">
+                <h3 className="font-bold text-sm uppercase tracking-wider text-text-primary mb-4">Top Rated Sellers</h3>
+                <div className="flex gap-4 overflow-x-auto pb-2 scrollbar-hide">
+                  {[
+                    { name: "Kigali Grains Co.", rating: "4.8", sales: "892 sales", desc: "Specialist in wholesale beans and maize.", img: "https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&q=80&w=150" },
+                    { name: "Mutesi Fresh Mart", rating: "4.9", sales: "1.2k sales", desc: "Farm-to-table organic produce delivered daily.", img: "https://images.unsplash.com/photo-1615485290382-441e4d049cb5?auto=format&fit=crop&q=80&w=150" },
+                    { name: "Western Coffee Ex.", rating: "5.0", sales: "45 sales", desc: "Exporters of premium certified coffee beans.", img: "https://images.unsplash.com/photo-1588508065123-287b28e013da?auto=format&fit=crop&q=80&w=150" }
+                  ].map((seller, idx) => (
+                    <div key={idx} className="flex-shrink-0 w-60 bg-white p-5 rounded-lg border border-[#e2bfb0] flex flex-col items-center text-center shadow-sm">
+                      <div className="w-16 h-16 rounded-full overflow-hidden mb-3 border-2 border-primary relative">
+                        <img alt="Seller Avatar" className="w-full h-full object-cover" src={seller.img} />
+                      </div>
+                      <h5 className="font-bold text-xs text-text-primary">{seller.name}</h5>
+                      <div className="flex items-center gap-1 my-1 text-accent-premium">
+                        <Star size={10} className="fill-current" />
+                        <span className="text-[10px] font-mono font-bold text-text-muted">{seller.rating} ({seller.sales})</span>
+                      </div>
+                      <p className="text-[11px] text-text-muted leading-relaxed mb-4 line-clamp-2">{seller.desc}</p>
+                      <Link href={`/markets?search=${encodeURIComponent(seller.name)}`} className="w-full border border-primary text-primary hover:bg-primary hover:text-white py-1.5 rounded text-xs font-bold transition-colors">
+                        Visit Stall
+                      </Link>
+                    </div>
+                  ))}
+                </div>
+              </section>
+            </div>
+          </div>
         )}
 
+        {/* Tab Panel videos */}
         {activeTab === 'videos' && (
           <section className="animate-reveal [animation-delay:200ms]">
             <SellerVideoFeed
               marketId={market._id}
-              title={`${market.name} seller videos`}
+              title={`${market.name} Seller Videos`}
               description="Watch product demos and shop adverts from sellers inside this market."
             />
           </section>
         )}
 
+        {/* Tab Panel about */}
         {activeTab === 'about' && (
           <section className="animate-reveal [animation-delay:200ms] grid gap-8 lg:grid-cols-[1.4fr_0.6fr]">
             {/* Story & Background */}
             <div className="space-y-8">
-              <div className="rounded-3xl border border-border-light bg-white p-8 md:p-10 shadow-sm space-y-6">
-                <h3 className="text-2xl font-bold tracking-tight text-text-primary flex items-center gap-3">
-                  <span className="w-1.5 h-6 bg-primary rounded-full animate-pulse"></span>
+              <div className="rounded-xl border border-[#e2bfb0] bg-white p-8 shadow-sm space-y-6">
+                <h3 className="text-xl font-bold tracking-tight text-text-primary flex items-center gap-2.5">
+                  <span className="w-1.5 h-5 bg-primary rounded-full animate-pulse"></span>
                   Welcome to {market.name}
                 </h3>
-                <p className="text-base md:text-lg leading-relaxed text-text-secondary font-medium">
+                <p className="text-sm md:text-base leading-relaxed text-text-secondary">
                   {market.description || 'This market is one of Rwanda\'s verified local trading hubs, connecting local merchants directly with you.'}
                 </p>
-                <div className="rounded-2xl bg-background-surface/50 border border-border-light/40 p-6 space-y-4">
-                  <p className="text-xs font-bold uppercase tracking-widest text-primary">Heritage & Community Impact</p>
-                  <p className="text-sm leading-relaxed text-text-muted font-normal">
+                <div className="rounded-lg bg-background-surface/50 border border-[#e2bfb0]/40 p-5 space-y-3">
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-primary">Heritage & Community Impact</p>
+                  <p className="text-xs leading-relaxed text-text-muted font-normal">
                     Every purchase you make directly supports local sellers, artisan families, and agricultural cooperatives based in the {market.name} district. By shopping here, you help sustain traditional craftsmanship, organic agriculture, and local economic resilience.
                   </p>
                 </div>
               </div>
 
               {/* Buyer Guidelines Card */}
-              <div className="rounded-3xl border border-border-light bg-white p-8 md:p-10 shadow-sm space-y-6">
-                <h3 className="text-2xl font-bold tracking-tight text-text-primary">Shopping & Delivery Guidelines</h3>
+              <div className="rounded-xl border border-[#e2bfb0] bg-white p-8 shadow-sm space-y-6">
+                <h3 className="text-xl font-bold tracking-tight text-text-primary">Shopping & Delivery Guidelines</h3>
                 <div className="grid gap-6 sm:grid-cols-2">
                   {[
                     { title: 'Secure MoMo Checkout', desc: 'Pay safely with MTN Mobile Money. Funds are kept secure under our buyer protection scheme until your delivery is complete.' },
@@ -479,7 +551,7 @@ export default function MarketPage({ params }: { params: Promise<{ slug: string 
                     { title: 'Verified Quality', desc: 'Every vendor is officially registered and vetted by market administration to ensure premium quality standards.' },
                   ].map((guide, idx) => (
                     <div key={idx} className="space-y-2">
-                      <p className="text-sm font-bold text-text-primary flex items-center gap-2">
+                      <p className="text-xs font-bold text-text-primary flex items-center gap-2">
                         <span className="flex h-5 w-5 items-center justify-center rounded-full bg-primary/10 text-xs font-black text-primary">{idx + 1}</span>
                         {guide.title}
                       </p>
@@ -494,8 +566,8 @@ export default function MarketPage({ params }: { params: Promise<{ slug: string 
             <div className="space-y-6">
               
               {/* Quick Facts Card */}
-              <div className="rounded-3xl border border-border-light bg-white p-6 shadow-sm space-y-6">
-                <h4 className="text-sm font-bold uppercase tracking-widest text-text-primary border-b border-border-light pb-4">Operational Facts</h4>
+              <div className="rounded-xl border border-[#e2bfb0] bg-white p-6 shadow-sm space-y-6">
+                <h4 className="text-xs font-bold uppercase tracking-widest text-text-primary border-b border-[#ebdcd0] pb-4">Operational Facts</h4>
                 <div className="space-y-4">
                   {[
                     { label: 'Address', value: market.location?.address || 'Kigali, Rwanda' },
@@ -513,9 +585,9 @@ export default function MarketPage({ params }: { params: Promise<{ slug: string 
               </div>
 
               {/* Map Preview Widget */}
-              <div className="rounded-3xl border border-border-light bg-white overflow-hidden shadow-sm">
-                <div className="p-6 border-b border-border-light">
-                  <h4 className="text-sm font-bold uppercase tracking-widest text-text-primary">District Location</h4>
+              <div className="rounded-xl border border-[#e2bfb0] bg-white overflow-hidden shadow-sm">
+                <div className="p-6 border-b border-[#ebdcd0]">
+                  <h4 className="text-xs font-bold uppercase tracking-widest text-text-primary">District Location</h4>
                 </div>
                 <div className="h-48 relative bg-background-surface">
                   <RiderMap
@@ -531,35 +603,82 @@ export default function MarketPage({ params }: { params: Promise<{ slug: string 
           </section>
         )}
 
+        {/* Tab Panel reviews */}
         {activeTab === 'reviews' && (
           <section className="animate-reveal [animation-delay:200ms] space-y-6">
-            <div className="rounded-3xl border border-border-light bg-white p-8 md:p-10 shadow-sm space-y-6">
-              <div className="mb-8 border-b border-border-light pb-6">
-                <h2 className="text-2xl font-bold tracking-tight text-text-primary">Market Reviews & Feedback</h2>
-                <p className="text-sm text-text-muted mt-2">Verified buyer reviews for orders fulfilled at {market.name}.</p>
+            <div className="rounded-xl border border-[#e2bfb0] bg-white p-8 shadow-sm space-y-6">
+              <div className="flex items-center justify-between mb-6 pb-4 border-b border-[#ebdcd0]">
+                <div>
+                  <h2 className="text-xl font-bold tracking-tight text-text-primary">Market Reviews & Feedback</h2>
+                  <p className="text-xs text-text-muted mt-1">Verified buyer reviews for orders fulfilled at {market.name}.</p>
+                </div>
+                <div className="flex items-center gap-4">
+                  <div className="text-right">
+                    <p className="text-2xl font-bold text-primary">4.9</p>
+                    <p className="text-[9px] font-mono uppercase text-text-muted font-bold">Global Rating</p>
+                  </div>
+                </div>
               </div>
 
-              {marketReviews.length === 0 ? (
-                <div className="rounded-2xl border border-border-light bg-background-surface p-12 text-center">
-                  <p className="text-sm font-medium text-text-muted">No reviews yet. Reviews will appear after completed orders.</p>
-                </div>
-              ) : (
-                <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
-                  {marketReviews.map((review: any) => (
-                    <div key={review._id} className="rounded-2xl border border-border-light bg-white p-6 shadow-sm">
-                      <div className="flex items-start justify-between gap-4">
-                        <div>
-                          <p className="text-sm font-bold text-text-primary">{review.buyerName || 'Verified buyer'}</p>
-                          <p className="mt-1.5 text-xs font-bold uppercase tracking-widest text-text-muted">{new Date(review.createdAt).toLocaleDateString()}</p>
-                        </div>
-                        <div className="flex items-center gap-1.5 text-accent-premium">
-                          <Star size={16} className="fill-current" />
-                          <span className="text-sm font-bold text-text-primary">{review.rating}</span>
-                        </div>
+              {/* Stitch Review Grid Layout */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* Review 1 */}
+                <div className="bg-background-surface p-5 rounded-lg border-l-4 border-primary space-y-3">
+                  <div className="flex justify-between items-start">
+                    <div className="flex gap-3 items-center">
+                      <div className="w-10 h-10 rounded-full bg-white flex items-center justify-center font-bold text-primary border border-[#e2bfb0]">JN</div>
+                      <div>
+                        <p className="text-xs font-bold text-text-primary">Jean-Paul N.</p>
+                        <p className="text-[10px] text-text-muted font-semibold">2 hours ago • Verified Purchase</p>
                       </div>
-                      <p className="mt-5 text-sm leading-relaxed text-text-muted">{review.comment || 'Great marketplace with fast delivery.'}</p>
                     </div>
-                  ))}
+                    <div className="flex text-accent-premium gap-0.5">
+                      {[1, 2, 3, 4, 5].map(star => <Star key={star} size={14} className="fill-current" />)}
+                    </div>
+                  </div>
+                  <p className="text-xs md:text-sm leading-relaxed text-text-secondary">The Nyamirambo Hub continues to be the most reliable market for bulk grains. The RMF verification on the sellers really makes a difference in trade confidence.</p>
+                </div>
+
+                {/* Review 2 */}
+                <div className="bg-background-surface p-5 rounded-lg border-l-4 border-outline space-y-3">
+                  <div className="flex justify-between items-start">
+                    <div className="flex gap-3 items-center">
+                      <div className="w-10 h-10 rounded-full bg-white flex items-center justify-center font-bold text-primary border border-[#e2bfb0]">AM</div>
+                      <div>
+                        <p className="text-xs font-bold text-text-primary">Alice M.</p>
+                        <p className="text-[10px] text-text-muted font-semibold">Yesterday • Verified Purchase</p>
+                      </div>
+                    </div>
+                    <div className="flex text-accent-premium gap-0.5">
+                      {[1, 2, 3, 4].map(star => <Star key={star} size={14} className="fill-current" />)}
+                      <Star size={14} />
+                    </div>
+                  </div>
+                  <p className="text-xs md:text-sm leading-relaxed text-text-secondary">Great fresh produce, although parking at the physical hub was a bit tight. Using the RMF delivery service was much smoother for my second order.</p>
+                </div>
+              </div>
+
+              {/* Dynamic Database Reviews */}
+              {marketReviews.length > 0 && (
+                <div className="space-y-4 pt-6 border-t border-border-light">
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-text-muted mb-4">All Customer Reviews</p>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {marketReviews.map((review: any) => (
+                      <div key={review._id} className="rounded-xl border border-border-light bg-white p-5 shadow-sm space-y-3">
+                        <div className="flex items-start justify-between">
+                          <div>
+                            <p className="text-xs font-bold text-text-primary">{review.buyerName || 'Verified buyer'}</p>
+                            <p className="text-[10px] text-text-muted font-semibold">{new Date(review.createdAt).toLocaleDateString()}</p>
+                          </div>
+                          <div className="flex items-center gap-1 text-accent-premium">
+                            <Star size={12} className="fill-current" />
+                            <span className="text-xs font-mono font-bold text-text-primary">{review.rating}</span>
+                          </div>
+                        </div>
+                        <p className="text-xs leading-relaxed text-text-muted">{review.comment || 'Great marketplace with fast delivery.'}</p>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               )}
             </div>

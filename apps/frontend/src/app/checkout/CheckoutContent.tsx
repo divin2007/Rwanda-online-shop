@@ -81,6 +81,8 @@ export const CheckoutContent = () => {
 
   const handleCheckout = async () => {
     if (items.length === 0) return toast.error('Your cart is empty.');
+    if (!user) return toast.error('Please log in as a buyer before checkout.');
+    if (user.role !== 'BUYER') return toast.error('Checkout is only available from buyer accounts. Please switch accounts before placing an order.');
     if (!coords) return toast.error('Please drop a pin for your delivery location.');
     if (!phone) return toast.error('Please enter your mobile money number.');
     if (total > 50000 && !nid) return toast.error('National ID is required for large orders.');
@@ -102,7 +104,7 @@ export const CheckoutContent = () => {
         const subtotal = sellerItems.reduce((sum, i) => sum + (i.price * i.quantity), 0);
         const platformCommission = Math.max(subtotal * 0.015, 100);
         const gatewayFee = Math.ceil((subtotal + sellerDeliveryFee) * 0.02);
-        const totalAmount = subtotal + sellerDeliveryFee + gatewayFee;
+        const totalAmount = subtotal + sellerDeliveryFee;
         
         const firstItem = sellerItems[0];
 

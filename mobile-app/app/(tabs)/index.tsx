@@ -1,353 +1,615 @@
-import React, { useMemo, useState } from 'react';
-import { FlatList, RefreshControl, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import React, { useMemo, useState, useEffect, useRef } from 'react';
+import {
+  Animated, FlatList, RefreshControl, ScrollView,
+  StyleSheet, Text, TouchableOpacity, View, Dimensions,
+} from 'react-native';
 import { useRouter } from 'expo-router';
-import { Search, ShieldCheck, SlidersHorizontal, Video } from 'lucide-react-native';
+import {
+  ArrowRight, ChevronRight, Flame, MapPinned,
+  ShoppingBag, Sparkles, Tag, Video, Zap, Star,
+  Package, Truck, Shield, Gift,
+} from 'lucide-react-native';
 import { MarketCard, ProductCard } from '../../src/components/Cards';
 import { EmptyBlock, ErrorBlock, LoadingBlock } from '../../src/components/StateView';
+import { SellerVideoFeed } from '../../src/components/SellerVideoFeed';
 import { api } from '../../src/lib/api';
-import { asArray } from '../../src/lib/normalize';
-import { compactNumber } from '../../src/lib/format';
-import { colors } from '../../src/theme';
-import { CatalogCategory, Market, Product } from '../../src/types';
+import { asArray, idOf } from '../../src/lib/normalize';
+import { money, compactNumber } from '../../src/lib/format';
+import { colors, shadow, shadowMd } from '../../src/theme';
+import { CatalogCategory, Market, Product, Promotion } from '../../src/types';
 import { useRemote } from '../../src/hooks/useRemote';
 
-type ShopPayload = {
-  products: Product[];
-  markets: Market[];
+const { width: SCREEN_W } = Dimensions.get('window');
+
+type HomePayload = {
   categories: CatalogCategory[];
-  publicStats: Record<string, any> | null;
+  markets: Market[];
+  recommended: Product[];
+  trending: Product[];
+  promotions: Promotion[];
+  stats: Record<string, any> | null;
 };
 
-const loadShop = async (search: string): Promise<ShopPayload> => {
-  const params = new URLSearchParams({ limit: '40', isActive: 'true', sortBy: '-totalOrders' });
-  if (search.trim()) params.set('search', search.trim());
+const productFromPromotion = (p: Promotion): Product | undefined => {
+  if (p.product) return p.product;
+  return typeof p.productId === 'object' ? p.productId : undefined;
+};
 
-  const [products, markets, categories, publicStats] = await Promise.all([
-    api.get<Product[]>('product', `/products/recommendations/for-me?${params.toString()}`)
-      .catch(() => api.get<Product[]>('product', `/products?${params.toString()}`, { auth: false })),
+const loadHome = async (search: string): Promise<HomePayload> => {
+  const base = new URLSearchParams({ limit: '24', isActive: 'true' });
+  if (search.trim()) base.set('search', search.trim());
+
+  const [recommended, trending, markets, categories, promotions, stats] = await Promise.all([
+    api.get<Product[]>('product', `/products/recommendations/for-me?${base}`)
+      .catch(() => api.get<Product[]>('product', `/products?${base}&sortBy=-totalOrders`, { auth: false })),
+    api.get<Product[]>('product', `/products?${base}&sortBy=-totalOrders`, { auth: false }),
     api.get<Market[]>('market', '/markets?activeOnly=true', { auth: false }),
     api.get<CatalogCategory[]>('product', '/products/catalog/categories', { auth: false }),
+    api.get<Promotion[]>('product', '/promotions/active', { auth: false }).catch(() => []),
     api.get<Record<string, any>>('order', '/orders/public/stats', { auth: false }).catch(() => null),
   ]);
 
   return {
-    products: asArray<Product>(products),
+    recommended: asArray<Product>(recommended),
+    trending: asArray<Product>(trending),
     markets: asArray<Market>(markets),
-    categories: asArray<CatalogCategory>(categories).filter(category => category.isActive !== false),
-    publicStats,
+    categories: asArray<CatalogCategory>(categories).filter(c => c.isActive !== false),
+    promotions: asArray<Promotion>(promotions),
+    stats,
   };
 };
 
-export default function ShopScreen() {
+// ── Promotional banners (Alibaba rotating carousel) ─────────────────────────
+const BANNERS = [
+  { id: '1', tag: 'HARVEST SEASON', title: 'Farm-Fresh Deals', sub: 'Up to 45% OFF direct from verified Rwandan farms', color: '#ff6b00', color2: '#e05300' },
+  { id: '2', tag: 'SECURE ESCROW', title: 'Buy with Confidence', sub: 'Every order is escrow-protected until delivery confirmed', color: '#0066CC', color2: '#004EA6' },
+  { id: '3', tag: 'BEST SELLERS', title: 'Kimironko Premium', sub: 'Top-rated spices, textiles & handcrafts. Same-day delivery', color: '#00A650', color2: '#007A3D' },
+];
+
+// ── Quick action shortcuts (Alibaba icon grid) ───────────────────────────────
+const QUICK_ACTIONS = [
+  { id: 'deals', label: 'Flash\nDeals', icon: Zap, color: '#ff6b00', bg: '#ffedd5', badge: 'HOT' },
+  { id: 'markets', label: 'Markets', icon: MapPinned, color: '#0066CC', bg: '#E8F0FC', badge: null },
+  { id: 'new', label: 'New\nArrivals', icon: Package, color: '#00A650', bg: '#E8F8EF', badge: 'NEW' },
+  { id: 'videos', label: 'Seller\nVideos', icon: Video, color: '#9B59B6', bg: '#F3E8FF', badge: 'LIVE' },
+  { id: 'local', label: 'Made in\nRwanda', icon: Star, color: '#FFB800', bg: '#FFF8E1', badge: null },
+  { id: 'deliver', label: 'Fast\nDeliver', icon: Truck, color: '#E67E22', bg: '#FEF3E2', badge: null },
+  { id: 'promo', label: 'Vouchers', icon: Gift, color: '#E91E8C', bg: '#FCE4F3', badge: null },
+  { id: 'secure', label: 'Secure\nBuy', icon: Shield, color: '#27AE60', bg: '#E8F8EF', badge: null },
+];
+
+export default function HomeScreen() {
   const router = useRouter();
-  const [search, setSearch] = useState('');
-  const [categoryId, setCategoryId] = useState<string | null>(null);
-  const { data, loading, refreshing, error, refresh } = useRemote(() => loadShop(search), [search]);
+  const [activeCategory, setActiveCategory] = useState<string | null>(null);
+  const [bannerIdx, setBannerIdx] = useState(0);
+  const [countdown, setCountdown] = useState({ h: 2, m: 34, s: 17 });
 
-  const products = useMemo(() => {
-    const allProducts = data?.products || [];
-    if (!categoryId) return allProducts;
-    return allProducts.filter(product => product.categoryId === categoryId || product.productType === categoryId);
-  }, [categoryId, data?.products]);
+  const { data, loading, refreshing, error, refresh } = useRemote(
+    () => loadHome(''),
+    [],
+  );
 
-  if (loading && !data) return <LoadingBlock />;
-  if (error && !data) return <ErrorBlock message={error} onRetry={refresh} />;
+  // Banner auto-rotate
+  useEffect(() => {
+    const t = setInterval(() => setBannerIdx(i => (i + 1) % BANNERS.length), 4000);
+    return () => clearInterval(t);
+  }, []);
+
+  // Countdown timer
+  useEffect(() => {
+    const t = setInterval(() => {
+      setCountdown(prev => {
+        if (prev.s > 0) return { ...prev, s: prev.s - 1 };
+        if (prev.m > 0) return { ...prev, m: prev.m - 1, s: 59 };
+        if (prev.h > 0) return { h: prev.h - 1, m: 59, s: 59 };
+        return { h: 5, m: 59, s: 59 };
+      });
+    }, 1000);
+    return () => clearInterval(t);
+  }, []);
 
   const markets = data?.markets || [];
   const categories = data?.categories || [];
-  const stats = data?.publicStats || {};
+  const promoted = useMemo(
+    () => (data?.promotions || []).map(productFromPromotion).filter(Boolean) as Product[],
+    [data?.promotions],
+  );
+  const topMarkets = useMemo(
+    () => [...markets].sort((a, b) => (b.totalSellers || 0) - (a.totalSellers || 0)).slice(0, 8),
+    [markets],
+  );
+  const filteredProducts = useMemo(() => {
+    const src = data?.recommended?.length ? data.recommended : data?.trending || [];
+    if (!activeCategory) return src;
+    return src.filter(p => p.categoryId === activeCategory || p.category === activeCategory);
+  }, [activeCategory, data]);
+
+  const handleQuickAction = (id: string) => {
+    if (id === 'deals') router.push({ pathname: '/products', params: { sort: 'deals' } } as any);
+    else if (id === 'markets') router.push('/markets' as any);
+    else if (id === 'videos') router.push('/videos' as any);
+    else if (id === 'new') router.push({ pathname: '/products', params: { sort: 'popular' } } as any);
+    else if (id === 'local') router.push('/products' as any);
+    else if (id === 'deliver') router.push('/markets' as any);
+    else if (id === 'promo') router.push({ pathname: '/products', params: { sort: 'deals' } } as any);
+    else if (id === 'secure') router.push('/products' as any);
+  };
+
+  if (loading && !data) return <LoadingBlock label="Loading RMF marketplace..." />;
+  if (error && !data) return <ErrorBlock message={error} onRetry={refresh} />;
+
+  const banner = BANNERS[bannerIdx];
+  const pad = (n: number) => String(n).padStart(2, '0');
 
   return (
     <ScrollView
-      style={styles.container}
-      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor={colors.orange} />}
+      style={styles.screen}
+      contentContainerStyle={styles.content}
       showsVerticalScrollIndicator={false}
+      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor={colors.primary} />}
     >
-      <View style={styles.hero}>
-        <View style={styles.trustPill}>
-          <ShieldCheck color={colors.greenDark} size={14} />
-          <Text style={styles.trustText}>Live verified RMF marketplace</Text>
+
+      {/* ── Rotating Banner Carousel ─────────────────────────────────────── */}
+      <View style={[styles.banner, { backgroundColor: banner.color }]}>
+        <View style={[styles.bannerBlob, { backgroundColor: banner.color2 }]} />
+        <View style={styles.bannerLeft}>
+          <View style={styles.bannerTag}>
+            <Flame color="#fff" size={9} />
+            <Text style={styles.bannerTagText}>{banner.tag}</Text>
+          </View>
+          <Text style={styles.bannerTitle}>{banner.title}</Text>
+          <Text style={styles.bannerSub}>{banner.sub}</Text>
+          <TouchableOpacity
+            style={styles.bannerBtn}
+            onPress={() => router.push('/products' as any)}
+            activeOpacity={0.85}
+          >
+            <Text style={styles.bannerBtnText}>Shop Now</Text>
+            <ArrowRight color={banner.color} size={12} />
+          </TouchableOpacity>
         </View>
-        <Text style={styles.heroTitle}>Shop local markets with escrow-backed delivery.</Text>
-        <View style={styles.searchBar}>
-          <Search color={colors.muted} size={18} />
-          <TextInput
-            value={search}
-            onChangeText={setSearch}
-            placeholder="Search markets, products, sellers..."
-            placeholderTextColor={colors.faint}
-            style={styles.searchInput}
-            returnKeyType="search"
-          />
-          <SlidersHorizontal color={colors.orange} size={18} />
-        </View>
-        <View style={styles.statRow}>
-          <View style={styles.stat}>
-            <Text style={styles.statValue}>{compactNumber(markets.length)}</Text>
-            <Text style={styles.statLabel}>Markets</Text>
-          </View>
-          <View style={styles.stat}>
-            <Text style={styles.statValue}>{compactNumber(products.length)}</Text>
-            <Text style={styles.statLabel}>Products</Text>
-          </View>
-          <View style={styles.stat}>
-            <Text style={styles.statValue}>{compactNumber(Number(stats.ordersToday || stats.totalOrders || 0))}</Text>
-            <Text style={styles.statLabel}>Orders</Text>
-          </View>
+        {/* Dots */}
+        <View style={styles.bannerDots}>
+          {BANNERS.map((_, i) => (
+            <TouchableOpacity key={i} onPress={() => setBannerIdx(i)}>
+              <View style={[styles.dot, i === bannerIdx && styles.dotActive]} />
+            </TouchableOpacity>
+          ))}
         </View>
       </View>
 
-      <TouchableOpacity style={styles.videoCta} onPress={() => router.push('/videos')} activeOpacity={0.88}>
-        <View style={styles.videoIcon}>
-          <Video color={colors.card} size={18} />
-        </View>
-        <View style={{ flex: 1 }}>
-          <Text style={styles.videoTitle}>Seller video market</Text>
-          <Text style={styles.videoBody}>Watch shop adverts and product demos before ordering.</Text>
-        </View>
-      </TouchableOpacity>
+      {/* ── Quick Action Grid (8 icons like Alibaba) ─────────────────────── */}
+      <View style={styles.quickGrid}>
+        {QUICK_ACTIONS.map(action => {
+          const Icon = action.icon;
+          return (
+            <TouchableOpacity
+              key={action.id}
+              style={styles.quickItem}
+              onPress={() => handleQuickAction(action.id)}
+              activeOpacity={0.8}
+            >
+              <View style={[styles.quickIcon, { backgroundColor: action.bg }]}>
+                <Icon color={action.color} size={22} strokeWidth={1.8} />
+                {action.badge ? (
+                  <View style={[styles.quickBadge, { backgroundColor: action.color }]}>
+                    <Text style={styles.quickBadgeText}>{action.badge}</Text>
+                  </View>
+                ) : null}
+              </View>
+              <Text style={styles.quickLabel} numberOfLines={2}>{action.label}</Text>
+            </TouchableOpacity>
+          );
+        })}
+      </View>
 
+      {/* ── Flash Deals with Countdown ───────────────────────────────────── */}
       <View style={styles.section}>
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Markets near RMF buyers</Text>
-          <TouchableOpacity onPress={() => router.push('/markets')}>
-            <Text style={styles.sectionLink}>View all</Text>
+        <View style={styles.sectionHead}>
+          <View style={styles.sectionTitleRow}>
+            <Zap color="#E02020" fill="#E02020" size={16} />
+            <Text style={styles.sectionTitle}>Flash Deals</Text>
+            <View style={styles.countdown}>
+              <TimeBox value={pad(countdown.h)} />
+              <Text style={styles.colon}>:</Text>
+              <TimeBox value={pad(countdown.m)} />
+              <Text style={styles.colon}>:</Text>
+              <TimeBox value={pad(countdown.s)} />
+            </View>
+          </View>
+          <TouchableOpacity
+            style={styles.seeAll}
+            onPress={() => router.push({ pathname: '/products', params: { sort: 'deals' } } as any)}
+          >
+            <Text style={styles.seeAllText}>See all</Text>
+            <ChevronRight color={colors.primary} size={13} />
           </TouchableOpacity>
         </View>
-        {markets.length ? (
+
+        {promoted.length ? (
           <FlatList
             horizontal
-            data={markets}
+            data={promoted.slice(0, 10)}
             keyExtractor={item => item._id}
             showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.horizontalList}
+            contentContainerStyle={styles.hRail}
             renderItem={({ item }) => (
-              <View style={styles.marketCardWrap}>
-                <MarketCard market={item} onPress={() => router.push(`/market/${item._id}`)} />
+              <View style={styles.dealWrap}>
+                <ProductCard
+                  product={item}
+                  style={{ width: 130 }}
+                  onPress={() => router.push(`/product/${item._id}` as any)}
+                />
+                <View style={styles.claimedBar}>
+                  <View style={[styles.claimedFill, { width: '72%' }]} />
+                </View>
+                <Text style={styles.claimedLabel}>72% claimed</Text>
               </View>
             )}
           />
         ) : (
-          <EmptyBlock title="No live markets returned" body="The market service did not return active markets." />
+          <EmptyInline title="No live flash deals" body="Deals appear when sellers add promotions." />
         )}
       </View>
 
+      {/* ── Verified Markets Rail ─────────────────────────────────────────── */}
       <View style={styles.section}>
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Browse categories</Text>
-          {categoryId ? (
-            <TouchableOpacity onPress={() => setCategoryId(null)}>
-              <Text style={styles.sectionLink}>Clear</Text>
-            </TouchableOpacity>
-          ) : null}
+        <View style={styles.sectionHead}>
+          <View style={styles.sectionTitleRow}>
+            <MapPinned color={colors.primary} size={16} strokeWidth={2} />
+            <Text style={styles.sectionTitle}>Top Markets</Text>
+          </View>
+          <TouchableOpacity style={styles.seeAll} onPress={() => router.push('/markets' as any)}>
+            <Text style={styles.seeAllText}>Browse all</Text>
+            <ChevronRight color={colors.primary} size={13} />
+          </TouchableOpacity>
         </View>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.categoryRow}>
-          {categories.map(category => (
-            <TouchableOpacity
-              key={category.id}
-              style={[styles.categoryPill, categoryId === category.id && styles.categoryPillActive]}
-              onPress={() => setCategoryId(current => current === category.id ? null : category.id)}
-              activeOpacity={0.85}
-            >
-              <Text style={[styles.categoryText, categoryId === category.id && styles.categoryTextActive]}>{category.label}</Text>
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
+
+        {topMarkets.length ? (
+          <FlatList
+            horizontal
+            data={topMarkets}
+            keyExtractor={item => idOf(item) || item.name}
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.hRail}
+            renderItem={({ item, index }) => (
+              <MarketCard
+                market={item}
+                rank={index + 1}
+                style={{ width: 200 }}
+                onPress={() => {
+                  const id = idOf(item);
+                  if (id) router.push(`/market/${id}` as any);
+                }}
+              />
+            )}
+          />
+        ) : (
+          <EmptyInline title="No markets available" body="Markets appear after seeding." />
+        )}
       </View>
 
-      <View style={[styles.section, styles.lastSection]}>
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Trending products</Text>
-          <Text style={styles.countText}>{products.length} live</Text>
+      {/* ── Seller Video Rail ────────────────────────────────────────────── */}
+      <View style={styles.section}>
+        <View style={styles.sectionHead}>
+          <View style={styles.sectionTitleRow}>
+            <Video color={colors.primary} size={16} strokeWidth={2} />
+            <Text style={styles.sectionTitle}>Seller Videos</Text>
+          </View>
+          <TouchableOpacity style={styles.seeAll} onPress={() => router.push('/videos' as any)}>
+            <Text style={styles.seeAllText}>Watch all</Text>
+            <ChevronRight color={colors.primary} size={13} />
+          </TouchableOpacity>
         </View>
-        {products.length ? (
-          <View style={styles.grid}>
-            {products.map(product => (
+        <SellerVideoFeed compact />
+      </View>
+
+      {/* ── Category Filter Chips + Recommended Grid ────────────────────── */}
+      <View style={styles.section}>
+        <View style={styles.sectionHead}>
+          <View style={styles.sectionTitleRow}>
+            <Sparkles color={colors.gold} size={16} />
+            <Text style={styles.sectionTitle}>Just For You</Text>
+          </View>
+        </View>
+
+        {/* Category chips */}
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chips}>
+          <CategoryChip label="All" active={!activeCategory} onPress={() => setActiveCategory(null)} />
+          {categories.slice(0, 14).map(cat => (
+            <CategoryChip
+              key={cat.id}
+              label={cat.label}
+              active={activeCategory === cat.id}
+              onPress={() => setActiveCategory(cat.id)}
+            />
+          ))}
+        </ScrollView>
+
+        {/* 3-column product grid */}
+        {filteredProducts.length ? (
+          <View style={styles.productGrid}>
+            {filteredProducts.slice(0, 30).map(item => (
               <ProductCard
-                key={product._id}
-                product={product}
+                key={item._id}
+                product={item}
                 compact
-                onPress={() => router.push(`/product/${product._id}`)}
+                onPress={() => router.push(`/product/${item._id}` as any)}
               />
             ))}
           </View>
         ) : (
-          <EmptyBlock title="No products match this view" body="Try another search or category." />
+          <EmptyInline title="No products yet" body="Recommendations load after orders are placed." />
+        )}
+
+        {filteredProducts.length >= 30 && (
+          <TouchableOpacity
+            style={styles.loadMoreBtn}
+            onPress={() => router.push('/products' as any)}
+            activeOpacity={0.85}
+          >
+            <Text style={styles.loadMoreText}>View all products</Text>
+            <ArrowRight color={colors.primary} size={14} />
+          </TouchableOpacity>
         )}
       </View>
     </ScrollView>
   );
 }
 
+// ── Sub-components ───────────────────────────────────────────────────────────
+
+function TimeBox({ value }: { value: string }) {
+  return (
+    <View style={styles.timeBox}>
+      <Text style={styles.timeText}>{value}</Text>
+    </View>
+  );
+}
+
+function CategoryChip({ label, active, onPress }: { label: string; active: boolean; onPress: () => void }) {
+  return (
+    <TouchableOpacity
+      style={[styles.chip, active && styles.chipActive]}
+      onPress={onPress}
+      activeOpacity={0.8}
+    >
+      <Text style={[styles.chipText, active && styles.chipTextActive]}>{label}</Text>
+    </TouchableOpacity>
+  );
+}
+
+function EmptyInline({ title, body }: { title: string; body: string }) {
+  return (
+    <View style={styles.emptyInline}>
+      <ShoppingBag color={colors.primary} size={20} />
+      <Text style={styles.emptyTitle}>{title}</Text>
+      <Text style={styles.emptyBody}>{body}</Text>
+    </View>
+  );
+}
+
+// ── Styles ───────────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.paper,
+  screen: { flex: 1, backgroundColor: colors.bg },
+  content: { paddingBottom: 100 },
+
+  // Banner
+  banner: {
+    marginHorizontal: 12,
+    marginTop: 12,
+    borderRadius: 12,
+    padding: 16,
+    minHeight: 140,
+    overflow: 'hidden',
+    ...shadowMd,
   },
-  hero: {
-    margin: 16,
-    padding: 18,
-    borderRadius: 16,
-    backgroundColor: colors.greenDark,
-    gap: 16,
+  bannerBlob: {
+    position: 'absolute',
+    right: -30,
+    top: -30,
+    width: 160,
+    height: 160,
+    borderRadius: 80,
+    opacity: 0.3,
   },
-  trustPill: {
+  bannerLeft: { gap: 6, maxWidth: '80%' },
+  bannerTag: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: 'rgba(255,255,255,0.2)',
     alignSelf: 'flex-start',
-    height: 28,
-    borderRadius: 8,
-    backgroundColor: colors.orange,
-    paddingHorizontal: 10,
+    paddingHorizontal: 7,
+    paddingVertical: 3,
+    borderRadius: 4,
+  },
+  bannerTagText: { color: '#fff', fontSize: 9, fontWeight: '800', letterSpacing: 0.5 },
+  bannerTitle: { color: '#fff', fontSize: 22, fontWeight: '900', lineHeight: 26 },
+  bannerSub: { color: 'rgba(255,255,255,0.88)', fontSize: 12, fontWeight: '500', lineHeight: 17 },
+  bannerBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    backgroundColor: '#fff',
+    alignSelf: 'flex-start',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 999,
+    marginTop: 4,
+  },
+  bannerBtnText: { color: colors.primary, fontSize: 12, fontWeight: '800' },
+  bannerDots: {
+    position: 'absolute',
+    bottom: 10,
+    right: 14,
+    flexDirection: 'row',
+    gap: 5,
+  },
+  dot: { width: 5, height: 5, borderRadius: 3, backgroundColor: 'rgba(255,255,255,0.4)' },
+  dotActive: { backgroundColor: '#fff', width: 14 },
+
+  // Quick actions
+  quickGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    backgroundColor: colors.card,
+    marginTop: 10,
+    paddingVertical: 12,
+    paddingHorizontal: 8,
+    borderBottomWidth: 0.5,
+    borderTopWidth: 0.5,
+    borderColor: colors.divider,
+  },
+  quickItem: {
+    width: '25%',
+    alignItems: 'center',
+    paddingVertical: 8,
+    gap: 6,
+  },
+  quickIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    position: 'relative',
+  },
+  quickBadge: {
+    position: 'absolute',
+    top: -4,
+    right: -6,
+    paddingHorizontal: 4,
+    paddingVertical: 1,
+    borderRadius: 4,
+  },
+  quickBadgeText: { color: '#fff', fontSize: 7, fontWeight: '900' },
+  quickLabel: {
+    color: colors.body,
+    fontSize: 10,
+    fontWeight: '500',
+    textAlign: 'center',
+    lineHeight: 13,
+  },
+
+  // Sections
+  section: {
+    marginTop: 10,
+    backgroundColor: colors.card,
+    paddingVertical: 12,
+    borderTopWidth: 0.5,
+    borderBottomWidth: 0.5,
+    borderColor: colors.divider,
+    gap: 10,
+  },
+  sectionHead: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+  },
+  sectionTitleRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
   },
-  trustText: {
-    color: colors.greenDark,
-    fontSize: 10,
-    fontWeight: '900',
-  },
-  heroTitle: {
-    color: colors.card,
-    fontSize: 28,
-    lineHeight: 32,
-    fontWeight: '900',
-    letterSpacing: -0.4,
-  },
-  searchBar: {
-    height: 52,
-    borderRadius: 10,
-    backgroundColor: colors.card,
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 14,
-    gap: 10,
-  },
-  searchInput: {
-    flex: 1,
-    color: colors.ink,
-    fontSize: 14,
-    fontWeight: '700',
-  },
-  statRow: {
-    flexDirection: 'row',
-    gap: 10,
-  },
-  stat: {
-    flex: 1,
-    borderRadius: 10,
-    backgroundColor: 'rgba(255,255,255,0.08)',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.12)',
-    padding: 12,
-  },
-  statValue: {
-    color: colors.orange,
-    fontSize: 18,
-    fontWeight: '900',
-  },
-  statLabel: {
-    color: '#ffedd5',
-    fontSize: 10,
-    fontWeight: '800',
-    marginTop: 2,
-  },
-  section: {
-    marginTop: 10,
-  },
-  videoCta: {
-    marginHorizontal: 16,
-    marginTop: 10,
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: '#fed7aa',
-    backgroundColor: colors.orangeSoft,
-    padding: 14,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  videoIcon: {
-    width: 42,
-    height: 42,
-    borderRadius: 12,
-    backgroundColor: colors.orange,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  videoTitle: {
-    color: colors.ink,
-    fontSize: 15,
-    fontWeight: '900',
-  },
-  videoBody: {
-    color: colors.muted,
-    fontSize: 12,
-    lineHeight: 17,
-    fontWeight: '700',
-    marginTop: 2,
-  },
-  lastSection: {
-    paddingBottom: 36,
-  },
-  sectionHeader: {
-    paddingHorizontal: 16,
-    marginBottom: 12,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
   sectionTitle: {
     color: colors.ink,
-    fontSize: 18,
-    fontWeight: '900',
+    fontSize: 15,
+    fontWeight: '800',
   },
-  sectionLink: {
-    color: colors.orangeDark,
+  seeAll: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 2,
+  },
+  seeAllText: {
+    color: colors.primary,
     fontSize: 12,
-    fontWeight: '900',
+    fontWeight: '600',
   },
-  countText: {
-    color: colors.faint,
-    fontSize: 11,
-    fontWeight: '900',
+
+  // Countdown
+  countdown: { flexDirection: 'row', alignItems: 'center', gap: 3, marginLeft: 8 },
+  timeBox: {
+    backgroundColor: colors.ink,
+    borderRadius: 4,
+    paddingHorizontal: 5,
+    paddingVertical: 2,
+    minWidth: 22,
+    alignItems: 'center',
   },
-  horizontalList: {
-    paddingHorizontal: 16,
-    gap: 14,
+  timeText: { color: '#fff', fontSize: 10, fontWeight: '900' },
+  colon: { color: colors.ink, fontWeight: '900', fontSize: 11 },
+
+  // Horizontal rails
+  hRail: { paddingHorizontal: 12, gap: 8 },
+  dealWrap: { gap: 5 },
+  claimedBar: {
+    height: 3,
+    backgroundColor: '#FFE0D6',
+    borderRadius: 2,
+    overflow: 'hidden',
   },
-  marketCardWrap: {
-    width: 280,
+  claimedFill: {
+    height: '100%',
+    backgroundColor: colors.primary,
+    borderRadius: 2,
   },
-  categoryRow: {
-    paddingHorizontal: 16,
-    gap: 8,
-  },
-  categoryPill: {
-    height: 36,
+  claimedLabel: { color: colors.muted, fontSize: 9, fontWeight: '600' },
+
+  // Category chips
+  chips: { paddingHorizontal: 12, gap: 7 },
+  chip: {
+    height: 28,
     paddingHorizontal: 12,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: colors.line,
-    backgroundColor: colors.card,
+    borderRadius: 999,
+    borderWidth: 0.5,
+    borderColor: colors.divider,
+    backgroundColor: colors.bg,
     justifyContent: 'center',
   },
-  categoryPillActive: {
-    borderColor: colors.orange,
-    backgroundColor: colors.orangeSoft,
+  chipActive: {
+    backgroundColor: '#FFF0EB',
+    borderColor: colors.primary,
   },
-  categoryText: {
-    color: colors.muted,
-    fontSize: 11,
-    fontWeight: '900',
-  },
-  categoryTextActive: {
-    color: colors.orangeDark,
-  },
-  grid: {
-    paddingHorizontal: 16,
+  chipText: { color: colors.muted, fontSize: 12, fontWeight: '600' },
+  chipTextActive: { color: colors.primary },
+
+  // Product grid
+  productGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     justifyContent: 'space-between',
-    gap: 12,
+    paddingHorizontal: 10,
+    rowGap: 8,
   },
+  loadMoreBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 5,
+    marginHorizontal: 12,
+    height: 40,
+    borderWidth: 1,
+    borderColor: colors.primary,
+    borderRadius: 999,
+  },
+  loadMoreText: { color: colors.primary, fontSize: 13, fontWeight: '700' },
+
+  // Empty
+  emptyInline: {
+    minHeight: 90,
+    marginHorizontal: 12,
+    borderRadius: 10,
+    borderWidth: 0.5,
+    borderColor: colors.divider,
+    backgroundColor: colors.bg,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    padding: 16,
+  },
+  emptyTitle: { color: colors.ink, fontSize: 13, fontWeight: '700' },
+  emptyBody: { color: colors.muted, fontSize: 11, textAlign: 'center', lineHeight: 16 },
 });

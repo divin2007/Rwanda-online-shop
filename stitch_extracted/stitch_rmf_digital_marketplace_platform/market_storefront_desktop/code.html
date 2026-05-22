@@ -1,0 +1,522 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>RMF - Individual Market Storefront</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Work+Sans:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@500&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-surface": "#1b1c1c",
+                        "surface-container-low": "#f5f3f3",
+                        "primary-fixed": "#ffdbcc",
+                        "secondary-fixed-dim": "#ffb598",
+                        "on-secondary": "#ffffff",
+                        "background": "#fbf9f8",
+                        "on-primary-fixed": "#351000",
+                        "surface-container": "#efeded",
+                        "on-tertiary-container": "#002f6b",
+                        "surface-container-highest": "#e3e2e2",
+                        "on-background": "#1b1c1c",
+                        "on-secondary-fixed": "#370e00",
+                        "surface-tint": "#a04100",
+                        "inverse-surface": "#303030",
+                        "surface-container-high": "#e9e8e7",
+                        "tertiary-fixed": "#d8e2ff",
+                        "tertiary-fixed-dim": "#adc6ff",
+                        "surface-container-lowest": "#ffffff",
+                        "on-secondary-fixed-variant": "#7f2b00",
+                        "secondary": "#a63b00",
+                        "surface": "#fbf9f8",
+                        "on-primary-fixed-variant": "#7a3000",
+                        "on-primary-container": "#572000",
+                        "on-primary": "#ffffff",
+                        "surface-bright": "#fbf9f8",
+                        "tertiary": "#005ac2",
+                        "primary-container": "#ff6b00",
+                        "inverse-on-surface": "#f2f0f0",
+                        "outline": "#8e7164",
+                        "primary": "#a04100",
+                        "inverse-primary": "#ffb693",
+                        "secondary-fixed": "#ffdbce",
+                        "on-tertiary-fixed-variant": "#004395",
+                        "error": "#ba1a1a",
+                        "error-container": "#ffdad6",
+                        "on-tertiary": "#ffffff",
+                        "on-error": "#ffffff",
+                        "tertiary-container": "#5f97ff",
+                        "on-error-container": "#93000a",
+                        "on-surface-variant": "#5a4136",
+                        "secondary-container": "#fc671d",
+                        "surface-dim": "#dbdad9",
+                        "surface-variant": "#e3e2e2",
+                        "on-secondary-container": "#561b00",
+                        "outline-variant": "#e2bfb0",
+                        "primary-fixed-dim": "#ffb693",
+                        "on-tertiary-fixed": "#001a42"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.125rem",
+                        "lg": "0.25rem",
+                        "xl": "0.5rem",
+                        "full": "0.75rem"
+                    },
+                    "spacing": {
+                        "sm": "8px",
+                        "margin-mobile": "16px",
+                        "xs": "4px",
+                        "md": "16px",
+                        "gutter": "16px",
+                        "base": "4px",
+                        "lg": "24px",
+                        "margin-desktop": "32px",
+                        "xl": "40px"
+                    },
+                    "fontFamily": {
+                        "headline-lg": ["Work Sans"],
+                        "body-sm": ["Work Sans"],
+                        "headline-md": ["Work Sans"],
+                        "table-data": ["Work Sans"],
+                        "body-lg": ["Work Sans"],
+                        "headline-lg-mobile": ["Work Sans"],
+                        "body-md": ["Work Sans"],
+                        "label-md": ["JetBrains Mono"]
+                    },
+                    "fontSize": {
+                        "headline-lg": ["30px", {"lineHeight": "38px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                        "body-sm": ["12px", {"lineHeight": "16px", "fontWeight": "400"}],
+                        "headline-md": ["20px", {"lineHeight": "28px", "fontWeight": "600"}],
+                        "table-data": ["13px", {"lineHeight": "18px", "fontWeight": "500"}],
+                        "body-lg": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                        "headline-lg-mobile": ["24px", {"lineHeight": "30px", "letterSpacing": "-0.01em", "fontWeight": "700"}],
+                        "body-md": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                        "label-md": ["12px", {"lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "500"}]
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+        body { background-color: #fbf9f8; }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+            display: inline-block;
+            vertical-align: middle;
+        }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    </style>
+</head>
+<body class="font-body-md text-on-surface">
+<!-- Top Navigation Bar -->
+<header class="fixed top-0 left-0 w-full z-50 flex justify-between items-center px-margin-desktop h-16 bg-surface border-b border-outline-variant">
+<div class="flex items-center gap-xl">
+<span class="text-headline-md font-headline-md font-bold text-primary">RMF</span>
+<div class="hidden md:flex items-center gap-md">
+<a class="font-label-md text-label-md text-primary border-b-2 border-primary py-base" href="#">Home</a>
+<a class="font-label-md text-label-md text-on-surface-variant hover:bg-surface-container-low transition-colors px-sm py-base" href="#">Search</a>
+<a class="font-label-md text-label-md text-on-surface-variant hover:bg-surface-container-low transition-colors px-sm py-base" href="#">Orders</a>
+</div>
+</div>
+<div class="flex items-center gap-md">
+<span class="material-symbols-outlined text-primary" data-icon="location_on">location_on</span>
+<span class="material-symbols-outlined text-primary" data-icon="language">language</span>
+<span class="material-symbols-outlined text-primary" data-icon="notifications">notifications</span>
+<div class="w-8 h-8 rounded-full bg-surface-container-highest overflow-hidden border border-outline-variant">
+<img alt="User Account" class="w-full h-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDN4LwOoOZA0uPkD1sJfKTvu6I9bWY1mft2SMqYLvRqhmXBDdtMXF4VMjq1aVysYLuuHq29oODx1Nhh3UqgR5PaZdiq6K1-Bbv6dtMB7e94Wq299jiKC1t3m7qAeIy43vYIYO_uGqY-HMQ_tdM5w2FpY0y4V5C-j4jexRSkS_KWwQS6OLp7WOeLFaUv5TpeIX2IC1h4YmUA3tdhjrjIcpXn3vlSssYZNVaDuzcKskT9bAvMZS-tZbrt3j6MmmhHD3HtbYBtTGQX8JC2"/>
+</div>
+</div>
+</header>
+<main class="pt-16 pb-24 md:pb-0">
+<!-- Market Hero Section -->
+<section class="relative h-[300px] w-full overflow-hidden">
+<img class="w-full h-full object-cover" data-alt="A sprawling, organized open-air market in Rwanda with professional wooden stalls and clean aisles. The lighting is bright morning sun, casting long shadows and highlighting the warm earth tones of the environment. In the background, green rolling hills are visible under a clear blue sky. The atmosphere is industrious and high-trust, captured in a clean, professional photography style with a focus on operational clarity." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAULX_uImQrl_FL8Rsa0rrMej1Sk_KNKaHGjSR1Kgmf4M1JNgJnPGyGl-_B3k5sXufi0YXN-S8nkBBTn9f_3fBrXdBpJtuI1jvXT0K6kNtfq5dyPx6ssdtC7swazKSXt6y-Jm9aLuAaDPpOU3gpcgR-tnlgN4YmbJrwd6fbr4SU_lyGxVnNXaFYjUg4KOtqcgfTbHxoh1zld3QhmDL7KZssDIo9488u1Fdt6BftuDN26YgRYH53Al3xN7JKhHqWGvQTSeN8cPbznOEj"/>
+<div class="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent"></div>
+<div class="absolute bottom-0 left-0 w-full px-margin-desktop pb-lg flex flex-col md:flex-row md:items-end justify-between">
+<div class="flex gap-md items-center">
+<div class="w-24 h-24 bg-white p-base rounded-lg border border-outline-variant shadow-lg">
+<img alt="Market Logo" class="w-full h-full object-cover rounded" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDb6t9H8LHm2qa_UmS_n1XC8uJ9PkWvN-1VpfMNdtQfBsGzhDsK5qj-ilaQ18vc-ElHcPU9nEDEZQG1MrbBXPYBGrtNj8ThtbvK67X1HjJnYXOrikLy8kR1o6vshAgVXzvVV_t068AhQ4mGaxa5mWsrkyKTWytl5-3oWuCf-7rP-DKde4wHlAW_X40PClfCCCg3AJOe18qWb-oTwWuDj3yZUtxaqSjZiF7PsIyd3-zd5VSZXhx6PEx7o9H7JxQQoMFPIplhwN25IW5B"/>
+</div>
+<div class="text-white">
+<div class="flex items-center gap-xs">
+<h1 class="font-headline-lg text-headline-lg">Nyamirambo Central Hub</h1>
+<span class="material-symbols-outlined text-blue-400" data-icon="verified" style="font-variation-settings: 'FILL' 1;">verified</span>
+</div>
+<p class="font-body-md text-body-md opacity-90">Kigali Sector 4 • Professional Trade Zone</p>
+<div class="flex gap-sm mt-sm">
+<span class="bg-green-600 text-white font-label-md text-label-md px-md py-xs rounded-full flex items-center gap-xs">
+<span class="w-2 h-2 bg-white rounded-full animate-pulse"></span> OPEN NOW
+                            </span>
+<span class="bg-surface-container-lowest text-on-surface font-label-md text-label-md px-md py-xs rounded-full flex items-center gap-xs">
+<span class="material-symbols-outlined text-[14px]" data-icon="star" style="font-variation-settings: 'FILL' 1;">star</span> 4.9 (2.4k reviews)
+                            </span>
+</div>
+</div>
+</div>
+<div class="hidden md:flex flex-col items-end gap-xs text-white">
+<div class="flex items-center gap-xs bg-black/40 backdrop-blur-md px-md py-sm rounded border border-white/20">
+<span class="material-symbols-outlined" data-icon="local_shipping">local_shipping</span>
+<span class="font-label-md text-label-md">Delivery: <strong class="text-secondary-fixed">~45 mins</strong> to Central Kigali</span>
+</div>
+</div>
+</div>
+</section>
+<div class="max-w-[1280px] mx-auto px-margin-desktop py-xl grid grid-cols-1 lg:grid-cols-12 gap-gutter">
+<!-- Sidebar Filters -->
+<aside class="lg:col-span-3 space-y-lg">
+<div class="bg-surface-container-lowest border border-outline-variant p-md rounded-lg">
+<h3 class="font-headline-md text-headline-md mb-md flex items-center gap-sm">
+<span class="material-symbols-outlined" data-icon="tune">tune</span> Filters
+                    </h3>
+<div class="space-y-lg">
+<!-- Category Filter -->
+<div>
+<span class="font-label-md text-label-md text-primary uppercase tracking-wider block mb-sm">Categories</span>
+<div class="space-y-base">
+<label class="flex items-center gap-sm cursor-pointer hover:bg-surface-container-low p-xs rounded transition-colors">
+<input class="rounded border-outline text-primary focus:ring-primary w-4 h-4" type="checkbox"/>
+<span class="font-body-md text-body-md">Fresh Produce (412)</span>
+</label>
+<label class="flex items-center gap-sm cursor-pointer hover:bg-surface-container-low p-xs rounded transition-colors">
+<input checked="" class="rounded border-outline text-primary focus:ring-primary w-4 h-4" type="checkbox"/>
+<span class="font-body-md text-body-md">Grains &amp; Legumes (128)</span>
+</label>
+<label class="flex items-center gap-sm cursor-pointer hover:bg-surface-container-low p-xs rounded transition-colors">
+<input class="rounded border-outline text-primary focus:ring-primary w-4 h-4" type="checkbox"/>
+<span class="font-body-md text-body-md">Livestock (45)</span>
+</label>
+<label class="flex items-center gap-sm cursor-pointer hover:bg-surface-container-low p-xs rounded transition-colors">
+<input class="rounded border-outline text-primary focus:ring-primary w-4 h-4" type="checkbox"/>
+<span class="font-body-md text-body-md">Textiles &amp; Crafts (89)</span>
+</label>
+</div>
+</div>
+<!-- Price Range -->
+<div>
+<span class="font-label-md text-label-md text-primary uppercase tracking-wider block mb-sm">Price Range (RWF)</span>
+<input class="w-full accent-primary" type="range"/>
+<div class="flex justify-between mt-xs font-label-md text-label-md text-on-surface-variant">
+<span>0</span>
+<span>50,000+</span>
+</div>
+</div>
+<!-- Trust Filters -->
+<div>
+<span class="font-label-md text-label-md text-primary uppercase tracking-wider block mb-sm">Trust Indicators</span>
+<label class="flex items-center gap-sm cursor-pointer hover:bg-surface-container-low p-xs rounded transition-colors">
+<input class="rounded border-outline text-primary focus:ring-primary w-4 h-4" type="checkbox"/>
+<span class="font-body-md text-body-md">Escrow Supported</span>
+</label>
+<label class="flex items-center gap-sm cursor-pointer hover:bg-surface-container-low p-xs rounded transition-colors">
+<input class="rounded border-outline text-primary focus:ring-primary w-4 h-4" type="checkbox"/>
+<span class="font-body-md text-body-md">RMF Insured</span>
+</label>
+</div>
+</div>
+<button class="w-full mt-xl bg-primary text-on-primary py-sm font-label-md text-label-md rounded hover:opacity-90 transition-opacity">
+                        Apply Filters
+                    </button>
+</div>
+<!-- Trusted Badge -->
+<div class="bg-tertiary-container/10 border border-tertiary border-dashed p-md rounded-lg flex items-start gap-sm">
+<span class="material-symbols-outlined text-tertiary" data-icon="verified_user">verified_user</span>
+<div>
+<p class="font-label-md text-label-md text-tertiary font-bold">Secure Marketplace</p>
+<p class="font-body-sm text-body-sm text-on-tertiary-container mt-xs">All transactions in Nyamirambo Hub are protected by RMF Escrow services.</p>
+</div>
+</div>
+</aside>
+<!-- Main Content Area -->
+<div class="lg:col-span-9 space-y-xl">
+<!-- Seller Stories Video Section -->
+<section>
+<h2 class="font-headline-md text-headline-md mb-md flex items-center justify-between">
+                        Market Stories
+                        <a class="font-label-md text-label-md text-primary" href="#">View All</a>
+</h2>
+<div class="flex gap-md overflow-x-auto pb-md no-scrollbar">
+<!-- Video Card 1 -->
+<div class="flex-shrink-0 w-48 h-64 relative rounded-xl overflow-hidden group cursor-pointer">
+<img class="w-full h-full object-cover transition-transform group-hover:scale-105" data-alt="A portrait of a smiling female market vendor in a colorful headscarf standing in her stall. The background is a soft-focus market scene with warm golden-hour lighting. The aesthetic is documentary-style, authentic, and dignified, highlighting the human element of Rwandan trade. High quality digital photography." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDpUQ5mAmYKXV5SBsA0a_h2_FeZiZW8ANNhm8Fr1f59XpjJ6eXBAjfT8gMKQ-fhH10BeEOdc7Wc3LqULveWa5orIPzKhrYoe1eXqe3ozaWp50TlMVKDilv-w8kOwwTwd99vX78yCd6LH-qVOpCO84X_aa9LdYOSFgYK-i1WWPqsiuA-0R1sQmccTgo0alCRTm06sp44RcxaLyPZY3f7pgRqgn8tusQCs0qnjcGwErN6vTb55qeltgRZSD7xScyMH7nJ79zXdqNQihe0"/>
+<div class="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent"></div>
+<div class="absolute bottom-sm left-sm right-sm text-white">
+<p class="font-label-md text-label-md">Mama Keza</p>
+<p class="font-body-sm text-body-sm opacity-80">Fresh Vegetables</p>
+</div>
+<div class="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+<span class="material-symbols-outlined text-white text-4xl" data-icon="play_circle">play_circle</span>
+</div>
+</div>
+<!-- Video Card 2 -->
+<div class="flex-shrink-0 w-48 h-64 relative rounded-xl overflow-hidden group cursor-pointer">
+<img class="w-full h-full object-cover transition-transform group-hover:scale-105" data-alt="A male farmer in modern agricultural gear showcasing a handful of high-quality coffee beans. The lighting is crisp and clear daylight. The background shows a modern processing area. The mood is professional and focused on quality assurance and commerce. Rich earthy colors and sharp textures." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBpRbPhaig1wWTpkACA9uRaG6arsTLVNzsc8Tdea7Y8Fu3tGJUW1xG1MlOLEtkrB7Tn5ZN7Rl8c0vuGe3IHa7pDq4teGcAD9mAbNdd59uPme8ZEX19tKHOAVdGrL9_TcZsbmUyxaa2FMMGQ8m6Gt7GqA4FUwVqoXtZqEIyz27HMkX7BD7tkL0PEEmOOUt2Lo73N147BFZutSG1wMc18txMowizo-e36Ljo39fZIsGEIoMr4H88vJwqsJNleoyhcrXJJ0k9kEgFgGvME"/>
+<div class="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent"></div>
+<div class="absolute bottom-sm left-sm right-sm text-white">
+<p class="font-label-md text-label-md">David's Grains</p>
+<p class="font-body-sm text-body-sm opacity-80">Arabica Supply</p>
+</div>
+<div class="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+<span class="material-symbols-outlined text-white text-4xl" data-icon="play_circle">play_circle</span>
+</div>
+</div>
+<!-- Video Card 3 -->
+<div class="flex-shrink-0 w-48 h-64 relative rounded-xl overflow-hidden group cursor-pointer">
+<img class="w-full h-full object-cover transition-transform group-hover:scale-105" data-alt="A close-up of skilled hands weaving a traditional Rwandan Agaseke basket. The light is soft and directional, highlighting the texture of the natural fibers. The setting is a clean, craft-focused stall. The atmosphere is artistic and culturally grounded. Warm browns and off-whites dominate the palette." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAMU4TzIIQsKkCamDX_gC-paeHGkYbuEf32r5lIQbx9FB11iJL-ZtxFGuUrdpfP23MM8jF9yiAM9VFBFY6_PW40-V-RTyJECGNs423mVOw6aQ7TthBn1n3Qisd3yuzN2zidRnGT96Q5C6jcB-Q5LDt7ItdtQQ5od5SQnwD6Tiuj03NatffjIdJhhnPAtdZKaudgl-85ts9aG6ZA-u1RfeD5NZt3NJYGPepEC6Z-B57RZFqpHOV-ueV5VUiYymhAdzgbxnQp9uAlKhWC"/>
+<div class="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent"></div>
+<div class="absolute bottom-sm left-sm right-sm text-white">
+<p class="font-label-md text-label-md">Craft Collective</p>
+<p class="font-body-sm text-body-sm opacity-80">Heritage Artisans</p>
+</div>
+<div class="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+<span class="material-symbols-outlined text-white text-4xl" data-icon="play_circle">play_circle</span>
+</div>
+</div>
+</div>
+</section>
+<!-- Product Grid -->
+<section>
+<div class="flex items-center justify-between mb-md">
+<h2 class="font-headline-md text-headline-md">Top Products</h2>
+<div class="flex gap-sm">
+<button class="bg-surface-container-high px-sm py-xs rounded font-label-md text-label-md">Recent</button>
+<button class="bg-primary text-on-primary px-sm py-xs rounded font-label-md text-label-md">Trending</button>
+</div>
+</div>
+<div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-md">
+<!-- Product Card 1 -->
+<div class="bg-surface-container-lowest border border-outline-variant rounded-lg overflow-hidden flex flex-col group">
+<div class="relative h-48">
+<img class="w-full h-full object-cover" data-alt="A macro shot of a burlap sack filled with high-quality, polished Rwandan coffee beans. The lighting is bright and industrial, emphasizing the texture and consistency of the beans. The background is a clean warehouse environment. High contrast, sharp detail, professional commercial photography." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDibr8g2fDGxUuKaoN0GJJxtYuB3I1AmAAI7QA8l6BLUI3uJ2ZlnwFg9GmhnivMyt2s8ybbom7nmzUwZMSQIVUGU4FDrvwAu66vgLJlpDqTtypJKUDgAokmAN7fHNtJH8jHzKj0yh1e6y6AC8Sy6c5fg5FGCAnT38X5CLmAX3Dkw3KNJaYffHRR4l7Z2HfaGgoFq8_Um7AxlzIptkaEJcjMiPs5h9OQMmkbqnq-7cqgB5g57_FQRrAtCPehyBTq7AgMQeSjGs0QSh3O"/>
+<span class="absolute top-sm right-sm bg-secondary text-white font-label-md text-[10px] px-sm py-[2px] rounded-full uppercase">Bulk Deal</span>
+</div>
+<div class="p-md flex-1 flex flex-col">
+<div class="flex justify-between items-start mb-xs">
+<h4 class="font-body-lg text-body-lg font-bold group-hover:text-primary transition-colors">Premium Arabica Beans</h4>
+<span class="font-headline-md text-headline-md text-primary">12k <span class="text-[12px] font-normal">RWF/kg</span></span>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant line-clamp-2">High-altitude beans from Western Province, sun-dried and organic certified.</p>
+<div class="mt-auto pt-md flex items-center justify-between">
+<div class="flex items-center gap-xs text-on-surface-variant">
+<span class="material-symbols-outlined text-[16px]" data-icon="inventory">inventory</span>
+<span class="font-label-md text-label-md">500kg In Stock</span>
+</div>
+<button class="bg-primary-container text-on-primary-container p-sm rounded-full hover:scale-105 transition-transform">
+<span class="material-symbols-outlined" data-icon="add_shopping_cart">add_shopping_cart</span>
+</button>
+</div>
+</div>
+</div>
+<!-- Product Card 2 -->
+<div class="bg-surface-container-lowest border border-outline-variant rounded-lg overflow-hidden flex flex-col group">
+<div class="relative h-48">
+<img class="w-1/2 h-full object-cover float-left border-r border-outline-variant" data-alt="A clean, top-down studio shot of several varieties of Rwandan beans (kidney, soya, haricot) arranged in minimalist bowls. The background is a light sand-colored surface. The lighting is flat and even, perfect for a catalog. The aesthetic is professional, organized, and focused on food quality." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDoc095aQsmGqDa7nm5Hat-V7x0jyfE3TaxTZQcGDmxzw8CvIaCG_NUde0V1u54dCRl3DRxxkzNdLRgQbzOjsCbMA2fjeGKHuFxHpLUigVuP-BzigK2p7-9bJ7U6bVIuA23mOBTqwymFTx2JpTrybkt3o8wapZ3ut3xQiqWmLvHAGAkoZ_VkAmxJshYMp2_8sDRSf7xhHU3DvLHRPwrrOPeYwZIkqpqKvyRUpy3PetjhgzbOIIFH8FI0trOPoZUlphLLqKqR_jWgio6"/>
+<img class="w-1/2 h-full object-cover" data-alt="A detailed close-up of freshly harvested maize cobs with bright yellow kernels. The background shows a wooden market table. The lighting is bright outdoor sun, highlighting the freshness. Natural, high-vibrancy aesthetic." src="https://lh3.googleusercontent.com/aida-public/AB6AXuA7rK6PkzQkx_Kt-8gCmnro_zJG1ZpRlvYb-K9VWF-acc9xw_G2OATbNnFspVyyORn4acK6ivc96E1ydAOkKD6LK7lOxZ9zDSn0T63iq3kzUXL3O2C2W8dIjmEpVbdKfV_Yyz7j5uGQWcSBg4Dzm4qs-puAyjWTe_lUj680gJG0Ld6XJxwuV239SNrxZ26FeY9pKGQf2y4pVF0lTM2zZbFMn4PqfpsWT1gu0L-WsjA7B_agPFhk91_qUBo2nzHEo-n_yraGe14svITX"/>
+<span class="absolute top-sm left-sm bg-primary text-white font-label-md text-[10px] px-sm py-[2px] rounded-full uppercase">New Arrival</span>
+</div>
+<div class="p-md flex-1 flex flex-col">
+<div class="flex justify-between items-start mb-xs">
+<h4 class="font-body-lg text-body-lg font-bold group-hover:text-primary transition-colors">Mixed Legume Bundle</h4>
+<span class="font-headline-md text-headline-md text-primary">8.5k <span class="text-[12px] font-normal">RWF</span></span>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant line-clamp-2">Assorted high-protein beans and maize, perfect for large scale catering.</p>
+<div class="mt-auto pt-md flex items-center justify-between">
+<div class="flex items-center gap-xs text-on-surface-variant">
+<span class="material-symbols-outlined text-[16px]" data-icon="local_shipping">local_shipping</span>
+<span class="font-label-md text-label-md">RMF Delivery</span>
+</div>
+<button class="bg-primary-container text-on-primary-container p-sm rounded-full hover:scale-105 transition-transform">
+<span class="material-symbols-outlined" data-icon="add_shopping_cart">add_shopping_cart</span>
+</button>
+</div>
+</div>
+</div>
+<!-- Product Card 3 -->
+<div class="bg-surface-container-lowest border border-outline-variant rounded-lg overflow-hidden flex flex-col group">
+<div class="relative h-48">
+<img class="w-full h-full object-cover" data-alt="A stack of folded, vibrant African wax print textiles (Kitenge) with intricate geometric patterns. The colors are bold oranges, deep blues, and earthy browns. The fabrics are neatly displayed in a well-lit market stall. The focus is on the textile patterns and quality. Rich colors, professional lighting." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDKa6XX2_za2aBkWVNkBdSzdRRy8j3yFcUEKzftslkEz5s2sTFEmPszIP92t1gg9DKcp4xvvtAoCayXOGzJrKpJCa34zi7KYZpCAurUPn5mBxTN9runEkTNhd4A2J2AarGgBTs89ASZBx-XT-hZKct1PVvJqdP6D72z3M_bvQ9nugWxvRubniYnvPiV_n2OycF70kzeb9LQenAfgwsoZWIEHmJ6wPTTlBMvK9K_ETsNcYDN4yl3FIaVIVHqWGfd5BPz492yJtkROms0"/>
+</div>
+<div class="p-md flex-1 flex flex-col">
+<div class="flex justify-between items-start mb-xs">
+<h4 class="font-body-lg text-body-lg font-bold group-hover:text-primary transition-colors">Heritage Kitenge Fabric</h4>
+<span class="font-headline-md text-headline-md text-primary">15k <span class="text-[12px] font-normal">RWF/m</span></span>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant line-clamp-2">Authentic Rwandan patterns, 100% cotton, multi-use for apparel and home.</p>
+<div class="mt-auto pt-md flex items-center justify-between">
+<div class="flex items-center gap-xs text-green-600">
+<span class="material-symbols-outlined text-[16px]" data-icon="verified">verified</span>
+<span class="font-label-md text-label-md">Verified Quality</span>
+</div>
+<button class="bg-primary-container text-on-primary-container p-sm rounded-full hover:scale-105 transition-transform">
+<span class="material-symbols-outlined" data-icon="add_shopping_cart">add_shopping_cart</span>
+</button>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- Featured Sellers Carousel -->
+<section class="bg-surface-container p-lg rounded-xl">
+<h2 class="font-headline-md text-headline-md mb-md">Top Rated Sellers here</h2>
+<div class="flex gap-md overflow-x-auto pb-sm no-scrollbar">
+<!-- Seller 1 -->
+<div class="flex-shrink-0 w-64 bg-surface-container-lowest p-md rounded-lg border border-outline-variant flex flex-col items-center text-center shadow-sm">
+<div class="w-16 h-16 rounded-full overflow-hidden mb-sm border-2 border-primary">
+<img alt="Seller Avatar" class="w-full h-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCn7hX3QxUcfGx8KElQmxChOas5OmQ7SpfQvJRcBoIFOhE07JcK2E0o4lpru2okK2TlvxnVHOsy-DhG2b2ZyeXgz5K1FVhON6lmQf_6BM1fRWrHhyYfSkLaA02D5xKZ-9GBis-2yYo0pPAGuRKOI3Jo0xw9BJlE7f2B8Ld1RVmU6rP-6tdSLUANEGxBe4CkYTOvb3nySjtFgC7YVu-bwiYk2oRX_bDhe2x9wKv4UBLqoEqCfycwTmvNBf5iUbhFWf7H9htd1eE6KGDM"/>
+</div>
+<h5 class="font-body-lg text-body-lg font-bold">Kigali Grains Co.</h5>
+<div class="flex items-center gap-xs my-xs">
+<span class="material-symbols-outlined text-secondary text-[14px]" data-icon="star" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="font-label-md text-label-md">4.8 (892 sales)</span>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant mb-md">Specialist in wholesale beans and high-quality maize.</p>
+<button class="w-full border border-primary text-primary py-xs rounded font-label-md text-label-md hover:bg-primary-fixed transition-colors">Visit Stall</button>
+</div>
+<!-- Seller 2 -->
+<div class="flex-shrink-0 w-64 bg-surface-container-lowest p-md rounded-lg border border-outline-variant flex flex-col items-center text-center shadow-sm">
+<div class="w-16 h-16 rounded-full overflow-hidden mb-sm border-2 border-primary">
+<img alt="Seller Avatar" class="w-full h-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuACFnbiEhtq3A-XxUzYjN55Q5asnREdGzthsCmmAPAqy0yqNmSpiMxxzrCxoj9TTgMKJkhHpeW6HrulTfh6o_eElJkCMmNnK7ipPe_oIx9ZboN9uEdWVeGQFy3Dbsrm84O8OYjLKXivc7meBjVC3nLtZgwCsAmsMRGYwAyfFQCB4O93LAchrl5OOBUfqZGGsoEbpQZqKSATBX02mdntQcpBWg08jB4-PccH2r5bj97Tt2cKrKjo70izMi5b9BApHROUG0841j_4vZxd"/>
+</div>
+<h5 class="font-body-lg text-body-lg font-bold">Mutesi Fresh Mart</h5>
+<div class="flex items-center gap-xs my-xs">
+<span class="material-symbols-outlined text-secondary text-[14px]" data-icon="star" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="font-label-md text-label-md">4.9 (1.2k sales)</span>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant mb-md">Farm-to-table organic produce delivered daily.</p>
+<button class="w-full border border-primary text-primary py-xs rounded font-label-md text-label-md hover:bg-primary-fixed transition-colors">Visit Stall</button>
+</div>
+<!-- Seller 3 -->
+<div class="flex-shrink-0 w-64 bg-surface-container-lowest p-md rounded-lg border border-outline-variant flex flex-col items-center text-center shadow-sm">
+<div class="w-16 h-16 rounded-full overflow-hidden mb-sm border-2 border-primary">
+<img alt="Seller Avatar" class="w-full h-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBcW6ayx5WNameYOjUbhhxFq_h_ZlQ58-b2QANYGSUr7HJGWORAs7SKjYHSBp5gaaR_EIxiwo4ZSlQ350lDeR39oZXI5wyASGgHDq9Bl-lJ2VEz4s8M0VoY8mhL2eRxthT-53oNWh6FCzs5SaOoH6y8Ily4SjQrjHEmqK4EOLX_myapm1fU0lI0H-9jkgRukV9Uzig59n6dIB_VxiHw8HmN8yFjlR5K7Ou3xqpSMtM_yr-ckMKDt42rWxds6WdwhJ-RRk1DRSMg0qAZ"/>
+</div>
+<h5 class="font-body-lg text-body-lg font-bold">Western Coffee Ex.</h5>
+<div class="flex items-center gap-xs my-xs">
+<span class="material-symbols-outlined text-secondary text-[14px]" data-icon="star" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="font-label-md text-label-md">5.0 (45 sales)</span>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant mb-md">Direct exporters of premium certified coffee beans.</p>
+<button class="w-full border border-primary text-primary py-xs rounded font-label-md text-label-md hover:bg-primary-fixed transition-colors">Visit Stall</button>
+</div>
+</div>
+</section>
+<!-- Reviews Section -->
+<section>
+<div class="flex items-center justify-between mb-md">
+<h2 class="font-headline-md text-headline-md">Recent Market Activity</h2>
+<div class="flex items-center gap-md">
+<div class="text-right">
+<p class="font-headline-md text-headline-md text-primary">4.9</p>
+<p class="font-label-md text-label-md opacity-60">Global Rating</p>
+</div>
+<button class="bg-primary text-on-primary px-md py-sm rounded font-label-md text-label-md">Write a Review</button>
+</div>
+</div>
+<div class="space-y-md">
+<div class="bg-surface-container-low p-md rounded-lg border-l-4 border-primary">
+<div class="flex justify-between mb-sm">
+<div class="flex gap-sm items-center">
+<div class="w-10 h-10 rounded-full bg-surface-container-highest flex items-center justify-center font-bold text-primary">JN</div>
+<div>
+<p class="font-body-md text-body-md font-bold">Jean-Paul N.</p>
+<p class="font-body-sm text-body-sm text-on-surface-variant">2 hours ago • Verified Purchase</p>
+</div>
+</div>
+<div class="flex text-secondary">
+<span class="material-symbols-outlined text-[18px]" data-icon="star" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="material-symbols-outlined text-[18px]" data-icon="star" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="material-symbols-outlined text-[18px]" data-icon="star" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="material-symbols-outlined text-[18px]" data-icon="star" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="material-symbols-outlined text-[18px]" data-icon="star" style="font-variation-settings: 'FILL' 1;">star</span>
+</div>
+</div>
+<p class="font-body-md text-body-md">The Nyamirambo Hub continues to be the most reliable market for bulk grains. The RMF verification on the sellers really makes a difference in trade confidence.</p>
+</div>
+<div class="bg-surface-container-low p-md rounded-lg border-l-4 border-outline">
+<div class="flex justify-between mb-sm">
+<div class="flex gap-sm items-center">
+<div class="w-10 h-10 rounded-full bg-surface-container-highest flex items-center justify-center font-bold text-primary">AM</div>
+<div>
+<p class="font-body-md text-body-md font-bold">Alice M.</p>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Yesterday • Verified Purchase</p>
+</div>
+</div>
+<div class="flex text-secondary">
+<span class="material-symbols-outlined text-[18px]" data-icon="star" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="material-symbols-outlined text-[18px]" data-icon="star" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="material-symbols-outlined text-[18px]" data-icon="star" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="material-symbols-outlined text-[18px]" data-icon="star" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="material-symbols-outlined text-[18px]" data-icon="star_half" style="font-variation-settings: 'FILL' 1;">star_half</span>
+</div>
+</div>
+<p class="font-body-md text-body-md">Great fresh produce, although parking at the physical hub was a bit tight. Using the RMF delivery service was much smoother for my second order.</p>
+</div>
+</div>
+</section>
+</div>
+</div>
+</main>
+<!-- Bottom Navigation Bar (Mobile) -->
+<nav class="lg:hidden fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-4 py-2 bg-surface border-t border-outline-variant shadow-lg rounded-t-xl">
+<a class="flex flex-col items-center justify-center bg-secondary-container text-on-secondary-container rounded-full px-4 py-1 scale-90 duration-150" href="#">
+<span class="material-symbols-outlined" data-icon="home">home</span>
+<span class="font-label-md text-label-md">Home</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant" href="#">
+<span class="material-symbols-outlined" data-icon="search">search</span>
+<span class="font-label-md text-label-md">Search</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant" href="#">
+<span class="material-symbols-outlined" data-icon="receipt_long">receipt_long</span>
+<span class="font-label-md text-label-md">Orders</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant" href="#">
+<span class="material-symbols-outlined" data-icon="person">person</span>
+<span class="font-label-md text-label-md">Account</span>
+</a>
+</nav>
+<!-- Contextual FAB for Transaction -->
+<div class="fixed bottom-20 right-6 lg:bottom-10 lg:right-10 flex flex-col gap-sm items-end z-40">
+<div class="bg-surface-container-lowest border border-outline-variant p-md rounded-lg shadow-xl max-w-[200px] mb-sm hidden md:block">
+<p class="font-label-md text-label-md text-primary font-bold">Secure Delivery</p>
+<p class="font-body-sm text-body-sm">Deliver to <strong class="text-on-surface">Central Kigali</strong> in <strong class="text-secondary">45m</strong></p>
+</div>
+<button class="bg-primary-container text-on-primary-container h-14 w-14 rounded-full flex items-center justify-center shadow-lg hover:scale-110 transition-transform active:scale-95">
+<span class="material-symbols-outlined text-[32px]" data-icon="shopping_basket">shopping_basket</span>
+</button>
+</div>
+<script>
+        // Micro-interaction for smooth scrolling carousels
+        document.querySelectorAll('.no-scrollbar').forEach(carousel => {
+            let isDown = false;
+            let开始X;
+            let scrollLeft;
+
+            carousel.addEventListener('mousedown', (e) => {
+                isDown = true;
+                carousel.classList.add('active');
+                startX = e.pageX - carousel.offsetLeft;
+                scrollLeft = carousel.scrollLeft;
+            });
+            carousel.addEventListener('mouseleave', () => {
+                isDown = false;
+            });
+            carousel.addEventListener('mouseup', () => {
+                isDown = false;
+            });
+            carousel.addEventListener('mousemove', (e) => {
+                if(!isDown) return;
+                e.preventDefault();
+                const x = e.pageX - carousel.offsetLeft;
+                const walk = (x - startX) * 2;
+                carousel.scrollLeft = scrollLeft - walk;
+            });
+        });
+    </script>
+</body></html>

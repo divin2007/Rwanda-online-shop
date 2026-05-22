@@ -215,7 +215,14 @@ export class DeliveryService {
       }
     }
 
-    const baseDeliveryFee = Number(data.financials?.deliveryFee || process.env.MIN_DELIVERY_FEE || 500);
+    const baseDeliveryFee = Number(
+      data.financials?.deliveryFee
+      || data.financials?.baseDeliveryFee
+      || data.fee
+      || data.earnings
+      || process.env.MIN_DELIVERY_FEE
+      || 500
+    );
     const delivery = new this.deliveryModel({
       ...data,
       financials: {
@@ -254,7 +261,9 @@ export class DeliveryService {
     try {
       const url = `${process.env.NOTIFICATION_SERVICE_URL || 'http://localhost:3009/api/v1'}/notifications/in-app`;
       const axios = require('axios');
-      await axios.post(url, { userId, type, params });
+      const secret = process.env.INTERNAL_SERVICE_SECRET;
+      const headers = secret ? { 'x-internal-service-key': secret } : {};
+      await axios.post(url, { userId, type, params }, { headers });
     } catch (error: any) {
       console.error(`Failed to trigger notification: ${type}`, error.message);
     }
@@ -298,10 +307,12 @@ export class DeliveryService {
         try {
           const axios = require('axios');
           const orderUrl = process.env.ORDER_SERVICE_URL || 'http://localhost:3006/api/v1';
+          const secret = process.env.INTERNAL_SERVICE_SECRET;
+          const headers = secret ? { 'x-internal-service-key': secret } : {};
           axios.put(`${orderUrl}/orders/${updatedDelivery.orderId}/status`, { 
             status: orderStatus, 
             userId: delivery.rider?.userId || 'system' 
-          }).then(() => console.log(`Successfully updated order ${updatedDelivery.orderId} to ${orderStatus}`))
+          }, { headers }).then(() => console.log(`Successfully updated order ${updatedDelivery.orderId} to ${orderStatus}`))
             .catch((e: any) => { console.error(`Failed to update order ${updatedDelivery.orderId} to ${orderStatus}:`, e.message); });
         } catch(err: any) {
           console.error('Axios require or sync error:', err);
