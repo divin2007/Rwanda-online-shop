@@ -5,7 +5,7 @@ export const designSystem = {
       DEFAULT: '#ff6b00',
       hover: '#e05300',
       light: '#ffedd5',
-      dark: '#a04100',
+      dark: '#ff6b00',
       fixed: '#ffdbcc',
     },
     accent: {

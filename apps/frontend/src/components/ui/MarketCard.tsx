@@ -61,7 +61,7 @@ export const MarketCard = ({ market, isCompact = false, maxDiscount }: MarketCar
   return (
     <Link
       href={getMarketUrl(market.slug)}
-      className="group flex h-full flex-col overflow-hidden rounded-lg border border-[#e2bfb0] bg-white transition-colors hover:border-[#a04100]"
+      className="group flex h-full flex-col overflow-hidden rounded-lg border border-[#e2bfb0] bg-white transition-colors hover:border-[#ff6b00]"
     >
       <div className="relative aspect-[4/3] overflow-hidden bg-[#efeded]">
         <div
@@ -84,7 +84,7 @@ export const MarketCard = ({ market, isCompact = false, maxDiscount }: MarketCar
         </div>
 
         <div className={`absolute right-3 top-3 inline-flex items-center gap-1 rounded-sm px-2 py-1 font-mono text-[10px] font-bold uppercase tracking-[0.08em] ${
-          open ? 'bg-white text-[#a04100]' : 'bg-[#1b1c1c] text-white'
+          open ? 'bg-white text-[#ff6b00]' : 'bg-[#1b1c1c] text-white'
         }`}>
           <Clock3 size={12} />
           {open ? 'Open' : 'Closed'}
@@ -115,7 +115,7 @@ export const MarketCard = ({ market, isCompact = false, maxDiscount }: MarketCar
 
         <div className={`grid gap-2 ${market.totalOrders && market.totalOrders > 0 ? 'grid-cols-3' : 'grid-cols-2'} ${isCompact ? 'mt-3' : 'mt-4'}`}>
           <div className="rounded border border-[#ebdcd0] bg-[#fbf9f8] p-3">
-            <div className="flex items-center gap-1.5 text-[#a04100]">
+            <div className="flex items-center gap-1.5 text-[#ff6b00]">
               <Store size={15} />
               <span className="text-lg font-black text-[#1b1c1c]">{market.type === 'individual' ? 1 : sellers}</span>
             </div>
@@ -125,7 +125,7 @@ export const MarketCard = ({ market, isCompact = false, maxDiscount }: MarketCar
           </div>
 
           <div className="rounded border border-[#ebdcd0] bg-[#fbf9f8] p-3">
-            <div className="flex items-center gap-1.5 text-[#a04100]">
+            <div className="flex items-center gap-1.5 text-[#ff6b00]">
               <PackageCheck size={15} />
               <span className="text-lg font-black text-[#1b1c1c]">{products}</span>
             </div>
@@ -134,7 +134,7 @@ export const MarketCard = ({ market, isCompact = false, maxDiscount }: MarketCar
 
           {market.totalOrders !== undefined && market.totalOrders > 0 && (
             <div className="rounded border border-[#e2bfb0] bg-[#ffedd5] p-3">
-              <div className="flex items-center gap-1.5 text-[#a04100]">
+              <div className="flex items-center gap-1.5 text-[#ff6b00]">
                 <TrendingUp size={15} />
                 <span className="text-lg font-black text-[#1b1c1c]">{market.totalOrders}</span>
               </div>
@@ -144,16 +144,16 @@ export const MarketCard = ({ market, isCompact = false, maxDiscount }: MarketCar
         </div>
 
         <div className="mt-4 flex items-center gap-1.5 text-sm font-medium text-[#574e47]">
-          <MapPin size={15} className="shrink-0 text-[#a04100]" />
+          <MapPin size={15} className="shrink-0 text-[#ff6b00]" />
           <span className="truncate">{market.location?.address || 'Rwanda'}</span>
         </div>
 
         <div className="mt-auto flex items-center justify-between border-t border-[#ebdcd0] pt-4">
-          <span className="inline-flex items-center gap-1.5 font-mono text-[11px] font-bold uppercase tracking-[0.12em] text-[#a04100]">
+          <span className="inline-flex items-center gap-1.5 font-mono text-[11px] font-bold uppercase tracking-[0.12em] text-[#ff6b00]">
             <ShieldCheck size={14} />
             Visit market
           </span>
-          <ArrowRight className="text-[#a04100] transition-transform group-hover:translate-x-1" size={17} />
+          <ArrowRight className="text-[#ff6b00] transition-transform group-hover:translate-x-1" size={17} />
         </div>
       </div>
     </Link>

@@ -149,7 +149,7 @@ export const ProductCard = ({ product, isCompact = false }: ProductCardProps) =>
     <Link
       href={productUrl}
       onClick={() => trackProductSignal(product, 'product_view')}
-      className="group flex h-full flex-col overflow-hidden rounded-lg border border-[#e2bfb0] bg-white transition-colors hover:border-[#a04100]"
+      className="group flex h-full flex-col overflow-hidden rounded-lg border border-[#e2bfb0] bg-white transition-colors hover:border-[#ff6b00]"
     >
       <div className="relative aspect-[4/3] overflow-hidden bg-[#efeded]">
         {images[0] ? (
@@ -173,7 +173,7 @@ export const ProductCard = ({ product, isCompact = false }: ProductCardProps) =>
             Verified
           </span>
           {product.isMadeInRwanda && (
-            <span className="rounded-sm bg-white px-2 py-1 font-mono text-[10px] font-bold uppercase tracking-[0.08em] text-[#a04100]">
+            <span className="rounded-sm bg-white px-2 py-1 font-mono text-[10px] font-bold uppercase tracking-[0.08em] text-[#ff6b00]">
               Local
             </span>
           )}
@@ -191,7 +191,7 @@ export const ProductCard = ({ product, isCompact = false }: ProductCardProps) =>
             if (!isInWishlist(product._id)) trackProductSignal(product, 'wishlist');
             toggleWishlist(product._id);
           }}
-          className="absolute right-3 top-3 flex h-9 w-9 items-center justify-center rounded bg-white text-[#a04100] transition-colors hover:bg-[#ffedd5]"
+          className="absolute right-3 top-3 flex h-9 w-9 items-center justify-center rounded bg-white text-[#ff6b00] transition-colors hover:bg-[#ffedd5]"
           aria-label="Toggle wishlist"
         >
           <Heart size={16} fill={isInWishlist(product._id) ? 'currentColor' : 'none'} />
@@ -200,7 +200,7 @@ export const ProductCard = ({ product, isCompact = false }: ProductCardProps) =>
 
       <div className={`flex flex-1 flex-col ${isCompact ? 'p-3' : 'p-4'}`}>
         <div className="flex items-center justify-between gap-2">
-          <span className="line-clamp-1 font-mono text-[10px] font-bold uppercase tracking-[0.16em] text-[#a04100]">
+          <span className="line-clamp-1 font-mono text-[10px] font-bold uppercase tracking-[0.16em] text-[#ff6b00]">
             {product.category || 'Product'}
           </span>
           <span className={`rmf-status-chip ${available ? 'text-[#12805c]' : 'text-[#ba1a1a]'}`}>
@@ -216,7 +216,7 @@ export const ProductCard = ({ product, isCompact = false }: ProductCardProps) =>
         <div className="mt-4 flex items-end justify-between gap-3">
           <div>
             <div className="flex flex-wrap items-baseline gap-2">
-              <span className={`${isCompact ? 'text-base' : 'text-xl'} font-black text-[#a04100]`}>
+              <span className={`${isCompact ? 'text-base' : 'text-xl'} font-black text-[#ff6b00]`}>
                 {formatCurrency(displayPrice)}
               </span>
               {hasPromotion && (
@@ -236,7 +236,7 @@ export const ProductCard = ({ product, isCompact = false }: ProductCardProps) =>
             <button
               type="button"
               onClick={handleNegotiation}
-              className="inline-flex h-10 w-full items-center justify-center gap-2 rounded border border-[#a04100] bg-white px-3 font-mono text-[11px] font-bold uppercase tracking-[0.12em] text-[#a04100] transition-colors hover:bg-[#ffedd5]"
+              className="inline-flex h-10 w-full items-center justify-center gap-2 rounded border border-[#ff6b00] bg-white px-3 font-mono text-[11px] font-bold uppercase tracking-[0.12em] text-[#ff6b00] transition-colors hover:bg-[#ffedd5]"
             >
               <MessageCircle size={15} />
               Negotiate

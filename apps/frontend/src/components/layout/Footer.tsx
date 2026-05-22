@@ -45,14 +45,14 @@ export const Footer = () => (
     <div className="rmf-container">
       <div className="grid grid-cols-1 gap-8 text-sm sm:grid-cols-[1.1fr_repeat(4,1fr)]">
         <div>
-          <h2 className="text-xl font-black text-[#a04100]">RMF</h2>
+          <h2 className="text-xl font-black text-[#ff6b00]">RMF</h2>
           <p className="mt-4 max-w-xs text-sm leading-6 text-[#574e47]">
             Connecting Rwandan producers to local and international buyers with efficiency and transparency.
           </p>
         </div>
         {footerSections.map(section => (
           <div key={section.title}>
-            <h3 className="mb-4 font-mono text-xs font-bold uppercase tracking-[0.2em] text-[#a04100]">
+            <h3 className="mb-4 font-mono text-xs font-bold uppercase tracking-[0.2em] text-[#ff6b00]">
               {section.title}
             </h3>
             <div className="space-y-2.5">
@@ -60,7 +60,7 @@ export const Footer = () => (
                 <Link
                   key={item.name}
                   href={item.href}
-                  className="block font-medium text-[#574e47] transition-colors hover:text-[#a04100]"
+                  className="block font-medium text-[#574e47] transition-colors hover:text-[#ff6b00]"
                 >
                   {item.name}
                 </Link>
@@ -72,10 +72,10 @@ export const Footer = () => (
       <div className="mt-10 flex flex-col items-center justify-between gap-4 border-t border-[#d2bca8] pt-6 text-[11px] font-medium text-[#574e47] md:flex-row">
         <p>(c) {new Date().getFullYear()} Rwanda Market Facilitator (RMF). All rights reserved.</p>
         <div className="flex gap-6">
-          <Link href="/privacy" className="transition-colors hover:text-[#a04100]">
+          <Link href="/privacy" className="transition-colors hover:text-[#ff6b00]">
             Privacy Policy
           </Link>
-          <Link href="/terms" className="transition-colors hover:text-[#a04100]">
+          <Link href="/terms" className="transition-colors hover:text-[#ff6b00]">
             Terms of Service
           </Link>
         </div>
