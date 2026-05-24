@@ -36,6 +36,7 @@ const LayoutContent = ({ children }: LayoutProps) => {
   const [accountOpen, setAccountOpen] = useState(false);
   const [detectedLocation, setDetectedLocation] = useState('');
   const queryString = searchParams.toString();
+  const platformHref = (href: string) => isSubdomain && href.startsWith('/') ? `${apexHome}${href}` : href;
 
   React.useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -60,7 +61,12 @@ const LayoutContent = ({ children }: LayoutProps) => {
     e.preventDefault();
     if (globalSearch.trim()) {
       setMobileMenuOpen(false);
-      router.push(`/markets?search=${encodeURIComponent(globalSearch.trim())}`);
+      const href = `/markets?search=${encodeURIComponent(globalSearch.trim())}`;
+      if (isSubdomain && typeof window !== 'undefined') {
+        window.location.assign(platformHref(href));
+        return;
+      }
+      router.push(href);
     }
   };
 
@@ -158,6 +164,10 @@ const LayoutContent = ({ children }: LayoutProps) => {
   };
 
   const routeToLocation = (href: string) => {
+    if (isSubdomain && typeof window !== 'undefined') {
+      window.location.assign(platformHref(href));
+      return;
+    }
     router.push(href);
     setLocationOpen(false);
   };
@@ -243,7 +253,7 @@ const LayoutContent = ({ children }: LayoutProps) => {
               ].map(item => (
                 <Link
                   key={item.href}
-                  href={item.href}
+                  href={platformHref(item.href)}
                   className={`border-b-2 px-1 py-5 text-sm font-medium transition-colors ${
                     isNavActive(item.href) ? 'border-[#a04100] text-[#a04100]' : 'border-transparent text-[#574e47] hover:text-[#a04100]'
                   }`}
@@ -330,7 +340,7 @@ const LayoutContent = ({ children }: LayoutProps) => {
             <NotificationBell compact />
 
             {!isWorkstation && (
-              <Link href="/cart" className="relative inline-flex h-9 w-9 items-center justify-center rounded-md border border-[#ebdcd0] bg-white text-[#1b1c1c] transition hover:border-[#ff6b00] hover:text-[#ff6b00]" aria-label={t('nav_cart') || 'Cart'}>
+              <Link href={platformHref('/cart')} className="relative inline-flex h-9 w-9 items-center justify-center rounded-md border border-[#ebdcd0] bg-white text-[#1b1c1c] transition hover:border-[#ff6b00] hover:text-[#ff6b00]" aria-label={t('nav_cart') || 'Cart'}>
                 <ShoppingCart size={18} />
                 <span className="absolute -right-1.5 -top-1.5 min-w-5 rounded-full bg-[#ffedd5] px-1.5 text-center text-[11px] font-black leading-5 text-[#ff6b00] shadow-sm">
                   {cartCount}
@@ -360,7 +370,7 @@ const LayoutContent = ({ children }: LayoutProps) => {
                       {accountLinks.map(link => (
                         <Link
                           key={link.href}
-                          href={link.href}
+                          href={platformHref(link.href)}
                           className="block rounded-md px-3 py-2.5 text-sm font-bold text-[#405046] transition hover:bg-[#fdfaf7] hover:text-[#ff6b00]"
                         >
                           {link.label}
@@ -380,7 +390,7 @@ const LayoutContent = ({ children }: LayoutProps) => {
               </div>
             ) : (
               <Link
-                href="/login"
+                href={platformHref('/login')}
                 className="hidden h-9 items-center gap-1.5 rounded-md px-2 text-xs font-black text-[#405046] transition hover:bg-[#ffedd5]/30 hover:text-[#ff6b00] sm:inline-flex"
               >
                 <UserCircle size={17} />
@@ -389,7 +399,7 @@ const LayoutContent = ({ children }: LayoutProps) => {
             )}
 
             {!user && (
-              <Link href="/register" className="hidden h-9 items-center gap-1.5 rounded-md bg-[#ff6b00] px-3 text-xs font-black text-white transition hover:bg-[#e05300] xl:inline-flex">
+              <Link href={platformHref('/register')} className="hidden h-9 items-center gap-1.5 rounded-md bg-[#ff6b00] px-3 text-xs font-black text-white transition hover:bg-[#e05300] xl:inline-flex">
                 <UserPlus size={15} />
                 {t('nav_join') || 'Join'}
               </Link>
@@ -421,7 +431,7 @@ const LayoutContent = ({ children }: LayoutProps) => {
                 return (
                   <NavComponent
                     key={item.href}
-                    href={item.href}
+                    href={platformHref(item.href)}
                     className={`flex items-center gap-3 rounded-md border px-3 py-3 text-sm font-black transition ${
                       active ? 'border-[#ff6b00] bg-[#ffedd5] text-[#ff6b00]' : 'border-[#f2e8e0] bg-white text-[#405046]'
                     }`}
@@ -452,13 +462,13 @@ const LayoutContent = ({ children }: LayoutProps) => {
             <div className="mt-4 grid grid-cols-2 gap-2">
               {user ? (
                 <>
-                  <Link href={accountHref} className="rounded-md bg-[#ff6b00] px-3 py-3 text-center text-sm font-black text-white">Account</Link>
+                  <Link href={platformHref(accountHref)} className="rounded-md bg-[#ff6b00] px-3 py-3 text-center text-sm font-black text-white">Account</Link>
                   <button type="button" onClick={logout} className="rounded-md border border-[#d2bca8] px-3 py-3 text-sm font-black text-[#405046]">Sign out</button>
                 </>
               ) : (
                 <>
-                  <Link href="/login" className="rounded-md border border-[#d2bca8] px-3 py-3 text-center text-sm font-black text-[#405046]">Sign in</Link>
-                  <Link href="/register" className="rounded-md bg-[#ff6b00] px-3 py-3 text-center text-sm font-black text-white">Join RMF</Link>
+                  <Link href={platformHref('/login')} className="rounded-md border border-[#d2bca8] px-3 py-3 text-center text-sm font-black text-[#405046]">Sign in</Link>
+                  <Link href={platformHref('/register')} className="rounded-md bg-[#ff6b00] px-3 py-3 text-center text-sm font-black text-white">Join RMF</Link>
                 </>
               )}
             </div>
@@ -484,7 +494,7 @@ const LayoutContent = ({ children }: LayoutProps) => {
                 return (
                   <NavComponent 
                     key={item.href} 
-                    href={item.href}
+                    href={platformHref(item.href)}
                     className={`block w-full rounded px-4 py-3.5 text-left text-sm font-medium transition-colors ${
                       isActive 
                         ? 'bg-[#ff6b00] text-[#351000]' 

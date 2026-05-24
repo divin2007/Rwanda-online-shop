@@ -19,6 +19,8 @@ export const deliverySchema = new Schema({
       lng: { type: Number, required: true }
     },
     qrScannedAt: Date,
+    qrVerifiedBy: { type: Schema.Types.ObjectId, ref: 'User' },
+    qrPayload: String,
     pickupPhotoUrl: String, // Required before QR scan
     sellerConfirmed: { type: Boolean, default: false },
     riderConfirmed: { type: Boolean, default: false }
@@ -44,15 +46,17 @@ export const deliverySchema = new Schema({
     totalAmount: { type: Number }
   },
   dispatch: {
-    strategy: { type: String, default: 'ADAPTIVE_RADIUS' },
-    initialRadiusMeters: { type: Number, default: 150 },
-    currentRadiusMeters: { type: Number, default: 150 },
-    nextRadiusMeters: { type: Number, default: 200 },
-    stepMeters: { type: Number, default: 50 },
-    maxRadiusMeters: { type: Number, default: 24000 },
+    strategy: { type: String, default: 'GLOBAL_ACTIVE_RIDERS' },
+    initialRadiusMeters: { type: Number, default: null },
+    currentRadiusMeters: { type: Number, default: null },
+    nextRadiusMeters: { type: Number, default: null },
+    stepMeters: { type: Number, default: null },
+    maxRadiusMeters: { type: Number, default: null },
     broadcastCount: { type: Number, default: 0 },
+    manualRebroadcastCount: { type: Number, default: 0 },
     notifiedRiderIds: [{ type: Schema.Types.ObjectId, ref: 'User' }],
     lastBroadcastAt: Date,
+    manualRebroadcastAt: Date,
     acceptedAt: Date
   },
   tracking: [{

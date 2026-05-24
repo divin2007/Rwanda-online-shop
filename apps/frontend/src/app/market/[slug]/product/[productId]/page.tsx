@@ -11,6 +11,7 @@ import { useWishlist } from '@/context/WishlistContext';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { getMarketUrl } from '@/lib/urls';
+import { resolveUploadUrl } from '@/lib/uploadUrls';
 import toast from 'react-hot-toast';
 import {
   Heart,
@@ -37,7 +38,7 @@ import {
 
 type ApiError = { response?: { data?: { message?: string } } };
 
-export default function ProductDetailPage({ params }: { params: Promise<{ slug: string, productId: string }> }) {
+export default function ProductDetailPage({ params }: { params: Promise<{ slug?: string, productId: string }> }) {
   const { slug, productId } = React.use(params);
   const { t } = useLanguage();
   const { user } = useAuth();
@@ -73,6 +74,11 @@ export default function ProductDetailPage({ params }: { params: Promise<{ slug: 
   const effectiveUnit = selectedVariant?.unit || product?.unit;
   const effectiveStockType = selectedVariant?.stockType || product?.stockType;
   const effectiveStockQuantity = selectedVariant?.stockQuantity ?? product?.stockQuantity;
+  const selectedVariantText = `${selectedVariant?.title || ''} ${Object.values(selectedVariant?.options || {}).join(' ')}`.toLowerCase();
+  const isCustomShoeSize = Boolean(
+    selectedVariantText.includes('custom') &&
+    String(product?.categoryId || product?.category || product?.productType || '').toLowerCase().includes('shoe')
+  );
 
   // Resolve dynamic images list
   const rawDisplayedImages = selectedVariant?.images?.length
@@ -90,7 +96,8 @@ export default function ProductDetailPage({ params }: { params: Promise<{ slug: 
     }
     return list
       .map((url: any) => typeof url === 'string' ? url.trim() : '')
-      .filter((url: string) => url.startsWith('http') || url.startsWith('/'));
+      .filter(Boolean)
+      .map((url: string) => resolveUploadUrl(url, 'product'));
   }, [rawDisplayedImages]);
 
   useEffect(() => {
@@ -185,6 +192,7 @@ export default function ProductDetailPage({ params }: { params: Promise<{ slug: 
           variantId: selectedVariant?._id || selectedVariant?.sku,
           variantTitle: selectedVariant?.title,
           sellerSku: selectedVariant?.sku,
+          customization: customization || (isCustomShoeSize ? 'Custom shoe size availability check requested' : undefined),
           priceSnapshotAt: product.priceUpdatedAt,
         }],
         financials: {
@@ -199,9 +207,10 @@ export default function ProductDetailPage({ params }: { params: Promise<{ slug: 
         payment: { method: 'MTN_MOMO' },
         attributes: {
           isQuoteRequest: 'true',
-          isCustomizable: customization ? 'true' : 'false'
+          isCustomizable: customization || isCustomShoeSize ? 'true' : 'false',
+          isCustomShoeSize: isCustomShoeSize ? 'true' : 'false'
         },
-        notes: customization || `Negotiation started for ${product.name}`,
+        notes: customization || (isCustomShoeSize ? `Custom shoe size availability check for ${product.name}` : `Negotiation started for ${product.name}`),
       };
 
       const response = await orderApi.post('/orders', payload);
@@ -228,8 +237,8 @@ export default function ProductDetailPage({ params }: { params: Promise<{ slug: 
 
   if (!product) return (
     <Layout>
-      <div className="max-w-4xl mx-auto py-40 px-6 text-center bg-white border border-[#ebdcd0] rounded-3xl shadow-xl my-20 animate-reveal">
-        <p className="text-8xl mb-8">🔍</p>
+      <div className="max-w-4xl mx-auto py-40 px-6 text-center bg-white border border-[#ebdcd0] rounded-3xl shadow-xl my-20 animate-reveal flex flex-col items-center">
+        <Compass size={96} className="text-primary mb-8 animate-pulse" />
         <h2 className="text-4xl font-black text-[#17201a] tracking-tight">Product Unavailable</h2>
         <p className="text-sm text-[#80756c] mt-4 max-w-md mx-auto leading-relaxed">
           This product might have been moved, sold, or is currently unlisted by the merchant stall. Let's find you something fresh.
@@ -241,6 +250,10 @@ export default function ProductDetailPage({ params }: { params: Promise<{ slug: 
     </Layout>
   );
 
+  const productMarket = typeof product.marketId === 'object' ? product.marketId : null;
+  const displayMarketSlug = slug || productMarket?.slug || '';
+  const displayMarketName = productMarket?.name || (displayMarketSlug ? displayMarketSlug.replace(/-/g, ' ') : 'Market');
+  const displayMarketHref = displayMarketSlug ? getMarketUrl(displayMarketSlug) : '/markets';
   const reviews = reviewsData || [];
   const avgRating = reviews.length > 0
     ? (reviews.reduce((s: number, r: any) => s + r.rating, 0) / reviews.length).toFixed(1)
@@ -248,6 +261,13 @@ export default function ProductDetailPage({ params }: { params: Promise<{ slug: 
 
   const isOnDemand = effectiveStockType === 'on_demand';
   const isInStock = selectedVariant ? selectedVariant.inStock !== false : product.inStock !== false;
+  const requiresNegotiation = Boolean(product.isNegotiable) || isOnDemand || isCustomShoeSize;
+  const priceRangeLabel = product.minPrice && product.maxPrice
+    ? `${Number(product.minPrice).toLocaleString()} - ${Number(product.maxPrice).toLocaleString()} RWF`
+    : null;
+  const weightRangeLabel = product.minWeight && product.maxWeight
+    ? `${Number(product.minWeight).toLocaleString()} - ${Number(product.maxWeight).toLocaleString()} kg`
+    : null;
 
   return (
     <Layout>
@@ -261,8 +281,8 @@ export default function ProductDetailPage({ params }: { params: Promise<{ slug: 
               <ChevronRight size={10} className="text-[#ebdcd0]" />
               <Link href="/markets" className="hover:text-primary transition-colors">Markets</Link>
               <ChevronRight size={10} className="text-[#ebdcd0]" />
-              <Link href={getMarketUrl(slug)} className="hover:text-primary transition-colors capitalize text-[#17201a]">
-                {slug.replace(/-/g, ' ')}
+              <Link href={displayMarketHref} className="hover:text-primary transition-colors capitalize text-[#17201a]">
+                {displayMarketName}
               </Link>
               <ChevronRight size={10} className="text-[#ebdcd0]" />
               <span className="text-primary truncate max-w-[150px] font-black">{product.name}</span>
@@ -454,7 +474,7 @@ export default function ProductDetailPage({ params }: { params: Promise<{ slug: 
                 <div className="mt-8 grid gap-4 sm:grid-cols-2">
                   {[
                     ['Category label', product.categoryLabel || product.category || 'General'],
-                    ['Unit weight', product.weight ? `${product.weight} kg` : 'N/A'],
+                    ['Unit weight', weightRangeLabel || (product.weight ? `${product.weight} kg` : 'N/A')],
                     ['Base unit standard', effectiveUnit || 'unit'],
                     ['Fulfillment format', effectiveStockType?.replace(/_/g, ' ') || 'standard'],
                     ['Product origin', product.isMadeInRwanda ? 'MINICOM Made in Rwanda Certified' : 'Verified Merchant Supply'],
@@ -510,11 +530,11 @@ export default function ProductDetailPage({ params }: { params: Promise<{ slug: 
                   <span className="text-[8px] font-black uppercase tracking-widest text-[#80756c]">Unit Selling Price</span>
                   <div className="flex items-baseline gap-2">
                     <span className="text-3xl font-black tracking-tight text-[#17201a]">
-                      {effectivePrice?.toLocaleString()}
+                      {priceRangeLabel || effectivePrice?.toLocaleString()}
                     </span>
-                    <span className="text-sm font-black text-primary uppercase tracking-widest">
+                    {!priceRangeLabel && <span className="text-sm font-black text-primary uppercase tracking-widest">
                       RWF
-                    </span>
+                    </span>}
                     {effectiveUnit && (
                       <span className="text-[8px] font-black text-[#80756c] uppercase tracking-widest bg-white border border-[#ebdcd0] px-2.5 py-0.5 rounded-lg ml-2 shadow-sm">
                         per {effectiveUnit}
@@ -546,7 +566,8 @@ export default function ProductDetailPage({ params }: { params: Promise<{ slug: 
                           }
                           return list
                             .map((url: any) => typeof url === 'string' ? url.trim() : '')
-                            .filter((url: string) => url.startsWith('http') || url.startsWith('/'));
+                            .filter(Boolean)
+                            .map((url: string) => resolveUploadUrl(url, 'product'));
                         })();
                         const hasVariantImg = variantImagesList.length > 0;
                         return (
@@ -619,14 +640,14 @@ export default function ProductDetailPage({ params }: { params: Promise<{ slug: 
                 </div>
 
                 {/* Custom Sizing Notes */}
-                {isOnDemand && (
+                {(isOnDemand || isCustomShoeSize) && (
                   <div className="space-y-2 pt-4 border-t border-[#f2e8e0]">
                     <label className="text-[9px] font-black text-[#17201a] uppercase tracking-widest block">
-                      Customization Notes & Sizing Preferences
+                      {isCustomShoeSize ? 'Custom Shoe Size Request' : 'Customization Notes & Sizing Preferences'}
                     </label>
                     <textarea
                       className="w-full bg-[#fdfaf7] border border-[#ebdcd0] p-4 text-xs font-semibold outline-none focus:border-primary rounded-2xl min-h-[100px] resize-y shadow-inner"
-                      placeholder="e.g. Craft in EU Size 43, extra wide fit, utilizing Premium Tan Leather accents..."
+                      placeholder={isCustomShoeSize ? 'Tell the seller the exact shoe size you need and any fit notes.' : 'e.g. Craft in EU Size 43, extra wide fit, utilizing Premium Tan Leather accents...'}
                       value={customization}
                       onChange={e => setCustomization(e.target.value)}
                     />
@@ -659,12 +680,12 @@ export default function ProductDetailPage({ params }: { params: Promise<{ slug: 
 
                 {/* Magnificent Purchase CTA Call-to-action button */}
                 <div className="flex flex-col gap-3 pt-4 border-t border-[#f2e8e0]">
-                  {String(product.isNegotiable) === 'true' || product.isNegotiable === true ? (
+                  {requiresNegotiation ? (
                     <button
                       onClick={handleBuyNow}
                       className="flex min-h-[3.75rem] w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-primary to-secondary hover:from-primary-hover hover:to-secondary-hover px-6 text-xs font-black uppercase tracking-widest text-white shadow-lg shadow-primary/20 hover:shadow-xl hover:shadow-primary/30 transition-all duration-300 hover:-translate-y-0.5 active:translate-y-0"
                     >
-                      ⚡ Start Escrow Negotiation
+                      {isCustomShoeSize ? 'Check Custom Size Availability' : 'Start Escrow Negotiation'}
                     </button>
                   ) : (
                     <button
@@ -708,11 +729,11 @@ export default function ProductDetailPage({ params }: { params: Promise<{ slug: 
                       {product.seller?.name || 'Verified Partner'}
                     </p>
                     <p className="text-[8.5px] text-white/50 uppercase tracking-widest mt-1 truncate flex items-center gap-1.5 font-bold">
-                      <Store size={10} /> {slug.replace(/-/g, ' ')} Stall
+                      <Store size={10} /> {displayMarketName} Stall
                     </p>
                   </div>
                   <Link
-                    href={getMarketUrl(slug)}
+                    href={displayMarketHref}
                     className="flex items-center justify-center w-8 h-8 rounded-xl bg-white/10 text-primary hover:bg-primary hover:text-white transition-all border border-white/5"
                   >
                     <ArrowLeft size={14} className="rotate-180 stroke-[2.5]" />
@@ -768,8 +789,8 @@ export default function ProductDetailPage({ params }: { params: Promise<{ slug: 
             </div>
 
             {reviews.length === 0 ? (
-              <div className="text-center py-20 border border-dashed border-[#ebdcd0] bg-[#fdfaf7]/40 rounded-3xl shadow-inner">
-                <p className="text-5xl mb-4">⭐</p>
+              <div className="text-center py-20 border border-dashed border-[#ebdcd0] bg-[#fdfaf7]/40 rounded-3xl shadow-inner flex flex-col items-center justify-center">
+                <Star size={48} className="text-primary mb-4 fill-primary animate-pulse" />
                 <p className="text-xs font-black text-[#80756c] tracking-widest uppercase">
                   No feedback reviews posted yet for this product.
                 </p>

@@ -137,13 +137,13 @@ async function main() {
     console.log('❌ Failure: Branch category node creation check did not return expected validation error.');
   }
 
-  // Test 2: Try creating a product under a leaf category (e.g. 'baby-soap')
-  console.log('\n--- Test 2: Try creating product under a LEAF category ("baby-soap") ---');
+  // Test 2: Try creating a product under a leaf category (e.g. 'cosmetics-baby-skincare')
+  console.log('\n--- Test 2: Try creating product under a LEAF category ("cosmetics-baby-skincare") ---');
   const leafProductData = {
     name: 'Organic Shea Baby Soap',
     description: 'Premium organic shea butter soap formulated specifically for infant skin.',
     price: 3500,
-    category: 'baby-soap',
+    category: 'cosmetics-baby-skincare',
     unit: 'pcs',
     stockType: 'finite',
     stockQuantity: 50,
@@ -162,7 +162,7 @@ async function main() {
   let createdProduct = null;
   if (res.statusCode === 201 && res.body?.success) {
     createdProduct = res.body.data;
-    console.log('✅ Success: Properly created product under leaf category ("baby-soap")!');
+    console.log('✅ Success: Properly created product under leaf category ("cosmetics-baby-skincare")!');
   } else {
     console.log('❌ Failure: Product creation under leaf category failed.');
     await mongoose.disconnect();

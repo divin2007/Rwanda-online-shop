@@ -63,6 +63,9 @@ export class NotificationService {
     'quote.accepted': 'Quote accepted — payment confirmed',
     'rider.found': 'Rider assigned to your delivery',
     'handover.completed': 'Goods handed over to rider',
+    'order.message.sent': 'Message sent',
+    'order.message.received': 'New message received',
+    'support.message.sent': 'Support message sent',
     'admin.support_ticket_created': 'New Support Ticket Received',
     'seller.status_update': 'Merchant Account Update',
   };
@@ -117,6 +120,18 @@ export class NotificationService {
         en: `Goods for order ${params.orderNumber} have been handed over to the rider.`,
         rw: `Ibintu bya komande ${params.orderNumber} bihawe umumotari.`
       },
+      'order.message.sent': {
+        en: `Your ${String(params.channel || 'order').toLowerCase()} message on order ${params.orderNumber || params.orderId} was sent: ${params.preview || 'Message sent'}`,
+        rw: `Ubutumwa bwawe kuri komande ${params.orderNumber || params.orderId} bwoherejwe: ${params.preview || 'Ubutumwa bwoherejwe'}`
+      },
+      'order.message.received': {
+        en: `New ${String(params.channel || 'order').toLowerCase()} message from ${String(params.senderRole || 'participant').toLowerCase()} on order ${params.orderNumber || params.orderId}: ${params.preview || 'Open the order to reply'}`,
+        rw: `Hari ubutumwa bushya kuri komande ${params.orderNumber || params.orderId}: ${params.preview || 'Fungura komande usubize'}`
+      },
+      'support.message.sent': {
+        en: `Your support message "${params.subject || 'Support request'}" was sent to the admin team.`,
+        rw: `Ubutumwa bwawe bwo gusaba ubufasha "${params.subject || 'Ubusabe'}" bwoherejwe ku buyobozi.`
+      },
       'admin.support_ticket_created': {
         en: `New support ticket received from ${params.name} (${params.userEmail}).\n\nSubject: ${params.subject}\n\nMessage:\n${params.message}`,
         rw: `Hari ubutumwa bushya bwo gusaba ubufasha buturutse kuri ${params.name} (${params.userEmail}).\n\nImpamvu: ${params.subject}\n\nUbutumwa:\n${params.message}`
@@ -124,6 +139,10 @@ export class NotificationService {
       'seller.status_update': {
         en: `${params.message || 'Your merchant status has been updated.'}`,
         rw: `${params.message || 'Uburenganzira bwawe bwo kugurisha bwavuguruwe.'}`
+      },
+      'admin.notification': {
+        en: `${params.message || 'New admin action required.'}`,
+        rw: `${params.message || 'Gukora igikorwa gishya cy\'ubuyobozi.'}`
       },
     };
 
@@ -171,7 +190,7 @@ export class NotificationService {
       return { allowed: false, reason: 'order updates are disabled' };
     }
 
-    if (this.isCustomMessageType(type) && preferences.customMessagesEmailOnly && channel !== 'EMAIL') {
+    if (this.isCustomMessageType(type) && !type.startsWith('order.message.') && preferences.customMessagesEmailOnly && channel !== 'EMAIL') {
       return { allowed: false, reason: 'custom messages are email-only' };
     }
 
@@ -362,6 +381,18 @@ export class NotificationService {
     }
 
     return savedLog;
+  }
+
+  async notifyAdmins(type: string, params: any): Promise<void> {
+    try {
+      const admins = await this.userModel.find({ role: 'ADMIN' }).select('_id').lean().exec();
+      this.logger.log(`Notifying ${admins.length} administrators for action: ${type}`);
+      for (const admin of admins) {
+        await this.sendInApp(admin._id.toString(), type, params);
+      }
+    } catch (err) {
+      this.logger.error('Failed to send admin notifications', err);
+    }
   }
 
   async markAsRead(notificationId: string, userId: string): Promise<any> {

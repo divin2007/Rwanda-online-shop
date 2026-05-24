@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { FlatList, Image, RefreshControl, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View, Linking, Platform } from 'react-native';
 import { useLocalSearchParams, useRouter, Stack } from 'expo-router';
-import { BadgeCheck, Clock, FileText, MapPin, Phone, Search, ShieldCheck, SlidersHorizontal, Star, Store, Tag, Play, Video, ArrowLeft } from 'lucide-react-native';
+import { BadgeCheck, Clock, FileText, MapPin, Phone, Search, ShieldCheck, SlidersHorizontal, Star, Store, Tag, Play, Video, ArrowLeft, Flame } from 'lucide-react-native';
 import { MarketCard, ProductCard } from '../../src/components/Cards';
 import { SellerVideoFeed } from '../../src/components/SellerVideoFeed';
 import { EmptyBlock, ErrorBlock, LoadingBlock } from '../../src/components/StateView';
@@ -95,6 +95,17 @@ export default function MarketScreen() {
   const [minPrice, setMinPrice] = useState('');
   const [maxPrice, setMaxPrice] = useState('');
   const [activeTab, setActiveTab] = useState<MarketTab>('shop');
+
+  // Reset filters when marketId changes
+  useEffect(() => {
+    setSearch('');
+    setCategoryId(null);
+    setOnlyDeals(false);
+    setMinPrice('');
+    setMaxPrice('');
+    setActiveTab('shop');
+  }, [marketId]);
+
   const { data, loading, refreshing, error, refresh } = useRemote(() => loadMarket(String(marketId || 'all')), [marketId]);
 
   const { data: reviews } = useRemote<Review[]>(
@@ -221,8 +232,9 @@ export default function MarketScreen() {
           <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
             <Text style={styles.marketType}>{market.type || market.code || 'Market'}</Text>
             {maxDiscount > 0 ? (
-              <View style={styles.marketPromoBadge}>
-                <Text style={styles.marketPromoBadgeText}>🔥 Up to {maxDiscount}% OFF</Text>
+              <View style={[styles.marketPromoBadge, { flexDirection: 'row', alignItems: 'center', gap: 4 }]}>
+                <Flame size={12} color={colors.card} fill={colors.card} />
+                <Text style={styles.marketPromoBadgeText}>Up to {maxDiscount}% OFF</Text>
               </View>
             ) : null}
           </View>

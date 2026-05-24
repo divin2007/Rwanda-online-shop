@@ -1,5 +1,6 @@
 import {
   Body,
+  BadRequestException,
   Controller,
   ForbiddenException,
   Get,
@@ -17,7 +18,10 @@ import {
 import { FileInterceptor } from '@nestjs/platform-express';
 import { Public, JwtAuthGuard } from '@rmf/auth';
 import { DisputeResolution, OrderStatus, PaymentStatus, UserRole } from '@rmf/shared-types';
+import axios from 'axios';
 import * as crypto from 'crypto';
+import { existsSync, mkdirSync, writeFileSync } from 'fs';
+import { extname, join } from 'path';
 import { AddMessageDto } from './dto/add-message.dto';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { SendQuoteDto } from './dto/send-quote.dto';
@@ -106,8 +110,27 @@ export class OrderController {
     }
   }
 
-  private assertParticipant(order: any, req: any) {
-    if (!this.isAdmin(req) && !this.isBuyer(order, req) && !this.isSeller(order, req)) {
+  private async isAssignedRider(order: any, req: any): Promise<boolean> {
+    try {
+      if (String(req.user?.role || '').toUpperCase() !== UserRole.RIDER) return false;
+      const userId = this.requestUserId(req);
+      const deliveryId = this.normalizeId(order?.deliveryId);
+      if (!userId || !deliveryId) return false;
+
+      const deliveryUrl = process.env.DELIVERY_SERVICE_URL || 'http://localhost:3008/api/v1';
+      const secret = process.env.INTERNAL_SERVICE_SECRET;
+      const headers = secret ? { 'x-internal-service-key': secret } : {};
+      const response = await axios.get(`${deliveryUrl}/deliveries/${deliveryId}`, { headers, timeout: 2500 });
+      const delivery = response.data?.data || response.data;
+      const riderUserId = this.normalizeId(delivery?.rider?.userId);
+      return Boolean(riderUserId && riderUserId.toLowerCase() === userId.toLowerCase());
+    } catch {
+      return false;
+    }
+  }
+
+  private async assertParticipant(order: any, req: any) {
+    if (!this.isAdmin(req) && !this.isBuyer(order, req) && !this.isSeller(order, req) && !(await this.isAssignedRider(order, req))) {
       throw new ForbiddenException('You can only view your own orders');
     }
   }
@@ -160,7 +183,7 @@ export class OrderController {
   @Get(':id')
   async getOrder(@Param('id') id: string, @Req() req: any) {
     const order = await this.orderService.getOrderById(id);
-    this.assertParticipant(order, req);
+    await this.assertParticipant(order, req);
     return { success: true, data: order };
   }
 
@@ -169,6 +192,12 @@ export class OrderController {
   async updateStatus(@Param('id') id: string, @Body() body: { status: OrderStatus; userId?: string }, @Req() req: any) {
     const userId = verifyInternalOrJwt(req);
     const order = await this.orderService.updateOrderStatus(id, body.status, userId);
+    return { success: true, data: order };
+  }
+
+  @Post(':id/delivery/ensure')
+  async ensureDelivery(@Param('id') id: string, @Req() req: any) {
+    const order = await this.orderService.ensureDeliveryForOrder(id, this.requestUserId(req), String(req.user.role || '').toUpperCase());
     return { success: true, data: order };
   }
 
@@ -258,11 +287,25 @@ export class OrderController {
   }
 
   @Post(':id/dispute/resolve')
-  async resolveDispute(@Param('id') id: string, @Body() body: { resolution: DisputeResolution }, @Req() req: any) {
+  async resolveDispute(@Param('id') id: string, @Body() body: { resolution: DisputeResolution | string }, @Req() req: any) {
     if (!this.isAdmin(req)) {
       throw new ForbiddenException('Only an ADMIN can resolve disputes');
     }
-    const order = await this.orderService.resolveDispute(id, body.resolution);
+    const resolutionMap: Record<string, DisputeResolution> = {
+      REFUND: DisputeResolution.REFUND,
+      refund: DisputeResolution.REFUND,
+      REDELIVER: DisputeResolution.REDELIVER,
+      redeliver: DisputeResolution.REDELIVER,
+      PARTIAL: DisputeResolution.REDELIVER,
+      NO_REFUND: DisputeResolution.REJECT,
+      REJECT: DisputeResolution.REJECT,
+      reject: DisputeResolution.REJECT,
+    };
+    const resolution = resolutionMap[String(body.resolution || '')];
+    if (!resolution) {
+      throw new BadRequestException('Invalid dispute resolution');
+    }
+    const order = await this.orderService.resolveDispute(id, resolution);
     return { success: true, data: order };
   }
 
@@ -296,6 +339,15 @@ export class OrderController {
     return { success: true, data: order };
   }
 
+  @Post(':id/admin/quote')
+  async sendAdminQuote(@Param('id') id: string, @Body() body: SendQuoteDto, @Req() req: any) {
+    if (!this.isAdmin(req)) {
+      throw new ForbiddenException('Only an ADMIN can send seller-side quotes from the admin workspace');
+    }
+    const order = await this.orderService.sendQuote(id, body.financials, this.requestUserId(req), { allowAdminOverride: true });
+    return { success: true, data: order };
+  }
+
   @Post(':id/counter-offer')
   async counterOffer(@Param('id') id: string, @Body() body: { subtotal: number; note?: string }, @Req() req: any) {
     if (String(req.user.role).toUpperCase() !== UserRole.BUYER) {
@@ -316,8 +368,10 @@ export class OrderController {
 
   @Post(':id/messages')
   async addMessage(@Param('id') id: string, @Body() body: AddMessageDto, @Req() req: any) {
-    const order = await this.orderService.addMessage(id, body, this.requestUserId(req));
-    return { success: true, data: order };
+    const order = await this.orderService.getOrderById(id);
+    await this.assertParticipant(order, req);
+    const updated = await this.orderService.addMessage(id, body, this.requestUserId(req), String(req.user.role || '').toUpperCase());
+    return { success: true, data: updated };
   }
 
   @Put(':id/delivery-address')
@@ -357,8 +411,24 @@ export class OrderController {
     if (!file) {
       return { success: false, message: 'No file uploaded' };
     }
-    const base64 = file.buffer.toString('base64');
-    const dataUri = `data:${file.mimetype};base64,${base64}`;
-    return { success: true, data: { url: dataUri } };
+    const uploadDir = join(process.cwd(), 'uploads', 'order-images');
+    if (!existsSync(uploadDir)) mkdirSync(uploadDir, { recursive: true });
+    const extension = extname(file.originalname || '') || this.extensionFromMime(file.mimetype);
+    const fileName = `${crypto.randomUUID()}${extension}`;
+    writeFileSync(join(uploadDir, fileName), file.buffer);
+    const port = (process.env.PORT && process.env.PORT !== '3000') ? process.env.PORT : 3006;
+    const publicBaseUrl = process.env.ORDER_SERVICE_PUBLIC_URL || `http://localhost:${port}`;
+    return { success: true, data: { url: `${publicBaseUrl}/uploads/order-images/${fileName}` } };
+  }
+
+  private extensionFromMime(mimeType: string): string {
+    const extensions: Record<string, string> = {
+      'image/jpeg': '.jpg',
+      'image/png': '.png',
+      'image/webp': '.webp',
+      'image/gif': '.gif',
+      'image/avif': '.avif',
+    };
+    return extensions[mimeType] || '.bin';
   }
 }

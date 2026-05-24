@@ -1,10 +1,10 @@
-import { IsString, IsOptional, IsEnum, IsNumber } from 'class-validator';
+import { IsString, IsOptional, IsNumber, IsIn } from 'class-validator';
 
 export class AddMessageDto {
   @IsString()
   senderId: string;
 
-  @IsEnum(['BUYER', 'SELLER'])
+  @IsIn(['BUYER', 'SELLER', 'RIDER', 'ADMIN'])
   senderRole: string;
 
   @IsString()
@@ -13,6 +13,14 @@ export class AddMessageDto {
   @IsOptional()
   @IsString()
   imageUrl?: string;
+
+  @IsOptional()
+  @IsIn(['ORDER', 'DELIVERY', 'DISPUTE'])
+  channel?: string;
+
+  @IsOptional()
+  @IsIn(['BUYER', 'SELLER', 'RIDER', 'ADMIN'])
+  recipientRole?: string;
 
   @IsOptional()
   @IsString()

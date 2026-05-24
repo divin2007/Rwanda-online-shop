@@ -10,6 +10,14 @@ export class PromotionService {
     @InjectModel('Product') private productModel: Model<any>
   ) {}
 
+  private getVariantBaselinePrice(product: any, variantSku?: string | null): number {
+    const productPrice = Number(product?.price || 0);
+    if (!variantSku || !Array.isArray(product?.variants)) return productPrice;
+
+    const variant = product.variants.find((v: any) => v.sku === variantSku || v.id === variantSku);
+    return productPrice + Number(variant?.price || 0);
+  }
+
   async createPromotion(promotionData: any): Promise<any> {
     const product = await this.productModel.findById(promotionData.productId);
     if (!product) {
@@ -37,23 +45,37 @@ export class PromotionService {
       promotionData.startDate = new Date();
     }
 
-    // Check if product already has an active promotion
-    const existingPromo = await this.promotionModel.findOne({
+    // Check if product or specific variant already has an active promotion
+    const query: any = {
       productId: promotionData.productId,
       isActive: true,
       endDate: { $gt: new Date() }
-    });
-
-    if (existingPromo) {
-      throw new ConflictException('Product already has an active promotion');
+    };
+    if (promotionData.variantSku) {
+      query.variantSku = promotionData.variantSku;
+    } else {
+      query.variantSku = null;
     }
 
+    const existingPromo = await this.promotionModel.findOne(query);
+
+    if (existingPromo) {
+      throw new ConflictException(
+        promotionData.variantSku
+          ? 'This product variant already has an active promotion'
+          : 'Product already has an active product-wide promotion'
+      );
+    }
+
+    // Determine baseline price. Variant prices are stored as additions to the product base price.
+    const baselinePrice = this.getVariantBaselinePrice(product, promotionData.variantSku);
+
     // Ensure promotional price doesn't drop below 100 RWF (commission floor rule)
-    let promotionalPrice = product.price;
+    let promotionalPrice = baselinePrice;
     if (promotionData.type === PromotionType.PERCENTAGE) {
-      promotionalPrice = product.price * (1 - promotionData.discount / 100);
+      promotionalPrice = baselinePrice * (1 - promotionData.discount / 100);
     } else if (promotionData.type === PromotionType.FIXED_AMOUNT) {
-      promotionalPrice = product.price - promotionData.discount;
+      promotionalPrice = baselinePrice - promotionData.discount;
     }
 
     if (promotionalPrice < 100) {
@@ -91,8 +113,14 @@ export class PromotionService {
     return promos.map((promo: any) => {
       const p = promo.toObject();
       p.product = p.productId; // populated product doc
+      const price = this.getVariantBaselinePrice(p.product, p.variantSku);
+      p.discountPercentage = p.type === PromotionType.PERCENTAGE
+        ? Number(p.discount || 0)
+        : price > 0
+          ? Math.round((Number(p.discount || 0) / price) * 100)
+          : 0;
       return p;
-    });
+    }).sort((a: any, b: any) => Number(b.discountPercentage || 0) - Number(a.discountPercentage || 0));
   }
 
   async findAll(sellerId?: string, marketId?: string): Promise<any[]> {
@@ -110,8 +138,14 @@ export class PromotionService {
     return promos.map((promo: any) => {
       const p = promo.toObject();
       p.product = p.productId;
+      const price = this.getVariantBaselinePrice(p.product, p.variantSku);
+      p.discountPercentage = p.type === PromotionType.PERCENTAGE
+        ? Number(p.discount || 0)
+        : price > 0
+          ? Math.round((Number(p.discount || 0) / price) * 100)
+          : 0;
       return p;
-    });
+    }).sort((a: any, b: any) => Number(b.discountPercentage || 0) - Number(a.discountPercentage || 0));
   }
 
   async deletePromotion(id: string, actorUserId?: string, actorRole?: string): Promise<any> {

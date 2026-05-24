@@ -47,7 +47,7 @@ export default function RiderLayout({ children }: { children: React.ReactNode })
   useEffect(() => {
     if (!isLoading) {
       if (!user) {
-        router.replace('/login');
+        router.replace(`/login?redirect=${pathname}`);
       } else if (user.role !== 'RIDER') {
         router.replace(redirectForRole(user.role));
       } else if (!profileLoading && profile === null && !pathname.includes('/register')) {

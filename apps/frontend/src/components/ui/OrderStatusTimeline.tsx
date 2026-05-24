@@ -5,6 +5,7 @@ const STEPS = ['placed', 'confirmed', 'picked_up', 'in_transit', 'delivered'];
 export const OrderStatusTimeline = ({ currentStatus }: { currentStatus: string }) => {
   const { t } = useLanguage();
   const normalizeStatus = (s: string) => {
+    if (['resolved', 'completed', 'closed'].includes(s)) return 'delivered';
     if (['preparing', 'ready_for_pickup'].includes(s)) return 'confirmed';
     if (['awaiting_confirmation'].includes(s)) return 'in_transit';
     return s;

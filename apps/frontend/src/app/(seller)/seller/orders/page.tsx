@@ -22,17 +22,19 @@ type SellerOrder = {
 
 const statusTone = (status?: string) => {
   const normalized = status || 'placed';
-  if (['delivered', 'confirmed', 'picked_up'].includes(normalized)) return 'bg-[#e8f5ed] text-[#ff6b00] border-[#ffedd5]';
+  if (['delivered', 'resolved', 'completed', 'closed', 'confirmed', 'picked_up'].includes(normalized)) return 'bg-[#e8f5ed] text-[#ff6b00] border-[#ffedd5]';
   if (['awaiting_quote', 'quote_sent', 'placed', 'preparing', 'ready_for_pickup'].includes(normalized)) return 'bg-[#f7faf8] text-[#405046] border-[#dfe7e2]';
   if (['cancelled', 'failed', 'disputed'].includes(normalized)) return 'bg-[#fff5f3] text-[#7b3f3f] border-[#f1cbc3]';
   return 'bg-[#eef3ee] text-[#405046] border-[#dfe7e2]';
 };
 
+const SELLER_ORDERS_REFRESH_MS = 10000;
+
 export default function SellerOrdersPage() {
   const { user } = useAuth();
   const [query, setQuery] = useState('');
   const [status, setStatus] = useState('all');
-  const { data: ordersData, loading } = useApi<SellerOrder[]>(orderApi, 'get', user?.id ? `/orders?sellerId=${user.id}&limit=200` : '');
+  const { data: ordersData, loading } = useApi<SellerOrder[]>(orderApi, 'get', user?.id ? `/orders?sellerId=${user.id}&limit=200` : '', { refreshInterval: SELLER_ORDERS_REFRESH_MS });
 
   const orders = useMemo(() => (Array.isArray(ordersData) ? ordersData : []), [ordersData]);
   const filtered = useMemo(() => {
@@ -45,7 +47,7 @@ export default function SellerOrdersPage() {
 
   const stats = useMemo(() => ({
     total: orders.length,
-    active: orders.filter(order => !['delivered', 'cancelled', 'failed'].includes(order.status || '')).length,
+    active: orders.filter(order => !['delivered', 'resolved', 'completed', 'closed', 'cancelled', 'failed'].includes(order.status || '')).length,
     paid: orders.filter(order => order.payment?.status === 'paid').length,
     payout: orders.reduce((sum, order) => sum + Number(order.financials?.sellerPayout || 0), 0),
   }), [orders]);
@@ -114,6 +116,7 @@ export default function SellerOrdersPage() {
               <option value="ready_for_pickup">Ready for pickup</option>
               <option value="picked_up">Picked up</option>
               <option value="delivered">Delivered</option>
+              <option value="resolved">Resolved</option>
             </select>
           </div>
         </section>

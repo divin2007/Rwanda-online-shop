@@ -45,6 +45,7 @@ export function ProductCard({
   style?: any;
 }) {
   const seller = sellerProfileOf(product);
+  const market = marketOf(product.marketId);
   const image = imageOf(product);
   const isNegotiable = String(product.isNegotiable) === 'true' || product.isNegotiable === true;
   const hasPromo = Boolean(product.promotion);
@@ -92,16 +93,26 @@ export function ProductCard({
           {money(product.price)}
         </Text>
 
+        {/* Minimum Order */}
+        <Text style={styles.minOrder} numberOfLines={1}>
+          Min. Order: 1 {product.unit || 'unit'}
+        </Text>
+
         {/* Product name */}
         <Text style={[styles.productName, compact && styles.productNameCompact]} numberOfLines={2}>
           {product.name}
+        </Text>
+
+        {/* Supplier / Market Location */}
+        <Text style={styles.supplierText} numberOfLines={1}>
+          {market?.name || seller?.stallName || 'Verified Supplier'}
         </Text>
 
         {/* Seller + Rating row */}
         <View style={styles.metaRow}>
           {product.rating ? <RatingRow rating={product.rating} /> : null}
           {product.totalOrders ? (
-            <Text style={styles.ordersText}>{product.totalOrders}+</Text>
+            <Text style={styles.ordersText}>{product.totalOrders} sold</Text>
           ) : null}
         </View>
       </View>
@@ -245,7 +256,7 @@ const styles = StyleSheet.create({
     ...shadow,
   },
   productCompact: {
-    width: '31.3%',
+    width: '48.2%',
   },
   productImage: {
     height: 120,
@@ -253,7 +264,7 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   productImageCompact: {
-    height: 100,
+    height: 130,
   },
   imageBadges: {
     position: 'absolute',
@@ -317,6 +328,18 @@ const styles = StyleSheet.create({
   priceCompact: {
     fontSize: 11,
     fontWeight: '800',
+  },
+  minOrder: {
+    color: '#e05300',
+    fontSize: 9,
+    fontWeight: '700',
+    marginTop: 1,
+  },
+  supplierText: {
+    color: colors.muted,
+    fontSize: 9,
+    fontWeight: '600',
+    marginTop: 1,
   },
   productName: {
     color: colors.ink,

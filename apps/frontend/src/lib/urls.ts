@@ -1,16 +1,42 @@
+const cleanSlug = (slug: string) => String(slug || '')
+  .trim()
+  .toLowerCase()
+  .replace(/^https?:\/\//, '')
+  .replace(/\/.*$/, '')
+  .replace(/[^a-z0-9-]/g, '-')
+  .replace(/^-+|-+$/g, '');
+
 /**
- * Generates a market URL based on the environment.
- * If in production on rwshop.org, returns a subdomain URL.
- * Otherwise returns a path-based URL.
+ * Generates the canonical market storefront URL.
+ * Markets live on subdomains, including local dev: murekatete.localhost:3000.
  */
 export function getMarketUrl(slug: string): string {
-  return `/market/${slug}`;
+  const marketSlug = cleanSlug(slug);
+  if (!marketSlug) return '/markets';
+
+  if (typeof window === 'undefined') {
+    return `/market/${marketSlug}`;
+  }
+
+  const { protocol, hostname, port, host } = window.location;
+  const portSuffix = port ? `:${port}` : '';
+
+  if (hostname === 'localhost' || hostname.endsWith('.localhost')) {
+    return `${protocol}//${marketSlug}.localhost${portSuffix}/`;
+  }
+
+  if (hostname === 'rwshop.org' || hostname === 'www.rwshop.org' || hostname.endsWith('.rwshop.org')) {
+    return `https://${marketSlug}.rwshop.org/`;
+  }
+
+  const apexHost = host.replace(/^[^.]+\./, '');
+  return `${protocol}//${marketSlug}.${apexHost}/`;
 }
 
 /**
- * Generates a product URL.
- * If marketSlug is provided, it can generate a subdomain link.
+ * Generates the canonical product URL.
+ * Product details are platform-wide, so keep them off market subdomains/slug paths.
  */
-export function getProductUrl(productId: string, marketSlug?: string): string {
-  return marketSlug ? `/market/${marketSlug}/product/${productId}` : `/product/${productId}`;
+export function getProductUrl(productId: string): string {
+  return `/product/${productId}`;
 }

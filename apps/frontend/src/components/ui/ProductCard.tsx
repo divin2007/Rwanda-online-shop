@@ -13,6 +13,7 @@ import { useWishlist } from '@/context/WishlistContext';
 import { formatCurrency } from '@/lib/format';
 import { trackProductSignal } from '@/lib/recommendations';
 import { getProductUrl } from '@/lib/urls';
+import { resolveUploadUrl } from '@/lib/uploadUrls';
 
 interface ProductCardProps {
   product: {
@@ -57,7 +58,8 @@ const normalizeImages = (rawImages: unknown) => {
 
   return list
     .map(item => (typeof item === 'string' ? item.trim() : ''))
-    .filter(url => url.startsWith('http') || url.startsWith('/'));
+    .filter(Boolean)
+    .map(url => resolveUploadUrl(url, 'product'));
 };
 
 export const ProductCard = ({ product, isCompact = false }: ProductCardProps) => {
@@ -72,11 +74,13 @@ export const ProductCard = ({ product, isCompact = false }: ProductCardProps) =>
   const sellerId = sellerProfile?._id || product.sellerId;
   const sellerUserId = sellerProfile?.userId || null;
   const sellerName = sellerProfile?.shopDetails?.name || sellerProfile?.stallName || 'Verified seller';
-  const marketSlug = typeof product.marketId === 'object' ? product.marketId.slug : undefined;
-  const productUrl = getProductUrl(product._id, marketSlug);
+  const productUrl = getProductUrl(product._id);
   const hasPromotion = product.promotion && product.promotion.promotedPrice > 0;
   const displayPrice = hasPromotion ? product.promotion!.promotedPrice : product.price;
   const isNegotiable = String(product.isNegotiable) === 'true' || product.isNegotiable === true || product.stockType === 'on_demand';
+  const priceRangeLabel = (product as any).minPrice && (product as any).maxPrice
+    ? `${Number((product as any).minPrice).toLocaleString()} - ${Number((product as any).maxPrice).toLocaleString()} RWF`
+    : null;
   const available = Boolean(product.inStock || product.stockType === 'infinite' || product.stockType === 'on_demand');
 
   const handleNegotiation = async (event: React.MouseEvent) => {
@@ -111,6 +115,7 @@ export const ProductCard = ({ product, isCompact = false }: ProductCardProps) =>
           name: product.name,
           unitPrice: product.price,
           quantity: 1,
+          customization: priceRangeLabel ? `Buyer opened negotiation in listed price range: ${priceRangeLabel}` : undefined,
         }],
         financials: {
           subtotal,
@@ -217,7 +222,7 @@ export const ProductCard = ({ product, isCompact = false }: ProductCardProps) =>
           <div>
             <div className="flex flex-wrap items-baseline gap-2">
               <span className={`${isCompact ? 'text-base' : 'text-xl'} font-black text-[#ff6b00]`}>
-                {formatCurrency(displayPrice)}
+                {priceRangeLabel || formatCurrency(displayPrice)}
               </span>
               {hasPromotion && (
                 <span className="text-xs font-bold text-[#8e7164] line-through">

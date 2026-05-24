@@ -140,6 +140,7 @@ export const CheckoutContent = () => {
             variantId: i.variantId,
             variantTitle: i.variantTitle,
             sellerSku: i.sellerSku,
+            customization: i.customization,
             priceSnapshotAt: new Date(),
           })),
           financials: {

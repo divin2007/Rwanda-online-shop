@@ -5,15 +5,18 @@ import { Layout } from '@/components/layout/Layout';
 import { useAuth } from '@/context/AuthContext';
 import { useApi } from '@/hooks/useApi';
 import { deliveryApi, riderApi } from '@/lib/api';
+import { Search, Bike, Store, MapPin } from 'lucide-react';
 import Link from 'next/link';
+
+const RIDER_DELIVERIES_REFRESH_MS = 10000;
 
 export default function RiderDeliveriesPage() {
   const { user } = useAuth();
   const [filter, setFilter] = useState<'active' | 'history'>('active');
   const [searchQuery, setSearchQuery] = useState('');
 
-  const { data: deliveries, loading, execute: fetchDeliveries } = useApi(deliveryApi, 'get', `/deliveries/rider/${user?.id}`);
-  const { data: profile } = useApi(riderApi, 'get', `/riders/me?userId=${user?.id}`);
+  const { data: deliveries, loading, execute: fetchDeliveries } = useApi(deliveryApi, 'get', user?.id ? `/deliveries/rider/${user.id}` : '', { refreshInterval: RIDER_DELIVERIES_REFRESH_MS });
+  const { data: profile } = useApi(riderApi, 'get', user?.id ? `/riders/me?userId=${user.id}` : '');
 
   useEffect(() => {
     if (user?.id) fetchDeliveries();
@@ -138,7 +141,9 @@ export default function RiderDeliveriesPage() {
           </div>
 
           <div className="relative w-full md:w-96">
-            <span className="absolute inset-y-0 left-5 flex items-center pointer-events-none opacity-40 text-sm">🔍</span>
+            <span className="absolute inset-y-0 left-5 flex items-center pointer-events-none opacity-40">
+              <Search size={16} />
+            </span>
             <input 
               type="text" 
               placeholder="Search deliveries..."
@@ -157,8 +162,10 @@ export default function RiderDeliveriesPage() {
             ))}
           </div>
         ) : filteredDeliveries.length === 0 ? (
-          <div className="rounded-lg py-24 text-center bg-white border-2 border-dashed border-[#e0e0e0]">
-            <div className="text-4xl mb-6 opacity-80">🛵</div>
+          <div className="rounded-lg py-24 flex flex-col items-center justify-center text-center bg-white border-2 border-dashed border-[#e0e0e0]">
+            <div className="mb-6 opacity-60 text-primary">
+              <Bike size={56} strokeWidth={1.5} />
+            </div>
              <h3 className="text-2xl font-sans text-[#1b1c1c] mb-2">No Deliveries Found</h3>
              <p className="text-[11px] font-black text-[#414844] uppercase tracking-[0.22em] opacity-40 mb-8">
                {searchQuery ? 'Try adjusting your search criteria' : 'You have no deliveries in this category'}
@@ -193,7 +200,9 @@ export default function RiderDeliveriesPage() {
                   <div className="flex-1 p-5 flex flex-col sm:flex-row gap-5 justify-between">
                     <div className="space-y-6 flex-1">
                        <div className="flex gap-5 items-start">
-                          <div className="w-8 h-8 bg-white border border-[#e0e0e0] flex items-center justify-center flex-shrink-0 text-sm shadow-sm">🏪</div>
+                          <div className="w-8 h-8 bg-white border border-[#e0e0e0] flex items-center justify-center flex-shrink-0 shadow-sm rounded-sm">
+                            <Store size={15} className="text-[#ff6b00]" />
+                          </div>
                           <div>
                              <p className="text-[8px] font-black text-[#ff6b00] uppercase tracking-widest mb-1">Pickup</p>
                              <p className="text-sm font-bold text-[#1b1c1c] leading-snug">{delivery.pickup?.address || 'Market Location'}</p>
@@ -201,7 +210,9 @@ export default function RiderDeliveriesPage() {
                        </div>
                        <div className="w-px h-6 bg-[#e0e0e0] ml-4 -my-4" />
                        <div className="flex gap-5 items-start">
-                          <div className="w-8 h-8 bg-[#e05300] text-white flex items-center justify-center flex-shrink-0 text-sm shadow-sm">🏠</div>
+                          <div className="w-8 h-8 bg-[#e05300] text-white flex items-center justify-center flex-shrink-0 shadow-sm rounded-sm">
+                            <MapPin size={15} className="text-white" />
+                          </div>
                           <div>
                              <p className="text-[8px] font-black text-[#414844] uppercase tracking-widest mb-1">Drop-off</p>
                              <p className="text-sm font-bold text-[#1b1c1c] leading-snug">{delivery.dropoff?.address || 'Customer Location'}</p>

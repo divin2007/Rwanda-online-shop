@@ -13,7 +13,7 @@ export class ReviewController {
   @Post()
   async submitReview(@Body() data: {
     orderId: string;
-    targetType: 'seller' | 'rider';
+    targetType: 'seller' | 'rider' | 'market' | 'product';
     targetId: string;
     rating: number;
     comment?: string;
@@ -29,6 +29,13 @@ export class ReviewController {
       buyerId: req.user.userId, // Always use JWT identity, never trust body
     });
     return { success: true, data: review };
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Get('order/:orderId')
+  async getOrderReviews(@Param('orderId') orderId: string, @Request() req: any) {
+    const reviews = await this.reviewService.getReviewsForOrder(orderId, req.user.userId);
+    return { success: true, data: reviews };
   }
 
   // FIX [REVIEW-ME]: Was using query param userId fallback — IDOR bypass.

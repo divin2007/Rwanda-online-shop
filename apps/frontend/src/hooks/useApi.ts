@@ -66,13 +66,13 @@ export function useApi<T = any>(
   );
 
   useEffect(() => {
-    if (options?.refreshInterval && method === 'get') {
+    if (url && options?.refreshInterval && method === 'get') {
       const interval = setInterval(() => {
         execute();
       }, options.refreshInterval);
       return () => clearInterval(interval);
     }
-  }, [execute, options?.refreshInterval, method]);
+  }, [execute, options?.refreshInterval, method, url]);
 
   // Auto-execute on mount for GET requests
   useEffect(() => {

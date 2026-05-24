@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { Platform } from 'react-native';
+import { Platform, StyleSheet } from 'react-native';
 import { Tabs, useRouter } from 'expo-router';
 import {
   Bike, BriefcaseBusiness, Home, MapPinned,
@@ -31,6 +31,7 @@ export default function TabsLayout() {
 
   const roleHref = user?.role === 'SELLER' ? '/seller'
     : user?.role === 'RIDER' ? '/rider/deliveries'
+    : user?.role === 'ADMIN' ? '/seller'
     : null;
 
   // Rider approval gate
@@ -149,6 +150,13 @@ export default function TabsLayout() {
         }}
       />
       <Tabs.Screen
+        name="notifications"
+        options={{
+          href: null,
+          headerShown: false,
+        }}
+      />
+      <Tabs.Screen
         name="orders"
         options={{
           tabBarLabel: 'Orders',
@@ -198,3 +206,5 @@ export default function TabsLayout() {
     </Tabs>
   );
 }
+
+const styles = StyleSheet.create({});

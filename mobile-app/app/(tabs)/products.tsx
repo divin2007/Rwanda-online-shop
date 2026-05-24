@@ -1,10 +1,10 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   FlatList, RefreshControl, ScrollView, StyleSheet,
   Text, TextInput, TouchableOpacity, View,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { ChevronDown, Search, SlidersHorizontal, X } from 'lucide-react-native';
+import { ChevronDown, Search, SlidersHorizontal, X, Star, Flame, ArrowDownNarrowWide, ArrowUpNarrowWide, Tag } from 'lucide-react-native';
 import { ProductCard } from '../../src/components/Cards';
 import { EmptyBlock, ErrorBlock, LoadingBlock } from '../../src/components/StateView';
 import { api } from '../../src/lib/api';
@@ -52,12 +52,12 @@ const loadProducts = async (search: string, categoryId: string | null, sort: Sor
   };
 };
 
-const SORT_OPTIONS: { label: string; value: SortMode }[] = [
-  { label: '⭐ For You', value: 'recommended' },
-  { label: '🔥 Best Sellers', value: 'popular' },
-  { label: '💰 Low to High', value: 'price_low' },
-  { label: '💎 High to Low', value: 'price_high' },
-  { label: '🏷 Deals Only', value: 'deals' },
+const SORT_OPTIONS: { label: string; value: SortMode; icon: any }[] = [
+  { label: 'For You', value: 'recommended', icon: Star },
+  { label: 'Best Sellers', value: 'popular', icon: Flame },
+  { label: 'Low to High', value: 'price_low', icon: ArrowDownNarrowWide },
+  { label: 'High to Low', value: 'price_high', icon: ArrowUpNarrowWide },
+  { label: 'Deals Only', value: 'deals', icon: Tag },
 ];
 
 export default function ProductsScreen() {
@@ -69,6 +69,21 @@ export default function ProductsScreen() {
   const [categoryId, setCategoryId] = useState<string | null>(params.categoryId ? String(params.categoryId) : null);
   const [sort, setSort] = useState<SortMode>((params.sort as SortMode) || 'recommended');
   const [showSortMenu, setShowSortMenu] = useState(false);
+
+  // Keep state in sync with route parameter changes (e.g. searching from header)
+  useEffect(() => {
+    const nextSearch = String(params.search || '');
+    setDraftSearch(nextSearch);
+    setSearch(nextSearch);
+  }, [params.search]);
+
+  useEffect(() => {
+    setCategoryId(params.categoryId ? String(params.categoryId) : null);
+  }, [params.categoryId]);
+
+  useEffect(() => {
+    setSort((params.sort as SortMode) || 'recommended');
+  }, [params.sort]);
 
   const { data, loading, refreshing, error, refresh } = useRemote(
     () => loadProducts(search, categoryId, sort),
@@ -89,7 +104,8 @@ export default function ProductsScreen() {
     return src;
   }, [data?.products, sort, promotedIds]);
 
-  const activeSortLabel = SORT_OPTIONS.find(o => o.value === sort)?.label || 'Sort';
+  const activeSortOpt = SORT_OPTIONS.find(o => o.value === sort);
+  const SortIcon = activeSortOpt?.icon || Star;
   const hasFilters = !!search || !!categoryId || sort !== 'recommended';
 
   if (loading && !data) return <LoadingBlock label="Searching products..." />;
@@ -128,7 +144,8 @@ export default function ProductsScreen() {
             onPress={() => setShowSortMenu(v => !v)}
             activeOpacity={0.8}
           >
-            <Text style={styles.sortBtnText}>{activeSortLabel}</Text>
+            <SortIcon color={colors.primary} size={12} strokeWidth={2.5} style={{ marginRight: 2 }} />
+            <Text style={styles.sortBtnText}>{activeSortOpt?.label || 'Sort'}</Text>
             <ChevronDown color={colors.primary} size={13} />
           </TouchableOpacity>
 
@@ -151,18 +168,25 @@ export default function ProductsScreen() {
         {/* Sort dropdown */}
         {showSortMenu && (
           <View style={styles.sortMenu}>
-            {SORT_OPTIONS.map(opt => (
-              <TouchableOpacity
-                key={opt.value}
-                style={[styles.sortOption, sort === opt.value && styles.sortOptionActive]}
-                onPress={() => { setSort(opt.value); setShowSortMenu(false); }}
-                activeOpacity={0.8}
-              >
-                <Text style={[styles.sortOptionText, sort === opt.value && styles.sortOptionTextActive]}>
-                  {opt.label}
-                </Text>
-              </TouchableOpacity>
-            ))}
+            {SORT_OPTIONS.map(opt => {
+              const OptIcon = opt.icon;
+              const isActive = sort === opt.value;
+              return (
+                <TouchableOpacity
+                  key={opt.value}
+                  style={[styles.sortOption, isActive && styles.sortOptionActive]}
+                  onPress={() => { setSort(opt.value); setShowSortMenu(false); }}
+                  activeOpacity={0.8}
+                >
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                    <OptIcon color={isActive ? colors.primary : colors.muted} size={14} strokeWidth={isActive ? 2.5 : 2} />
+                    <Text style={[styles.sortOptionText, isActive && styles.sortOptionTextActive]}>
+                      {opt.label}
+                    </Text>
+                  </View>
+                </TouchableOpacity>
+              );
+            })}
           </View>
         )}
 
@@ -188,7 +212,7 @@ export default function ProductsScreen() {
       <FlatList
         data={visibleProducts}
         keyExtractor={item => item._id}
-        numColumns={3}
+        numColumns={2}
         columnWrapperStyle={styles.gridRow}
         contentContainerStyle={styles.gridContent}
         showsVerticalScrollIndicator={false}
@@ -197,7 +221,7 @@ export default function ProductsScreen() {
           <ProductCard
             product={item}
             compact
-            style={{ flex: 1 }}
+            style={{ flex: 1, maxWidth: '48.5%' }}
             onPress={() => router.push(`/product/${item._id}` as any)}
           />
         )}

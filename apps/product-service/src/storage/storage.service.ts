@@ -26,7 +26,7 @@ export class StorageService {
       
       const productMediaFolders = new Set(['products', 'seller-videos', 'video-thumbnails']);
       const isProductMedia = productMediaFolders.has(folder);
-      const port = process.env.PORT || (isProductMedia ? 3003 : 3002);
+      const port = (process.env.PORT && process.env.PORT !== '3000') ? process.env.PORT : (isProductMedia ? 3003 : 3002);
       const publicBaseUrl = (isProductMedia ? process.env.PRODUCT_SERVICE_PUBLIC_URL : process.env.MARKET_SERVICE_PUBLIC_URL)
         || `http://localhost:${port}`;
       return `${publicBaseUrl}/uploads/${folder}/${fileName}`;
@@ -55,7 +55,7 @@ export class StorageService {
       writeFileSync(join(uploadDir, fileName), fileBuffer);
       const productMediaFolders = new Set(['products', 'seller-videos', 'video-thumbnails']);
       const isProductMedia = productMediaFolders.has(folder);
-      const port = process.env.PORT || (isProductMedia ? 3003 : 3002);
+      const port = (process.env.PORT && process.env.PORT !== '3000') ? process.env.PORT : (isProductMedia ? 3003 : 3002);
       const publicBaseUrl = (isProductMedia ? process.env.PRODUCT_SERVICE_PUBLIC_URL : process.env.MARKET_SERVICE_PUBLIC_URL)
         || `http://localhost:${port}`;
       return `${publicBaseUrl}/uploads/${folder}/${fileName}`;

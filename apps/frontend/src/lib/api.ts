@@ -98,7 +98,7 @@ const createClient = (baseURL: string) => {
 
 export const userApi = createClient((process.env.NEXT_PUBLIC_USER_SERVICE_URL || 'http://localhost:3001') + '/api/v1');
 export const marketApi = createClient((process.env.NEXT_PUBLIC_MARKET_SERVICE_URL || 'http://localhost:3002') + '/api/v1');
-export const productApi = createClient((process.env.NEXT_PUBLIC_PRODUCT_SERVICE_URL || 'http://localhost:3003') + '/api/v1');
+export const productApi = createClient((process.env.NEXT_PUBLIC_PRODUCT_SERVICE_URL || 'http://127.0.0.1:3003') + '/api/v1');
 export const sellerApi = createClient((process.env.NEXT_PUBLIC_SELLER_SERVICE_URL || 'http://localhost:3004') + '/api/v1');
 export const riderApi = createClient((process.env.NEXT_PUBLIC_RIDER_SERVICE_URL || 'http://localhost:3005') + '/api/v1');
 export const orderApi = createClient((process.env.NEXT_PUBLIC_ORDER_SERVICE_URL || 'http://localhost:3006') + '/api/v1');

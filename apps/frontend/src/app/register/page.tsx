@@ -57,7 +57,7 @@ function RegisterContent() {
     productApi.get('/products/catalog/categories')
       .then(res => {
         const list = Array.isArray(res.data?.data) ? res.data.data : [];
-        setCategories(list.filter((category: any) => category.isActive !== false).slice(0, 16));
+        setCategories(list.filter((category: any) => category.isActive !== false && !category.parentId));
       })
       .catch(() => setCategories([]));
   }, []);

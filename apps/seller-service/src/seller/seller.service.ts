@@ -312,6 +312,8 @@ export class SellerService {
     this.triggerNotification(updated.userId, 'Congratulations! Your shop is now live on Rwanda Marketplace.');
     // 3F fix: sync SELLER role to user-service so JWT tokens reflect the correct role
     this.syncRoleToUserService(updated.userId, 'SELLER');
+    // Notify admins of approval
+    this.notifyAdminsAction(`Seller "${updated.stallName || 'Merchant'}" approved successfully.`);
     return updated;
   }
 
@@ -329,6 +331,8 @@ export class SellerService {
 
     // 3D fix: notify the seller that their application was declined
     this.triggerNotification(updated.userId, 'Your seller application has been declined. Contact support for details.');
+    // Notify admins of rejection
+    this.notifyAdminsAction(`Seller "${updated.stallName || 'Merchant'}" application declined.`);
     return updated;
   }
 
@@ -360,38 +364,24 @@ export class SellerService {
     } catch {}
   }
 
-  // 3C fix: notify all admin users about a new seller application
-  private async notifyAdminsNewApplication(applicantUserId: string, stallName: string) {
+  private async notifyAdminsAction(message: string) {
     try {
       const axios = require('axios');
-      const userUrl = process.env.USER_SERVICE_URL || 'http://localhost:3001/api/v1';
       const notificationUrl = process.env.NOTIFICATION_SERVICE_URL || 'http://localhost:3009/api/v1';
       const secret = process.env.INTERNAL_SERVICE_SECRET;
       const headers = secret ? { 'x-internal-service-key': secret } : {};
-      // Fetch admin users from user-service
-      const res = await axios.get(`${userUrl}/users?role=ADMIN`, { headers }).catch(() => null);
-      const admins = res?.data?.data || [];
-      for (const admin of admins) {
-        const adminId = admin._id || admin.id;
-        if (!adminId) continue;
-        await axios.post(`${notificationUrl}/notifications/in-app`, {
-          userId: adminId,
-          type: 'seller.status_update',
-          params: { message: `New seller application from "${stallName}" is awaiting your review.` }
-        }, { headers }).catch(() => {});
-        
-        if (admin.email) {
-          await axios.post(`${notificationUrl}/notifications/email`, {
-            userId: adminId,
-            email: admin.email,
-            type: 'seller.status_update',
-            params: { message: `New seller application from "${stallName}" is awaiting your review.` }
-          }, { headers }).catch(() => {});
-        }
-      }
+      await axios.post(`${notificationUrl}/notifications/admin-notify`, {
+        type: 'admin.notification',
+        params: { message }
+      }, { headers }).catch(() => {});
     } catch (e: any) {
-      this.logger.warn(`Failed to notify admins about new seller application: ${e.message}`);
+      this.logger.warn(`Failed to notify admins of action: ${e.message}`);
     }
+  }
+
+  // 3C fix: notify all admin users about a new seller application
+  private async notifyAdminsNewApplication(applicantUserId: string, stallName: string) {
+    await this.notifyAdminsAction(`New seller application from "${stallName}" is awaiting your review.`);
   }
 
   async generateQrCode(stallId: string): Promise<string> {

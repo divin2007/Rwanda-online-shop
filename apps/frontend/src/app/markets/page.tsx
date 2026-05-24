@@ -77,11 +77,30 @@ interface Product {
   };
 }
 
-const catalogShortcuts = [
-  { label: 'Made in Rwanda', value: 'Made in Rwanda' },
-  { label: 'Food', value: 'Food' },
-  { label: 'Crafts', value: 'Crafts' },
-  { label: 'Textiles', value: 'Textiles' },
+const fallbackCatalogShortcuts = [
+  { label: 'Made in Rwanda', value: 'Made in Rwanda', mode: 'search' },
+  { label: 'Groceries & Produce', value: 'grocery', mode: 'category' },
+  { label: 'Food & Beverage', value: 'food', mode: 'category' },
+  { label: 'Fashion & Apparel', value: 'fashion', mode: 'category' },
+  { label: 'Shoes & Footwear', value: 'shoes', mode: 'category' },
+  { label: 'Sportswear & Fitness', value: 'sportswear', mode: 'category' },
+  { label: 'Bakery & Patisserie', value: 'bakery', mode: 'category' },
+  { label: 'Hardware & Materials', value: 'hardware', mode: 'category' },
+  { label: 'Handicrafts & Art', value: 'handicrafts', mode: 'category' },
+  { label: 'Home & Furnishings', value: 'home', mode: 'category' },
+  { label: 'Electronics & Tech', value: 'electronics', mode: 'category' },
+  { label: 'Cosmetics & Care', value: 'cosmetics', mode: 'category' },
+  { label: 'Automotive & Moto', value: 'automotive', mode: 'category' },
+  { label: 'Stationery & Books', value: 'education', mode: 'category' },
+  { label: 'Agriculture & Farming', value: 'agriculture', mode: 'category' },
+  { label: 'Services', value: 'services', mode: 'category' },
+  { label: 'Events & Rentals', value: 'events', mode: 'category' },
+  { label: 'Real Estate', value: 'property', mode: 'category' },
+  { label: 'Pets & Animal Care', value: 'pets', mode: 'category' },
+  { label: 'Solar & Clean Water', value: 'solar-energy', mode: 'category' },
+  { label: 'Office & Business', value: 'office-business', mode: 'category' },
+  { label: 'Finance & Insurance', value: 'finance', mode: 'category' },
+  { label: 'Other Goods', value: 'other', mode: 'category' },
 ];
 
 const isMadeInRwandaSearch = (value: string) => {
@@ -185,6 +204,7 @@ function MarketsContent() {
   const { data: marketsData, loading, error, execute: fetchMarkets } = useApi<Market[]>(marketApi, 'get', '/markets?activeOnly=true');
   const { data: productsData, loading: productsLoading, error: productsError, execute: refetchProducts } = useApi<Product[]>(productApi, 'get', productQueryPath);
   const { data: facetsData, execute: refetchFacets } = useApi<any>(productApi, 'get', facetQueryPath);
+  const { data: catalogCategoriesData } = useApi<any[]>(productApi, 'get', '/products/catalog/categories');
   const { data: promotionsData, execute: refetchPromotions } = useApi<any[]>(productApi, 'get', '/promotions/active');
 
   // Real-time WebSocket synchronization
@@ -204,16 +224,36 @@ function MarketsContent() {
     }
   }, [socketMessage, fetchMarkets, refetchProducts, refetchFacets, refetchPromotions, refetchProfile, user]);
 
+  const catalogShortcuts = useMemo(() => {
+    const rootCategories = Array.isArray(catalogCategoriesData)
+      ? catalogCategoriesData.filter((category: any) => category.isActive !== false && !category.parentId)
+      : [];
+
+    if (rootCategories.length === 0) {
+      return fallbackCatalogShortcuts;
+    }
+
+    return [
+      fallbackCatalogShortcuts[0],
+      ...rootCategories.map((category: any) => ({
+        label: category.label,
+        value: category.id,
+        mode: 'category',
+      })),
+    ];
+  }, [catalogCategoriesData]);
+
   const promotionsByMarket = useMemo(() => {
     const map = new Map<string, number>();
     const promos = Array.isArray(promotionsData) ? promotionsData : [];
     promos.forEach(p => {
       if (p.product) {
         const mId = typeof p.product.marketId === 'object' ? p.product.marketId._id : p.product.marketId;
-        if (mId && p.discountPercentage) {
+        const discountPercentage = Number(p.discountPercentage || p.promotion?.discountPercentage || p.discount || 0);
+        if (mId && discountPercentage) {
           const currentMax = map.get(mId) || 0;
-          if (p.discountPercentage > currentMax) {
-            map.set(mId, p.discountPercentage);
+          if (discountPercentage > currentMax) {
+            map.set(mId, discountPercentage);
           }
         }
       }
@@ -232,7 +272,7 @@ function MarketsContent() {
 
   const allMarkets = useMemo(() => Array.isArray(marketsData) ? marketsData : [], [marketsData]);
   const matchingProducts = useMemo(
-    () => (Array.isArray(productsData) ? productsData : []).filter(product => product.images?.length),
+    () => (Array.isArray(productsData) ? productsData : []),
     [productsData]
   );
   const productMarketIds = useMemo(() => {
@@ -243,10 +283,48 @@ function MarketsContent() {
     });
     return ids;
   }, [matchingProducts]);
+  const productSourceMarkets = useMemo(() => {
+    const marketsById = new Map(allMarkets.map(market => [market._id, market]));
+    const sources = new Map<string, Market>();
+
+    matchingProducts.forEach(product => {
+      const marketId = getProductMarketId(product);
+      const marketFromDirectory = marketId ? marketsById.get(marketId) : undefined;
+      if (marketFromDirectory) {
+        sources.set(marketFromDirectory._id, marketFromDirectory);
+        return;
+      }
+
+      if (typeof product.marketId === 'object' && product.marketId?._id) {
+        const fallbackMarket = product.marketId;
+        const fallbackMarketId = fallbackMarket._id;
+        if (!fallbackMarketId) return;
+        sources.set(fallbackMarketId, {
+          _id: fallbackMarketId,
+          name: fallbackMarket.name || 'Product market',
+          slug: fallbackMarket.slug || fallbackMarketId,
+          type: 'individual',
+          activeProducts: matchingProducts.filter(item => getProductMarketId(item) === fallbackMarketId).length,
+        });
+      }
+    });
+
+    return Array.from(sources.values());
+  }, [allMarkets, matchingProducts]);
   const hasSearch = Boolean(searchQuery.trim());
   const madeInRwandaIntent = isMadeInRwandaSearch(searchQuery);
   const hasProductFiltersActive = hasSearch || madeInRwandaIntent || selectedProductCategory !== 'all' || Object.keys(attributeFilters).length > 0 || Boolean(priceRange.min) || Boolean(priceRange.max);
   const facets = facetsData || { categories: [], attributes: [] };
+  const activeProductFilterLabel = useMemo(() => {
+    if (madeInRwandaIntent) return t('made_in_rwanda_products');
+    if (searchQuery.trim()) return t('products_matching_query', { query: searchQuery.trim() });
+    if (selectedProductCategory !== 'all') {
+      const facetCategory = (facets.categories || []).find((category: any) => category.id === selectedProductCategory);
+      const shortcut = catalogShortcuts.find(item => item.value === selectedProductCategory);
+      return facetCategory?.label || shortcut?.label || t('product_results');
+    }
+    return t('product_results');
+  }, [facets.categories, madeInRwandaIntent, searchQuery, selectedProductCategory, t]);
   const activeAttributeGroups = useMemo(
     () => (facets.attributes || []).filter((group: any) => selectedProductCategory === 'all' || group.id === selectedProductCategory),
     [facets.attributes, selectedProductCategory]
@@ -329,6 +407,7 @@ function MarketsContent() {
   const productDataUnavailable = Boolean(productsError);
   const marketsToRender = filteredMarkets;
   const showCatalogResults = hasProductFiltersActive;
+  const directoryMarkets = marketsToRender.length > 0 ? marketsToRender : (showCatalogResults ? productSourceMarkets : []);
 
   const promotionalMarketIds = useMemo(() => {
     const ids = new Set<string>();
@@ -369,8 +448,9 @@ function MarketsContent() {
   const promotionalMarkets = useMemo(
     () => [...marketsToRender]
       .filter(m => promotionalMarketIds.has(m._id))
+      .sort((a, b) => (promotionsByMarket.get(b._id) || 0) - (promotionsByMarket.get(a._id) || 0))
       .slice(0, 6),
-    [marketsToRender, promotionalMarketIds]
+    [marketsToRender, promotionalMarketIds, promotionsByMarket]
   );
 
   const recommendedMarkets = useMemo(
@@ -383,10 +463,20 @@ function MarketsContent() {
   // Helper to translate shortcut labels dynamically
   const getShortcutLabel = (value: string) => {
     switch (value) {
-      case 'Made in Rwanda': return t('made_in_rwanda');
-      case 'Food': return t('category_food');
-      case 'Crafts': return t('category_crafts');
-      case 'Textiles': return t('category_textiles');
+      case 'Made in Rwanda': return t('product_made_in_rwanda');
+      case 'Groceries': return t('cat_produce');
+      case 'Fashion': return t('cat_textiles');
+      case 'Shoes': return t('cat_shoes');
+      case 'Sportswear': return t('cat_sportswear');
+      case 'Bakery': return t('cat_bakery');
+      case 'Hardware': return t('cat_hardware');
+      case 'Handicrafts': return t('cat_handcrafts');
+      case 'Home': return t('cat_home');
+      case 'Electronics': return t('cat_electronics');
+      case 'Cosmetics': return t('cat_cosmetics');
+      case 'Automotive': return t('cat_automotive');
+      case 'Education': return t('cat_education');
+      case 'Other': return t('cat_other');
       default: return value;
     }
   };
@@ -469,7 +559,7 @@ function MarketsContent() {
     }, [title, isFullWidth]);
 
     return (
-      <div className={`space-y-5 rounded-lg p-6 transition-colors ${theme.bg} ${theme.border} ${theme.glow} shadow-sm`}>
+      <div className={`space-y-4 rounded-lg p-4 transition-colors ${theme.bg} ${theme.border} ${theme.glow} shadow-sm`}>
         <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
           <div className="space-y-1.5">
             <div className="flex items-center gap-2.5">
@@ -478,7 +568,7 @@ function MarketsContent() {
                 {title}
                 {isFullWidth && (
                   <span className="inline-flex items-center gap-1 rounded-sm bg-white/20 px-2.5 py-0.5 font-mono text-[10px] font-black uppercase tracking-wider text-white border border-white/20">
-                    🔥 {t('special_deals')}
+                    {t('special_deals')}
                   </span>
                 )}
               </h3>
@@ -491,14 +581,14 @@ function MarketsContent() {
         </div>
         <div 
           ref={containerRef}
-          className={`flex gap-6 overflow-x-auto pb-4 snap-x scroll-smooth cursor-grab active:cursor-grabbing border-t pt-5 ${
+          className={`flex gap-4 overflow-x-auto pb-3 snap-x scroll-smooth cursor-grab active:cursor-grabbing border-t pt-4 ${
             isFullWidth ? 'border-white/20 white-scrollbar' : 'scrollbar-hide border-border-light/40'
           }`}
         >
           {markets.map((market, idx) => {
             const maxDiscount = promotionsByMarket.get(market._id) || 0;
             return (
-              <div key={`${market._id}-${idx}`} className="min-w-[240px] max-w-[255px] flex-shrink-0 snap-start">
+              <div key={`${market._id}-${idx}`} className="min-w-[170px] max-w-[188px] flex-shrink-0 snap-start sm:min-w-[185px] sm:max-w-[205px]">
                 <MarketCard market={market} isCompact={true} maxDiscount={maxDiscount} />
               </div>
             );
@@ -578,13 +668,23 @@ function MarketsContent() {
                   onChange={(e) => setSearchQuery(e.target.value)}
                 />
               </div>
-              <div className="flex gap-2 overflow-x-auto pb-1.5 scrollbar-hide">
+              <div className="grid max-h-36 w-full grid-cols-2 gap-2 overflow-y-auto pr-1 sm:grid-cols-3 lg:grid-cols-2 xl:grid-cols-3">
                 {catalogShortcuts.map(shortcut => (
                   <button
                     key={shortcut.value}
-                    onClick={() => setSearchQuery(shortcut.value)}
-                    className={`shrink-0 rounded border px-3.5 py-1.5 font-mono text-[9px] font-bold uppercase tracking-wider transition-colors ${
-                      searchQuery === shortcut.value ? 'border-primary bg-primary text-white font-black' : 'border-[#ebdcd0] bg-background-surface text-text-secondary hover:border-primary hover:text-primary'
+                    onClick={() => {
+                      if (shortcut.mode === 'category') {
+                        setSelectedProductCategory(shortcut.value);
+                        setSearchQuery('');
+                        setAttributeFilters({});
+                      } else {
+                        setSearchQuery(shortcut.value);
+                        setSelectedProductCategory('all');
+                        setAttributeFilters({});
+                      }
+                    }}
+                    className={`min-h-9 w-full rounded border px-2 py-1.5 font-mono text-[8px] font-bold uppercase leading-tight tracking-wider transition-colors ${
+                      searchQuery === shortcut.value || selectedProductCategory === shortcut.value ? 'border-primary bg-primary text-white font-black' : 'border-[#ebdcd0] bg-background-surface text-text-secondary hover:border-primary hover:text-primary'
                     }`}
                   >
                     {getShortcutLabel(shortcut.label)}
@@ -624,7 +724,7 @@ function MarketsContent() {
                   <button 
                     key={cat.key}
                     onClick={() => setSelectedCategory(cat.key)}
-                    className={`h-11 rounded border font-mono text-[9px] font-bold uppercase tracking-wider transition-colors ${
+                    className={`min-h-11 rounded border px-2 py-2 font-mono text-[9px] font-bold uppercase tracking-wider leading-tight transition-colors ${
                       selectedCategory === cat.key ? 'border-primary bg-primary text-white font-black' : 'border-[#ebdcd0] bg-white text-text-secondary hover:border-primary hover:text-primary'
                     }`}
                   >
@@ -635,10 +735,10 @@ function MarketsContent() {
             </div>
           </div>
 
-          <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide pt-2 border-t border-border-light/40">
+          <div className="grid max-h-36 w-full grid-cols-2 gap-2 overflow-y-auto border-t border-border-light/40 pt-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
             <button
               onClick={() => { setSelectedProductCategory('all'); setAttributeFilters({}); }}
-              className={`shrink-0 rounded border px-3.5 py-1.5 font-mono text-[9px] font-bold uppercase tracking-wider transition-colors ${selectedProductCategory === 'all' ? 'border-primary bg-primary/10 text-primary font-black' : 'border-[#ebdcd0] bg-white text-text-secondary hover:border-primary hover:text-primary'}`}
+              className={`min-h-9 w-full rounded border px-2 py-1.5 font-mono text-[8px] font-bold uppercase leading-tight tracking-wider transition-colors ${selectedProductCategory === 'all' ? 'border-primary bg-primary/10 text-primary font-black' : 'border-[#ebdcd0] bg-white text-text-secondary hover:border-primary hover:text-primary'}`}
             >
               {t('all_categories')}
             </button>
@@ -646,7 +746,7 @@ function MarketsContent() {
               <button
                 key={category.id}
                 onClick={() => { setSelectedProductCategory(category.id); setAttributeFilters({}); }}
-                className={`shrink-0 rounded border px-3.5 py-1.5 font-mono text-[9px] font-bold uppercase tracking-wider transition-colors ${selectedProductCategory === category.id ? 'border-primary bg-primary/10 text-primary font-black' : 'border-[#ebdcd0] bg-white text-text-secondary hover:border-primary hover:text-primary'}`}
+                className={`min-h-9 w-full rounded border px-2 py-1.5 font-mono text-[8px] font-bold uppercase leading-tight tracking-wider transition-colors ${selectedProductCategory === category.id ? 'border-primary bg-primary/10 text-primary font-black' : 'border-[#ebdcd0] bg-white text-text-secondary hover:border-primary hover:text-primary'}`}
               >
                 {category.label} ({category.count})
               </button>
@@ -687,7 +787,7 @@ function MarketsContent() {
                   {madeInRwandaIntent ? t('origin_tagged_catalog') : t('product_results')}
                 </p>
                 <h2 className="mt-2 text-2xl font-bold tracking-tight text-text-primary">
-                  {madeInRwandaIntent ? t('made_in_rwanda_products') : t('products_matching_query', { query: searchQuery.trim() })}
+                  {activeProductFilterLabel}
                 </h2>
               </div>
               <span className="text-xs font-bold text-text-muted">{matchingProducts.length} {t('products_found')}</span>
@@ -761,8 +861,13 @@ function MarketsContent() {
               <p className="text-xs font-bold uppercase tracking-widest text-primary">{t('marketplace_directory')}</p>
               <h2 className="mt-1 text-2xl font-bold tracking-tight text-text-primary">{t('markets_ready_browsing')}</h2>
             </div>
-            <span className="text-xs font-bold text-text-muted">{marketsToRender.length} {t('results_suffix')}</span>
+            <span className="text-xs font-bold text-text-muted">{directoryMarkets.length} {t('results_suffix')}</span>
           </div>
+          {showCatalogResults && productSourceMarkets.length > 0 && (
+            <p className="text-xs font-semibold text-text-muted">
+              Products displayed above are available from {productSourceMarkets.length} matching {productSourceMarkets.length === 1 ? 'market' : 'markets'}.
+            </p>
+          )}
   
           {loading ? (
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-6">
@@ -770,9 +875,9 @@ function MarketsContent() {
                 <div key={i} className="aspect-[4/5] bg-background-surface animate-pulse border border-[#e2bfb0] rounded-lg"></div>
               ))}
             </div>
-          ) : marketsToRender.length > 0 ? (
+          ) : directoryMarkets.length > 0 ? (
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-6">
-              {marketsToRender.map((market: Market, idx: number) => {
+              {directoryMarkets.map((market: Market, idx: number) => {
                 const maxDiscount = promotionsByMarket.get(market._id) || 0;
                 return (
                   <MarketCard 

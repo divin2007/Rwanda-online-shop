@@ -61,6 +61,14 @@ export class NotificationController {
     return { success: true, data: result };
   }
 
+  @Public()
+  @Post('admin-notify')
+  async notifyAdmins(@Body() body: { type: string; params: any }, @Request() req: any) {
+    verifyInternalSecret(req);
+    await this.notificationService.notifyAdmins(body.type, body.params);
+    return { success: true };
+  }
+
   // FIX [NOTIF-ME]: Was reading userId from query param — trivial IDOR bypass.
   // Now reads exclusively from the verified JWT payload.
   @UseGuards(JwtAuthGuard)

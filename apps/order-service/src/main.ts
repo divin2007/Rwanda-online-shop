@@ -48,13 +48,6 @@ import * as express from 'express';
 import { mkdirSync } from 'fs';
 
 async function bootstrap() {
-  try {
-    console.log("[RESTORE_ACTION] Spawning git checkout...");
-    require('child_process').execSync('git checkout -- apps/order-service/src/order/order.service.ts');
-    console.log("[RESTORE_ACTION] Spawning git checkout succeeded!");
-  } catch (err) {
-    console.error("[RESTORE_ACTION] Spawning git checkout failed:", err.message);
-  }
   const app = await NestFactory.create(AppModule);
   
   app.use(express.json({ limit: '50mb' }));

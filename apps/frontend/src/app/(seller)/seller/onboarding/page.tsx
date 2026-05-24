@@ -36,12 +36,11 @@ export default function SellerOnboardingPage() {
   const { data: profile, loading: profileLoading } = useApi(sellerApi, 'get', profileUrl || '');
   const [activeContract, setActiveContract] = useState<any>(null);
   
-  // 1. Redirection Logic: If profile already exists, go to dashboard
+  // 1. Redirection Logic: If any seller profile already exists, dashboard owns the status UI.
   useEffect(() => {
-    // ONLY redirect if we have a user and we are CERTAIN a profile exists for them
     if (user?.id && !profileLoading && profile && user.role === 'SELLER') {
-      console.log('[Onboarding] Profile detected for active session. Redirecting to dashboard.');
-      router.push('/seller/dashboard');
+      console.log('[Onboarding] Existing seller application detected. Redirecting to dashboard status.');
+      router.replace('/seller/dashboard');
     }
   }, [profile, profileLoading, user, router]);
   
@@ -125,7 +124,7 @@ export default function SellerOnboardingPage() {
         agreedToTerms: allAgreed
       });
       toast.success(t('app_submitted_success'));
-      router.push('/seller/dashboard');
+      router.replace('/seller/dashboard');
     } catch (e: any) {
       toast.error(e.response?.data?.error || t('submission_failed'));
     } finally {
@@ -302,15 +301,29 @@ export default function SellerOnboardingPage() {
                        <div className="space-y-6">
                           <p className="text-[10px] font-black uppercase tracking-[0.3em] text-[#1b1c1c]">{t('institutional_classification')}</p>
                           <div className="grid grid-cols-2 gap-3">
-                             {['Produce', 'Textiles', 'Handcrafts', 'Meat', 'Electronics', 'Essentials'].map(cat => (
-                               <label key={cat} className="flex items-center gap-3 p-4 bg-white border border-[#e0e0e0] rounded-lg/10 cursor-pointer group hover:border-[#ff6b00] transition-colors">
-                                  <div className={`w-6 h-6 border-2 flex items-center justify-center transition-all ${selectedCategories.includes(cat) ? 'bg-[#ff6b00] border-[#ebdcd0] text-white' : 'border-[#ebdcd0]/20'}`}>
-                                     {selectedCategories.includes(cat) && <span className="text-[10px]">✓</span>}
-                                  </div>
-                                  <input type="checkbox" className="sr-only" checked={selectedCategories.includes(cat)} onChange={() => setSelectedCategories(prev => prev.includes(cat) ? prev.filter(c => c !== cat) : [...prev, cat])} />
-                                  <span className="text-[11px] font-black uppercase tracking-widest">{t(`cat_${cat.toLowerCase()}`)}</span>
-                               </label>
-                             ))}
+                              {[
+                                { key: 'grocery', translationKey: 'cat_produce' },
+                                { key: 'fashion', translationKey: 'cat_textiles' },
+                                { key: 'shoes', translationKey: 'cat_shoes' },
+                                { key: 'sportswear', translationKey: 'cat_sportswear' },
+                                { key: 'bakery', translationKey: 'cat_bakery' },
+                                { key: 'hardware', translationKey: 'cat_hardware' },
+                                { key: 'handicrafts', translationKey: 'cat_handcrafts' },
+                                { key: 'home', translationKey: 'cat_home' },
+                                { key: 'electronics', translationKey: 'cat_electronics' },
+                                { key: 'cosmetics', translationKey: 'cat_cosmetics' },
+                                { key: 'automotive', translationKey: 'cat_automotive' },
+                                { key: 'education', translationKey: 'cat_education' },
+                                { key: 'other', translationKey: 'cat_other' },
+                              ].map(cat => (
+                                <label key={cat.key} className="flex items-center gap-3 p-4 bg-white border border-[#e0e0e0] rounded-lg/10 cursor-pointer group hover:border-[#ff6b00] transition-colors">
+                                   <div className={`w-6 h-6 border-2 flex items-center justify-center transition-all ${selectedCategories.includes(cat.key) ? 'bg-[#ff6b00] border-[#ebdcd0] text-white' : 'border-[#ebdcd0]/20'}`}>
+                                      {selectedCategories.includes(cat.key) && <span className="text-[10px]">✓</span>}
+                                   </div>
+                                   <input type="checkbox" className="sr-only" checked={selectedCategories.includes(cat.key)} onChange={() => setSelectedCategories(prev => prev.includes(cat.key) ? prev.filter(c => c !== cat.key) : [...prev, cat.key])} />
+                                   <span className="text-[11px] font-black uppercase tracking-widest">{t(cat.translationKey)}</span>
+                                </label>
+                              ))}
                           </div>
                        </div>
                     </div>

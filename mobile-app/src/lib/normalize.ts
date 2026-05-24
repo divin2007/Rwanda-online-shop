@@ -1,9 +1,9 @@
 import { CartItem, Coordinates, Market, Product, ProductVariant, SellerProfile } from '../types';
 
-export const asArray = <T>(value: unknown): T[] => {
+export function asArray<T>(value: unknown): T[] {
   if (Array.isArray(value)) return value as T[];
   return [];
-};
+}
 
 export const sellerProfileOf = (product: Product): SellerProfile | null => {
   return typeof product.sellerId === 'object' && product.sellerId ? product.sellerId as SellerProfile : null;
@@ -23,12 +23,7 @@ export const idOf = (value: unknown): string | undefined => {
   return undefined;
 };
 
-import Constants from 'expo-constants';
-import { Platform } from 'react-native';
-
-const extra = (Constants.expoConfig?.extra || {}) as Record<string, string | undefined>;
-const defaultHost = Platform.OS === 'android' ? 'http://10.0.2.2' : 'http://localhost';
-const host = process.env.EXPO_PUBLIC_RMF_API_HOST || extra.rmfApiHost || defaultHost;
+import { host } from './api';
 
 const serviceBase = (port: number) => {
   const cleanHost = host.replace(/\/$/, '').replace(/:\d+$/, '');
@@ -64,8 +59,29 @@ const optimizeUnsplashUrl = (url?: string): string | undefined => {
 };
 
 export const normalizeImageUrl = (url?: string | null): string | undefined => {
-  const normalized = normalizeMediaUrl(url, 3003);
+  const value = String(url || '').trim();
+  if (!value) return undefined;
+  const firstUrl = value.split(',')[0].trim();
+  const normalized = normalizeMediaUrl(firstUrl, 3003);
   return normalized ? optimizeUnsplashUrl(normalized) : undefined;
+};
+
+export const imagesOfVariant = (variant?: ProductVariant | null): string[] => {
+  if (!variant) return [];
+  const rawImages = variant.images || (variant as any).imageUrl || (variant as any).image;
+  let list: string[] = [];
+  if (typeof rawImages === 'string') {
+    list = rawImages.split(',');
+  } else if (Array.isArray(rawImages)) {
+    list = rawImages.flatMap((item: any) =>
+      typeof item === 'string' ? item.split(',') : String(item || '')
+    );
+  }
+  return list
+    .map((url: string) => url.trim())
+    .filter(Boolean)
+    .map(normalizeImageUrl)
+    .filter(Boolean) as string[];
 };
 
 export const imageOf = (product?: Product | null) => {
@@ -93,7 +109,7 @@ export const productToCartItem = (
   const seller = sellerProfileOf(product);
   const market = marketOf(product.marketId);
   const variant = variantIndex >= 0 ? asArray<ProductVariant>(product.variants)[variantIndex] : undefined;
-  const variantImages = asArray<string>(variant?.images);
+  const variantImages = imagesOfVariant(variant);
   const imageUrl = variantImages[0] || imageOf(product);
   const basePrice = Number(product.price || 0);
   const addPrice = variant?.price !== undefined && variant?.price !== null

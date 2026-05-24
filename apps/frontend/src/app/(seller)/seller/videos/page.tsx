@@ -11,8 +11,9 @@ import { UploadCloud, Video } from 'lucide-react';
 type ProductOption = {
   _id: string;
   name: string;
-  price?: number;
+  price: number;
   unit?: string;
+  variants?: Array<{ sku: string; title: string; price?: number }>;
 };
 
 export default function SellerVideosPage() {
@@ -23,7 +24,8 @@ export default function SellerVideosPage() {
   const [caption, setCaption] = React.useState('');
   const [tags, setTags] = React.useState('');
   const [productId, setProductId] = React.useState('');
-  const [placement, setPlacement] = React.useState<'SHOP_AD' | 'PRODUCT_AD'>('SHOP_AD');
+  const [variantSku, setVariantSku] = React.useState('');
+  const [placement, setPlacement] = React.useState<'SHOP_AD' | 'PRODUCT_AD' | 'STORY'>('SHOP_AD');
   const [videoUrl, setVideoUrl] = React.useState('');
   const [thumbnailUrl, setThumbnailUrl] = React.useState('');
   const [uploading, setUploading] = React.useState(false);
@@ -43,7 +45,7 @@ export default function SellerVideosPage() {
     } catch (error) {
       console.error('Failed to load seller video data', error);
     }
-  }, [productId, user]);
+  }, [user]);
 
   React.useEffect(() => {
     loadSellerData();
@@ -80,15 +82,17 @@ export default function SellerVideosPage() {
         tags,
         placement,
         productId: placement === 'PRODUCT_AD' ? productId || undefined : undefined,
+        variantSku: placement === 'PRODUCT_AD' ? variantSku || undefined : undefined,
         videoUrl,
         thumbnailUrl: thumbnailUrl || undefined,
       });
-      toast.success('Video ad published');
+      toast.success(placement === 'STORY' ? 'Story published for 24 hours' : 'Video ad published');
       setTitle('');
       setCaption('');
       setTags('');
       setPlacement('SHOP_AD');
       setProductId('');
+      setVariantSku('');
       setVideoUrl('');
       setThumbnailUrl('');
       await loadSellerData();
@@ -131,10 +135,11 @@ export default function SellerVideosPage() {
 
               <div>
                 <span className="text-[11px] font-black uppercase tracking-widest text-[#63736a]">Video type</span>
-                <div className="mt-2 grid grid-cols-2 gap-2">
+                <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-3">
                   {[
                     { value: 'SHOP_AD' as const, label: 'Shop advert', help: 'One active advert for your whole shop.' },
                     { value: 'PRODUCT_AD' as const, label: 'Product demo', help: 'Attach the video to one product.' },
+                    { value: 'STORY' as const, label: '24h story', help: 'Appears on your market page and disappears after 24 hours.' },
                   ].map(option => (
                     <button
                       key={option.value}
@@ -160,18 +165,40 @@ export default function SellerVideosPage() {
               </label>
 
               {placement === 'PRODUCT_AD' ? (
-                <label className="block">
-                  <span className="text-[11px] font-black uppercase tracking-widest text-[#63736a]">Linked product</span>
-                  <select value={productId} onChange={event => setProductId(event.target.value)} className="mt-2 w-full rounded-xl border border-[#eaded4] px-4 py-3 font-semibold outline-none focus:border-[#ff6b00]">
-                    <option value="">Choose a product...</option>
-                    {products.map(product => (
-                      <option key={product._id} value={product._id}>{product.name}</option>
-                    ))}
-                  </select>
-                </label>
+                <div className="space-y-4">
+                  <label className="block">
+                    <span className="text-[11px] font-black uppercase tracking-widest text-[#63736a]">Linked product</span>
+                    <select value={productId} onChange={event => { setProductId(event.target.value); setVariantSku(''); }} className="mt-2 w-full rounded-xl border border-[#eaded4] px-4 py-3 font-semibold outline-none focus:border-[#ff6b00]">
+                      <option value="">Choose a product...</option>
+                      {products.map(product => (
+                        <option key={product._id} value={product._id}>{product.name}</option>
+                      ))}
+                    </select>
+                  </label>
+
+                  {(() => {
+                    const selected = products.find(p => p._id === productId);
+                    if (selected?.variants && selected.variants.length > 0) {
+                      return (
+                        <label className="block animate-reveal">
+                          <span className="text-[11px] font-black uppercase tracking-widest text-[#63736a]">Linked Product Variant (Optional)</span>
+                          <select value={variantSku} onChange={event => setVariantSku(event.target.value)} className="mt-2 w-full rounded-xl border border-[#eaded4] px-4 py-3 font-semibold outline-none focus:border-[#ff6b00]">
+                            <option value="">Apply to all variants (Whole Product)</option>
+                            {selected.variants.map(v => (
+                              <option key={v.sku} value={v.sku}>{v.title}</option>
+                            ))}
+                          </select>
+                        </label>
+                      );
+                    }
+                    return null;
+                  })()}
+                </div>
               ) : (
                 <div className="rounded-xl border border-[#fed7aa] bg-[#fff7ed] p-4 text-sm font-semibold leading-6 text-[#7c2d12]">
-                  A shop advert is limited to one active video per shop. Buyers can like and comment on it from the video feed and your market storefront.
+                  {placement === 'STORY'
+                    ? 'A story is a short market update. It is shown on your market page and automatically archives after 24 hours.'
+                    : 'A shop advert is limited to one active video per shop. Buyers can like and comment on it from the video feed and your market storefront.'}
                 </div>
               )}
 
@@ -186,7 +213,7 @@ export default function SellerVideosPage() {
               </label>
 
               <button onClick={publish} disabled={submitting || uploading} className="min-h-12 w-full rounded-xl bg-[#ff6b00] px-5 text-sm font-black uppercase tracking-widest text-white disabled:opacity-50">
-                {submitting ? 'Publishing...' : 'Publish video ad'}
+                {submitting ? 'Publishing...' : placement === 'STORY' ? 'Publish story' : 'Publish video ad'}
               </button>
             </div>
           </div>

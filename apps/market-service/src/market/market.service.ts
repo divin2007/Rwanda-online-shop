@@ -116,8 +116,30 @@ export class MarketService implements OnModuleInit {
               '$imageUrl',
               {
                 $ifNull: [
-                  { $arrayElemAt: ['$activeSellers.shopDetails.imageUrl', 0] },
-                  { $arrayElemAt: ['$activeSellers.stallPhotoUrl', 0] },
+                  { $arrayElemAt: ['$activeSellers.shopDetails.bannerUrl', 0] },
+                  {
+                    $ifNull: [
+                      { $arrayElemAt: ['$activeSellers.shopDetails.imageUrl', 0] },
+                      { $arrayElemAt: ['$activeSellers.stallPhotoUrl', 0] },
+                    ],
+                  },
+                ],
+              },
+            ],
+          },
+          logoUrl: {
+            $ifNull: [
+              { $arrayElemAt: ['$activeSellers.shopDetails.logoUrl', 0] },
+              { $arrayElemAt: ['$activeSellers.stallPhotoUrl', 0] },
+            ],
+          },
+          bannerUrl: {
+            $ifNull: [
+              { $arrayElemAt: ['$activeSellers.shopDetails.bannerUrl', 0] },
+              {
+                $ifNull: [
+                  '$imageUrl',
+                  { $arrayElemAt: ['$activeSellers.shopDetails.hubImageUrl', 0] },
                 ],
               },
             ],

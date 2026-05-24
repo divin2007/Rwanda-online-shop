@@ -1,6 +1,7 @@
 'use client';
 /* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars, react-hooks/exhaustive-deps */
 import React, { useEffect, useRef, useState } from 'react';
+import Link from 'next/link';
 import { Layout } from '@/components/layout/Layout';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
@@ -12,6 +13,9 @@ import toast from 'react-hot-toast';
 import { AnalyticsCharts } from '@/components/ui/AnalyticsCharts';
 import { ImageUpload } from '@/components/ui/ImageUpload';
 import { useSearchParams } from 'next/navigation';
+import { useAuth } from '@/context/AuthContext';
+import { useSocket } from '@/hooks/useSocket';
+import { CheckCircle2 } from 'lucide-react';
 
 const RiderMap = dynamic(
   () => import('@/components/ui/RiderMap').then((mod) => mod.RiderMap),
@@ -176,6 +180,34 @@ function AdminDashboardContent() {
   const pendingProductList = Array.isArray(pendingProducts) ? pendingProducts : [];
   const visibleMarkets = marketList.slice(0, visibleMarketsCount);
   const visiblePendingProducts = pendingProductList.slice(0, visibleProductsCount);
+
+  const { user } = useAuth();
+  const accessToken = typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null;
+  const notificationSocketUrl = user?.id
+    ? process.env.NEXT_PUBLIC_NOTIFICATION_SERVICE_URL || 'http://localhost:3009'
+    : '';
+
+  const { data: adminSocketData } = useSocket<any>(
+    notificationSocketUrl,
+    user?.id ? 'notification:new' : '',
+    accessToken || undefined,
+    user?.id ? { query: { userId: user.id } } : undefined
+  );
+
+  useEffect(() => {
+    if (adminSocketData) {
+      // Instantly trigger re-fetching of all dynamic dashboard states!
+      fetchAnalytics();
+      fetchDashboardAnalytics();
+      fetchSellers();
+      fetchApprovedSellers();
+      fetchPendingProducts();
+      fetchRiders();
+      fetchDisputes();
+      fetchProfileChangeRequests();
+      fetchPayoutRequests();
+    }
+  }, [adminSocketData]);
 
   useEffect(() => {
     if (activeTab === 'analytics') {
@@ -383,18 +415,18 @@ function AdminDashboardContent() {
 
   // 7C fix: resolveDispute now supports all 3 resolution types
   const resolveDispute = async (id: string, resolution: string) => {
-    const confirmMsg = resolution === 'REFUND' 
-      ? 'Issue a full refund to the buyer?' 
-      : resolution === 'PARTIAL' 
-        ? 'Issue a 50% partial refund?' 
+    const confirmMsg = resolution === 'refund'
+      ? 'Issue a full refund to the buyer?'
+      : resolution === 'redeliver'
+        ? 'Approve redelivery for this dispute?'
         : 'Deny this dispute with no refund?';
     if (!window.confirm(confirmMsg)) return;
     try {
       await orderApi.post(`/orders/${id}/dispute/resolve`, { resolution });
       const messages: Record<string, string> = {
-        REFUND: 'Dispute resolved — full refund issued.',
-        PARTIAL: 'Dispute resolved — 50% partial refund issued.',
-        NO_REFUND: 'Dispute denied — no refund issued.'
+        refund: 'Dispute resolved with a full refund.',
+        redeliver: 'Dispute resolved with redelivery.',
+        reject: 'Dispute denied with no refund.'
       };
       toast.success(messages[resolution] || 'Dispute resolved.');
       fetchDisputes();
@@ -590,13 +622,16 @@ function AdminDashboardContent() {
 
       {/* Verification Document Modal */}
       {selectedSeller && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#e05300]/80 backdrop-blur-sm p-4 animate-reveal">
-           <div className="bg-white w-full max-w-4xl border border-[#e0e0e0] shadow-2xl overflow-hidden">
-              <div className="p-6 border-b border-[#e0e0e0] flex justify-between items-center bg-[#fcf9f8]">
-                 <h2 className="text-xl font-sans text-[#1b1c1c]">Verification Documents: {selectedSeller.shopDetails?.name || selectedSeller.stallName || selectedSeller.plateNumber}</h2>
-                 <button onClick={() => setSelectedSeller(null)} className="text-2xl text-[#1b1c1c] hover:text-[#ff6b00]">&times;</button>
+        <div className="rmf-modal-overlay animate-reveal">
+           <div className="rmf-modal-panel max-w-6xl">
+              <div className="rmf-modal-header">
+                 <div>
+                   <p className="rmf-kicker">Verification review</p>
+                   <h2 className="mt-2 text-xl font-sans text-[#1b1c1c]">Documents: {selectedSeller.shopDetails?.name || selectedSeller.stallName || selectedSeller.plateNumber}</h2>
+                 </div>
+                 <button onClick={() => setSelectedSeller(null)} className="rmf-modal-close" aria-label="Close verification documents">&times;</button>
               </div>
-              <div className="p-8 grid grid-cols-1 md:grid-cols-2 gap-8 overflow-y-auto max-h-[70vh]">
+              <div className="rmf-modal-body grid grid-cols-1 gap-6 md:grid-cols-2">
                  <VerificationDocumentPanel
                    title={selectedSeller.plateNumber ? 'Driving License' : 'Business Permit'}
                    url={selectedSeller.licenseUrl || selectedSeller.businessPermitUrl}
@@ -612,7 +647,7 @@ function AdminDashboardContent() {
                    />
                  </div>
               </div>
-              <div className="p-6 border-t border-[#e0e0e0] flex justify-end gap-4 bg-[#fcf9f8]">
+              <div className="rmf-modal-footer">
                  <button onClick={() => setSelectedSeller(null)} className="px-6 py-3 border border-[#e0e0e0] text-[#1b1c1c] text-[10px] font-black uppercase tracking-widest hover:bg-[#e05300] hover:text-white transition-all">Cancel</button>
                  <button onClick={() => {
                     if (selectedSeller.plateNumber) {
@@ -782,12 +817,13 @@ function AdminDashboardContent() {
                         <th className="p-4 text-right">Seller Payout</th>
                         <th className="p-4 text-right">Rider Payout</th>
                         <th className="p-4 text-center">Status</th>
+                        <th className="p-4 text-center">Workspace</th>
                         <th className="p-4 text-center">Receipt</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-[#e0e0e0] text-sm bg-[#fcf9f8]/30">
                       {filteredOrders.length === 0 ? (
-                        <tr><td colSpan={10} className="p-12 text-center text-[#414844]">No transactions in this period.</td></tr>
+                        <tr><td colSpan={11} className="p-12 text-center text-[#414844]">No transactions in this period.</td></tr>
                       ) : (
                         paginatedOrders.map((order: any) => (
                           <tr key={order._id} className="hover:bg-white transition-colors">
@@ -814,7 +850,12 @@ function AdminDashboardContent() {
                               </span>
                             </td>
                             <td className="p-4 text-center">
-                              <button onClick={() => openReceipt(order)} className="text-[10px] border border-[#e0e0e0] px-3 py-1 hover:border-[#ff6b00]">View</button>
+                              <Link href={`/admin/orders/${order._id}`} className="text-[10px] border border-[#ff6b00] bg-[#fff7ed] px-3 py-1 font-black uppercase tracking-widest text-[#ff6b00] hover:bg-[#ff6b00] hover:text-white">
+                                Open
+                              </Link>
+                            </td>
+                            <td className="p-4 text-center">
+                              <button onClick={() => openReceipt(order)} className="text-[10px] border border-[#e0e0e0] px-3 py-1 hover:border-[#ff6b00]">Receipt</button>
                             </td>
                           </tr>
                         ))
@@ -902,8 +943,8 @@ function AdminDashboardContent() {
               {approvalSubTab === 'sellers' && (
                 <div className="space-y-4">
                   {!Array.isArray(pendingSellers) || pendingSellers.length === 0 ? (
-                    <div className="rounded-xl border border-dashed border-[#e0e0e0] bg-white p-16 text-center">
-                      <p className="text-2xl mb-2">✅</p>
+                    <div className="rounded-xl border border-dashed border-[#e0e0e0] bg-white p-16 text-center flex flex-col items-center justify-center">
+                      <CheckCircle2 size={32} className="text-primary mb-2 animate-pulse" />
                       <p className="text-sm font-bold text-[#414844]">No pending seller applications.</p>
                     </div>
                   ) : (
@@ -939,8 +980,8 @@ function AdminDashboardContent() {
               {approvalSubTab === 'riders' && (
                 <div className="space-y-4">
                   {!Array.isArray(pendingRiders) || pendingRiders.length === 0 ? (
-                    <div className="rounded-xl border border-dashed border-[#e0e0e0] bg-white p-16 text-center">
-                      <p className="text-2xl mb-2">✅</p>
+                    <div className="rounded-xl border border-dashed border-[#e0e0e0] bg-white p-16 text-center flex flex-col items-center justify-center">
+                      <CheckCircle2 size={32} className="text-primary mb-2 animate-pulse" />
                       <p className="text-sm font-bold text-[#414844]">No pending rider applications.</p>
                     </div>
                   ) : (
@@ -1360,13 +1401,16 @@ function AdminDashboardContent() {
                           </td>
                           <td className="p-6 text-right">
                             <div className="flex gap-2 justify-end flex-wrap">
-                              <button className="px-3 py-2 bg-[#e05300] text-white text-[9px] font-black uppercase tracking-widest hover:bg-[#ff6b00] transition-colors" onClick={() => resolveDispute(d._id, 'REFUND')}>
+                              <Link href={`/admin/disputes/${d._id}`} className="px-3 py-2 border border-[#ff6b00] text-[#ff6b00] text-[9px] font-black uppercase tracking-widest hover:bg-[#fff7ed] transition-colors">
+                                Review
+                              </Link>
+                              <button className="px-3 py-2 bg-[#e05300] text-white text-[9px] font-black uppercase tracking-widest hover:bg-[#ff6b00] transition-colors" onClick={() => resolveDispute(d._id, 'refund')}>
                                 Full Refund
                               </button>
-                              <button className="px-3 py-2 border border-[#e0e0e0] text-[#1b1c1c] text-[9px] font-black uppercase tracking-widest hover:bg-[#f7faf8] transition-colors" onClick={() => resolveDispute(d._id, 'PARTIAL')}>
-                                50% Refund
+                              <button className="px-3 py-2 border border-[#e0e0e0] text-[#1b1c1c] text-[9px] font-black uppercase tracking-widest hover:bg-[#f7faf8] transition-colors" onClick={() => resolveDispute(d._id, 'redeliver')}>
+                                Redeliver
                               </button>
-                              <button className="px-3 py-2 border border-[#e0e0e0] text-[#7b3f3f] text-[9px] font-black uppercase tracking-widest hover:bg-[#fff5f3] transition-colors" onClick={() => resolveDispute(d._id, 'NO_REFUND')}>
+                              <button className="px-3 py-2 border border-[#e0e0e0] text-[#7b3f3f] text-[9px] font-black uppercase tracking-widest hover:bg-[#fff5f3] transition-colors" onClick={() => resolveDispute(d._id, 'reject')}>
                                 Deny
                               </button>
                             </div>
@@ -1507,14 +1551,18 @@ function AdminDashboardContent() {
               </div>
 
               {editingMarket && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#e05300]/80 backdrop-blur-sm p-4 animate-reveal">
-                  <div className="bg-white w-full max-w-2xl border border-[#e0e0e0] shadow-2xl overflow-hidden">
-                    <div className="p-6 border-b border-[#e0e0e0] flex justify-between items-center bg-[#fcf9f8]">
-                      <h2 className="text-xl font-sans text-[#1b1c1c]">Edit Market: {editingMarket.name}</h2>
-                      <button onClick={() => setEditingMarket(null)} className="text-2xl text-[#1b1c1c] hover:text-[#ff6b00]">&times;</button>
+                <div className="rmf-modal-overlay animate-reveal">
+                  <div className="rmf-modal-panel max-w-5xl">
+                    <div className="rmf-modal-header">
+                      <div>
+                        <p className="rmf-kicker">Market directory</p>
+                        <h2 className="mt-2 text-xl font-sans text-[#1b1c1c]">Edit Market: {editingMarket.name}</h2>
+                      </div>
+                      <button onClick={() => setEditingMarket(null)} className="rmf-modal-close" aria-label="Close market editor">&times;</button>
                     </div>
-                    <form onSubmit={handleUpdateMarket} className="p-8 space-y-6 max-h-[80vh] overflow-y-auto">
-                      <div className="grid grid-cols-2 gap-6">
+                    <form onSubmit={handleUpdateMarket} className="flex min-h-0 flex-1 flex-col">
+                      <div className="rmf-modal-body space-y-6">
+                      <div className="grid gap-6 md:grid-cols-2">
                         <div className="space-y-2">
                           <label className="text-[9px] font-black uppercase tracking-widest text-[#1b1c1c]">Market Name</label>
                           <input required className="w-full bg-[#fcf9f8] border border-[#e0e0e0] p-4 text-sm outline-none focus:border-[#ff6b00]" value={editingMarket.name} onChange={e => setEditingMarket((prev: any) => ({ ...prev, name: e.target.value }))} />
@@ -1534,8 +1582,8 @@ function AdminDashboardContent() {
                         <label className="text-[9px] font-black uppercase tracking-widest text-[#1b1c1c]">Description</label>
                         <textarea className="w-full bg-[#fcf9f8] border border-[#e0e0e0] p-4 text-sm outline-none focus:border-[#ff6b00] h-24" value={editingMarket.description} onChange={e => setEditingMarket((prev: any) => ({ ...prev, description: e.target.value }))} />
                       </div>
-
-                      <div className="flex justify-end gap-4 pt-6 border-t border-[#e0e0e0]">
+                      </div>
+                      <div className="rmf-modal-footer">
                         <button type="button" className="px-6 py-3 border border-[#e0e0e0] text-[#1b1c1c] text-[10px] font-black uppercase tracking-widest hover:border-[#ff6b00]" onClick={() => setEditingMarket(null)}>Cancel</button>
                         <button type="submit" className="px-6 py-3 bg-[#e05300] text-white text-[10px] font-black uppercase tracking-widest hover:bg-[#e05300]">Save Changes</button>
                       </div>

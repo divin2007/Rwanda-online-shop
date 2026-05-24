@@ -1,12 +1,12 @@
-import React, { useMemo, useState, useEffect, useRef } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import {
-  Animated, FlatList, RefreshControl, ScrollView,
+  FlatList, RefreshControl, ScrollView,
   StyleSheet, Text, TouchableOpacity, View, Dimensions,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import {
   ArrowRight, ChevronRight, Flame, MapPinned,
-  ShoppingBag, Sparkles, Tag, Video, Zap, Star,
+  ShoppingBag, Sparkles, Video, Zap, Star,
   Package, Truck, Shield, Gift,
 } from 'lucide-react-native';
 import { MarketCard, ProductCard } from '../../src/components/Cards';
@@ -14,12 +14,9 @@ import { EmptyBlock, ErrorBlock, LoadingBlock } from '../../src/components/State
 import { SellerVideoFeed } from '../../src/components/SellerVideoFeed';
 import { api } from '../../src/lib/api';
 import { asArray, idOf } from '../../src/lib/normalize';
-import { money, compactNumber } from '../../src/lib/format';
-import { colors, shadow, shadowMd } from '../../src/theme';
+import { colors, shadowMd } from '../../src/theme';
 import { CatalogCategory, Market, Product, Promotion } from '../../src/types';
 import { useRemote } from '../../src/hooks/useRemote';
-
-const { width: SCREEN_W } = Dimensions.get('window');
 
 type HomePayload = {
   categories: CatalogCategory[];
@@ -59,14 +56,12 @@ const loadHome = async (search: string): Promise<HomePayload> => {
   };
 };
 
-// ── Promotional banners (Alibaba rotating carousel) ─────────────────────────
 const BANNERS = [
   { id: '1', tag: 'HARVEST SEASON', title: 'Farm-Fresh Deals', sub: 'Up to 45% OFF direct from verified Rwandan farms', color: '#ff6b00', color2: '#e05300' },
   { id: '2', tag: 'SECURE ESCROW', title: 'Buy with Confidence', sub: 'Every order is escrow-protected until delivery confirmed', color: '#0066CC', color2: '#004EA6' },
   { id: '3', tag: 'BEST SELLERS', title: 'Kimironko Premium', sub: 'Top-rated spices, textiles & handcrafts. Same-day delivery', color: '#00A650', color2: '#007A3D' },
 ];
 
-// ── Quick action shortcuts (Alibaba icon grid) ───────────────────────────────
 const QUICK_ACTIONS = [
   { id: 'deals', label: 'Flash\nDeals', icon: Zap, color: '#ff6b00', bg: '#ffedd5', badge: 'HOT' },
   { id: 'markets', label: 'Markets', icon: MapPinned, color: '#0066CC', bg: '#E8F0FC', badge: null },
@@ -89,13 +84,61 @@ export default function HomeScreen() {
     [],
   );
 
-  // Banner auto-rotate
-  useEffect(() => {
-    const t = setInterval(() => setBannerIdx(i => (i + 1) % BANNERS.length), 4000);
-    return () => clearInterval(t);
-  }, []);
+  const dynamicBanners = useMemo(() => {
+    const list: Array<{ id: string; tag: string; title: string; sub: string; color: string; color2: string; productId?: string }> = [];
+    
+    // 1. Populate from active promotions
+    if (data?.promotions && data.promotions.length > 0) {
+      data.promotions.slice(0, 3).forEach((promo, idx) => {
+        const prod = promo.product || (typeof promo.productId === 'object' ? promo.productId : null);
+        if (prod) {
+          list.push({
+            id: `promo-${promo._id}`,
+            tag: `${promo.discount}% RMF DISCOUNT`,
+            title: prod.name,
+            sub: prod.description || `Exclusive deal live in ${prod.categoryLabel || prod.category || 'RMF marketplace'}!`,
+            color: idx % 3 === 0 ? '#ff6b00' : idx % 3 === 1 ? '#0066CC' : '#00A650',
+            color2: idx % 3 === 0 ? '#e05300' : idx % 3 === 1 ? '#004EA6' : '#007A3D',
+            productId: prod._id,
+          });
+        }
+      });
+    }
 
-  // Countdown timer
+    // 2. Populate from trending products
+    if (list.length < 3 && data?.trending && data.trending.length > 0) {
+      data.trending.slice(0, 3 - list.length).forEach((prod, idx) => {
+        const index = list.length;
+        list.push({
+          id: `trend-${prod._id}`,
+          tag: 'TRENDING TODAY',
+          title: prod.name,
+          sub: prod.description || `Premium top-choice item from verified local vendors!`,
+          color: index % 3 === 0 ? '#ff6b00' : index % 3 === 1 ? '#0066CC' : '#00A650',
+          color2: index % 3 === 0 ? '#e05300' : index % 3 === 1 ? '#004EA6' : '#007A3D',
+          productId: prod._id,
+        });
+      });
+    }
+
+    // 3. Dynamic Fallbacks
+    const defaults = [
+      { id: 'd1', tag: 'HARVEST SEASON', title: 'Farm-Fresh Deals', sub: 'Up to 45% OFF direct from verified Rwandan farms', color: '#ff6b00', color2: '#e05300' },
+      { id: 'd2', tag: 'SECURE ESCROW', title: 'Buy with Escrow', sub: 'Every order is protected until you confirm safe delivery', color: '#0066CC', color2: '#004EA6' },
+      { id: 'd3', tag: 'BEST SELLERS', title: 'Kimironko Premium', sub: 'Top-rated spices, textiles & handcrafts. Same-day delivery', color: '#00A650', color2: '#007A3D' },
+    ];
+    while (list.length < 3) {
+      list.push(defaults[list.length]);
+    }
+
+    return list;
+  }, [data]);
+
+  useEffect(() => {
+    const t = setInterval(() => setBannerIdx(i => (i + 1) % dynamicBanners.length), 4000);
+    return () => clearInterval(t);
+  }, [dynamicBanners.length]);
+
   useEffect(() => {
     const t = setInterval(() => {
       setCountdown(prev => {
@@ -138,7 +181,7 @@ export default function HomeScreen() {
   if (loading && !data) return <LoadingBlock label="Loading RMF marketplace..." />;
   if (error && !data) return <ErrorBlock message={error} onRetry={refresh} />;
 
-  const banner = BANNERS[bannerIdx];
+  const banner = dynamicBanners[bannerIdx];
   const pad = (n: number) => String(n).padStart(2, '0');
 
   return (
@@ -148,8 +191,6 @@ export default function HomeScreen() {
       showsVerticalScrollIndicator={false}
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor={colors.primary} />}
     >
-
-      {/* ── Rotating Banner Carousel ─────────────────────────────────────── */}
       <View style={[styles.banner, { backgroundColor: banner.color }]}>
         <View style={[styles.bannerBlob, { backgroundColor: banner.color2 }]} />
         <View style={styles.bannerLeft}>
@@ -161,16 +202,21 @@ export default function HomeScreen() {
           <Text style={styles.bannerSub}>{banner.sub}</Text>
           <TouchableOpacity
             style={styles.bannerBtn}
-            onPress={() => router.push('/products' as any)}
+            onPress={() => {
+              if (banner.productId) {
+                router.push(`/product/${banner.productId}` as any);
+              } else {
+                router.push('/products' as any);
+              }
+            }}
             activeOpacity={0.85}
           >
             <Text style={styles.bannerBtnText}>Shop Now</Text>
             <ArrowRight color={banner.color} size={12} />
           </TouchableOpacity>
         </View>
-        {/* Dots */}
         <View style={styles.bannerDots}>
-          {BANNERS.map((_, i) => (
+          {dynamicBanners.map((_, i) => (
             <TouchableOpacity key={i} onPress={() => setBannerIdx(i)}>
               <View style={[styles.dot, i === bannerIdx && styles.dotActive]} />
             </TouchableOpacity>
@@ -178,7 +224,6 @@ export default function HomeScreen() {
         </View>
       </View>
 
-      {/* ── Quick Action Grid (8 icons like Alibaba) ─────────────────────── */}
       <View style={styles.quickGrid}>
         {QUICK_ACTIONS.map(action => {
           const Icon = action.icon;
@@ -203,7 +248,6 @@ export default function HomeScreen() {
         })}
       </View>
 
-      {/* ── Flash Deals with Countdown ───────────────────────────────────── */}
       <View style={styles.section}>
         <View style={styles.sectionHead}>
           <View style={styles.sectionTitleRow}>
@@ -233,26 +277,29 @@ export default function HomeScreen() {
             keyExtractor={item => item._id}
             showsHorizontalScrollIndicator={false}
             contentContainerStyle={styles.hRail}
-            renderItem={({ item }) => (
-              <View style={styles.dealWrap}>
-                <ProductCard
-                  product={item}
-                  style={{ width: 130 }}
-                  onPress={() => router.push(`/product/${item._id}` as any)}
-                />
-                <View style={styles.claimedBar}>
-                  <View style={[styles.claimedFill, { width: '72%' }]} />
+            renderItem={({ item }) => {
+              const hash = (item._id || '').split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+              const claimedPercent = Math.min(95, Math.max(15, 35 + (hash % 50)));
+              return (
+                <View style={styles.dealWrap}>
+                  <ProductCard
+                    product={item}
+                    style={{ width: 130 }}
+                    onPress={() => router.push(`/product/${item._id}` as any)}
+                  />
+                  <View style={styles.claimedBar}>
+                    <View style={[styles.claimedFill, { width: `${claimedPercent}%` }]} />
+                  </View>
+                  <Text style={styles.claimedLabel}>{claimedPercent}% claimed</Text>
                 </View>
-                <Text style={styles.claimedLabel}>72% claimed</Text>
-              </View>
-            )}
+              );
+            }}
           />
         ) : (
           <EmptyInline title="No live flash deals" body="Deals appear when sellers add promotions." />
         )}
       </View>
 
-      {/* ── Verified Markets Rail ─────────────────────────────────────────── */}
       <View style={styles.section}>
         <View style={styles.sectionHead}>
           <View style={styles.sectionTitleRow}>
@@ -289,7 +336,6 @@ export default function HomeScreen() {
         )}
       </View>
 
-      {/* ── Seller Video Rail ────────────────────────────────────────────── */}
       <View style={styles.section}>
         <View style={styles.sectionHead}>
           <View style={styles.sectionTitleRow}>
@@ -304,7 +350,6 @@ export default function HomeScreen() {
         <SellerVideoFeed compact />
       </View>
 
-      {/* ── Category Filter Chips + Recommended Grid ────────────────────── */}
       <View style={styles.section}>
         <View style={styles.sectionHead}>
           <View style={styles.sectionTitleRow}>
@@ -313,7 +358,6 @@ export default function HomeScreen() {
           </View>
         </View>
 
-        {/* Category chips */}
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chips}>
           <CategoryChip label="All" active={!activeCategory} onPress={() => setActiveCategory(null)} />
           {categories.slice(0, 14).map(cat => (
@@ -326,7 +370,6 @@ export default function HomeScreen() {
           ))}
         </ScrollView>
 
-        {/* 3-column product grid */}
         {filteredProducts.length ? (
           <View style={styles.productGrid}>
             {filteredProducts.slice(0, 30).map(item => (
@@ -356,8 +399,6 @@ export default function HomeScreen() {
     </ScrollView>
   );
 }
-
-// ── Sub-components ───────────────────────────────────────────────────────────
 
 function TimeBox({ value }: { value: string }) {
   return (
@@ -389,12 +430,9 @@ function EmptyInline({ title, body }: { title: string; body: string }) {
   );
 }
 
-// ── Styles ───────────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.bg },
   content: { paddingBottom: 100 },
-
-  // Banner
   banner: {
     marginHorizontal: 12,
     marginTop: 12,
@@ -448,8 +486,6 @@ const styles = StyleSheet.create({
   },
   dot: { width: 5, height: 5, borderRadius: 3, backgroundColor: 'rgba(255,255,255,0.4)' },
   dotActive: { backgroundColor: '#fff', width: 14 },
-
-  // Quick actions
   quickGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -491,8 +527,6 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     lineHeight: 13,
   },
-
-  // Sections
   section: {
     marginTop: 10,
     backgroundColor: colors.card,
@@ -528,8 +562,6 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '600',
   },
-
-  // Countdown
   countdown: { flexDirection: 'row', alignItems: 'center', gap: 3, marginLeft: 8 },
   timeBox: {
     backgroundColor: colors.ink,
@@ -541,8 +573,6 @@ const styles = StyleSheet.create({
   },
   timeText: { color: '#fff', fontSize: 10, fontWeight: '900' },
   colon: { color: colors.ink, fontWeight: '900', fontSize: 11 },
-
-  // Horizontal rails
   hRail: { paddingHorizontal: 12, gap: 8 },
   dealWrap: { gap: 5 },
   claimedBar: {
@@ -557,8 +587,6 @@ const styles = StyleSheet.create({
     borderRadius: 2,
   },
   claimedLabel: { color: colors.muted, fontSize: 9, fontWeight: '600' },
-
-  // Category chips
   chips: { paddingHorizontal: 12, gap: 7 },
   chip: {
     height: 28,
@@ -575,8 +603,6 @@ const styles = StyleSheet.create({
   },
   chipText: { color: colors.muted, fontSize: 12, fontWeight: '600' },
   chipTextActive: { color: colors.primary },
-
-  // Product grid
   productGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -596,8 +622,6 @@ const styles = StyleSheet.create({
     borderRadius: 999,
   },
   loadMoreText: { color: colors.primary, fontSize: 13, fontWeight: '700' },
-
-  // Empty
   emptyInline: {
     minHeight: 90,
     marginHorizontal: 12,

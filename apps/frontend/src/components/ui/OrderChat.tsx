@@ -8,12 +8,15 @@ import { useAuth } from '@/context/AuthContext';
 import { useSocket } from '@/hooks/useSocket';
 import { ImageUpload } from './ImageUpload';
 import { toast } from 'react-hot-toast';
+import { resolveUploadUrl } from '@/lib/uploadUrls';
 
 const MapPinPicker = dynamic(() => import('./MapPinPicker').then(mod => mod.MapPinPicker), { ssr: false });
 
 interface Message {
   senderId: string;
-  senderRole: 'BUYER' | 'SELLER';
+  senderRole: 'BUYER' | 'SELLER' | 'RIDER' | 'ADMIN';
+  channel?: 'ORDER' | 'DELIVERY' | 'DISPUTE';
+  recipientRole?: 'BUYER' | 'SELLER' | 'RIDER' | 'ADMIN';
   content: string;
   imageUrl?: string;
   type?: 'TEXT' | 'QUOTE' | 'COUNTER_QUOTE';
@@ -31,10 +34,12 @@ interface OrderChatProps {
   marketId?: string;
   deliveryAddress?: { address?: string; coordinates?: { lat?: number | string; lng?: number | string } };
   deliveryFee?: number;
+  channel?: 'ORDER' | 'DELIVERY' | 'DISPUTE';
   onOrderUpdated?: () => void;
 }
 
 const NEGOTIATION_STATUSES = ['awaiting_quote', 'quote_sent'];
+const CLOSED_STATUSES = ['delivered', 'resolved', 'completed', 'closed', 'cancelled'];
 const normalizeCoordinates = (coords?: { lat?: number | string; lng?: number | string } | null) => {
   const lat = Number(coords?.lat);
   const lng = Number(coords?.lng);
@@ -51,10 +56,15 @@ export const OrderChat: React.FC<OrderChatProps> = ({
   paymentStatus, 
   deliveryAddress, 
   deliveryFee: initialDeliveryFee,
+  channel = 'ORDER',
   onOrderUpdated
 }) => {
   const { user } = useAuth();
-  const [messages, setMessages] = useState<Message[]>(initialMessages);
+  const filterMessages = React.useCallback(
+    (items: Message[] = []) => items.filter(message => (message.channel || 'ORDER') === channel),
+    [channel]
+  );
+  const [messages, setMessages] = useState<Message[]>(() => filterMessages(initialMessages));
   const [newMessage, setNewMessage] = useState('');
   const [quotePrice, setQuotePrice] = useState<string>('');
   const [counterPrice, setCounterPrice] = useState<string>('');
@@ -104,10 +114,11 @@ export const OrderChat: React.FC<OrderChatProps> = ({
   }, [selectedCoords, marketCoords]);
 
   // Determine if we're in a negotiation phase
+  const isClosed = CLOSED_STATUSES.includes(String(orderStatus || '').toLowerCase());
   const isNegotiationPhase = NEGOTIATION_STATUSES.includes(orderStatus || '') ||
     (orderStatus === 'placed' && paymentStatus !== 'paid');
-  const canSendQuote = userRole === 'SELLER' && isNegotiationPhase;
-  const canPickLocation = userRole === 'BUYER' && isNegotiationPhase;
+  const canSendQuote = !isClosed && userRole === 'SELLER' && isNegotiationPhase;
+  const canPickLocation = !isClosed && userRole === 'BUYER' && isNegotiationPhase;
   const hasValidLocation = selectedCoords && selectedCoords.lat !== 0 && selectedCoords.lng !== 0;
 
   // Subscribe to real-time updates
@@ -118,6 +129,7 @@ export const OrderChat: React.FC<OrderChatProps> = ({
 
   useEffect(() => {
     if (socketData?.type === 'NEW_MESSAGE' && socketData.message) {
+      if ((socketData.message.channel || 'ORDER') !== channel) return;
       setMessages(prev => {
         const exists = prev.some(m => m.timestamp === socketData.message.timestamp);
         if (exists) return prev;
@@ -128,11 +140,11 @@ export const OrderChat: React.FC<OrderChatProps> = ({
       setCurrentDeliveryFee(socketData.deliveryFee);
       setSelectedCoords(socketData.coordinates);
     }
-  }, [socketData]);
+  }, [channel, socketData]);
 
   useEffect(() => {
-    setMessages(initialMessages);
-  }, [initialMessages]);
+    setMessages(filterMessages(initialMessages));
+  }, [filterMessages, initialMessages]);
 
   useEffect(() => {
     setSelectedCoords(normalizeCoordinates(deliveryAddress?.coordinates));
@@ -146,6 +158,7 @@ export const OrderChat: React.FC<OrderChatProps> = ({
   }, [messages]);
 
   const handleSendMessage = async (content: string, imageUrl?: string) => {
+    if (isClosed) return toast.error('This order is closed. Messages are locked.');
     if ((!content.trim() && !imageUrl) || !user) return;
 
     setIsSending(true);
@@ -155,12 +168,14 @@ export const OrderChat: React.FC<OrderChatProps> = ({
         senderRole: userRole,
         content: content.trim() || (imageUrl ? 'Sent an image' : ''),
         imageUrl,
+        channel,
+        recipientRole: userRole === 'BUYER' ? 'SELLER' : 'BUYER',
         type: 'TEXT'
       });
 
       if (response.data.success) {
         const lastMsg = response.data.data.messages[response.data.data.messages.length - 1];
-        setMessages(prev => [...prev, lastMsg]);
+        setMessages(prev => prev.some(message => message.timestamp === lastMsg.timestamp) ? prev : [...prev, lastMsg]);
         setNewMessage('');
       }
     } catch (error) {
@@ -433,7 +448,7 @@ export const OrderChat: React.FC<OrderChatProps> = ({
                   >
                     {msg.imageUrl && (
                       <div className="relative group border-b border-inherit">
-                        <img src={msg.imageUrl} alt="Attachment" className="w-full max-h-80 object-cover" />
+                        <img src={resolveUploadUrl(msg.imageUrl, 'order')} alt="Attachment" className="w-full max-h-80 object-cover" />
                         <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors"></div>
                       </div>
                     )}
@@ -530,7 +545,12 @@ export const OrderChat: React.FC<OrderChatProps> = ({
 
           {/* Tactical Control Matrix */}
           <div className="space-y-5 border-t border-[#e0e0e0] bg-white p-5">
-            {isQuoting ? (
+            {isClosed ? (
+              <div className="rounded-md border border-[#dfe7e2] bg-[#f5f7f6] px-5 py-4 text-center">
+                <p className="text-[10px] font-black uppercase tracking-[0.18em] text-[#405046]">Order closed</p>
+                <p className="mt-1 text-xs font-semibold text-[#5f7569]">All order steps are complete. Messaging is locked for security.</p>
+              </div>
+            ) : isQuoting ? (
               <div className="space-y-6 animate-reveal">
                  <div className="flex items-center gap-6">
                     <div className="flex-1 relative">

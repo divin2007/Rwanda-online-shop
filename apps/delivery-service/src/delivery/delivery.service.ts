@@ -15,6 +15,7 @@ const DELIVERY_TRANSITIONS: Record<string, string[]> = {
   [DeliveryStatus.DELIVERED]: [],
   [DeliveryStatus.FAILED]: []
 };
+const MANUAL_REBROADCAST_WAIT_MS = 5 * 60 * 1000;
 
 @Injectable()
 export class DeliveryService {
@@ -54,13 +55,6 @@ export class DeliveryService {
     const fee = Math.ceil(route.distanceKm / 5) * 500;
 
     return { fee, route };
-  }
-
-  private radiusSearchSurcharge(radiusMeters: number): number {
-    if (radiusMeters <= 1000) return 0;
-    if (radiusMeters <= 8000) return 500;
-    if (radiusMeters <= 16000) return 800;
-    return 800 + Math.ceil((radiusMeters - 16000) / 8000) * 800;
   }
 
   private async syncOrderDeliveryFee(orderId: any, deliveryFee: number, searchSurcharge: number, radiusMeters: number) {
@@ -120,24 +114,17 @@ export class DeliveryService {
       return;
     }
 
-    const stepMeters = Number(delivery.dispatch?.stepMeters || process.env.RIDER_BROADCAST_STEP_METERS || 50);
-    const maxRadiusMeters = Number(delivery.dispatch?.maxRadiusMeters || process.env.RIDER_BROADCAST_MAX_RADIUS_METERS || 24000);
-    const currentRadiusMeters = Math.min(
-      maxRadiusMeters,
-      Number(delivery.dispatch?.currentRadiusMeters || process.env.RIDER_BROADCAST_INITIAL_RADIUS_METERS || 150)
-    );
     const baseDeliveryFee = Number(
       delivery.financials?.baseDeliveryFee
       || delivery.financials?.deliveryFee
       || process.env.MIN_DELIVERY_FEE
       || 500
     );
-    const searchSurcharge = this.radiusSearchSurcharge(currentRadiusMeters);
-    const deliveryFee = baseDeliveryFee + searchSurcharge;
 
+    const searchSurcharge = 0;
+    const deliveryFee = baseDeliveryFee;
     const payload = delivery.toObject ? delivery.toObject() : delivery;
-    const result = this.deliveryGateway.broadcastToNearbyRiders(payload, coords.lat, coords.lng, {
-      radiusMeters: currentRadiusMeters,
+    const result = this.deliveryGateway.broadcastToActiveRiders(payload, coords.lat, coords.lng, {
       searchSurcharge,
       deliveryFee,
     });
@@ -145,18 +132,17 @@ export class DeliveryService {
     const existingNotified = new Set((delivery.dispatch?.notifiedRiderIds || []).map((id: any) => String(id)));
     const newRiderIds = result.riderIds.filter(id => !existingNotified.has(String(id)));
 
-    const nextRadiusMeters = Math.min(maxRadiusMeters, currentRadiusMeters + stepMeters);
     await this.deliveryModel.findByIdAndUpdate(deliveryId, {
       $set: {
         'financials.baseDeliveryFee': baseDeliveryFee,
         'financials.deliveryFee': deliveryFee,
         'financials.searchSurcharge': searchSurcharge,
-        'dispatch.strategy': 'ADAPTIVE_RADIUS',
-        'dispatch.initialRadiusMeters': delivery.dispatch?.initialRadiusMeters || 150,
-        'dispatch.currentRadiusMeters': nextRadiusMeters,
-        'dispatch.nextRadiusMeters': Math.min(maxRadiusMeters, nextRadiusMeters + stepMeters),
-        'dispatch.stepMeters': stepMeters,
-        'dispatch.maxRadiusMeters': maxRadiusMeters,
+        'dispatch.strategy': 'GLOBAL_ACTIVE_RIDERS',
+        'dispatch.initialRadiusMeters': null,
+        'dispatch.currentRadiusMeters': null,
+        'dispatch.nextRadiusMeters': null,
+        'dispatch.stepMeters': null,
+        'dispatch.maxRadiusMeters': null,
         'dispatch.lastBroadcastAt': new Date(),
       },
       $inc: { 'dispatch.broadcastCount': 1 },
@@ -164,7 +150,7 @@ export class DeliveryService {
     });
 
     if (searchSurcharge !== Number(delivery.financials?.searchSurcharge || 0)) {
-      this.syncOrderDeliveryFee(delivery.orderId, deliveryFee, searchSurcharge, currentRadiusMeters).catch(() => {});
+      this.syncOrderDeliveryFee(delivery.orderId, deliveryFee, searchSurcharge, 0).catch(() => {});
     }
 
     for (const riderId of newRiderIds) {
@@ -173,12 +159,12 @@ export class DeliveryService {
         orderId: delivery.orderId,
         referenceId: delivery._id,
         referenceType: 'Delivery',
-        radiusMeters: currentRadiusMeters,
+        broadcastMode: 'GLOBAL_ACTIVE_RIDERS',
         deliveryFee,
       });
     }
 
-    if (currentRadiusMeters < maxRadiusMeters) {
+    if (delivery.status === DeliveryStatus.ASSIGNED && !delivery.rider?.riderId) {
       this.scheduleAdaptiveBroadcast(deliveryId, Number(process.env.RIDER_BROADCAST_INTERVAL_MS || 10000));
     } else {
       this.clearDispatchTimer(deliveryId);
@@ -232,12 +218,12 @@ export class DeliveryService {
         searchSurcharge: 0,
       },
       dispatch: {
-        strategy: 'ADAPTIVE_RADIUS',
-        initialRadiusMeters: Number(process.env.RIDER_BROADCAST_INITIAL_RADIUS_METERS || 150),
-        currentRadiusMeters: Number(process.env.RIDER_BROADCAST_INITIAL_RADIUS_METERS || 150),
-        nextRadiusMeters: Number(process.env.RIDER_BROADCAST_INITIAL_RADIUS_METERS || 150) + Number(process.env.RIDER_BROADCAST_STEP_METERS || 50),
-        stepMeters: Number(process.env.RIDER_BROADCAST_STEP_METERS || 50),
-        maxRadiusMeters: Number(process.env.RIDER_BROADCAST_MAX_RADIUS_METERS || 24000),
+        strategy: 'GLOBAL_ACTIVE_RIDERS',
+        initialRadiusMeters: null,
+        currentRadiusMeters: null,
+        nextRadiusMeters: null,
+        stepMeters: null,
+        maxRadiusMeters: null,
         broadcastCount: 0,
         notifiedRiderIds: [],
       },
@@ -247,7 +233,7 @@ export class DeliveryService {
 
     const saved = await delivery.save();
     
-    // Adaptive dispatch starts at 150m around the pickup stall and expands until a rider accepts.
+    // Dispatch broadcasts to every fresh, connected rider until one accepts.
     try {
       this.scheduleAdaptiveBroadcast(String(saved._id), 0);
     } catch (e) {
@@ -269,9 +255,13 @@ export class DeliveryService {
     }
   }
 
-  async updateStatus(id: string, newStatus: DeliveryStatus): Promise<any> {
+  async updateStatus(id: string, newStatus: DeliveryStatus, actorUserId?: string): Promise<any> {
     const delivery = await this.deliveryModel.findById(id);
     if (!delivery) throw new NotFoundException('Delivery not found');
+
+    if (actorUserId && actorUserId !== 'internal-service' && newStatus === DeliveryStatus.DELIVERED && String(delivery.rider?.userId || '') !== String(actorUserId)) {
+      throw new BadRequestException('Only the assigned rider can complete this delivery');
+    }
 
     this.validateTransition(delivery.status, newStatus);
 
@@ -309,9 +299,9 @@ export class DeliveryService {
           const orderUrl = process.env.ORDER_SERVICE_URL || 'http://localhost:3006/api/v1';
           const secret = process.env.INTERNAL_SERVICE_SECRET;
           const headers = secret ? { 'x-internal-service-key': secret } : {};
-          axios.put(`${orderUrl}/orders/${updatedDelivery.orderId}/status`, { 
+          axios.put(`${orderUrl}/orders/${updatedDelivery.orderId}/status`, {
             status: orderStatus, 
-            userId: delivery.rider?.userId || 'system' 
+            userId: delivery.rider?.userId || 'internal-service'
           }, { headers }).then(() => console.log(`Successfully updated order ${updatedDelivery.orderId} to ${orderStatus}`))
             .catch((e: any) => { console.error(`Failed to update order ${updatedDelivery.orderId} to ${orderStatus}:`, e.message); });
         } catch(err: any) {
@@ -323,9 +313,17 @@ export class DeliveryService {
     return updatedDelivery;
   }
 
-  async photoVerifiedPickup(id: string, photoUrl: string, qrData: string): Promise<any> {
+  async completeDelivery(id: string, actorUserId: string): Promise<any> {
+    return this.updateStatus(id, DeliveryStatus.DELIVERED, actorUserId);
+  }
+
+  async photoVerifiedPickup(id: string, photoUrl: string, qrData: string, actorUserId?: string): Promise<any> {
     const delivery = await this.deliveryModel.findById(id);
     if (!delivery) throw new NotFoundException('Delivery not found');
+
+    if (actorUserId && String(delivery.rider?.userId || '') !== String(actorUserId)) {
+      throw new BadRequestException('Only the assigned rider can verify pickup for this delivery');
+    }
     
     if (delivery.status !== DeliveryStatus.EN_ROUTE_TO_PICKUP) {
       throw new StateConflictError('Must be EN_ROUTE_TO_PICKUP to perform pickup');
@@ -333,6 +331,10 @@ export class DeliveryService {
 
     if (!photoUrl) {
       throw new BadRequestException('Photo evidence of packaged goods is required before pickup');
+    }
+
+    if (!qrData) {
+      throw new BadRequestException('A scanned stall QR payload is required before pickup');
     }
 
     // Validate QR code matches stall
@@ -350,6 +352,8 @@ export class DeliveryService {
         $set: { 
           status: DeliveryStatus.PENDING_HANDOVER,
           'pickup.qrScannedAt': new Date(),
+          'pickup.qrVerifiedBy': actorUserId || delivery.rider?.userId,
+          'pickup.qrPayload': qrData,
           'pickup.pickupPhotoUrl': photoUrl
         } 
       },
@@ -508,9 +512,13 @@ export class DeliveryService {
     return updatedDelivery;
   }
 
-  async confirmHandover(id: string, role: 'seller' | 'rider'): Promise<any> {
+  async confirmHandover(id: string, role: 'seller' | 'rider', actorUserId?: string): Promise<any> {
     const delivery = await this.deliveryModel.findById(id);
     if (!delivery) throw new NotFoundException('Delivery not found');
+
+    if (role === 'rider' && actorUserId && String(delivery.rider?.userId || '') !== String(actorUserId)) {
+      throw new BadRequestException('Only the assigned rider can confirm rider handover');
+    }
 
     const updateField = role === 'seller' ? 'pickup.sellerConfirmed' : 'pickup.riderConfirmed';
     
@@ -528,7 +536,7 @@ export class DeliveryService {
 
     // If both confirmed, move to PICKED_UP
     if (updatedDelivery.pickup.sellerConfirmed && updatedDelivery.pickup.riderConfirmed) {
-      return await this.updateStatus(id, DeliveryStatus.PICKED_UP);
+      return await this.updateStatus(id, DeliveryStatus.PICKED_UP, 'internal-service');
     }
 
     return updatedDelivery;
@@ -578,6 +586,61 @@ export class DeliveryService {
     }
 
     return delivery;
+  }
+
+  async rebroadcastDelivery(id: string): Promise<any> {
+    if (!id.match(/^[0-9a-fA-F]{24}$/)) {
+      throw new BadRequestException('Invalid delivery ID format');
+    }
+
+    const delivery = await this.deliveryModel.findOne({
+      _id: id,
+      status: DeliveryStatus.ASSIGNED,
+      $and: [
+        {
+          $or: [
+            { 'rider.riderId': { $exists: false } },
+            { 'rider.riderId': null },
+          ],
+        },
+        {
+          $or: [
+            { 'rider.userId': { $exists: false } },
+            { 'rider.userId': null },
+          ],
+        },
+      ],
+    }).exec();
+
+    if (!delivery) {
+      const exists = await this.deliveryModel.findById(id).exec();
+      if (!exists) {
+        throw new NotFoundException(`Delivery ${id} not found`);
+      }
+      throw new ConflictException('Delivery already has a rider or is not waiting for assignment');
+    }
+
+    const waitingSince = delivery.dispatch?.lastBroadcastAt || delivery.createdAt;
+    const waitingMs = waitingSince ? Date.now() - new Date(waitingSince).getTime() : 0;
+    if (waitingMs < MANUAL_REBROADCAST_WAIT_MS) {
+      throw new ConflictException('Manual rebroadcast is available after 5 minutes without rider acceptance');
+    }
+
+    await this.deliveryModel.findByIdAndUpdate(id, {
+      $set: {
+        'dispatch.strategy': 'GLOBAL_ACTIVE_RIDERS',
+        'dispatch.initialRadiusMeters': null,
+        'dispatch.currentRadiusMeters': null,
+        'dispatch.nextRadiusMeters': null,
+        'dispatch.stepMeters': null,
+        'dispatch.maxRadiusMeters': null,
+        'dispatch.manualRebroadcastAt': new Date(),
+      },
+      $inc: { 'dispatch.manualRebroadcastCount': 1 },
+    }).exec();
+
+    this.scheduleAdaptiveBroadcast(id, 0);
+    return this.deliveryModel.findById(id).exec();
   }
 
   async getHistory(userId: string): Promise<any[]> {

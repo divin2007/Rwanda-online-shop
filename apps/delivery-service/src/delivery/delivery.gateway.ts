@@ -4,14 +4,57 @@ import { DeliveryService } from './delivery.service';
 import { forwardRef, Inject, Logger } from '@nestjs/common';
 import * as crypto from 'crypto';
 
+const DEFAULT_SOCKET_ORIGINS = 'http://localhost:3000,http://127.0.0.1:3000,https://rwshop.org,https://www.rwshop.org';
+
+function getAllowedSocketOrigins(): string[] {
+  return (process.env.ALLOWED_ORIGINS || process.env.CORS_ORIGIN || DEFAULT_SOCKET_ORIGINS)
+    .split(',')
+    .map(origin => origin.trim())
+    .filter(Boolean);
+}
+
+function parseOrigin(origin: string): URL | null {
+  try {
+    return new URL(origin);
+  } catch {
+    return null;
+  }
+}
+
+function matchesAllowedOrigin(origin: string): boolean {
+  const allowedOrigins = getAllowedSocketOrigins();
+  if (allowedOrigins.includes('*')) return true;
+  if (allowedOrigins.includes(origin)) return true;
+
+  const parsedOrigin = parseOrigin(origin);
+  if (!parsedOrigin) return false;
+
+  return allowedOrigins.some((allowedOrigin) => {
+    const parsedAllowed = parseOrigin(allowedOrigin);
+    if (!parsedAllowed || parsedAllowed.protocol !== parsedOrigin.protocol) return false;
+    if (parsedAllowed.port && parsedAllowed.port !== parsedOrigin.port) return false;
+
+    const allowedHost = parsedAllowed.hostname.toLowerCase();
+    const originHost = parsedOrigin.hostname.toLowerCase();
+
+    if (allowedHost === originHost) return true;
+
+    const allowsLocalhostTenant =
+      (allowedHost === 'localhost' || allowedHost === '127.0.0.1') &&
+      (originHost === 'localhost' || originHost.endsWith('.localhost'));
+
+    const allowsRwshopTenant =
+      (allowedHost === 'rwshop.org' || allowedHost.endsWith('.rwshop.org')) &&
+      (originHost === 'rwshop.org' || originHost.endsWith('.rwshop.org'));
+
+    return allowsLocalhostTenant || allowsRwshopTenant;
+  });
+}
+
 @WebSocketGateway({
   cors: {
     origin: (origin: any, cb: any) => {
-      const allowed = (process.env.ALLOWED_ORIGINS || 'http://localhost:3000,http://localhost:3001')
-        .split(',')
-        .map(o => o.trim());
-      // Allow if no origin (server-to-server) or if explicitly listed
-      if (!origin || allowed.some(o => o === '*' || origin.startsWith(o))) {
+      if (!origin || matchesAllowedOrigin(origin)) {
         return cb(null, true);
       }
       return cb(new Error(`CORS: origin ${origin} not allowed`), false);
@@ -159,30 +202,30 @@ export class DeliveryGateway implements OnGatewayConnection, OnGatewayDisconnect
     return R * c;
   }
 
-  // Broadcast only to currently connected riders inside the adaptive pickup radius.
-  broadcastToNearbyRiders(
+  // Broadcast to currently connected riders. Distance is informational only and
+  // does not block the assignment offer.
+  broadcastToActiveRiders(
     deliveryReq: any,
     marketLat: number,
     marketLng: number,
-    options: { radiusMeters?: number; searchSurcharge?: number; deliveryFee?: number } = {}
+    options: { searchSurcharge?: number; deliveryFee?: number } = {}
   ): { notifiedCount: number; riderIds: string[] } {
-    const radiusMeters = Math.max(50, Number(options.radiusMeters || 150));
     const maxLocationAgeMs = Number(process.env.RIDER_LOCATION_MAX_AGE_MS || 120000);
     let notifiedCount = 0;
     const riderIds: string[] = [];
-    this.logger.log(`Starting ${radiusMeters}m broadcast for delivery ${deliveryReq.orderNumber}. Active riders: ${this.activeRiders.size}`);
+    this.logger.log(`Starting global broadcast for delivery ${deliveryReq.orderNumber}. Active riders: ${this.activeRiders.size}`);
     
     for (const [riderId, data] of this.activeRiders.entries()) {
       try {
         if (!Number.isFinite(data.lat) || !Number.isFinite(data.lng)) continue;
         if (Date.now() - Number(data.updatedAt || 0) > maxLocationAgeMs) continue;
         const distanceMeters = this.getDistanceMeters(marketLat, marketLng, data.lat, data.lng);
-        if (distanceMeters > radiusMeters) continue;
         this.server.to(data.socketId).emit('delivery:assigned', {
           ...deliveryReq,
           dispatch: {
             ...(deliveryReq.dispatch || {}),
-            radiusMeters,
+            broadcastMode: 'GLOBAL_ACTIVE_RIDERS',
+            radiusMeters: null,
             searchSurcharge: options.searchSurcharge || 0,
             deliveryFee: options.deliveryFee,
           },
@@ -200,7 +243,7 @@ export class DeliveryGateway implements OnGatewayConnection, OnGatewayDisconnect
         this.logger.error(`Failed to emit to rider ${riderId} on socket ${data.socketId}`, err);
       }
     }
-    this.logger.log(`Broadcasted delivery request to ${notifiedCount} rider(s) inside ${radiusMeters}m.`);
+    this.logger.log(`Broadcasted delivery request to ${notifiedCount} rider(s) globally.`);
     return { notifiedCount, riderIds };
   }
 }

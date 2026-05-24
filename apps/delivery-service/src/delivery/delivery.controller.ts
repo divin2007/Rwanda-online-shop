@@ -23,6 +23,15 @@ import type { Coordinates } from '@rmf/location';
 import { DeliveryStatus } from '@rmf/shared-types';
 import { Public, JwtAuthGuard } from '@rmf/auth';
 
+function verifyInternalSecret(req: any): void {
+  const secret = process.env.INTERNAL_SERVICE_SECRET;
+  if (!secret) return;
+  const provided = req.headers?.['x-internal-service-key'] || req.headers?.['x-internal-secret'];
+  if (provided !== secret) {
+    throw new ForbiddenException('Valid internal service key required');
+  }
+}
+
 @Controller('deliveries')
 export class DeliveryController {
   constructor(private readonly deliveryService: DeliveryService) {}
@@ -33,6 +42,7 @@ export class DeliveryController {
     return { success: true, data: feeInfo };
   }
 
+  @Public()
   @Get('available')
   async getAvailable() {
     const deliveries = await this.deliveryService.getAvailableDeliveries();
@@ -76,6 +86,7 @@ export class DeliveryController {
     return { success: true, data: delivery };
   }
 
+  @Public()
   @Post()
   async create(@Body() data: any) {
     const delivery = await this.deliveryService.createDelivery(data);
@@ -97,15 +108,28 @@ export class DeliveryController {
   }
 
   @UseGuards(JwtAuthGuard)
-  @Patch(':id/complete')
-  async complete(@Param('id') id: string) {
-    const delivery = await this.deliveryService.updateStatus(id, DeliveryStatus.DELIVERED);
+  @Post(':id/rebroadcast')
+  async rebroadcast(@Param('id') id: string, @Request() req: any) {
+    const role = String(req.user?.role || '').toUpperCase();
+    if (role !== 'SELLER' && role !== 'ADMIN') {
+      throw new ForbiddenException('Only sellers or admins can rebroadcast delivery requests');
+    }
+    const delivery = await this.deliveryService.rebroadcastDelivery(id);
     return { success: true, data: delivery };
   }
 
+  @UseGuards(JwtAuthGuard)
+  @Patch(':id/complete')
+  async complete(@Param('id') id: string, @Request() req: any) {
+    const delivery = await this.deliveryService.completeDelivery(id, req.user?.userId);
+    return { success: true, data: delivery };
+  }
+
+  @UseGuards(JwtAuthGuard)
   @Post(':id/scan-qr')
-  async scanQr(@Param('id') id: string, @Body() data: { stallId: string; photoUrl?: string }) {
-    const delivery = await this.deliveryService.photoVerifiedPickup(id, data.photoUrl || '', `marketrwanda:stall:${data.stallId}`);
+  async scanQr(@Param('id') id: string, @Body() data: { qrData?: string; stallId?: string; photoUrl?: string }, @Request() req: any) {
+    const scannedPayload = data.qrData || '';
+    const delivery = await this.deliveryService.photoVerifiedPickup(id, data.photoUrl || '', scannedPayload, req.user?.userId);
     return { success: true, data: delivery };
   }
 
@@ -122,7 +146,8 @@ export class DeliveryController {
     const extension = extname(file.originalname || '') || this.extensionFromMime(file.mimetype);
     const fileName = `${randomUUID()}${extension}`;
     writeFileSync(join(uploadDir, fileName), file.buffer);
-    const publicBaseUrl = process.env.DELIVERY_SERVICE_PUBLIC_URL || `http://localhost:${process.env.PORT || 3008}`;
+    const port = (process.env.PORT && process.env.PORT !== '3000') ? process.env.PORT : 3008;
+    const publicBaseUrl = process.env.DELIVERY_SERVICE_PUBLIC_URL || `http://localhost:${port}`;
     return { success: true, data: { url: `${publicBaseUrl}/uploads/pickup-photos/${fileName}` } };
   }
 
@@ -138,15 +163,23 @@ export class DeliveryController {
 
   @UseGuards(JwtAuthGuard)
   @Put(':id/status')
-  async updateStatus(@Param('id') id: string, @Body() body: { status: DeliveryStatus }) {
-    const delivery = await this.deliveryService.updateStatus(id, body.status);
+  async updateStatus(@Param('id') id: string, @Body() body: { status: DeliveryStatus }, @Request() req: any) {
+    const delivery = await this.deliveryService.updateStatus(id, body.status, req.user?.userId);
+    return { success: true, data: delivery };
+  }
+
+  @Public()
+  @Put(':id/internal/status')
+  async updateStatusInternal(@Param('id') id: string, @Body() body: { status: DeliveryStatus }, @Request() req: any) {
+    verifyInternalSecret(req);
+    const delivery = await this.deliveryService.updateStatus(id, body.status, 'internal-service');
     return { success: true, data: delivery };
   }
 
   @UseGuards(JwtAuthGuard)
   @Post(':id/pickup')
-  async pickup(@Param('id') id: string, @Body() body: { photoUrl: string; qrData: string }) {
-    const delivery = await this.deliveryService.photoVerifiedPickup(id, body.photoUrl, body.qrData);
+  async pickup(@Param('id') id: string, @Body() body: { photoUrl: string; qrData: string }, @Request() req: any) {
+    const delivery = await this.deliveryService.photoVerifiedPickup(id, body.photoUrl, body.qrData, req.user?.userId);
     return { success: true, data: delivery };
   }
 
@@ -159,8 +192,10 @@ export class DeliveryController {
 
   @UseGuards(JwtAuthGuard)
   @Post(':id/handover')
-  async confirmHandover(@Param('id') id: string, @Body() body: { role: 'seller' | 'rider' }) {
-    const delivery = await this.deliveryService.confirmHandover(id, body.role);
+  async confirmHandover(@Param('id') id: string, @Body() body: { role: 'seller' | 'rider' }, @Request() req: any) {
+    const jwtRole = String(req.user?.role || '').toUpperCase();
+    const role = jwtRole === 'RIDER' ? 'rider' : jwtRole === 'SELLER' ? 'seller' : body.role;
+    const delivery = await this.deliveryService.confirmHandover(id, role, req.user?.userId);
     return { success: true, data: delivery };
   }
 }

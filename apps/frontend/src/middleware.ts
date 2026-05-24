@@ -15,6 +15,8 @@ const PLATFORM_ROUTES = [
   '/admin',
   '/markets',
   '/market',
+  '/product',
+  '/products',
   '/settings',
   '/wallet',
   '/wishlist',
@@ -28,11 +30,21 @@ const PLATFORM_ROUTES = [
 
 const isIpv4Host = (hostname: string) => /^(?:\d{1,3}\.){3}\d{1,3}$/.test(hostname);
 
+const apexHostFor = (hostname: string, hostWithPort: string) => {
+  if (hostname.endsWith('.localhost')) return 'localhost:3000';
+  if (hostname.endsWith('.onrender.com')) return hostWithPort.replace(/^[^.]+\./, '');
+  const parts = hostname.split('.');
+  return parts.length >= 3 ? parts.slice(-2).join('.') : hostWithPort;
+};
+
+const protocolFor = (hostWithPort: string) => hostWithPort.includes('localhost') ? 'http' : 'https';
+
 export function middleware(req: NextRequest) {
     const url = req.nextUrl.clone();
     const hostname = req.headers.get('host') || '';
     const cleanHostname = hostname.replace(/:\d+$/, '');
     const isIpHost = isIpv4Host(cleanHostname);
+    const isLocalhost = cleanHostname === 'localhost' || cleanHostname.endsWith('.localhost') || isIpHost;
     
     // REDIRECT: If someone visits /market/[slug] directly on the main domain, redirect to subdomain
     if (url.pathname.startsWith('/market/')) {
@@ -40,13 +52,21 @@ export function middleware(req: NextRequest) {
       if (parts.length >= 3) {
         const slug = parts[2];
         const remainingPath = parts.slice(3).join('/');
+
+        if (parts[3] === 'product' && parts[4]) {
+          const apexHost = apexHostFor(cleanHostname, hostname);
+          return NextResponse.redirect(new URL(`/product/${parts[4]}`, `${protocolFor(apexHost)}://${apexHost}`));
+        }
         
-        if (!hostname.includes(`${slug}.`) && !isIpHost) {
-          const newHost = hostname.includes('localhost')
-            ? `${slug}.localhost:3000` 
-            : `${slug}.rwshop.org`;
+        if ((cleanHostname === 'localhost' || isIpHost) && slug) {
+          const remaining = remainingPath ? `/${remainingPath}` : '/';
+          return NextResponse.redirect(new URL(remaining, `${protocolFor(hostname)}://${slug}.localhost${hostname.includes(':') ? ':' + hostname.split(':').pop() : ''}`));
+        }
+
+        if (!hostname.includes(`${slug}.`) && !isLocalhost) {
+          const newHost = `${slug}.rwshop.org`;
           
-          return NextResponse.redirect(new URL(`/${remainingPath}`, `http://${newHost}`));
+          return NextResponse.redirect(new URL(`/${remainingPath}`, `${protocolFor(newHost)}://${newHost}`));
         }
       }
     }
@@ -85,6 +105,22 @@ export function middleware(req: NextRequest) {
     subdomain = hostParts[0];
   }
 
+  if (subdomain && (url.pathname === '/product' || url.pathname.startsWith('/product/'))) {
+    return NextResponse.next();
+  }
+
+  if (subdomain && cleanHostname.endsWith('.localhost')) {
+    const isPlatformRoute = PLATFORM_ROUTES.some(route => 
+      url.pathname === route || url.pathname.startsWith(route + '/')
+    );
+    if (isPlatformRoute) {
+      const apexHost = apexHostFor(cleanHostname, hostname);
+      return NextResponse.redirect(new URL(url.pathname + url.search, `${protocolFor(apexHost)}://${apexHost}`));
+    }
+    url.pathname = url.pathname === '/' ? `/market/${subdomain}` : `/market/${subdomain}${url.pathname}`;
+    return NextResponse.rewrite(url);
+  }
+
   if (subdomain) {
     // Check if this is a platform-wide route — if so, let it pass through unchanged
     const isPlatformRoute = PLATFORM_ROUTES.some(route => 
@@ -93,7 +129,8 @@ export function middleware(req: NextRequest) {
 
     if (isPlatformRoute) {
       // Platform routes work the same on all domains — no rewriting
-      return NextResponse.next();
+      const apexHost = apexHostFor(cleanHostname, hostname);
+      return NextResponse.redirect(new URL(url.pathname + url.search, `${protocolFor(apexHost)}://${apexHost}`));
     }
 
     // Only the root path "/" (and unknown paths) get rewritten to /market/[slug]

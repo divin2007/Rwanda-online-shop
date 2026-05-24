@@ -6,6 +6,7 @@ import { useAuth } from '@/context/AuthContext';
 import { useApi } from '@/hooks/useApi';
 import { reviewApi, sellerApi } from '@/lib/api';
 import Link from 'next/link';
+import { Star } from 'lucide-react';
 
 export default function SellerReviewsPage() {
   const { user } = useAuth();
@@ -43,8 +44,8 @@ export default function SellerReviewsPage() {
             <p className="text-text-secondary mb-8">What customers are saying about your service and products.</p>
 
             {!reviews || reviews.length === 0 ? (
-              <Card className="text-center py-20">
-                <span className="text-6xl mb-4 block">⭐</span>
+              <Card className="text-center py-20 flex flex-col items-center justify-center">
+                <Star size={64} className="text-primary mb-4 fill-primary animate-pulse" />
                 <h3 className="text-xl font-bold mb-2">No reviews yet</h3>
                 <p className="text-text-secondary">Keep providing great service to earn your first rating!</p>
               </Card>
@@ -62,9 +63,13 @@ export default function SellerReviewsPage() {
                           <p className="text-xs text-text-secondary">{new Date(review.createdAt).toLocaleDateString()} • Order: #{review.orderId?.substring(0,8).toUpperCase()}</p>
                         </div>
                       </div>
-                      <div className="flex text-status-warning">
+                      <div className="flex items-center gap-0.5 text-status-warning">
                         {[...Array(5)].map((_, i) => (
-                          <span key={i} className="text-xl">{i < review.rating ? '★' : '☆'}</span>
+                          <Star
+                            key={i}
+                            size={16}
+                            className={i < review.rating ? 'fill-status-warning text-status-warning' : 'text-border'}
+                          />
                         ))}
                       </div>
                     </div>

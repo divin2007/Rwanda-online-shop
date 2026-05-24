@@ -5,6 +5,7 @@ import { useApi } from '@/hooks/useApi';
 import { adminApi, sellerApi } from '@/lib/api';
 import { Layout } from '@/components/layout/Layout';
 import { useLanguage } from '@/context/LanguageContext';
+import { DollarSign, Package, Zap } from 'lucide-react';
 import dynamic from 'next/dynamic';
 
 const AnalyticsCharts = dynamic(() => import('@/components/ui/AnalyticsCharts').then(mod => mod.AnalyticsCharts), { ssr: false });
@@ -39,12 +40,12 @@ export default function SellerAnalyticsPage() {
         {/* ── High Level Metrics ── */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
            {[
-             { label: 'Total Revenue', val: `${summary?.salesToday?.toLocaleString() || 0} RWF`, sub: 'Lifetime sales volume', icon: '💰' },
-             { label: 'Total Orders', val: summary?.totalOrders || 0, sub: 'All processed orders', icon: '📦' },
-             { label: 'Average Prep Time', val: avgPrepTime, sub: 'Time from order to pickup', icon: '⚡' }
+             { label: 'Total Revenue', val: `${summary?.salesToday?.toLocaleString() || 0} RWF`, sub: 'Lifetime sales volume', icon: <DollarSign className="w-12 h-12 text-[#ff6b00]" /> },
+             { label: 'Total Orders', val: summary?.totalOrders || 0, sub: 'All processed orders', icon: <Package className="w-12 h-12 text-primary" /> },
+             { label: 'Average Prep Time', val: avgPrepTime, sub: 'Time from order to pickup', icon: <Zap className="w-12 h-12 text-amber-500" /> }
            ].map((stat, i) => (
              <div key={i} className="bg-white border border-[#e0e0e0] border-l-4 border-l-[#1b1c1c] p-8 shadow-sm hover:shadow-md transition-shadow relative overflow-hidden group">
-                <div className="absolute top-0 right-0 p-6 opacity-10 text-5xl group-hover:opacity-20 transition-opacity grayscale">{stat.icon}</div>
+                <div className="absolute top-4 right-4 opacity-20 group-hover:opacity-40 transition-opacity">{stat.icon}</div>
                 <p className="text-[9px] font-black uppercase tracking-widest text-[#414844] mb-2">{stat.label}</p>
                 <h3 className="text-4xl font-sans tracking-normal text-[#1b1c1c]">{stat.val}</h3>
                 <p className="text-[9px] font-medium uppercase tracking-widest text-[#ff6b00] mt-4">{stat.sub}</p>

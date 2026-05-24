@@ -76,7 +76,9 @@ export const transactionSchema = new Schema({
   hasBeenRated: { type: Boolean, default: false },
   messages: [{
     senderId: { type: Schema.Types.ObjectId, ref: 'User', required: true },
-    senderRole: { type: String, enum: ['BUYER', 'SELLER'], required: true },
+    senderRole: { type: String, enum: ['BUYER', 'SELLER', 'RIDER', 'ADMIN'], required: true },
+    channel: { type: String, enum: ['ORDER', 'DELIVERY', 'DISPUTE'], default: 'ORDER' },
+    recipientRole: { type: String, enum: ['BUYER', 'SELLER', 'RIDER', 'ADMIN'] },
     content: { type: String, required: true },
     imageUrl: { type: String },
     type: { type: String, enum: ['TEXT', 'QUOTE', 'COUNTER_QUOTE'], default: 'TEXT' },

@@ -53,30 +53,77 @@ type SellerOrder = {
 };
 
 type DeliveryInfo = {
-  rider?: { fullName?: string; plateNumber?: string; phone?: string };
+  _id?: string;
+  createdAt?: string;
+  rider?: { riderId?: string; userId?: string; fullName?: string; plateNumber?: string; phone?: string };
   status?: string;
   route?: { distanceKm?: number; estimatedMinutes?: number };
   pickup?: { sellerConfirmed?: boolean; qrScannedAt?: string };
+  dispatch?: {
+    strategy?: string;
+    lastBroadcastAt?: string;
+    currentRadiusMeters?: number | null;
+    nextRadiusMeters?: number | null;
+    maxRadiusMeters?: number | null;
+    broadcastCount?: number;
+    manualRebroadcastCount?: number;
+    manualRebroadcastAt?: string;
+  };
 };
+
+const REBROADCAST_WAIT_MS = 5 * 60 * 1000;
+const ORDER_AUTO_REFRESH_MS = 5000;
+const DELIVERY_AUTO_REFRESH_MS = 5000;
 
 export default function SellerOrderDetailPage({ params }: { params: Promise<{ orderId: string }> }) {
   const { orderId: routeOrderId } = React.use(params);
   const { user } = useAuth();
-  const { data: order, loading, execute: fetchOrder } = useApi<SellerOrder>(orderApi, 'get', `/orders/${routeOrderId}`);
+  const { data: order, loading, execute: fetchOrder } = useApi<SellerOrder>(orderApi, 'get', `/orders/${routeOrderId}`, { refreshInterval: ORDER_AUTO_REFRESH_MS });
   const [delivery, setDelivery] = useState<DeliveryInfo | null>(null);
   const [showReceipt, setShowReceipt] = useState(false);
+  const [now, setNow] = useState(Date.now());
+  const [isRebroadcasting, setIsRebroadcasting] = useState(false);
+  const [isEnsuringDelivery, setIsEnsuringDelivery] = useState(false);
+
+  const fetchDelivery = React.useCallback(async (deliveryId?: string) => {
+    if (!deliveryId) {
+      setDelivery(null);
+      return null;
+    }
+
+    try {
+      const res = await deliveryApi.get(`/deliveries/${deliveryId}`);
+      const deliveryData = res.data?.data || null;
+      setDelivery(deliveryData);
+      return deliveryData;
+    } catch {
+      setDelivery(null);
+      return null;
+    }
+  }, []);
 
   useEffect(() => {
     fetchOrder();
   }, [routeOrderId, fetchOrder]);
 
   useEffect(() => {
-    if (order?.deliveryId) {
-      deliveryApi.get(`/deliveries/${order.deliveryId}`)
-        .then(res => setDelivery(res.data?.data))
-        .catch(() => {});
+    if (!order?.deliveryId) {
+      setDelivery(null);
+      return;
     }
-  }, [order?.deliveryId]);
+
+    fetchDelivery(order.deliveryId);
+    const timer = window.setInterval(() => {
+      fetchDelivery(order.deliveryId);
+    }, DELIVERY_AUTO_REFRESH_MS);
+
+    return () => window.clearInterval(timer);
+  }, [order?.deliveryId, fetchDelivery]);
+
+  useEffect(() => {
+    const timer = window.setInterval(() => setNow(Date.now()), 30000);
+    return () => window.clearInterval(timer);
+  }, []);
 
   const updateStatus = async (status: string) => {
     try {
@@ -95,8 +142,7 @@ export default function SellerOrderDetailPage({ params }: { params: Promise<{ or
       await deliveryApi.post(`/deliveries/${deliveryId}/handover`, { role: 'seller' });
       toast.success('Handover confirmed! Rider is now in transit.');
       fetchOrder();
-      // Refresh delivery info
-      deliveryApi.get(`/deliveries/${deliveryId}`).then(res => setDelivery(res.data?.data));
+      fetchDelivery(deliveryId);
     } catch (e) {
       toast.error('Failed to confirm handover');
     }
@@ -130,18 +176,69 @@ export default function SellerOrderDetailPage({ params }: { params: Promise<{ or
   const totalQty = productsList.reduce((s: number, p: OrderLine) => s + (p.quantity || 1), 0);
   const orderId = order._id || routeOrderId;
   const orderNumber = order.orderNumber || `#${orderId.slice(0, 8).toUpperCase()}`;
+  const sourceFinancials = order.financials || {};
   const financials: ReceiptOrder['financials'] = {
-    subtotal: 0,
-    deliveryFee: 0,
-    platformCommission: 0,
-    gatewayFee: 0,
-    totalAmount: 0,
-    sellerPayout: 0,
-    riderPayout: 0,
-    ...order.financials,
+    subtotal: sourceFinancials.subtotal || 0,
+    deliveryFee: sourceFinancials.deliveryFee || 0,
+    platformCommission: sourceFinancials.platformCommission || 0,
+    gatewayFee: sourceFinancials.gatewayFee || 0,
+    totalAmount: sourceFinancials.totalAmount || 0,
+    sellerPayout: sourceFinancials.sellerPayout || 0,
+    riderPayout: sourceFinancials.riderPayout || 0,
+  };
+
+  const handleRebroadcast = async () => {
+    const deliveryId = order?.deliveryId;
+    if (!deliveryId) return;
+    setIsRebroadcasting(true);
+    try {
+      const res = await deliveryApi.post(`/deliveries/${deliveryId}/rebroadcast`);
+      setDelivery(res.data?.data || null);
+      fetchOrder();
+      toast.success('Delivery rebroadcasted to riders');
+    } catch (error: any) {
+      toast.error(error?.response?.data?.message || 'Failed to rebroadcast delivery');
+    } finally {
+      setIsRebroadcasting(false);
+    }
+  };
+  const handleEnsureDelivery = async () => {
+    setIsEnsuringDelivery(true);
+    try {
+      const res = await orderApi.post(`/orders/${orderId}/delivery/ensure`);
+      const updatedOrder = res.data?.data;
+      const deliveryId = updatedOrder?.deliveryId;
+      await fetchOrder();
+      if (deliveryId) {
+        await fetchDelivery(deliveryId);
+      }
+      toast.success('Rider dispatch started');
+    } catch (error: any) {
+      toast.error(error?.response?.data?.message || 'Failed to start rider dispatch');
+    } finally {
+      setIsEnsuringDelivery(false);
+    }
   };
   const orderStatus = order.status || 'placed';
   const statusHistory = order.statusHistory || [];
+  const isNegotiationWorkspace = orderStatus === 'awaiting_quote' || orderStatus === 'quote_sent' || (orderStatus === 'placed' && order.payment?.status !== 'paid');
+  const lastBroadcastTime = delivery?.dispatch?.lastBroadcastAt ? new Date(delivery.dispatch.lastBroadcastAt).getTime() : null;
+  const deliveryCreatedTime = delivery?.createdAt ? new Date(delivery.createdAt).getTime() : null;
+  const orderCreatedTime = order.createdAt ? new Date(order.createdAt).getTime() : null;
+  const waitingSince = lastBroadcastTime || deliveryCreatedTime || orderCreatedTime;
+  const waitingMs = waitingSince ? Math.max(0, now - waitingSince) : 0;
+  const hasAssignedRider = Boolean(delivery?.rider?.userId || delivery?.rider?.riderId);
+  const deliveryStatus = delivery?.status?.toLowerCase();
+  const isDeliveryWaitingForRider = deliveryStatus === 'assigned' && !hasAssignedRider;
+  const showLogisticsPanel = Boolean(order.deliveryId || orderStatus === 'ready_for_pickup');
+  const deliveryStatusLabel = deliveryStatus ? deliveryStatus.replace(/_/g, ' ') : 'loading delivery status';
+  const canRebroadcast = Boolean(
+    order.deliveryId &&
+    isDeliveryWaitingForRider &&
+    waitingSince &&
+    waitingMs >= REBROADCAST_WAIT_MS
+  );
+  const rebroadcastWaitMinutes = Math.max(0, Math.ceil((REBROADCAST_WAIT_MS - waitingMs) / 60000));
   const receiptOrder: ReceiptOrder = {
     _id: orderId,
     orderNumber: order.orderNumber,
@@ -161,6 +258,7 @@ export default function SellerOrderDetailPage({ params }: { params: Promise<{ or
     deliveryId: order.deliveryId,
     delivery: delivery ? { rider: delivery.rider, status: delivery.status, route: delivery.route } : undefined,
     notes: order.notes,
+    messages: order.messages,
   };
 
   return (
@@ -204,7 +302,7 @@ export default function SellerOrderDetailPage({ params }: { params: Promise<{ or
               className="rounded-md border border-white/20 px-4 py-3 text-[9px] font-black uppercase tracking-[0.16em] text-white transition hover:bg-white/10"
             >
               <svg className="w-3 h-3 inline-block mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
-              Review Receipt
+              Open Receipt
             </button>
             <div className="flex gap-2">
                {orderStatus === 'confirmed' && (
@@ -215,6 +313,74 @@ export default function SellerOrderDetailPage({ params }: { params: Promise<{ or
                )}
             </div>
           </div>
+        </div>
+
+        <div className="grid gap-6 rounded-lg border border-[#dfe7e2] bg-white p-5 shadow-sm lg:grid-cols-[1.35fr_0.65fr]">
+          <div>
+            <div className="mb-5 flex flex-col justify-between gap-3 border-b border-[#edf1ee] pb-4 md:flex-row md:items-center">
+              <div>
+                <p className="text-[10px] font-black uppercase tracking-[0.18em] text-[#ff6b00]">
+                  {isNegotiationWorkspace ? 'Negotiation Workspace' : 'Client Conversation'}
+                </p>
+                <h2 className="mt-1 text-2xl font-black tracking-normal text-[#1b1c1c]">
+                  {isNegotiationWorkspace ? 'Messages and quote controls' : 'Messages with buyer'}
+                </h2>
+              </div>
+              <span className={`rounded-full border px-3 py-1 text-[10px] font-black uppercase tracking-widest ${
+                isNegotiationWorkspace
+                  ? 'border-amber-200 bg-amber-50 text-amber-700'
+                  : 'border-[#dfe7e2] bg-[#f5f7f6] text-[#405046]'
+              }`}>
+                {(orderStatus || 'placed').replace(/_/g, ' ')}
+              </span>
+            </div>
+            <OrderChat
+              orderId={orderId}
+              initialMessages={order.messages || []}
+              recipientName={order.buyer?.fullName || 'Customer'}
+              userRole="SELLER"
+              orderStatus={orderStatus}
+              paymentStatus={order.payment?.status}
+              marketId={order.seller?.marketId}
+              deliveryAddress={order.buyer?.deliveryAddress}
+              deliveryFee={financials.deliveryFee}
+              onOrderUpdated={async () => { await fetchOrder(); }}
+            />
+          </div>
+          <aside className="space-y-4">
+            <div className="rounded-lg border border-[#dfe7e2] bg-[#fcf9f8] p-5">
+              <p className="text-[10px] font-black uppercase tracking-widest text-[#ff6b00]">
+                {isNegotiationWorkspace ? 'Current quote' : 'Chat status'}
+              </p>
+              {isNegotiationWorkspace ? (
+                <>
+                  <p className="mt-3 text-3xl font-black text-[#1b1c1c]">{(financials.subtotal || 0).toLocaleString()} RWF</p>
+                  <p className="mt-2 text-xs font-semibold leading-relaxed text-[#5f7569]">
+                    Use the Send Quote button inside the chat composer. Buyers receive the quote in this thread and can accept, counter, or decline.
+                  </p>
+                </>
+              ) : (
+                <>
+                  <p className="mt-3 text-lg font-black text-[#1b1c1c]">Conversation remains open</p>
+                  <p className="mt-2 text-xs font-semibold leading-relaxed text-[#5f7569]">
+                    Quote controls are inactive because this order is past negotiation. Use the message box to coordinate fulfillment with the buyer.
+                  </p>
+                </>
+              )}
+            </div>
+            <div className="rounded-lg border border-[#dfe7e2] bg-white p-5">
+              <p className="text-[10px] font-black uppercase tracking-widest text-[#ff6b00]">Buyer</p>
+              <p className="mt-3 text-lg font-black text-[#1b1c1c]">{order.buyer?.fullName || 'Anonymous'}</p>
+              <p className="text-xs font-semibold text-[#5f7569]">{order.buyer?.phone || 'Contact hidden'}</p>
+              <p className="mt-3 text-xs font-semibold leading-relaxed text-[#405046]">{order.buyer?.deliveryAddress?.address || 'No delivery location set yet'}</p>
+            </div>
+            {order.notes && (
+              <div className="rounded-lg border border-[#dfe7e2] bg-white p-5">
+                <p className="text-[10px] font-black uppercase tracking-widest text-[#ff6b00]">Order note</p>
+                <p className="mt-3 text-sm font-semibold leading-relaxed text-[#405046]">{order.notes}</p>
+              </div>
+            )}
+          </aside>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
@@ -307,7 +473,7 @@ export default function SellerOrderDetailPage({ params }: { params: Promise<{ or
 
           <div className="space-y-10">
             {/* Logistics Handshake Matrix */}
-            {orderStatus === 'ready_for_pickup' && (
+            {showLogisticsPanel && (
               <div className="bg-[#e05300] text-white p-10 space-y-10 border-t-4 border-[#ffd700] shadow-2xl relative overflow-hidden group">
                  <div className="absolute top-0 right-0 p-8 opacity-5 group-hover:opacity-10 transition-opacity">
                     <svg className="w-40 h-40" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
@@ -316,7 +482,7 @@ export default function SellerOrderDetailPage({ params }: { params: Promise<{ or
                     <div className="space-y-4">
                        <p className="text-[10px] font-black text-[#ff6b00] uppercase tracking-[0.5em]">Logistics Handshake Active</p>
                        <h3 className="text-4xl font-sans tracking-normal">Handover Protocol</h3>
-                       {delivery?.rider ? (
+                       {hasAssignedRider && delivery?.rider ? (
                          <div className="flex items-center gap-6 mt-6">
                             <div className="w-14 h-14 bg-white/5 border border-white/10 flex items-center justify-center text-2xl">🏍️</div>
                             <div>
@@ -324,12 +490,53 @@ export default function SellerOrderDetailPage({ params }: { params: Promise<{ or
                                <p className="text-[10px] font-black text-[#ff6b00] uppercase tracking-widest opacity-60">Plate: {delivery.rider.plateNumber || 'RAA 000X'}</p>
                             </div>
                          </div>
-                       ) : (
-                         <p className="text-[11px] text-white/40 mt-6 animate-pulse">Awaiting Rider Assignment to Terminal...</p>
-                       )}
+                        ) : (
+                          <div className="mt-6 space-y-4">
+                            <p className="text-[11px] text-white/45 animate-pulse">
+                              {order.deliveryId ? 'Awaiting Rider Assignment to Terminal...' : 'Delivery dispatch has not been created yet.'}
+                            </p>
+                            <div className="rounded-lg border border-white/10 bg-white/5 p-4">
+                              {order.deliveryId ? (
+                                <>
+                                  <div className="flex flex-wrap items-center gap-4 text-[9px] font-black uppercase tracking-widest text-white/55">
+                                    <span>Broadcasts: {delivery?.dispatch?.broadcastCount || 0}</span>
+                                    <span>Scope: All active riders</span>
+                                    <span>Status: {deliveryStatusLabel}</span>
+                                    {waitingSince && <span>Waiting: {Math.max(1, Math.floor(waitingMs / 60000))} min</span>}
+                                  </div>
+                                  {canRebroadcast ? (
+                                    <button
+                                      onClick={handleRebroadcast}
+                                      disabled={isRebroadcasting}
+                                      className="mt-4 rounded-md bg-[#ffd700] px-5 py-3 text-[10px] font-black uppercase tracking-[0.16em] text-[#1b1c1c] transition hover:bg-white disabled:opacity-40"
+                                    >
+                                      {isRebroadcasting ? 'Rebroadcasting...' : 'Rebroadcast to riders'}
+                                    </button>
+                                  ) : (
+                                    <p className="mt-4 text-[10px] font-bold leading-relaxed text-white/45">
+                                      {isDeliveryWaitingForRider
+                                        ? `Manual rebroadcast unlocks ${rebroadcastWaitMinutes > 0 ? `in about ${rebroadcastWaitMinutes} min` : 'soon'} if no rider accepts.`
+                                        : delivery
+                                          ? 'Rebroadcast is available only while rider assignment is pending.'
+                                          : 'Loading delivery dispatch details...'}
+                                    </p>
+                                  )}
+                                </>
+                              ) : (
+                                <button
+                                  onClick={handleEnsureDelivery}
+                                  disabled={isEnsuringDelivery}
+                                  className="mt-4 rounded-md bg-[#ffd700] px-5 py-3 text-[10px] font-black uppercase tracking-[0.16em] text-[#1b1c1c] transition hover:bg-white disabled:opacity-40"
+                                >
+                                  {isEnsuringDelivery ? 'Starting dispatch...' : 'Start rider dispatch'}
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        )}
                     </div>
                     
-                    {delivery?.rider && !delivery.pickup?.sellerConfirmed && (
+                    {hasAssignedRider && delivery && !delivery.pickup?.sellerConfirmed && (
                       <button 
                         onClick={confirmHandover}
                         className="rmf-btn-primary bg-[#ffd700] text-[#1b1c1c] px-12 py-5 shadow-[0_10px_30px_rgba(246,195,67,0.3)] hover:bg-white hover:text-[#1b1c1c]"
@@ -440,32 +647,6 @@ export default function SellerOrderDetailPage({ params }: { params: Promise<{ or
           </div>
         </div>
 
-        {/* Negotiation Terminal */}
-        {(orderStatus === 'awaiting_quote' || orderStatus === 'quote_sent' || (orderStatus === 'placed' && order.payment?.status !== 'paid')) && (
-           <div className="bg-white border border-[#e0e0e0] rounded-lg p-12">
-              <div className="flex items-center gap-6 mb-12 border-b border-[#f0eded] pb-6">
-                 <h2 className="text-3xl font-sans tracking-normal text-[#1b1c1c]">Order Chat</h2>
-                 <div className="flex items-center gap-2">
-                    <div className="w-2 h-2 bg-[#ffd700] rounded-full animate-pulse"></div>
-                    <span className="text-[9px] font-black uppercase tracking-widest text-[#1b1c1c]">Live Handshake Active</span>
-                 </div>
-              </div>
-              <div className="max-w-4xl">
-                 <OrderChat
-                   orderId={orderId}
-                   initialMessages={order.messages || []}
-                   recipientName={order.buyer?.fullName || 'Customer'}
-                   userRole="SELLER"
-                   orderStatus={orderStatus}
-                   paymentStatus={order.payment?.status}
-                   marketId={order.seller?.marketId}
-                   deliveryAddress={order.buyer?.deliveryAddress}
-                   deliveryFee={order.financials?.deliveryFee}
-                   onOrderUpdated={fetchOrder}
-                 />
-              </div>
-           </div>
-        )}
       </div>
     </Layout>
   );

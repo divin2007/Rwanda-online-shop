@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   FlatList, RefreshControl, ScrollView, StyleSheet,
   Text, TextInput, TouchableOpacity, View,
@@ -48,6 +48,16 @@ export default function MarketsScreen() {
   const [query, setQuery] = useState(String(params.search || ''));
   const [marketType, setMarketType] = useState<string | null>(null);
   const [activeCategory, setActiveCategory] = useState<string | null>(params.categoryId ? String(params.categoryId) : null);
+
+  // Sync state with route parameters
+  useEffect(() => {
+    setQuery(String(params.search || ''));
+  }, [params.search]);
+
+  useEffect(() => {
+    setActiveCategory(params.categoryId ? String(params.categoryId) : null);
+  }, [params.categoryId]);
+
   const { data, loading, refreshing, error, refresh } = useRemote(loadMarkets, []);
 
   const markets = data?.markets || [];

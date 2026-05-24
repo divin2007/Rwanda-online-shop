@@ -20,8 +20,9 @@ export default function SellerQRPage() {
     ? `${window.location.protocol}//${stallSlug}.${window.location.host}`
     : '';
 
-  // Generate the scannable storefront QR from the seller's persisted shop slug.
-  const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(stallUrl)}`;
+  // Generate the scannable pickup credential from the seller's persisted stall ID.
+  const pickupQrPayload = `marketrwanda:stall:${profile?.stallId || ''}`;
+  const pickupQrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(pickupQrPayload)}`;
 
   return (
     <Layout>
@@ -61,8 +62,8 @@ export default function SellerQRPage() {
           <div className="p-10 border-4 border-[#e0e0e0] bg-white shadow-sm">
              {profile ? (
                <img 
-                 src={qrUrl} 
-                 alt="Stall QR Code" 
+                 src={pickupQrUrl} 
+                 alt="Pickup verification QR Code" 
                  className="w-64 h-64 md:w-80 md:h-80 object-contain"
                />
              ) : (
@@ -81,7 +82,7 @@ export default function SellerQRPage() {
             <div className="h-px w-full bg-[#e0e0e0] mb-8"></div>
             
             <p className="text-[9px] text-[#414844] leading-relaxed uppercase tracking-widest opacity-60">
-               Scan this code to initialize a secure MoMo transaction directly with this authorized RMF station.
+               Riders scan this code during pickup to verify they are collecting from the authorized stall.
             </p>
           </div>
 
@@ -103,9 +104,9 @@ export default function SellerQRPage() {
                  3. Ensure the QR code remains clean and unobstructed for optical scanning.
               </div>
               <div className="text-[11px] text-[#414844] leading-relaxed">
-                 4. Customers will scan this to land directly on your digital storefront. <br />
-                 5. All transactions are routed through the RMF secure facilitation layer. <br />
-                 6. Digital receipts are issued instantly upon successful payment.
+                 4. Riders must scan this exact code before pickup can move to handover. <br />
+                 5. Keep your storefront link separately available: {stallUrl || 'loading'} <br />
+                 6. Pickup photo proof and QR verification are stored on the delivery record.
               </div>
            </div>
         </div>

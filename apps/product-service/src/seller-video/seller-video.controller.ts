@@ -60,6 +60,13 @@ export class SellerVideoController {
   }
 
   @Public()
+  @Get('stories/personalized')
+  async getPersonalizedStories(@Request() req: any, @Query() query: any) {
+    const stories = await this.sellerVideoService.getPersonalizedStories(req.user, query || {});
+    return { success: true, data: stories };
+  }
+
+  @Public()
   @Get()
   async findAll(@Query() query: any, @Request() req: any) {
     const viewerId = req.user?.userId;

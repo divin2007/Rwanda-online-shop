@@ -1,8 +1,11 @@
 'use client';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
+import { patchLeafletSafeRemove } from '@/lib/leafletSafeRemove';
+
+patchLeafletSafeRemove();
 
 const markerSvg = `PHN2ZyB3aWR0aD0iMjUiIGhlaWdodD0iNDEiIHZpZXdCb3g9IjAgMCAyNSA0MSIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cGF0aCBkPSJNMTIuNSAwQzUuNTk2NDUgMCAwIDUuNTk2NDUgMCAxMi41QzAgMjEuODc1IDEyLjUgNDEgMTIuNSA0MUMxMi41IDQxIDI1IDIxLjg3NSAyNSAxMi41QzI1IDUuNTk2NDUgMTkuNDAzNiAwIDEyLjUgMFpNMTIuNSAxNy4xODc1QzkuOTExMTcgMTcuMTg3NSA3LjgxMjUgMTUuMDg4OCA3LjgxMjUgMTIuNUM3LjgxMjUgOS45MTExNyA5LjkxMTE3IDcuODEyNSAxMi41IDcuODEyNUMxNS4wODg4IDcuODEyNSAxNy4xODc1IDkuOTExMTcgMTcuMTg3NSAxMi41QzE3LjE4NzUgMTUuMDg4OCAxNS4wODg4IDcuODEyNSAxMi41IDcuODEyNVoiIGZpbGw9IiMzQjgyRTYiLz48L3N2Zz4=`;
 
@@ -53,6 +56,7 @@ const MapController = ({ flyToLocation, center }: { flyToLocation: { lat: number
 };
 
 export const DeliveryMap = ({ riderLocation, pickupLocation, dropoffLocation, status, routeGeometry }: DeliveryMapProps) => {
+  const containerRef = useRef<HTMLDivElement | null>(null);
   const [isClient, setIsClient] = useState(false);
   const [mapInstanceKey, setMapInstanceKey] = useState('');
   const [liveRoute, setLiveRoute] = useState<[number, number][]>([]);
@@ -60,6 +64,19 @@ export const DeliveryMap = ({ riderLocation, pickupLocation, dropoffLocation, st
   const [searchResults, setSearchResults] = useState<any[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [flyToLocation, setFlyToLocation] = useState<{ lat: number, lon: number } | null>(null);
+  const mapShellKey = `${mapInstanceKey}-${riderLocation.lat}-${riderLocation.lng}`;
+
+  const releaseLeafletContainer = () => {
+    const leafletContainers = containerRef.current?.querySelectorAll('.leaflet-container') || [];
+    leafletContainers.forEach((element) => {
+      delete (element as HTMLElement & { _leaflet_id?: number })._leaflet_id;
+    });
+  };
+
+  useLayoutEffect(() => {
+    releaseLeafletContainer();
+    return releaseLeafletContainer;
+  }, [mapInstanceKey, riderLocation.lat, riderLocation.lng]);
 
   useEffect(() => {
     setIsClient(true);
@@ -133,7 +150,7 @@ export const DeliveryMap = ({ riderLocation, pickupLocation, dropoffLocation, st
   const center: [number, number] = [riderLocation.lat, riderLocation.lng];
 
   return (
-    <div className="w-full h-full relative z-0 rounded-xl overflow-hidden border border-border shadow-inner">
+    <div key={mapShellKey} ref={containerRef} className="w-full h-full relative z-0 rounded-xl overflow-hidden border border-border shadow-inner">
       {/* Search Overlay */}
       <div className="absolute top-4 left-4 right-4 z-[500] max-w-sm">
         <div className="relative">
@@ -169,7 +186,7 @@ export const DeliveryMap = ({ riderLocation, pickupLocation, dropoffLocation, st
       </div>
 
       <MapContainer 
-        key={mapInstanceKey}
+        key={mapShellKey}
         center={center} 
         zoom={16} 
         style={{ height: '100%', width: '100%' }}

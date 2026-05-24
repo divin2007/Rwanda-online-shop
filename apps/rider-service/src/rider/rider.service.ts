@@ -42,7 +42,9 @@ export class RiderService {
     }
 
     const newRider = new this.riderModel(riderData);
-    return await newRider.save();
+    const saved = await newRider.save();
+    this.notifyAdminsAction(`New rider application (Plate: ${saved.plateNumber || 'N/A'}) is awaiting your review.`);
+    return saved;
   }
 
   async findByUserId(userId: string): Promise<any> {
@@ -85,6 +87,8 @@ export class RiderService {
     this.syncRoleToUserService(updated.userId, 'RIDER').catch(() => {});
     // Notify rider of approval
     this.triggerNotification(updated.userId, 'Congratulations! Your rider application has been approved. You can now accept deliveries.');
+    // Notify admins of approval
+    this.notifyAdminsAction(`Rider (Plate: ${updated.plateNumber || 'N/A'}) approved successfully.`);
     return updated;
   }
 
@@ -101,6 +105,8 @@ export class RiderService {
     }
 
     this.triggerNotification(updated.userId, reason || 'Your rider application has been declined. Contact support for details.');
+    // Notify admins of rejection
+    this.notifyAdminsAction(`Rider (Plate: ${updated.plateNumber || 'N/A'}) application declined.`);
     return updated;
   }
 
@@ -148,13 +154,15 @@ export class RiderService {
     if (existing) {
       throw new ConflictException('A rider settings change request is already awaiting admin review');
     }
-    return this.changeRequestModel.create({
+    const request = await this.changeRequestModel.create({
       targetType: 'RIDER',
       targetId: rider._id,
       userId: rider.userId,
       requestedChanges,
       auditTrail: [{ action: 'created', actorId: userId, note: 'rider_settings_change_requested', at: new Date() }],
     });
+    this.notifyAdminsAction(`Rider (Plate: ${rider.plateNumber || 'N/A'}) requested settings changes.`);
+    return request;
   }
 
   async listSettingsChangeRequests(status = 'PENDING'): Promise<any[]> {
@@ -325,6 +333,21 @@ export class RiderService {
         params: { message }
       }, { headers }).catch(() => {});
     } catch {}
+  }
+
+  private async notifyAdminsAction(message: string) {
+    try {
+      const axios = require('axios');
+      const notificationUrl = process.env.NOTIFICATION_SERVICE_URL || 'http://localhost:3009/api/v1';
+      const secret = process.env.INTERNAL_SERVICE_SECRET;
+      const headers = secret ? { 'x-internal-service-key': secret } : {};
+      await axios.post(`${notificationUrl}/notifications/admin-notify`, {
+        type: 'admin.notification',
+        params: { message }
+      }, { headers }).catch(() => {});
+    } catch (e: any) {
+      this.logger.warn(`Failed to notify admins of action: ${e.message}`);
+    }
   }
 
   async findNearbyRiders(lat: number, lng: number, maxDistanceMeters: number): Promise<any[]> {

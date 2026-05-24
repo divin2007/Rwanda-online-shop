@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import { Camera, CheckCircle2, FileText, Upload } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { productApi, sellerApi, deliveryApi, riderApi, orderApi, marketApi } from '@/lib/api';
+import { resolveUploadUrl } from '@/lib/uploadUrls';
 
 interface ImageUploadProps {
   onUploadSuccess?: (url: string) => void;
@@ -43,10 +44,11 @@ export const ImageUpload = ({
   const inputAccept = accept || acceptedTypes.join(',');
   const maxFileSize = isDocumentUpload ? 8 * 1024 * 1024 : 5 * 1024 * 1024;
   const isPdfPreview = Boolean(fileName.toLowerCase().endsWith('.pdf') || preview?.toLowerCase().endsWith('.pdf'));
+  const resolvedPreview = preview ? resolveUploadUrl(preview, service, endpoint) : null;
 
   React.useEffect(() => {
-    if (value) setPreview(value);
-  }, [value]);
+    if (value) setPreview(resolveUploadUrl(value, service, endpoint));
+  }, [endpoint, service, value]);
 
   React.useEffect(() => {
     return () => {
@@ -111,7 +113,7 @@ export const ImageUpload = ({
         throw new Error(res.data?.message || 'Upload failed');
       }
 
-      const url = res.data.data.url;
+      const url = resolveUploadUrl(res.data.data.url, service, endpoint);
       onUploadSuccess?.(url);
       onChange?.(url);
       setPreview(file.type.startsWith('image/') ? url : null);
@@ -150,9 +152,9 @@ export const ImageUpload = ({
     <div className="w-full">
       {label && <label className="mb-2 block text-sm font-bold text-[#1b1c1c]">{label}</label>}
       <div className="relative flex min-h-[8rem] cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed border-[#e0e0e0] bg-white p-4 text-center transition hover:border-[#ff6b00] hover:bg-[#fcf9f8]">
-        {preview && !isPdfPreview ? (
+        {resolvedPreview && !isPdfPreview ? (
           <div className="relative aspect-video w-full overflow-hidden rounded-md">
-            <img src={preview} alt="Upload preview" loading="eager" fetchPriority="high" className="h-full w-full object-cover" />
+            <img src={resolvedPreview} alt="Upload preview" loading="eager" fetchPriority="high" className="h-full w-full object-cover" />
             {isUploading && (
               <div className="absolute inset-0 flex items-center justify-center bg-[#e05300]/45">
                 <div className="h-8 w-8 animate-spin rounded-full border-4 border-white border-t-transparent" />

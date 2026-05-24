@@ -47,7 +47,7 @@ export default function SellerLayout({ children }: { children: React.ReactNode }
   useEffect(() => {
     if (!isLoading) {
       if (!user) {
-        router.replace('/login');
+        router.replace(`/login?redirect=${pathname}`);
       } else if (user.role !== 'SELLER') {
         router.replace(redirectForRole(user.role));
       } else if (!profileLoading && profile === null && !pathname.includes('/onboarding')) {
@@ -100,7 +100,7 @@ export default function SellerLayout({ children }: { children: React.ReactNode }
                           setProfile(updatedProfile);
                           if (updatedProfile.isApproved) {
                             toast.success('Your account is approved! Welcome.');
-                            router.push('/seller/dashboard');
+                            router.replace('/seller/dashboard');
                           } else {
                             toast.error('Your application is still under review.');
                           }

@@ -10,6 +10,7 @@ import { useAuth } from '@/context/AuthContext';
 import { useApi } from '@/hooks/useApi';
 import { CatalogCategory, ProductVariantDraft, categoryFor, fallbackCatalogCategories } from '@/lib/catalog';
 import { productApi, sellerApi } from '@/lib/api';
+import { resolveUploadUrl } from '@/lib/uploadUrls';
 
 type Product = {
   _id: string;
@@ -164,6 +165,15 @@ export default function SellerProductsPage() {
       .catch(() => setCatalogCategories(fallbackCatalogCategories));
   }, []);
 
+  const rootCategories = useMemo(() => {
+    const CORE_ROOT_IDS = [
+      'grocery', 'fashion', 'shoes', 'sportswear', 'bakery', 
+      'hardware', 'handicrafts', 'home', 'electronics', 
+      'cosmetics', 'automotive', 'education', 'other'
+    ];
+    return catalogCategories.filter(cat => !cat.parentId && CORE_ROOT_IDS.includes(cat.id));
+  }, [catalogCategories]);
+
   const allProducts = useMemo(() => Array.isArray(products) ? products : [], [products]);
   const filteredProducts = useMemo(() => {
     const query = searchTerm.trim().toLowerCase();
@@ -171,7 +181,9 @@ export default function SellerProductsPage() {
       const matchesSearch = !query
         || product.name?.toLowerCase().includes(query)
         || product.description?.toLowerCase().includes(query);
-      const matchesCategory = selectedCategory === 'ALL' || product.categoryId === selectedCategory || product.category === selectedCategory;
+      const matchesCategory = selectedCategory === 'ALL' || 
+        (product.categoryId && (product.categoryId === selectedCategory || product.categoryId.startsWith(selectedCategory + '-'))) ||
+        (product.category && (product.category === selectedCategory || product.category.startsWith(selectedCategory + '-')));
       return matchesSearch && matchesCategory;
     });
   }, [allProducts, searchTerm, selectedCategory]);
@@ -390,7 +402,7 @@ export default function SellerProductsPage() {
             />
           </div>
           <div className="flex flex-wrap gap-2 md:col-span-8">
-            {[{ id: 'ALL', label: 'All Products' }, ...catalogCategories].map(category => (
+            {[{ id: 'ALL', label: 'All Products' }, ...rootCategories].map(category => (
               <button
                 key={category.id}
                 type="button"
@@ -434,7 +446,7 @@ export default function SellerProductsPage() {
                       <td className="flex items-center gap-4 p-5">
                         <div className="h-16 w-16 flex-shrink-0 overflow-hidden rounded-md border border-[#e0e0e0] bg-[#fcf9f8]">
                           <img
-                            src={product.images?.[0] || 'https://images.unsplash.com/photo-1590073844006-33379778ae09?auto=format&fit=crop&q=80&w=400'}
+                            src={product.images?.[0] ? resolveUploadUrl(product.images[0], 'product') : 'https://images.unsplash.com/photo-1590073844006-33379778ae09?auto=format&fit=crop&q=80&w=400'}
                             alt={product.name || 'Product'}
                             className="h-full w-full object-cover"
                           />

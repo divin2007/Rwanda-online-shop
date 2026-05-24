@@ -8,6 +8,9 @@ import { orderApi, walletApi, productApi } from '@/lib/api';
 import { useWishlist } from '@/context/WishlistContext';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { CreditCard, History, TrendingUp, ShoppingBag } from 'lucide-react';
+
+const BUYER_DASHBOARD_REFRESH_MS = 10000;
 
 export default function DashboardPage() {
   const { user, isLoading } = useAuth();
@@ -31,7 +34,7 @@ export default function DashboardPage() {
   }, [user, isLoading, router]);
 
   // Fetch Real Data
-  const { data: ordersData, loading: ordersLoading } = useApi(orderApi, 'get', isBuyer && user?.id ? `/orders?buyerId=${user.id}&status=placed,confirmed,preparing,ready_for_pickup,picked_up,in_transit` : '');
+  const { data: ordersData, loading: ordersLoading } = useApi(orderApi, 'get', isBuyer && user?.id ? `/orders?buyerId=${user.id}&status=placed,confirmed,preparing,ready_for_pickup,picked_up,in_transit` : '', { refreshInterval: BUYER_DASHBOARD_REFRESH_MS });
   const { data: walletData, loading: walletLoading } = useApi(walletApi, 'get', isBuyer && user?.id ? `/wallets/me?userId=${user.id}` : '');
   const { data: transactionsData } = useApi(walletApi, 'get', isBuyer && user?.id ? `/wallets/me/transactions?userId=${user.id}` : '');
   const { data: recommendedData } = useApi(productApi, 'get', isBuyer ? '/products/recommendations/for-me?limit=8' : '');
@@ -94,7 +97,9 @@ export default function DashboardPage() {
                     <span className="text-lg font-bold text-accent-premium uppercase tracking-widest">RWF</span>
                   </div>
                 </div>
-                <div className="w-14 h-14 bg-accent-premium rounded-full flex items-center justify-center text-2xl shadow-[0_0_15px_rgba(255,215,0,0.4)]">💳</div>
+                <div className="w-14 h-14 bg-accent-premium rounded-full flex items-center justify-center text-primary-dark shadow-[0_0_15px_rgba(255,215,0,0.4)]">
+                  <CreditCard size={24} />
+                </div>
               </div>
               
               <div className="space-y-6 pt-8 border-t border-white/10">
@@ -129,8 +134,8 @@ export default function DashboardPage() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {ordersLoading ? (
                    [1,2].map(i => <div key={i} className="aspect-video bg-background-surface rounded-2xl animate-pulse border border-border-light"></div>)
-                ) : orders.length > 0 ? orders.map((order: any) => (
-                  <div key={order._id} className="bg-white border border-border-light rounded-2xl p-6 group relative hover:border-primary/30 hover:shadow-md transition-all shadow-sm">
+                ) : orders.length > 0 ? orders.map((order: any, idx: number) => (
+                  <div key={`${order._id || 'order'}-${idx}`} className="bg-white border border-border-light rounded-2xl p-6 group relative hover:border-primary/30 hover:shadow-md transition-all shadow-sm">
                     <div className="absolute top-4 right-4">
                        <div className="bg-primary/5 text-primary border border-primary/10 text-[9px] font-bold uppercase tracking-widest py-1.5 px-3 rounded-full">
                           {order.status.replace(/_/g, ' ')}
@@ -163,18 +168,21 @@ export default function DashboardPage() {
                 )}
               </div>
            </div>
-
            {/* Activity Sidebar */}
            <div className="bg-white border border-border-light rounded-2xl p-8 shadow-sm">
               <div className="flex justify-between items-center mb-8 border-b border-border-light pb-4">
                 <h3 className="text-xl font-bold text-text-primary tracking-tight">{t('recent_activity')}</h3>
-                <span className="text-xl opacity-40 text-primary">🕒</span>
+                <History size={18} className="opacity-60 text-primary" />
               </div>
               <div className="space-y-6">
                 {transactions.length > 0 ? transactions.map((act: any, i: number) => (
                   <div key={i} className="flex items-start gap-4 group">
-                    <div className="w-10 h-10 rounded-full bg-background-surface border border-border-light flex items-center justify-center text-lg group-hover:bg-primary group-hover:text-white transition-all shadow-sm">
-                      {act.type === 'deposit' ? '📈' : '🛍️'}
+                    <div className="w-10 h-10 rounded-full bg-background-surface border border-border-light flex items-center justify-center group-hover:bg-primary group-hover:text-white transition-all shadow-sm">
+                      {act.type === 'deposit' ? (
+                        <TrendingUp size={16} className="text-green-600 group-hover:text-white" />
+                      ) : (
+                        <ShoppingBag size={16} className="text-primary group-hover:text-white" />
+                      )}
                     </div>
                     <div className="flex-grow pt-0.5">
                       <p className="text-[10px] font-bold uppercase tracking-widest text-text-primary truncate max-w-[150px]">{act.description || t('transaction')}</p>
@@ -191,8 +199,8 @@ export default function DashboardPage() {
               <Link href="/wallet" className="block w-full text-center mt-8 text-[10px] font-bold uppercase tracking-widest text-primary hover:text-primary/70 transition-colors pt-6 border-t border-border-light">
                 {t('view_all_transactions')}
               </Link>
-           </div>
-        </div>
+            </div>
+         </div>
 
         {/* Wishlist */}
         <section className="bg-background-surface py-20 border-y border-border-light rounded-3xl">
@@ -206,8 +214,8 @@ export default function DashboardPage() {
               </div>
               
               <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-                {wishlist.length > 0 ? wishlist.slice(0, 4).map((item: any) => (
-                  <Link key={item._id} href={`/product/${item._id}`} className="group relative bg-white border border-border-light rounded-2xl p-3 shadow-sm hover:shadow-md transition-all">
+                {wishlist.length > 0 ? wishlist.slice(0, 4).map((item: any, idx: number) => (
+                  <Link key={`${item._id || 'wishlist'}-${idx}`} href={`/product/${item._id}`} className="group relative bg-white border border-border-light rounded-2xl p-3 shadow-sm hover:shadow-md transition-all">
                     <div className="aspect-[3/4] bg-background-surface overflow-hidden rounded-xl mb-4 relative">
                       <img src={item.images?.[0]} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" alt={item.name} />
                       <div className="absolute inset-0 bg-primary/0 group-hover:bg-primary/5 transition-colors"></div>
@@ -230,8 +238,8 @@ export default function DashboardPage() {
               <p className="text-base text-text-muted font-medium mt-4">{t('products_picked_based_on_popular')}</p>
            </div>
            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6 text-left">
-             {recommended.map((prod: any) => (
-               <Link href={`/product/${prod._id}`} key={prod._id} className="group relative bg-white border border-border-light rounded-2xl p-3 shadow-sm hover:shadow-md transition-all flex flex-col">
+             {recommended.map((prod: any, idx: number) => (
+               <Link href={`/product/${prod._id}`} key={`${prod._id || 'recommended'}-${idx}`} className="group relative bg-white border border-border-light rounded-2xl p-3 shadow-sm hover:shadow-md transition-all flex flex-col">
                  <div className="aspect-[4/5] bg-background-surface overflow-hidden rounded-xl mb-4 relative">
                    <img src={prod.images?.[0]} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" alt={prod.name} />
                    <div className="absolute inset-0 bg-primary/0 group-hover:bg-primary/5 transition-colors"></div>

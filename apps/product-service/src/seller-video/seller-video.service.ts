@@ -206,13 +206,16 @@ export class SellerVideoService {
         if (!seller) continue;
         
         const product = await this.productModel.findOne({ sellerId: seller._id }).exec();
+        const placement = j % 2 === 1 ? 'STORY' : 'PRODUCT_AD';
+        const categoryId = j === 1 ? 'handicrafts' : j === 3 ? 'grocery' : j === 5 ? 'grocery' : 'other';
         
         const videoPayload = {
           sellerId: seller._id,
           sellerUserId: seller.userId,
           marketId: seller.marketId,
           productId: product ? product._id : undefined,
-          placement: 'PRODUCT_AD',
+          placement,
+          categoryId,
           title: template.title,
           caption: template.caption,
           videoUrl: template.videoUrl,
@@ -220,6 +223,7 @@ export class SellerVideoService {
           durationSeconds: 15 + j * 5,
           tags: template.tags,
           isActive: true,
+          isArchived: false,
           viewCount: 150 + j * 42,
           likeCount: 45 + j * 12,
           dislikeCount: 2 + j,
@@ -381,13 +385,116 @@ export class SellerVideoService {
     }).exec();
   }
 
+  async archiveExpiredStories(): Promise<void> {
+    const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    await this.sellerVideoModel.updateMany(
+      {
+        placement: 'STORY',
+        isArchived: false,
+        createdAt: { $lt: twentyFourHoursAgo },
+      },
+      {
+        $set: { isArchived: true }
+      }
+    ).exec();
+  }
+
+  async getPersonalizedStories(user?: AuthUser, query: any = {}) {
+    await this.archiveExpiredStories().catch(err => console.error('Archive expired stories failed:', err));
+
+    const filter: any = {
+      placement: 'STORY',
+      isActive: true,
+      isArchived: false,
+      deletedAt: null,
+    };
+
+    if (query.marketId) {
+      filter.marketId = this.toObjectId(String(query.marketId), 'marketId');
+    }
+
+    const stories = await this.sellerVideoModel
+      .find(filter)
+      .populate('sellerId', 'stallName shopDetails rating totalOrders')
+      .populate('marketId', 'name slug code location imageUrl')
+      .populate('productId', 'name price unit images category categoryLabel categoryId')
+      .lean()
+      .exec();
+
+    const viewerId = user?.userId;
+    const presentedStories = stories.map(story => this.presentation(story, viewerId));
+
+    if (!viewerId) {
+      return presentedStories.sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    }
+
+    const dbUser = await this.userModel.findById(viewerId).lean().exec();
+    if (!dbUser) {
+      return presentedStories.sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    }
+
+    const favoriteCategories = new Set<string>();
+    if (dbUser.preferences?.discovery?.categoryIds?.length) {
+      dbUser.preferences.discovery.categoryIds.forEach((catId: string) => {
+        if (catId) favoriteCategories.add(catId.trim().toLowerCase());
+      });
+    }
+
+    const categoryScores = new Map<string, number>();
+    if (dbUser.recommendationProfile?.categoryScores?.length) {
+      dbUser.recommendationProfile.categoryScores.forEach((scoreObj: any) => {
+        if (scoreObj?.key) {
+          categoryScores.set(scoreObj.key.trim().toLowerCase(), Number(scoreObj.score || 0));
+        }
+      });
+    }
+
+    const scoredStories = presentedStories.map((story: any) => {
+      let score = 0;
+      const catId = String(story.categoryId || '').trim().toLowerCase();
+
+      if (catId && favoriteCategories.has(catId)) {
+        score += 500;
+      }
+
+      if (catId && categoryScores.has(catId)) {
+        score += categoryScores.get(catId)! * 2;
+      }
+
+      const sellerRating = Number(story.sellerId?.rating || 0);
+      if (sellerRating > 4.0) {
+        score += (sellerRating - 4.0) * 50;
+      }
+
+      const hoursSinceCreation = (Date.now() - new Date(story.createdAt).getTime()) / (1000 * 60 * 60);
+      score += Math.max(0, 24 - hoursSinceCreation) * 10;
+
+      return { story, score };
+    });
+
+    scoredStories.sort((a, b) => {
+      if (Math.abs(b.score - a.score) > 0.01) {
+        return b.score - a.score;
+      }
+      return new Date(b.story.createdAt).getTime() - new Date(a.story.createdAt).getTime();
+    });
+
+    return scoredStories.map(item => item.story);
+  }
+
   async create(user: AuthUser, data: any) {
     const seller = await this.findSellerForUser(user, data?.sellerId);
     const product = await this.resolveLinkedProduct(data?.productId, seller, user);
     const marketId = await this.resolveMarketId(data?.marketId, seller, product);
     const title = this.cleanText(data?.title, 100);
     const caption = this.cleanText(data?.caption, 800);
-    const placement = data?.placement === 'SHOP_AD' || data?.isShopAd === true ? 'SHOP_AD' : 'PRODUCT_AD';
+    
+    let placement = 'PRODUCT_AD';
+    if (data?.placement === 'STORY' || data?.isStory === true) {
+      placement = 'STORY';
+    } else if (data?.placement === 'SHOP_AD' || data?.isShopAd === true) {
+      placement = 'SHOP_AD';
+    }
 
     if (!title) throw new BadRequestException('Video title is required');
     if (placement === 'SHOP_AD') {
@@ -402,12 +509,25 @@ export class SellerVideoService {
       }
     }
 
+    let categoryId = data?.categoryId ? String(data.categoryId).trim().toLowerCase() : null;
+    if (!categoryId && product) {
+      categoryId = String(product.categoryId || product.category || '').toLowerCase();
+    }
+    if (!categoryId && seller?.shopDetails?.categories?.length) {
+      categoryId = String(seller.shopDetails.categories[0]).trim().toLowerCase();
+    }
+    if (!categoryId) {
+      categoryId = 'other';
+    }
+
     const payload = {
       sellerId: seller._id,
       sellerUserId: seller.userId,
       marketId,
       productId: placement === 'SHOP_AD' ? undefined : product?._id,
+      variantSku: placement === 'SHOP_AD' ? undefined : data?.variantSku || undefined,
       placement,
+      categoryId,
       title,
       caption,
       videoUrl: this.validateUrl(data?.videoUrl, 'videoUrl'),
@@ -415,6 +535,7 @@ export class SellerVideoService {
       durationSeconds: data?.durationSeconds ? Math.min(Number(data.durationSeconds), 600) : undefined,
       tags: this.cleanTags(data?.tags),
       isActive: data?.isActive === undefined ? true : data.isActive !== false,
+      isArchived: false,
       auditTrail: [{ action: 'created', actorId: user.userId, reason: 'seller_video_created', at: new Date() }],
     };
 
@@ -422,12 +543,27 @@ export class SellerVideoService {
     return this.findById(String(saved._id), false, user.userId);
   }
 
-  async findAll(query: VideoQuery = {}, viewerId?: string) {
+  async findAll(query: any = {}, viewerId?: string) {
+    await this.archiveExpiredStories().catch(err => console.error('Archive expired stories failed:', err));
+
     const filter: any = { deletedAt: null, isActive: true };
     if (query.marketId) filter.marketId = this.toObjectId(String(query.marketId), 'marketId');
     if (query.sellerId) filter.sellerId = this.toObjectId(String(query.sellerId), 'sellerId');
     if (query.productId) filter.productId = this.toObjectId(String(query.productId), 'productId');
-    if (query.placement === 'SHOP_AD' || query.placement === 'PRODUCT_AD') filter.placement = query.placement;
+    
+    if (query.placement) {
+      filter.placement = query.placement;
+    }
+    if (query.isStory === true || query.isStory === 'true' || filter.placement === 'STORY') {
+      filter.placement = 'STORY';
+      if (query.includeArchived !== 'true' && query.includeArchived !== true) {
+        filter.isArchived = false;
+      }
+    }
+    if (query.categoryId) {
+      filter.categoryId = String(query.categoryId).trim().toLowerCase();
+    }
+
     if (query.tag) filter.tags = this.cleanText(query.tag, 40).toLowerCase().replace(/^#/, '');
     if (query.cursor) filter.createdAt = { $lt: new Date(String(query.cursor)) };
 
@@ -514,6 +650,7 @@ export class SellerVideoService {
     if (data.thumbnailUrl !== undefined) updates.thumbnailUrl = data.thumbnailUrl ? this.validateUrl(data.thumbnailUrl, 'thumbnailUrl') : undefined;
     if (data.tags !== undefined) updates.tags = this.cleanTags(data.tags);
     if (data.isActive !== undefined) updates.isActive = data.isActive === true;
+    if (data.variantSku !== undefined) updates.variantSku = data.variantSku || undefined;
     if (data.placement !== undefined || data.isShopAd !== undefined) {
       const nextPlacement = data.placement === 'SHOP_AD' || data.isShopAd === true ? 'SHOP_AD' : 'PRODUCT_AD';
       if (nextPlacement === 'SHOP_AD' && video.placement !== 'SHOP_AD') {

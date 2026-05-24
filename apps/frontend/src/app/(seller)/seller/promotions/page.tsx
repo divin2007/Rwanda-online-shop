@@ -5,6 +5,7 @@ import { Layout } from '@/components/layout/Layout';
 import { useAuth } from '@/context/AuthContext';
 import { useApi } from '@/hooks/useApi';
 import { productApi } from '@/lib/api';
+import { resolveUploadUrl } from '@/lib/uploadUrls';
 import toast from 'react-hot-toast';
 
 export default function SellerPromotionsPage() {
@@ -12,7 +13,7 @@ export default function SellerPromotionsPage() {
   const { data: promotions, execute: fetchPromotions, loading: promoLoading } = useApi(productApi, 'get', `/promotions?sellerId=${user?.id}`);
   const { data: products, execute: fetchProducts } = useApi(productApi, 'get', `/products?sellerId=${user?.id}`);
   
-  const [formData, setFormData] = useState({ productId: '', type: 'percentage', discount: '', endDate: '' });
+  const [formData, setFormData] = useState({ productId: '', variantSku: '', type: 'percentage', discount: '', endDate: '' });
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
@@ -23,11 +24,31 @@ export default function SellerPromotionsPage() {
   }, [user?.id, fetchPromotions, fetchProducts]);
 
   const selectedProduct = products?.find((p: any) => p._id === formData.productId);
-  const calculatedPrice = selectedProduct 
+
+  const getVariantBaselinePrice = (product: any, variantSku?: string | null) => {
+    const productPrice = Number(product?.price || 0);
+    if (!variantSku || !Array.isArray(product?.variants)) return productPrice;
+    const variant = product.variants.find((v: any) => v.sku === variantSku || v.id === variantSku);
+    return productPrice + Number(variant?.price || 0);
+  };
+
+  const baselinePrice = getVariantBaselinePrice(selectedProduct, formData.variantSku);
+
+  const calculatedPrice = baselinePrice
     ? formData.type === 'percentage'
-      ? selectedProduct.price * (1 - Number(formData.discount) / 100)
-      : selectedProduct.price - Number(formData.discount)
+      ? baselinePrice * (1 - Number(formData.discount) / 100)
+      : baselinePrice - Number(formData.discount)
     : 0;
+  const sortedPromotions = React.useMemo(() => {
+    const list = Array.isArray(promotions) ? [...promotions] : [];
+    return list.sort((left: any, right: any) => {
+      const leftBase = getVariantBaselinePrice(left.product, left.variantSku);
+      const rightBase = getVariantBaselinePrice(right.product, right.variantSku);
+      const leftPercent = left.type === 'percentage' ? Number(left.discount || 0) : leftBase > 0 ? (Number(left.discount || 0) / leftBase) * 100 : 0;
+      const rightPercent = right.type === 'percentage' ? Number(right.discount || 0) : rightBase > 0 ? (Number(right.discount || 0) / rightBase) * 100 : 0;
+      return rightPercent - leftPercent;
+    });
+  }, [promotions]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -37,13 +58,14 @@ export default function SellerPromotionsPage() {
     try {
       await productApi.post('/promotions', {
         ...formData,
+        variantSku: formData.variantSku || null,
         sellerId: user?.id,
         discount: Number(formData.discount),
         promotedPrice: calculatedPrice
       });
       toast.success('Promotion activated successfully');
       fetchPromotions();
-      setFormData({ productId: '', type: 'percentage', discount: '', endDate: '' });
+      setFormData({ productId: '', variantSku: '', type: 'percentage', discount: '', endDate: '' });
     } catch (err: any) {
       toast.error(err.response?.data?.message || 'Failed to create promotion');
     } finally {
@@ -89,13 +111,31 @@ export default function SellerPromotionsPage() {
                  </div>
 
                  <form onSubmit={handleSubmit} className="space-y-6">
-                    <div className="space-y-2">
-                       <label className="text-[9px] font-black uppercase tracking-widest text-[#1b1c1c]">Select Product</label>
-                       <select required className="w-full bg-[#fcf9f8] border border-[#e0e0e0] p-4 text-sm outline-none focus:border-[#ff6b00] transition-colors" value={formData.productId} onChange={e => setFormData({...formData, productId: e.target.value})}>
-                          <option value="">Choose an item...</option>
-                          {products?.map((p:any) => <option key={p._id} value={p._id}>{p.name} ({p.price} RWF)</option>)}
-                       </select>
-                    </div>
+                     <div className="space-y-2">
+                        <label className="text-[9px] font-black uppercase tracking-widest text-[#1b1c1c]">Select Product</label>
+                        <select required className="w-full bg-[#fcf9f8] border border-[#e0e0e0] p-4 text-sm outline-none focus:border-[#ff6b00] transition-colors" value={formData.productId} onChange={e => setFormData({...formData, productId: e.target.value, variantSku: ''})}>
+                           <option value="">Choose an item...</option>
+                           {products?.map((p:any) => <option key={p._id} value={p._id}>{p.name} ({p.price} RWF)</option>)}
+                        </select>
+                     </div>
+
+                     {selectedProduct?.variants && selectedProduct.variants.length > 0 && (
+                        <div className="space-y-2 animate-reveal">
+                           <label className="text-[9px] font-black uppercase tracking-widest text-[#1b1c1c]">Select Variant (Optional)</label>
+                           <select className="w-full bg-[#fcf9f8] border border-[#e0e0e0] p-4 text-sm outline-none focus:border-[#ff6b00] transition-colors" value={formData.variantSku} onChange={e => setFormData({...formData, variantSku: e.target.value})}>
+                              <option value="">Apply to all variants (Whole Product)</option>
+                              {selectedProduct.variants.map((v: any, index: number) => {
+                                 const value = v.sku || v.id || `${index}`;
+                                 const variantPrice = getVariantBaselinePrice(selectedProduct, value);
+                                 return (
+                                 <option key={`${value}-${index}`} value={value}>
+                                    {v.title} ({variantPrice ? `${variantPrice} RWF` : `${selectedProduct.price} RWF`})
+                                 </option>
+                                 );
+                              })}
+                           </select>
+                        </div>
+                     )}
 
                     <div className="grid grid-cols-2 gap-4">
                        <div className="space-y-2">
@@ -140,13 +180,13 @@ export default function SellerPromotionsPage() {
               <div className="space-y-6">
                  {promoLoading ? (
                     <div className="h-32 bg-[#fcf9f8] border border-[#e0e0e0] animate-pulse"></div>
-                 ) : promotions?.length > 0 ? promotions.map((promo: any) => (
+                 ) : sortedPromotions.length > 0 ? sortedPromotions.map((promo: any) => (
                     <div key={promo._id} className="bg-white border border-[#e0e0e0] p-6 flex flex-col md:flex-row justify-between items-start md:items-center group hover:border-[#ff6b00] transition-all shadow-sm">
                        
                        <div className="flex items-center gap-6 mb-4 md:mb-0">
                           <div className="w-20 h-20 bg-[#fcf9f8] border border-[#e0e0e0] overflow-hidden flex-shrink-0 p-1">
                              {promo.product?.images?.[0] ? (
-                               <img src={promo.product.images[0]} className="w-full h-full object-cover group-hover:scale-110 transition-all duration-700" alt="" />
+                               <img src={resolveUploadUrl(promo.product.images[0], 'product')} className="w-full h-full object-cover group-hover:scale-110 transition-all duration-700" alt="" />
                              ) : (
                                <div className="flex h-full w-full items-center justify-center text-[9px] font-black uppercase tracking-widest text-[#414844]">
                                  Deal
@@ -154,7 +194,14 @@ export default function SellerPromotionsPage() {
                              )}
                           </div>
                           <div>
-                             <h4 className="text-xl font-sans tracking-normal text-[#1b1c1c] mb-2 line-clamp-1">{promo.product?.name || 'Product'}</h4>
+                             <h4 className="text-xl font-sans tracking-normal text-[#1b1c1c] mb-2 line-clamp-1">
+                                 {promo.product?.name || 'Product'}
+                                 {promo.variantSku && (
+                                    <span className="ml-2 inline-flex items-center rounded bg-[#ffe5d9] px-2 py-0.5 text-[9px] font-black text-[#e05300] uppercase tracking-wider">
+                                       Variant: {promo.variantSku}
+                                    </span>
+                                 )}
+                              </h4>
                              <div className="flex items-center gap-3">
                                 <span className="text-[9px] font-black bg-[#e05300] text-white px-2 py-1 uppercase tracking-widest">
                                    -{promo.type === 'percentage' ? `${promo.discount}%` : `${promo.discount} RWF`}
@@ -168,7 +215,7 @@ export default function SellerPromotionsPage() {
 
                        <div className="flex md:flex-col items-center md:items-end justify-between w-full md:w-auto border-t md:border-t-0 border-[#e0e0e0] pt-4 md:pt-0 gap-4">
                           <div className="text-left md:text-right">
-                             <p className="text-[10px] text-[#414844] line-through uppercase tracking-widest opacity-60 mb-1">{promo.product?.price?.toLocaleString()} RWF</p>
+                             <p className="text-[10px] text-[#414844] line-through uppercase tracking-widest opacity-60 mb-1">{getVariantBaselinePrice(promo.product, promo.variantSku)?.toLocaleString()} RWF</p>
                              <p className="text-2xl font-sans tracking-normal text-[#ff6b00]">{promo.promotedPrice?.toLocaleString()} RWF</p>
                           </div>
                           <button onClick={() => handleDelete(promo._id)} className="text-[9px] font-black uppercase tracking-widest text-[#405046] hover:text-[#e05300] transition-colors border border-[#dfe7e2] hover:border-[#ff6b00] px-4 py-2 bg-[#f7faf8]">End Deal</button>

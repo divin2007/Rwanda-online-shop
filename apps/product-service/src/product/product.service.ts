@@ -147,6 +147,29 @@ export class ProductService implements OnModuleInit {
     }
   }
 
+  private async safeCacheGet<T>(key: string): Promise<T | undefined> {
+    try {
+      return await Promise.race([
+        this.cacheManager.get<T>(key),
+        new Promise<undefined>(resolve => setTimeout(resolve, 250)),
+      ]);
+    } catch (error: any) {
+      console.warn(`[ProductService] Cache read skipped for ${key}: ${error?.message || error}`);
+      return undefined;
+    }
+  }
+
+  private async safeCacheSet(key: string, value: unknown, ttl: number): Promise<void> {
+    try {
+      await Promise.race([
+        this.cacheManager.set(key, value, ttl),
+        new Promise(resolve => setTimeout(resolve, 250)),
+      ]);
+    } catch (error: any) {
+      console.warn(`[ProductService] Cache write skipped for ${key}: ${error?.message || error}`);
+    }
+  }
+
   private normalizeCategoryId(value: unknown): string {
     return String(value || '')
       .trim()
@@ -249,6 +272,32 @@ export class ProductService implements OnModuleInit {
     if (operations.length) {
       await this.taxonomyModel.bulkWrite(operations, { ordered: false });
     }
+
+    const activeDefaultCategoryIds = catalogCategories.map(category => this.normalizeCategoryId(category.id));
+    await this.taxonomyModel.updateMany(
+      {
+        deletedAt: null,
+        isActive: { $ne: false },
+        $or: [
+          { id: /^shopify_/ },
+          {
+            id: { $nin: activeDefaultCategoryIds },
+            auditTrail: { $elemMatch: { reason: 'default_catalog_bootstrap' } },
+            createdBy: null,
+          },
+        ],
+      },
+      {
+        $set: { isActive: false },
+        $push: {
+          auditTrail: {
+            action: 'deactivated',
+            reason: 'rmf_v3_catalog_replaced_shopify_taxonomy',
+            at: new Date(),
+          },
+        },
+      }
+    );
     await this.safeCacheDel('catalog:categories');
     await this.safeCacheDel('catalog:categories:all');
   }
@@ -256,16 +305,25 @@ export class ProductService implements OnModuleInit {
 
   async getCatalogCategories(includeInactive = false): Promise<CatalogCategory[]> {
     const cacheKey = includeInactive ? 'catalog:categories:all' : 'catalog:categories';
-    const cached = await this.cacheManager.get<CatalogCategory[]>(cacheKey);
+    const cached = await this.safeCacheGet<CatalogCategory[]>(cacheKey);
     if (cached) return cached;
     await this.seedCatalogCategoriesIfNeeded();
     const rows = await this.taxonomyModel
       .find({ deletedAt: null, ...(includeInactive ? {} : { isActive: true }) })
-      .sort({ label: 1 })
       .lean()
       .exec();
-    const categories = rows.map(row => this.sanitizeCatalogCategory(row));
-    await this.cacheManager.set(cacheKey, categories, 6 * 60 * 60 * 1000);
+    const orderMap = new Map(catalogCategories.map((category, index) => [category.id, index]));
+    const categories = rows
+      .map(row => this.sanitizeCatalogCategory(row))
+      .sort((left, right) => {
+        const leftOrder = orderMap.get(left.id);
+        const rightOrder = orderMap.get(right.id);
+        if (leftOrder !== undefined && rightOrder !== undefined) return leftOrder - rightOrder;
+        if (leftOrder !== undefined) return -1;
+        if (rightOrder !== undefined) return 1;
+        return left.label.localeCompare(right.label);
+      });
+    await this.safeCacheSet(cacheKey, categories, 6 * 60 * 60 * 1000);
     return categories;
   }
 
@@ -376,15 +434,26 @@ export class ProductService implements OnModuleInit {
   }
 
   private async resolveCatalogCategoryDynamic(value: unknown): Promise<CatalogCategory> {
-    const normalized = String(value || '').trim().toLowerCase();
+    const rawValue = String(value || '').trim();
+    const lookupValues = Array.from(new Set([
+      rawValue,
+      rawValue.includes('|') ? rawValue.split('|').pop()?.trim() : '',
+      rawValue.match(/\[([A-Za-z0-9_-]+)\]\s*$/)?.[1] || '',
+    ].filter(Boolean)));
     const categories = await this.getCatalogCategories();
-    const match = categories.find(category =>
-      category.id === normalized ||
-      category.productType === normalized ||
-      category.label.toLowerCase() === normalized ||
-      category.aliases?.some(alias => alias.toLowerCase() === normalized) ||
-      category.synonyms?.some(synonym => synonym.toLowerCase() === normalized)
-    );
+    const match = lookupValues
+      .map(candidate => {
+        const normalizedId = this.normalizeCategoryId(candidate);
+        const normalizedText = String(candidate).toLowerCase();
+        return categories.find(category =>
+          category.id === normalizedId ||
+          category.productType === normalizedId ||
+          category.label.toLowerCase() === normalizedText ||
+          category.aliases?.some(alias => alias.toLowerCase() === normalizedText) ||
+          category.synonyms?.some(synonym => synonym.toLowerCase() === normalizedText)
+        );
+      })
+      .find(Boolean);
     return match || resolveCatalogCategory(value);
   }
 
@@ -636,39 +705,215 @@ export class ProductService implements OnModuleInit {
     return Object.values(raw).map(value => Array.isArray(value) ? value.join(' ') : String(value || '')).join(' ');
   }
 
-  private calculateSearchScore(product: any, search: string, category?: CatalogCategory): number {
-    const term = search.trim().toLowerCase();
-    if (!term) return 0;
-    const haystacks = [
-      { value: product.name, weight: 8 },
-      { value: product.categoryLabel || product.category, weight: 5 },
-      { value: product.description, weight: 3 },
-      { value: this.stringFromAttributes(product.attributes), weight: 3 },
-      { value: product.sellerId?.stallName || product.sellerId?.shopDetails?.name, weight: 2 },
-      { value: category?.aliases?.join(' '), weight: 4 },
-      { value: category?.synonyms?.join(' '), weight: 4 },
-    ];
+  private stringFromVariants(variants: any): string {
+    if (!Array.isArray(variants)) return '';
 
-    return haystacks.reduce((score, part) => {
-      const value = String(part.value || '').toLowerCase();
-      if (!value) return score;
-      if (value === term) return score + part.weight * 2;
-      if (value.includes(term)) return score + part.weight;
-      const tokens = term.split(/\s+/).filter(Boolean);
-      return score + tokens.filter(token => value.includes(token)).length * (part.weight / Math.max(tokens.length, 1));
-    }, Number(product.totalOrders || 0) * 0.02 + Number(product.rating || 0) * 0.8 + Number(category?.searchBoost || 1));
+    return variants.map((variant) => {
+      const options = variant?.options instanceof Map ? Object.fromEntries(variant.options) : variant?.options || {};
+      const attributes = variant?.attributes instanceof Map ? Object.fromEntries(variant.attributes) : variant?.attributes || {};
+      return [
+        variant?.title,
+        variant?.sku,
+        this.stringFromAttributes(options),
+        this.stringFromAttributes(attributes),
+      ].filter(Boolean).join(' ');
+    }).join(' ');
   }
 
-  private rankProducts(products: any[], search?: string): any[] {
+  private calculateHaversineDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
+    const R = 6371; // Radius of Earth in kilometers
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLon = (lon2 - lon1) * Math.PI / 180;
+    const a =
+      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+      Math.sin(dLon / 2) * Math.sin(dLon / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return R * c;
+  }
+
+  private calculateLevenshteinSimilarity(s1: string, s2: string): number {
+    const longer = s1.toLowerCase();
+    const shorter = s2.toLowerCase();
+    if (longer.length < shorter.length) {
+      return this.calculateLevenshteinSimilarity(s2, s1);
+    }
+    const longerLength = longer.length;
+    if (longerLength === 0) {
+      return 1.0;
+    }
+
+    const costs = [];
+    for (let i = 0; i <= longer.length; i++) {
+      let lastValue = i;
+      for (let j = 0; j <= shorter.length; j++) {
+        if (i === 0) {
+          costs[j] = j;
+        } else {
+          if (j > 0) {
+            let newValue = costs[j - 1];
+            if (longer.charAt(i - 1) !== shorter.charAt(j - 1)) {
+              newValue = Math.min(Math.min(newValue, lastValue), costs[j]) + 1;
+            }
+            costs[j - 1] = lastValue;
+            lastValue = newValue;
+          }
+        }
+      }
+      if (i > 0) {
+        costs[shorter.length] = lastValue;
+      }
+    }
+
+    return (longerLength - costs[shorter.length]) / longerLength;
+  }
+
+  private calculateHierarchyBoost(productCatId: string, targetCatId?: string, allCategories: CatalogCategory[] = []): number {
+    if (!targetCatId) return 0;
+    if (productCatId === targetCatId) {
+      return 1000; // Perfect category matching boost
+    }
+
+    const prodCat = allCategories.find(c => c.id === productCatId);
+    const targetCat = allCategories.find(c => c.id === targetCatId);
+    if (!prodCat || !targetCat) return 0;
+
+    // Sibling category boost: both categories share the same direct parent (e.g. shoes and clothes share fashion)
+    if (prodCat.parentId && targetCat.parentId && prodCat.parentId === targetCat.parentId) {
+      return 500;
+    }
+
+    // Direct Ancestor/Descendant boost (e.g. parent of current or vice versa)
+    if (prodCat.parentId === targetCat.id || targetCat.parentId === prodCat.id) {
+      return 200;
+    }
+
+    return 0;
+  }
+
+  private calculateSearchScore(
+    product: any,
+    search: string,
+    category?: CatalogCategory,
+    searchedCategory?: CatalogCategory,
+    allCategories: CatalogCategory[] = [],
+    userLat?: number,
+    userLng?: number
+  ): number {
+    const term = search.trim().toLowerCase();
+    
+    // Keyword scoring
+    let keywordScore = 0;
+    if (term) {
+      const haystacks = [
+        { value: product.name, weight: 8 },
+        { value: product.categoryLabel || product.category, weight: 5 },
+        { value: product.description, weight: 3 },
+        { value: this.stringFromAttributes(product.attributes), weight: 3 },
+        { value: this.stringFromVariants(product.variants), weight: 5 },
+        { value: product.sellerId?.stallName || product.sellerId?.shopDetails?.name, weight: 2 },
+        { value: category?.aliases?.join(' '), weight: 4 },
+        { value: category?.synonyms?.join(' '), weight: 4 },
+      ];
+
+      keywordScore = haystacks.reduce((score, part) => {
+        const value = String(part.value || '').toLowerCase();
+        if (!value) return score;
+        if (value === term) return score + part.weight * 2;
+        if (value.includes(term)) return score + part.weight;
+        const tokens = term.split(/\s+/).filter(Boolean);
+        return score + tokens.filter(token => value.includes(token)).length * (part.weight / Math.max(tokens.length, 1));
+      }, Number(product.totalOrders || 0) * 0.02 + Number(product.rating || 0) * 0.8 + Number(category?.searchBoost || 1));
+
+      // 1. Multi-Token Intersection & Typo-Tolerant Boosting
+      const searchTokens = term.split(/\s+/).filter(Boolean);
+      const searchableDoc = `${product.name} ${product.description || ''} ${product.categoryLabel || ''} ${this.stringFromAttributes(product.attributes)} ${this.stringFromVariants(product.variants)}`.toLowerCase();
+      
+      const matchedTokens = searchTokens.filter(token => searchableDoc.includes(token));
+      const coverageRatio = searchTokens.length > 0 ? matchedTokens.length / searchTokens.length : 0;
+      
+      // Enforce premium boost for complete multi-word queries (e.g. "low J1" matching "Nike J1 low")
+      if (coverageRatio === 1.0) {
+        keywordScore += 400; // Major reward for complete word coverage in any order!
+      } else if (coverageRatio >= 0.5) {
+        keywordScore += 150; // Partial match reward
+      }
+
+      // 2. Levenshtein Typo Tolerance Fuzzy Matching
+      let maxFuzzySimilarity = 0;
+      const productWords = searchableDoc.split(/[\s,.\-_/]+/).filter(w => w.length > 2);
+      for (const token of searchTokens) {
+        if (token.length <= 2) continue;
+        if (searchableDoc.includes(token)) continue; // Avoid redundant typo checking for direct matches
+        for (const word of productWords) {
+          const similarity = this.calculateLevenshteinSimilarity(token, word);
+          if (similarity > maxFuzzySimilarity) {
+            maxFuzzySimilarity = similarity;
+          }
+        }
+      }
+      
+      if (maxFuzzySimilarity >= 0.75) {
+        // Boost up to +150 points for very high similarity typo correction (e.g. "shos" -> "shoes")
+        keywordScore += (maxFuzzySimilarity - 0.75) * 600;
+      }
+    } else {
+      // Proximity only scoring basis
+      keywordScore = Number(product.totalOrders || 0) * 0.02 + Number(product.rating || 0) * 0.8 + Number(category?.searchBoost || 1);
+    }
+
+    // 1. Category Hierarchy Tree boosting
+    if (searchedCategory && product.categoryId) {
+      keywordScore += this.calculateHierarchyBoost(product.categoryId, searchedCategory.id, allCategories);
+    }
+
+
+    // 2. Geospatial market-proximity boosting
+    if (userLat !== undefined && userLng !== undefined) {
+      const coords = product.marketId?.location?.coordinates;
+      if (Array.isArray(coords) && coords.length === 2) {
+        const marketLon = coords[0];
+        const marketLat = coords[1];
+        const distance = this.calculateHaversineDistance(userLat, userLng, marketLat, marketLon);
+        // Inject physical distance in populated object
+        product.distanceInKm = Number(distance.toFixed(2));
+        // Boost closer products (maximum of +200 points for directly overlapping coords)
+        keywordScore += (200 / (1 + distance));
+      }
+    }
+
+    return keywordScore;
+  }
+
+  private rankProducts(
+    products: any[],
+    search?: string,
+    searchedCategory?: CatalogCategory,
+    allCategories: CatalogCategory[] = [],
+    userLat?: number,
+    userLng?: number
+  ): any[] {
     const term = String(search || '').trim();
-    if (!term) return products;
+    if (!term && userLat === undefined && userLng === undefined) return products;
     return [...products]
       .map(product => {
         const category = this.catalogCategoryForProduct(product);
-        return { ...product, searchScore: this.calculateSearchScore(product, term, category) };
+        return {
+          ...product,
+          searchScore: this.calculateSearchScore(
+            product,
+            term,
+            category,
+            searchedCategory,
+            allCategories,
+            userLat,
+            userLng
+          )
+        };
       })
       .sort((a, b) => Number(b.searchScore || 0) - Number(a.searchScore || 0));
   }
+
 
   private scoreMap(items: any[] | undefined, keyName: 'key' | 'refId') {
     const map = new Map<string, number>();
@@ -734,11 +979,24 @@ export class ProductService implements OnModuleInit {
     const limit = Math.min(Math.max(Number(query.limit || 24), 1), 200);
     const skip = Number(query.skip || 0);
     const { limit: _, skip: __, sortBy: ___, ...restQuery } = query;
+
+    if (!userId || !Types.ObjectId.isValid(userId)) {
+      return this.findAll({
+        approvedOnly: true,
+        isActive: true,
+        ...restQuery,
+        sortBy: { totalOrders: -1, rating: -1, createdAt: -1 },
+        limit,
+        skip,
+      });
+    }
+
+    const candidateLimit = Math.min(Math.max(skip + limit, 80), 240);
     const products = await this.findAll({
       approvedOnly: true,
       isActive: true,
       ...restQuery,
-      limit: 1000,
+      limit: candidateLimit,
     });
     const ranked = await this.applyRecommendationRanking(products, userId);
     return ranked.slice(skip, skip + limit);
@@ -823,6 +1081,38 @@ export class ProductService implements OnModuleInit {
           const prodName = `${market.name.split(' ')[0]} ${category} Item #${i}`;
           const catalogCategory = resolveCatalogCategory(category);
 
+          const namePrefix = market.name.split(' ')[0].toUpperCase().replace(/[^A-Z0-9]/g, '');
+          const categoryPrefix = category.substring(0, 3).toUpperCase().replace(/[^A-Z0-9]/g, '');
+          const seededVariants = [
+            {
+              sku: `SKU-${namePrefix}-${categoryPrefix}-V1`,
+              title: 'Standard Option',
+              options: catalogCategory.id === 'grocery' ? { packageSize: '1kg' } : { color: 'Royal Blue', size: 'Medium' },
+              price: 0,
+              unit: i % 2 === 0 ? 'kg' : 'pcs',
+              stockType: 'infinite',
+              stockQuantity: 999999,
+              isActive: true
+            },
+            {
+              sku: `SKU-${namePrefix}-${categoryPrefix}-V2`,
+              title: 'Premium Option',
+              options: catalogCategory.id === 'grocery' ? { packageSize: '5kg' } : { color: 'Deep Crimson', size: 'Large' },
+              price: 1500,
+              unit: i % 2 === 0 ? 'kg' : 'pcs',
+              stockType: 'infinite',
+              stockQuantity: 999999,
+              isActive: true
+            }
+          ];
+
+          const variantAxes = catalogCategory.id === 'grocery'
+            ? [{ key: 'packageSize', label: 'Package size', values: ['1kg', '5kg'] }]
+            : [
+                { key: 'color', label: 'Color', values: ['Royal Blue', 'Deep Crimson'] },
+                { key: 'size', label: 'Size', values: ['Medium', 'Large'] }
+              ];
+
           await this.productModel.findOneAndUpdate(
             { name: prodName, marketId: market._id },
             {
@@ -839,7 +1129,8 @@ export class ProductService implements OnModuleInit {
                 material: 'Mixed',
                 artisanDistrict: market.location?.city || 'Kigali',
               }),
-              variantAxes: this.sanitizeVariantAxes(catalogCategory),
+              variantAxes: variantAxes,
+              variants: seededVariants,
               marketId: market._id,
               sellerId: defaultSeller?._id || new Types.ObjectId(),
               images: [market.imageUrl || 'https://images.unsplash.com/photo-1542838132-92c53300491e'],
@@ -904,8 +1195,21 @@ export class ProductService implements OnModuleInit {
     productData.stockQuantity = Number(productData.stockQuantity || 0);
     if (productData.weight) productData.weight = Number(productData.weight);
     else delete productData.weight;
+    for (const field of ['minPrice', 'maxPrice', 'minWeight', 'maxWeight']) {
+      if (productData[field] !== undefined && productData[field] !== '') {
+        productData[field] = Number(productData[field]);
+      } else {
+        delete productData[field];
+      }
+    }
 
     if (isNaN(productData.price)) throw new BadRequestException('Price must be a valid number.');
+    if (productData.isNegotiable && productData.minPrice && productData.maxPrice && productData.minPrice > productData.maxPrice) {
+      throw new BadRequestException('Minimum negotiable price cannot be greater than maximum price.');
+    }
+    if (productData.minWeight && productData.maxWeight && productData.minWeight > productData.maxWeight) {
+      throw new BadRequestException('Minimum weight cannot be greater than maximum weight.');
+    }
 
     try {
       const newProduct = new this.productModel(productData);
@@ -932,6 +1236,7 @@ export class ProductService implements OnModuleInit {
       approvedOnly,
       isActive,
       limit,
+      skip,
       sortBy,
       search,
       category,
@@ -942,6 +1247,8 @@ export class ProductService implements OnModuleInit {
       hasPromotion,
       isMadeInRwanda,
       origin,
+      latitude,
+      longitude,
     } = query;
     // Normalize cache key: only include fields that affect the query, in sorted order
     const canonicalQuery = JSON.stringify({
@@ -950,6 +1257,7 @@ export class ProductService implements OnModuleInit {
       approvedOnly,
       isActive,
       limit,
+      skip,
       sortBy,
       search,
       category,
@@ -960,13 +1268,16 @@ export class ProductService implements OnModuleInit {
       hasPromotion,
       isMadeInRwanda,
       origin,
+      latitude,
+      longitude,
       isApproved: query.isApproved,
     });
     const cacheKey = `products:all:${canonicalQuery}`;
-    const cached = await this.cacheManager.get<any[]>(cacheKey);
+    const cached = await this.safeCacheGet<any[]>(cacheKey);
     if (cached && Array.isArray(cached) && cached.every((item: any) => item !== null && item !== undefined)) {
       return cached;
     }
+
 
     const filter: any = { deletedAt: null };
 
@@ -1033,31 +1344,70 @@ export class ProductService implements OnModuleInit {
     const trimmedSearch = String(search || '').trim();
     if (trimmedSearch && !this.isMadeInRwandaSearch(trimmedSearch)) {
       const safeSearch = this.escapeRegex(trimmedSearch);
+      const searchTokens = trimmedSearch.split(/\s+/).filter(Boolean);
 
       const dynamicCategories = await this.getCatalogCategories();
-      const matchedCategories = dynamicCategories.filter(cat =>
-        cat.label.toLowerCase().includes(trimmedSearch.toLowerCase()) ||
-        cat.aliases?.some((a: string) => a.toLowerCase().includes(trimmedSearch.toLowerCase())) ||
-        cat.synonyms?.some((s: string) => s.toLowerCase().includes(trimmedSearch.toLowerCase()))
-      );
+      const matchedCategories = dynamicCategories.filter(cat => {
+        const check = (str: string) => str.toLowerCase().includes(trimmedSearch.toLowerCase()) || 
+                      searchTokens.every(token => str.toLowerCase().includes(token.toLowerCase()));
+        return (
+          check(cat.label) ||
+          cat.aliases?.some(a => check(a)) ||
+          cat.synonyms?.some(s => check(s))
+        );
+      });
       const matchedCategoryIds = matchedCategories.map(cat => cat.id);
+
+      // Build Multi-Token intersection query: enforce that every single token must match somewhere in the fields
+      const tokenConditions = searchTokens.map(token => {
+        const escapedToken = this.escapeRegex(token);
+        return {
+          $or: [
+            { name: { $regex: escapedToken, $options: 'i' } },
+            { description: { $regex: escapedToken, $options: 'i' } },
+            { category: { $regex: escapedToken, $options: 'i' } },
+            { categoryLabel: { $regex: escapedToken, $options: 'i' } },
+            { productType: { $regex: escapedToken, $options: 'i' } },
+            { 'attributes.brand': { $regex: escapedToken, $options: 'i' } },
+            { 'attributes.model': { $regex: escapedToken, $options: 'i' } },
+            { 'attributes.material': { $regex: escapedToken, $options: 'i' } },
+            { 'attributes.color': { $regex: escapedToken, $options: 'i' } },
+            { 'attributes.size': { $regex: escapedToken, $options: 'i' } },
+            { 'attributes.shoeSize': { $regex: escapedToken, $options: 'i' } },
+            { 'attributes.style': { $regex: escapedToken, $options: 'i' } },
+            { 'attributes.originDistrict': { $regex: escapedToken, $options: 'i' } },
+            { 'variants.title': { $regex: escapedToken, $options: 'i' } },
+            { 'variants.sku': { $regex: escapedToken, $options: 'i' } },
+            { 'variants.options.color': { $regex: escapedToken, $options: 'i' } },
+            { 'variants.options.size': { $regex: escapedToken, $options: 'i' } },
+            { 'variants.options.shoeSize': { $regex: escapedToken, $options: 'i' } },
+            { 'variants.options.style': { $regex: escapedToken, $options: 'i' } },
+            { 'variants.options.model': { $regex: escapedToken, $options: 'i' } },
+            { 'variants.attributes.brand': { $regex: escapedToken, $options: 'i' } },
+            { 'variants.attributes.model': { $regex: escapedToken, $options: 'i' } },
+            { 'variants.attributes.material': { $regex: escapedToken, $options: 'i' } },
+            { 'variants.attributes.color': { $regex: escapedToken, $options: 'i' } },
+            { 'variants.attributes.size': { $regex: escapedToken, $options: 'i' } },
+            { 'variants.attributes.shoeSize': { $regex: escapedToken, $options: 'i' } },
+            { 'variants.attributes.style': { $regex: escapedToken, $options: 'i' } }
+          ]
+        };
+      });
 
       this.addAndFilter(filter, {
         $or: [
           { name: { $regex: safeSearch, $options: 'i' } },
           { description: { $regex: safeSearch, $options: 'i' } },
-          { category: { $regex: safeSearch, $options: 'i' } },
-          { categoryLabel: { $regex: safeSearch, $options: 'i' } },
-          { productType: { $regex: safeSearch, $options: 'i' } },
-          { 'attributes.brand': { $regex: safeSearch, $options: 'i' } },
-          { 'attributes.model': { $regex: safeSearch, $options: 'i' } },
-          { 'attributes.material': { $regex: safeSearch, $options: 'i' } },
-          { 'attributes.originDistrict': { $regex: safeSearch, $options: 'i' } },
+          { 'variants.title': { $regex: safeSearch, $options: 'i' } },
+          { 'variants.sku': { $regex: safeSearch, $options: 'i' } },
+          // Multi-word intersection query (e.g. low AND J1 matched anywhere)
+          { $and: tokenConditions },
           ...(matchedCategoryIds.length > 0 ? [{ categoryId: { $in: matchedCategoryIds } }] : []),
           ...(matchedCategoryIds.length > 0 ? [{ category: { $in: matchedCategoryIds } }] : [])
         ]
       });
     }
+
 
     if (query.minPrice || query.maxPrice) {
       filter.price = {};
@@ -1081,7 +1431,11 @@ export class ProductService implements OnModuleInit {
       filter.sellerId = seller ? seller._id : sellerId;
     }
 
-    const dbQuery = this.productModel.find(filter).populate(['sellerId', 'marketId']).lean();
+    const dbQuery = this.productModel
+      .find(filter)
+      .populate('sellerId', 'stallName shopDetails rating totalOrders userId')
+      .populate('marketId', 'name slug code location imageUrl')
+      .lean();
 
     if (sortBy) {
       dbQuery.sort(sortBy);
@@ -1093,6 +1447,10 @@ export class ProductService implements OnModuleInit {
       dbQuery.limit(Number(limit));
     }
 
+    if (skip) {
+      dbQuery.skip(Number(skip));
+    }
+
     const results = await dbQuery.exec();
 
     // Enrich with active promotion data
@@ -1100,12 +1458,35 @@ export class ProductService implements OnModuleInit {
     const promotedOrAll = hasPromotion === 'true' || hasPromotion === true
       ? enriched.filter((product: any) => Boolean(product.promotion))
       : enriched;
-    const finalResults = this.rankProducts(promotedOrAll, trimmedSearch);
+
+    // Hierarchy dynamic category tree lookup based on query search string
+    const dynamicCategories = await this.getCatalogCategories();
+    let searchedCategory: CatalogCategory | undefined;
+    if (trimmedSearch) {
+      searchedCategory = dynamicCategories.find(cat =>
+        cat.id === trimmedSearch.toLowerCase() ||
+        cat.label.toLowerCase() === trimmedSearch.toLowerCase() ||
+        cat.aliases?.some(a => a.toLowerCase() === trimmedSearch.toLowerCase()) ||
+        cat.synonyms?.some(s => s.toLowerCase() === trimmedSearch.toLowerCase()) ||
+        trimmedSearch.toLowerCase().includes(cat.id) ||
+        cat.aliases?.some(a => trimmedSearch.toLowerCase().includes(a.toLowerCase()))
+      );
+    }
+
+    const finalResults = this.rankProducts(
+      promotedOrAll,
+      trimmedSearch,
+      searchedCategory,
+      dynamicCategories,
+      latitude !== undefined && latitude !== null && latitude !== '' ? Number(latitude) : undefined,
+      longitude !== undefined && longitude !== null && longitude !== '' ? Number(longitude) : undefined
+    );
 
     // Set cache with 5 minute TTL (300 seconds)
-    await this.cacheManager.set(cacheKey, finalResults, 300000);
+    await this.safeCacheSet(cacheKey, finalResults, 300000);
 
     return finalResults;
+
   }
 
   async getFacets(query: any): Promise<any> {
@@ -1243,7 +1624,7 @@ export class ProductService implements OnModuleInit {
 
   async findById(id: string): Promise<any> {
     const cacheKey = `product:${id}`;
-    const cached = await this.cacheManager.get(cacheKey);
+    const cached = await this.safeCacheGet(cacheKey);
 
     if (cached) return cached;
 
@@ -1255,7 +1636,7 @@ export class ProductService implements OnModuleInit {
     // Enrich with promotion data
     const [enriched] = await this.enrichWithPromotions([this.withCatalogMetadata(product)]);
 
-    await this.cacheManager.set(cacheKey, enriched, 300000);
+    await this.safeCacheSet(cacheKey, enriched, 300000);
     return enriched;
   }
 
@@ -1785,9 +2166,15 @@ export class ProductService implements OnModuleInit {
       const p = typeof product.toObject === 'function' ? product.toObject() : { ...product };
       const promo = promoMap.get(p._id?.toString());
       if (promo) {
+        const discountPercentage = promo.type === 'percentage'
+          ? Number(promo.discount || 0)
+          : Number(p.price || 0) > 0
+            ? Math.round((Number(promo.discount || 0) / Number(p.price || 0)) * 100)
+            : 0;
         p.promotion = {
           type: promo.type,
           discount: promo.discount,
+          discountPercentage,
           promotedPrice: promo.promotedPrice || p.price,
           endDate: promo.endDate
         };
@@ -1797,6 +2184,16 @@ export class ProductService implements OnModuleInit {
   }
 
   async generateExcelTemplate(): Promise<Buffer> {
+    let templateCategories = catalogCategories;
+    try {
+      const dynamicCategories = await this.getCatalogCategories(true);
+      if (dynamicCategories.length > 0) {
+        templateCategories = dynamicCategories;
+      }
+    } catch {
+      templateCategories = catalogCategories;
+    }
+
     const workbook = new ExcelJS.Workbook();
     workbook.creator = 'Rwanda Market Facilitator';
     workbook.lastModifiedBy = 'Rwanda Market Facilitator';
@@ -1859,32 +2256,77 @@ export class ProductService implements OnModuleInit {
       });
     };
 
-    const variantFields = uniqueFields(catalogCategories.flatMap(category => category.variantAxes));
-    const attributeFields = uniqueFields(catalogCategories.flatMap(category => category.attributes));
+    const categoryById = new Map(templateCategories.map(category => [category.id, category]));
+    const childrenByParent = new Map<string, CatalogCategory[]>();
+    const roots: CatalogCategory[] = [];
+    templateCategories.forEach(category => {
+      const parentId = category.parentId || null;
+      if (parentId && categoryById.has(parentId)) {
+        const children = childrenByParent.get(parentId) || [];
+        children.push(category);
+        childrenByParent.set(parentId, children);
+      } else {
+        roots.push(category);
+      }
+    });
+
+    const categoryOrder = new Map(templateCategories.map((category, index) => [category.id, index]));
+    const sortCategories = (left: CatalogCategory, right: CatalogCategory) =>
+      (categoryOrder.get(left.id) || 0) - (categoryOrder.get(right.id) || 0);
+    roots.sort(sortCategories);
+    childrenByParent.forEach(children => children.sort(sortCategories));
+
+    const displayCategory = (category: CatalogCategory) => `${category.label} | ${category.id}`;
+    const safeListName = (prefix: string, categoryId: string) => safeDefinedName(`${prefix}_${categoryId}`);
+    const directChildrenOrSelf = (category: CatalogCategory) => {
+      const children = childrenByParent.get(category.id) || [];
+      return children.length ? children : [category];
+    };
+    const exactCategoriesForSub = (category: CatalogCategory) => {
+      const children = childrenByParent.get(category.id) || [];
+      return children.length ? children : [category];
+    };
+
+    const variantFields = uniqueFields(templateCategories.flatMap(category => category.variantAxes));
+    const attributeFields = uniqueFields(templateCategories.flatMap(category => category.attributes));
     const dropdownFields = uniqueFields([...variantFields, ...attributeFields]);
-    const units = Array.from(new Set([...catalogCategories.map(category => category.defaultUnit), 'pcs', 'kg', 'g', 'pair', 'set', 'm', 'box', 'bag', 'liter', 'bundle']));
+    const units = Array.from(new Set([...templateCategories.map(category => category.defaultUnit), 'pcs', 'kg', 'g', 'pair', 'set', 'm', 'box', 'bag', 'liter', 'bundle']));
     const colors = ['Natural', 'Black', 'White', 'Green', 'Yellow', 'Blue', 'Red', 'Brown', 'Gold', 'Silver', 'Mixed', 'Custom'];
 
-    addNamedList('CategoryIds', catalogCategories.map(category => category.id));
+    addNamedList('ParentCategories', roots.map(displayCategory));
+    for (const root of roots) {
+      const subCategories = directChildrenOrSelf(root);
+      addNamedList(safeListName('Sub', root.id), subCategories.map(displayCategory));
+      for (const sub of subCategories) {
+        addNamedList(safeListName('Category', sub.id), exactCategoriesForSub(sub).map(displayCategory));
+      }
+    }
+    addNamedList('CategoryIds', templateCategories.map(displayCategory));
     addNamedList('StockTypes', ['finite', 'infinite', 'on_demand']);
     addNamedList('YesNo', ['yes', 'no']);
     addNamedList('Units', units);
     addNamedList('Colors', colors);
     addNamedList('BlankList', ['']);
 
-    for (const category of catalogCategories) {
-      const categoryFields = [...category.variantAxes, ...category.attributes];
-      for (const field of dropdownFields) {
-        const fieldForCategory = categoryFields.find(candidate => candidate.key === field.key);
+    const addedDependentLists = new Set<string>();
+    for (const category of templateCategories) {
+      const categoryFields = uniqueFields([...category.variantAxes, ...category.attributes])
+        .filter(field => field.type === 'select' || field.type === 'multi_select' || field.type === 'boolean' || field.type === 'color');
+
+      for (const field of categoryFields) {
+        const listName = safeDefinedName(`${category.id}_${field.key}`);
+        if (addedDependentLists.has(listName)) continue;
+        addedDependentLists.add(listName);
+
         let values: string[] = [''];
-        if (fieldForCategory?.type === 'boolean') {
+        if (field.type === 'boolean') {
           values = ['yes', 'no'];
-        } else if (fieldForCategory?.type === 'color') {
+        } else if (field.type === 'color') {
           values = colors;
-        } else if (fieldForCategory?.options?.length) {
-          values = fieldForCategory.options;
+        } else if (field.options?.length) {
+          values = field.options;
         }
-        addNamedList(safeDefinedName(`${category.id}_${field.key}`), values);
+        addNamedList(listName, values);
       }
     }
 
@@ -1901,7 +2343,9 @@ export class ProductService implements OnModuleInit {
     const productColumns: TemplateColumn[] = [
       { header: 'Name', key: 'name', width: 28, required: true, note: 'Required. Rows with the same Name become variants of one product.' },
       { header: 'Description', key: 'description', width: 42, required: true, note: 'What buyers should know before ordering.' },
-      { header: 'Category', key: 'category', width: 18, required: true, validation: '=CategoryIds', note: 'Choose a category id. This drives the dependent dropdowns.' },
+      { header: 'Parent Category', key: 'parentCategory', width: 28, validation: '=ParentCategories', note: 'Start here, like the website category picker.' },
+      { header: 'Sub Category', key: 'subCategory', width: 28, note: 'Choose after Parent Category. The dropdown changes based on the parent.' },
+      { header: 'Category', key: 'category', width: 32, required: true, note: 'Choose the exact product category after Sub Category. This drives variants and attributes.' },
       { header: 'Price', key: 'price', width: 14, required: true, note: 'RWF unit price. Keep numbers only.' },
       { header: 'Unit', key: 'unit', width: 12, validation: '=Units', note: 'Pricing unit shown to buyers.' },
       { header: 'Stock', key: 'stock', width: 12, required: true, note: 'Available quantity. Use 0 for made-to-order if StockType is on_demand.' },
@@ -1928,11 +2372,11 @@ export class ProductService implements OnModuleInit {
       { header: 'Attributes JSON', key: 'attributes', width: 36, note: 'Optional advanced override, e.g. {"brand":"Acme"}. Attribute columns are easier and preferred.' },
     ];
 
-    products.mergeCells('A1:H1');
-    products.mergeCells('A2:H2');
-    products.mergeCells('A3:H3');
+    products.mergeCells('A1:K1');
+    products.mergeCells('A2:K2');
+    products.mergeCells('A3:K3');
     products.getCell('A1').value = 'RMF bulk product import';
-    products.getCell('A2').value = 'Fill product rows below. Category controls the dropdowns for sizes, package options, and category-specific attributes.';
+    products.getCell('A2').value = 'Fill product rows below. Parent Category, Sub Category, and Category work like the website category picker.';
     products.getCell('A3').value = 'Keep the header row unchanged. Delete sample rows before a real upload, or replace them with your own products.';
     products.getCell('A1').font = { bold: true, size: 20, color: { argb: darkGreen } };
     products.getCell('A2').font = { size: 11, color: { argb: 'FF38564A' } };
@@ -1967,7 +2411,9 @@ export class ProductService implements OnModuleInit {
       {
         name: 'Handwoven Agaseke Basket',
         description: 'Traditional handwoven Rwandan basket with high quality sisal fibers.',
-        category: 'handicrafts',
+        parentCategory: 'Traditional Crafts & Fine Arts | handicrafts',
+        subCategory: 'Woven Arts | handicrafts-woven',
+        category: 'Traditional Agaseke Peace Baskets | handicrafts-woven-agaseke',
         price: 25000,
         unit: 'pcs',
         stock: 10,
@@ -1986,7 +2432,9 @@ export class ProductService implements OnModuleInit {
       {
         name: 'Handwoven Agaseke Basket',
         description: 'Traditional handwoven Rwandan basket with high quality sisal fibers.',
-        category: 'handicrafts',
+        parentCategory: 'Traditional Crafts & Fine Arts | handicrafts',
+        subCategory: 'Woven Arts | handicrafts-woven',
+        category: 'Traditional Agaseke Peace Baskets | handicrafts-woven-agaseke',
         price: 28000,
         unit: 'pcs',
         stock: 15,
@@ -2005,7 +2453,9 @@ export class ProductService implements OnModuleInit {
       {
         name: 'Rwandan Specialty Coffee',
         description: 'High-altitude Arabica beans from Gisenyi.',
-        category: 'grocery',
+        parentCategory: 'Groceries & Fresh Produce | grocery',
+        subCategory: 'Drinks & Liquid Refreshments | grocery-beverages',
+        category: 'Fresh Milk, UHT Long-Life Milk, Yogurt, Cheese | grocery-beverages-dairy',
         price: 12000,
         unit: 'kg',
         stock: 100,
@@ -2022,7 +2472,9 @@ export class ProductService implements OnModuleInit {
       {
         name: 'Kitenge Wrap Dress',
         description: 'Locally tailored cotton kitenge wrap dress.',
-        category: 'fashion',
+        parentCategory: 'Fashion & Apparel | fashion',
+        subCategory: 'Fabrics & Raw Textiles | fashion-textiles',
+        category: 'Premium Kitenge & Wax Fabrics | fashion-textiles-kitenge',
         price: 32000,
         unit: 'pcs',
         stock: 8,
@@ -2056,7 +2508,25 @@ export class ProductService implements OnModuleInit {
           cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFBFDFC' } };
         }
 
-        if ('validation' in column && column.validation) {
+        if (column.key === 'subCategory') {
+          cell.dataValidation = {
+            type: 'list',
+            allowBlank: true,
+            formulae: [`=IFERROR(INDIRECT("Sub_"&SUBSTITUTE(TRIM(RIGHT(SUBSTITUTE($C${rowIndex},"|",REPT(" ",80)),80)),"-","_")),BlankList)`],
+            showErrorMessage: true,
+            errorTitle: 'Choose a sub-category',
+            error: 'Choose a parent category first, then select a sub-category from the dropdown.',
+          };
+        } else if (column.key === 'category') {
+          cell.dataValidation = {
+            type: 'list',
+            allowBlank: false,
+            formulae: [`=IFERROR(INDIRECT("Category_"&SUBSTITUTE(TRIM(RIGHT(SUBSTITUTE($D${rowIndex},"|",REPT(" ",80)),80)),"-","_")),BlankList)`],
+            showErrorMessage: true,
+            errorTitle: 'Choose an exact category',
+            error: 'Choose a sub-category first, then select the exact category.',
+          };
+        } else if ('validation' in column && column.validation) {
           cell.dataValidation = {
             type: 'list',
             allowBlank: !column.required,
@@ -2074,7 +2544,7 @@ export class ProductService implements OnModuleInit {
             cell.dataValidation = {
               type: 'list',
               allowBlank: true,
-              formulae: [`=INDIRECT($C${rowIndex}&"_${field.key}")`],
+              formulae: [`=IFERROR(INDIRECT(SUBSTITUTE(TRIM(RIGHT(SUBSTITUTE($E${rowIndex},"|",REPT(" ",80)),80)),"-","_")&"_${field.key}"),BlankList)`],
               showErrorMessage: true,
               errorTitle: 'Choose a category option',
               error: 'Choose an option supported by this row category, or leave blank if the field is not relevant.',
@@ -2108,8 +2578,8 @@ export class ProductService implements OnModuleInit {
       });
     }
 
-    products.getColumn(4).numFmt = '#,##0';
     products.getColumn(6).numFmt = '#,##0';
+    products.getColumn(8).numFmt = '#,##0';
     products.getRow(firstDataRow + samples.length).height = 24;
 
     const guide = workbook.addWorksheet('Category Guide', {
@@ -2118,15 +2588,18 @@ export class ProductService implements OnModuleInit {
     guide.columns = [
       { header: 'Category ID', key: 'id', width: 18 },
       { header: 'Category', key: 'label', width: 30 },
+      { header: 'Parent', key: 'parent', width: 28 },
       { header: 'Default Unit', key: 'unit', width: 14 },
       { header: 'Variant columns', key: 'variants', width: 36 },
       { header: 'Required attributes', key: 'required', width: 45 },
       { header: 'Optional attributes', key: 'optional', width: 55 },
     ];
-    catalogCategories.forEach(category => {
+    templateCategories.forEach(category => {
+      const parent = category.parentId ? categoryById.get(category.parentId) : undefined;
       guide.addRow({
         id: category.id,
         label: category.label,
+        parent: parent ? parent.label : '',
         unit: category.defaultUnit,
         variants: category.variantAxes.map(axis => axis.key).join(', ') || 'none',
         required: category.attributes.filter(field => field.required).map(field => `Attr: ${field.key}`).join(', ') || 'none',
@@ -2154,7 +2627,7 @@ export class ProductService implements OnModuleInit {
       { header: 'What to do', key: 'detail', width: 90 },
     ];
     [
-      ['1. Choose category', 'Use the Category dropdown on each product row. The category controls dropdowns such as size, packageSize, flavor, material, condition, and other attributes.'],
+      ['1. Choose category', 'Use Parent Category, then Sub Category, then Category on each product row. Each dropdown narrows the next one, like the add-product form.'],
       ['2. Add required basics', 'Name, Category, Price, Stock, and Images are required. Images must be public http/https URLs.'],
       ['3. Use variants', 'Use the same Name on multiple rows to create variants of one product. Change size, color, packageSize, SKU, price, or stock per row.'],
       ['4. Fill attributes', 'Columns starting with Attr: are category-specific. The Category Guide sheet shows which ones are required for each category.'],

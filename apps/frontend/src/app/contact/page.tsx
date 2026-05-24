@@ -3,8 +3,10 @@ import React, { useState } from 'react';
 import { Layout } from '@/components/layout/Layout';
 import Link from 'next/link';
 import { Mail, Phone, MapPin, ShieldAlert, Send, CheckCircle2 } from 'lucide-react';
+import { useAuth } from '@/context/AuthContext';
 
 export default function ContactPage() {
+  const { user } = useAuth();
   const [formData, setFormData] = useState({ name: '', email: '', subject: '', message: '' });
   const [loading, setLoading] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
@@ -22,7 +24,10 @@ export default function ContactPage() {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(formData),
+        body: JSON.stringify({
+          ...formData,
+          userId: user?.id,
+        }),
       });
 
       if (!res.ok) {

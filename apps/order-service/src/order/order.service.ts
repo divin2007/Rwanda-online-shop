@@ -136,6 +136,106 @@ export class OrderService implements OnModuleInit, OnModuleDestroy {
     }
   }
 
+  private async triggerAdminNotification(type: string, params: any) {
+    try {
+      const url = `${process.env.NOTIFICATION_SERVICE_URL || 'http://localhost:3009/api/v1'}/notifications/admin-notify`;
+      const axios = require('axios');
+      const secret = process.env.INTERNAL_SERVICE_SECRET;
+      const headers = secret ? { 'x-internal-service-key': secret } : {};
+      await axios.post(url, { type, params }, { headers });
+    } catch (error: any) {
+      console.error(`Failed to trigger admin notification: ${type}`, error.message);
+    }
+  }
+
+  private async getAssignedRiderUserId(order: any): Promise<string | null> {
+    const directRiderId = this.normalizeId(
+      order?.rider?.userId ||
+      order?.delivery?.rider?.userId ||
+      order?.riderUserId
+    );
+    if (directRiderId) return directRiderId;
+
+    const deliveryId = this.normalizeId(order?.deliveryId);
+    if (!deliveryId) return null;
+
+    try {
+      const deliveryUrl = process.env.DELIVERY_SERVICE_URL || 'http://localhost:3008/api/v1';
+      const secret = process.env.INTERNAL_SERVICE_SECRET;
+      const headers = secret ? { 'x-internal-service-key': secret } : {};
+      const response = await axios.get(`${deliveryUrl}/deliveries/${deliveryId}`, { headers, timeout: 2500 });
+      const delivery = response.data?.data || response.data;
+      return this.normalizeId(delivery?.rider?.userId);
+    } catch (error: any) {
+      this.logger.warn(`Could not resolve assigned rider for message notification: ${error.message}`);
+      return null;
+    }
+  }
+
+  private uniqueUserIds(values: Array<string | null | undefined>): string[] {
+    const seen = new Set<string>();
+    for (const value of values) {
+      const id = this.normalizeId(value);
+      if (id) seen.add(id);
+    }
+    return Array.from(seen);
+  }
+
+  private messagePreview(content: string): string {
+    const compact = String(content || '').replace(/\s+/g, ' ').trim();
+    return compact.length > 120 ? `${compact.slice(0, 117)}...` : compact;
+  }
+
+  private async notifyOrderMessageParticipants(order: any, orderId: string, message: any): Promise<void> {
+    const senderId = this.normalizeId(message?.senderId);
+    if (!senderId) return;
+
+    const buyerId = this.normalizeId(order?.buyer?.userId ?? order?.buyerId);
+    const sellerId = this.normalizeId(order?.seller?.userId ?? order?.sellerUserId);
+    const riderId = await this.getAssignedRiderUserId(order);
+    const roleToUserId: Record<string, string | null | undefined> = {
+      BUYER: buyerId,
+      SELLER: sellerId,
+      RIDER: riderId,
+    };
+
+    const recipientRole = String(message?.recipientRole || '').toUpperCase();
+    let recipientIds: string[] = [];
+
+    if (recipientRole && roleToUserId[recipientRole]) {
+      recipientIds = this.uniqueUserIds([roleToUserId[recipientRole]]);
+    } else if (message?.channel === 'DELIVERY') {
+      recipientIds = message?.senderRole === 'RIDER'
+        ? this.uniqueUserIds([buyerId, sellerId])
+        : this.uniqueUserIds([riderId]);
+    } else {
+      recipientIds = this.uniqueUserIds([buyerId, sellerId]).filter(id => id !== senderId);
+    }
+
+    if (recipientIds.length === 0) {
+      recipientIds = this.uniqueUserIds([buyerId, sellerId, riderId]).filter(id => id !== senderId);
+    }
+
+    const notificationParams = {
+      orderId,
+      orderNumber: order?.orderNumber || orderId,
+      channel: message?.channel || 'ORDER',
+      senderRole: message?.senderRole || 'PARTICIPANT',
+      recipientRole: recipientRole || undefined,
+      preview: this.messagePreview(message?.content),
+    };
+
+    const shouldNotifyAdmins = recipientRole === 'ADMIN' || message?.channel === 'DISPUTE';
+
+    await Promise.all([
+      this.triggerNotification(senderId, 'order.message.sent', notificationParams),
+      ...recipientIds
+        .filter(id => id !== senderId)
+        .map(userId => this.triggerNotification(userId, 'order.message.received', notificationParams)),
+      ...(shouldNotifyAdmins ? [this.triggerAdminNotification('order.message.received', notificationParams)] : []),
+    ]);
+  }
+
   private async snapshotOrderProducts(products: any[] = []): Promise<any[]> {
     const productIds = products.map(line => line?.productId).filter(Boolean).filter(id => Types.ObjectId.isValid(id));
     if (productIds.length === 0) return products;
@@ -356,6 +456,8 @@ export class OrderService implements OnModuleInit, OnModuleDestroy {
             messages: [{
               senderId: orderData.buyer.userId,
               senderRole: 'BUYER',
+              channel: 'ORDER',
+              recipientRole: 'SELLER',
               type: 'TEXT',
               content: `Project Brief: ${initialBrief}`,
               imageUrl: initialImage,
@@ -534,7 +636,7 @@ export class OrderService implements OnModuleInit, OnModuleDestroy {
           const deliveryUrl = process.env.DELIVERY_SERVICE_URL || 'http://localhost:3008/api/v1';
           const secret = process.env.INTERNAL_SERVICE_SECRET;
           const headers = secret ? { 'x-internal-service-key': secret } : {};
-          axios.put(`${deliveryUrl}/deliveries/${updated.deliveryId}/status`, {
+          axios.put(`${deliveryUrl}/deliveries/${updated.deliveryId}/internal/status`, {
             status: 'delivered'
           }, { headers }).catch(err => this.logger.warn(`Failed to sync DELIVERED status to delivery service: ${err.message}`));
         }
@@ -819,6 +921,27 @@ export class OrderService implements OnModuleInit, OnModuleDestroy {
     }
   }
 
+  async ensureDeliveryForOrder(id: string, userId: string, role?: string): Promise<any> {
+    const order = await this.orderModel.findById(id);
+    if (!order) throw new NotFoundException('Order not found');
+
+    const normalizedRole = String(role || '').toUpperCase();
+    const canManageDispatch = this.isOrderSeller(order, userId) || normalizedRole === 'ADMIN' || userId === 'system' || userId === 'internal-service';
+    if (!canManageDispatch) {
+      throw new BadRequestException('You do not have permission to start rider dispatch for this order');
+    }
+
+    if (order.status !== OrderStatus.READY_FOR_PICKUP) {
+      throw new BadRequestException('Rider dispatch can only start after the order is ready for pickup');
+    }
+
+    if (!order.deliveryId) {
+      await this.createDeliveryForOrder(order);
+    }
+
+    return this.orderModel.findById(id).exec();
+  }
+
   async raiseDispute(id: string, reason: string): Promise<any> {
     const order = await this.orderModel.findById(id);
     if (!order) throw new NotFoundException('Order not found');
@@ -1054,12 +1177,12 @@ export class OrderService implements OnModuleInit, OnModuleDestroy {
     return ordersWithProducts;
   }
 
-  async sendQuote(id: string, financials: any, userId: string): Promise<any> {
+  async sendQuote(id: string, financials: any, userId: string, options: { allowAdminOverride?: boolean } = {}): Promise<any> {
     const order = await this.orderModel.findById(id);
     if (!order) throw new NotFoundException('Order not found');
 
     // Authorization: only the seller of this order can send a quote
-    if (!this.isOrderSeller(order, userId)) {
+    if (!options.allowAdminOverride && !this.isOrderSeller(order, userId)) {
       throw new BadRequestException('Only the seller of this order can send a quote');
     }
 
@@ -1098,6 +1221,10 @@ export class OrderService implements OnModuleInit, OnModuleDestroy {
       note: financials.note,
     };
 
+    const quoteActorId = options.allowAdminOverride
+      ? this.normalizeId(order.seller?.userId || order.sellerUserId || userId) || userId
+      : userId;
+
     const updated = await this.orderModel.findByIdAndUpdate(
       id,
       {
@@ -1108,15 +1235,15 @@ export class OrderService implements OnModuleInit, OnModuleDestroy {
         $push: {
           statusHistory: {
             status: OrderStatus.QUOTE_SENT,
-            changedBy: userId,
+            changedBy: quoteActorId,
             changedAt: new Date(),
-            note: `Artisan sent a quote: ${subtotal} RWF`
+            note: options.allowAdminOverride ? `Admin sent seller-side quote: ${subtotal} RWF` : `Artisan sent a quote: ${subtotal} RWF`
           },
           messages: {
-            senderId: userId,
+            senderId: quoteActorId,
             senderRole: 'SELLER',
             type: 'QUOTE',
-            content: financials.note || `I have sent a quote for ${subtotal.toLocaleString()} RWF`,
+            content: financials.note || (options.allowAdminOverride ? `A quote has been sent for ${subtotal.toLocaleString()} RWF` : `I have sent a quote for ${subtotal.toLocaleString()} RWF`),
             quoteAmount: subtotal,
             timestamp: new Date()
           }
@@ -1261,40 +1388,73 @@ export class OrderService implements OnModuleInit, OnModuleDestroy {
     return updated;
   }
 
-  async addMessage(id: string, messageData: { senderId: string, senderRole: string, content: string, imageUrl?: string, type?: string, quoteAmount?: number }, authenticatedUserId: string): Promise<any> {
+  async addMessage(
+    id: string,
+    messageData: {
+      senderId: string;
+      senderRole: string;
+      content: string;
+      imageUrl?: string;
+      channel?: string;
+      recipientRole?: string;
+      type?: string;
+      quoteAmount?: number;
+    },
+    authenticatedUserId: string,
+    authenticatedRole: string
+  ): Promise<any> {
     this.logger.log(`Adding message to order ${id} from ${messageData.senderRole}`);
     try {
       const order = await this.orderModel.findById(id).exec();
       if (!order) throw new NotFoundException('Order not found');
+      if ([OrderStatus.DELIVERED, OrderStatus.RESOLVED, OrderStatus.CANCELLED].includes(order.status)) {
+        throw new BadRequestException('This order is closed. Messages are locked.');
+      }
 
-      // Authorization: only the buyer or seller of this order can add messages
+      const role = String(authenticatedRole || '').toUpperCase();
       const isBuyer = this.isOrderBuyer(order, authenticatedUserId);
       const isSeller = this.isOrderSeller(order, authenticatedUserId);
-      if (!isBuyer && !isSeller) {
+      const isRider = role === 'RIDER';
+      const isAdmin = role === 'ADMIN';
+      if (!isBuyer && !isSeller && !isRider && !isAdmin) {
         throw new BadRequestException('You are not a participant in this order');
       }
 
-      // Validate senderRole matches the authenticated user
-      if ((isBuyer && messageData.senderRole !== 'BUYER') || (isSeller && messageData.senderRole !== 'SELLER')) {
+      const senderRole = isAdmin ? 'ADMIN' : isRider ? 'RIDER' : isSeller ? 'SELLER' : 'BUYER';
+      if (messageData.senderRole && messageData.senderRole !== senderRole) {
         throw new BadRequestException('Sender role does not match authenticated user');
-      }
-      if (!isBuyer && !isSeller) {
-        throw new BadRequestException('You are not a participant in this order');
       }
 
-      // Validate senderRole matches the authenticated user
-      if ((isBuyer && messageData.senderRole !== 'BUYER') || (isSeller && messageData.senderRole !== 'SELLER')) {
-        throw new BadRequestException('Sender role does not match authenticated user');
+      const content = String(messageData.content || '').trim() || (messageData.imageUrl ? 'Sent an image' : '');
+      if (!content) {
+        throw new BadRequestException('Message content or image is required');
       }
+
+      const channel = ['ORDER', 'DELIVERY', 'DISPUTE'].includes(String(messageData.channel || '').toUpperCase())
+        ? String(messageData.channel).toUpperCase()
+        : senderRole === 'RIDER'
+          ? 'DELIVERY'
+          : 'ORDER';
+      const recipientRole = messageData.recipientRole && ['BUYER', 'SELLER', 'RIDER', 'ADMIN'].includes(String(messageData.recipientRole).toUpperCase())
+        ? String(messageData.recipientRole).toUpperCase()
+        : undefined;
+      const message = {
+        senderId: authenticatedUserId,
+        senderRole,
+        channel,
+        recipientRole,
+        content,
+        imageUrl: messageData.imageUrl,
+        type: messageData.type || 'TEXT',
+        quoteAmount: messageData.quoteAmount,
+        timestamp: new Date()
+      };
 
       const updated = await this.orderModel.findByIdAndUpdate(
         id,
         {
           $push: {
-            messages: {
-              ...messageData,
-              timestamp: new Date()
-            }
+            messages: message
           }
         },
         { returnDocument: 'after' }
@@ -1314,13 +1474,16 @@ export class OrderService implements OnModuleInit, OnModuleDestroy {
         this.orderGateway.sendOrderUpdate({
           type: 'NEW_MESSAGE',
           orderId: id,
-          message: lastMessage
+          message: lastMessage,
+          channel: lastMessage.channel || channel
         });
+        await this.notifyOrderMessageParticipants(plainOrder, id, lastMessage);
       }
       return plainOrder;
     } catch (error) {
       this.logger.error(`Error adding message to order ${id}: ${error.message}`, error.stack);
       if (error instanceof NotFoundException) throw error;
+      if (error instanceof BadRequestException) throw error;
       throw new BadRequestException('Failed to add message. Check order ID and message format.');
     }
   }
@@ -1415,6 +1578,9 @@ export class OrderService implements OnModuleInit, OnModuleDestroy {
       this.logger.warn(`Could not calculate delivery fee from market for order ${id}: ${err.message}`);
     }
 
+    const minimumDeliveryFee = Math.max(Number(process.env.MIN_DELIVERY_FEE_RWF) || 1000, 1000);
+    deliveryFee = Math.max(Number(deliveryFee) || 0, minimumDeliveryFee);
+
     const subtotal = order.financials?.subtotal || 0;
     const platformCommission = order.financials?.platformCommission || Math.max(subtotal * 0.015, 100);
     const gatewayFee = Math.ceil((subtotal + deliveryFee) * 0.02);
@@ -1448,11 +1614,13 @@ export class OrderService implements OnModuleInit, OnModuleDestroy {
 
     if (updated) {
       const lastMsg = updated.messages[updated.messages.length - 1];
+      const plainOrder = updated.toObject ? updated.toObject() : updated;
       this.orderGateway.sendOrderUpdate({
         type: 'NEW_MESSAGE',
         orderId: id,
         message: lastMsg
       });
+      await this.notifyOrderMessageParticipants(plainOrder, id, lastMsg);
       this.orderGateway.sendOrderUpdate({
         type: 'LOCATION_UPDATE',
         orderId: id,

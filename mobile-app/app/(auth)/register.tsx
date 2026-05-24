@@ -12,7 +12,7 @@ import {
   View,
 } from 'react-native';
 import { Link, useRouter } from 'expo-router';
-import { Eye, EyeOff, X } from 'lucide-react-native';
+import { Eye, EyeOff, X, ShoppingBag, Store, Bike } from 'lucide-react-native';
 import { useAuth } from '../../src/context/AuthContext';
 import { api } from '../../src/lib/api';
 import { asArray } from '../../src/lib/normalize';
@@ -29,10 +29,10 @@ const GREEN = '#15803D';
 
 type JoinRole = Exclude<Role, 'ADMIN'>;
 
-const ROLES: { value: JoinRole; label: string; emoji: string; desc: string }[] = [
-  { value: 'BUYER', label: 'Buyer', emoji: '🛒', desc: 'Shop local markets with escrow protection' },
-  { value: 'SELLER', label: 'Seller', emoji: '🏪', desc: 'Open a verified stall and sell across Rwanda' },
-  { value: 'RIDER', label: 'Rider', emoji: '🛵', desc: 'Deliver orders and earn daily income' },
+const ROLES: { value: JoinRole; label: string; icon: React.ReactNode; desc: string }[] = [
+  { value: 'BUYER', label: 'Buyer', icon: <ShoppingBag color={ORANGE} size={22} />, desc: 'Shop local markets with escrow protection' },
+  { value: 'SELLER', label: 'Seller', icon: <Store color={ORANGE} size={22} />, desc: 'Open a verified stall and sell across Rwanda' },
+  { value: 'RIDER', label: 'Rider', icon: <Bike color={ORANGE} size={22} />, desc: 'Deliver orders and earn daily income' },
 ];
 
 export default function RegisterScreen() {
@@ -82,7 +82,7 @@ export default function RegisterScreen() {
         // Riders must complete document onboarding before accessing the app
         router.replace('/(auth)/rider-onboarding');
       } else {
-        Alert.alert('Account created! 🎉', 'Your RMF account is ready. Sign in to get started.', [
+        Alert.alert('Account created!', 'Your RMF account is ready. Sign in to get started.', [
           { text: 'Sign in now', onPress: () => router.replace('/(auth)/login') },
         ]);
       }
@@ -127,7 +127,7 @@ export default function RegisterScreen() {
               onPress={() => setRole(r.value)}
               activeOpacity={0.85}
             >
-              <Text style={s.roleEmoji}>{r.emoji}</Text>
+              <View style={s.roleIconWrap}>{r.icon}</View>
               <View style={{ flex: 1 }}>
                 <Text style={[s.roleLabel, role === r.value && s.roleLabelActive]}>{r.label}</Text>
                 <Text style={s.roleDesc}>{r.desc}</Text>
@@ -282,7 +282,7 @@ const s = StyleSheet.create({
     backgroundColor: CARD,
   },
   roleCardActive: { borderColor: ORANGE, backgroundColor: ORANGE_SOFT },
-  roleEmoji: { fontSize: 22 },
+  roleIconWrap: { width: 32, height: 32, alignItems: 'center', justifyContent: 'center' },
   roleLabel: { color: INK, fontSize: 15, fontWeight: '800' },
   roleLabelActive: { color: ORANGE_DARK },
   roleDesc: { color: MUTED, fontSize: 12, fontWeight: '500', marginTop: 1 },

@@ -1,8 +1,11 @@
 'use client';
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useLayoutEffect, useRef } from 'react';
 import { MapContainer, TileLayer, Marker, useMapEvents, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
+import { patchLeafletSafeRemove } from '@/lib/leafletSafeRemove';
+
+patchLeafletSafeRemove();
 
 // Fix Leaflet marker icon issue in Next.js using a Data URI to bypass Tracking Prevention
 const markerSvg = `PHN2ZyB3aWR0aD0iMjUiIGhlaWdodD0iNDEiIHZpZXdCb3g9IjAgMCAyNSA0MSIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cGF0aCBkPSJNMTIuNSAwQzUuNTk2NDUgMCAwIDUuNTk2NDUgMCAxMi41QzAgMjEuODc1IDEyLjUgNDEgMTIuNSA0MUMxMi41IDQxIDI1IDIxLjg3NSAyNSAxMi41QzI1IDUuNTk2NDUgMTkuNDAzNiAwIDEyLjUgMFpNMTIuNSAxNy4xODc1QzkuOTExMTcgMTcuMTg3NSA3LjgxMjUgMTUuMDg4OCA3LjgxMjUgMTIuNUM3LjgxMjUgOS45MTExNyA5LjkxMTE3IDcuODEyNSAxMi41IDcuODEyNUMxNS4wODg4IDcuODEyNSAxNy4xODc1IDkuOTExMTcgMTcuMTg3NSAxMi41QzE3LjE4NzUgMTUuMDg4OCAxNS4wODg4IDE3LjE4NzUgMTIuNSAxNy4xODc1WiIgZmlsbD0iIzNCODJFNiIvPjwvc3ZnPg==`;
@@ -52,12 +55,26 @@ export const LeafletMap = ({
   onLocationChange: (coords: Coordinates) => void,
   initialLocation?: Coordinates
 }) => {
+  const containerRef = useRef<HTMLDivElement | null>(null);
   const [position, setPosition] = useState<Coordinates | null>(initialLocation || null);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<any[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [flyToLocation, setFlyToLocation] = useState<{ lat: number, lon: number } | null>(null);
   const [mapInstanceKey, setMapInstanceKey] = useState('');
+  const mapShellKey = `${mapInstanceKey}-${initialLocation?.lat || DEFAULT_CENTER[0]}-${initialLocation?.lng || DEFAULT_CENTER[1]}`;
+
+  const releaseLeafletContainer = () => {
+    const leafletContainers = containerRef.current?.querySelectorAll('.leaflet-container') || [];
+    leafletContainers.forEach((element) => {
+      delete (element as HTMLElement & { _leaflet_id?: number })._leaflet_id;
+    });
+  };
+
+  useLayoutEffect(() => {
+    releaseLeafletContainer();
+    return releaseLeafletContainer;
+  }, [mapInstanceKey, initialLocation?.lat, initialLocation?.lng]);
 
   useEffect(() => {
     setMapInstanceKey(`leaflet-map-${Date.now()}`);
@@ -115,7 +132,7 @@ export const LeafletMap = ({
   }
 
   return (
-    <div className="w-full h-full relative z-0">
+    <div key={mapShellKey} ref={containerRef} className="w-full h-full relative z-0">
       {/* Search Input Container */}
       <div className="absolute top-4 left-4 right-4 z-[500] max-w-md">
         <div className="relative">
@@ -151,7 +168,7 @@ export const LeafletMap = ({
         </div>
       </div>
 
-      <MapContainer key={mapInstanceKey} center={center} zoom={13} style={{ height: '100%', width: '100%' }}>
+      <MapContainer key={mapShellKey} center={center} zoom={13} style={{ height: '100%', width: '100%' }}>
         <TileLayer
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"

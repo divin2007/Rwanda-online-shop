@@ -1,9 +1,10 @@
 'use client';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, Tooltip, Polyline, useMap } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
 import { useSocket } from '@/hooks/useSocket';
+import { patchLeafletSafeRemove } from '@/lib/leafletSafeRemove';
 interface RiderProfile {
   userId: string;
   fullName?: string;
@@ -14,6 +15,8 @@ interface RiderProfile {
 }
 
 import { marketApi, riderApi } from '@/lib/api';
+
+patchLeafletSafeRemove();
 
 // Fix for default marker icons in Next.js using a Data URI to bypass Tracking Prevention
 const markerSvg = `PHN2ZyB3aWR0aD0iMjUiIGhlaWdodD0iNDEiIHZpZXdCb3g9IjAgMCAyNSA0MSIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cGF0aCBkPSJNMTIuNSAwQzUuNTk2NDUgMCAwIDUuNTk2NDUgMCAxMi41QzAgMjEuODc1IDEyLjUgNDEgMTIuNSA0MUMxMi41IDQxIDI1IDIxLjg3NSAyNSAxMi41QzI1IDUuNTk2NDUgMTkuNDAzNiAwIDEyLjUgMFpNMTIuNSAxNy4xODc1QzkuOTExMTcgMTcuMTg3NSA3LjgxMjUgMTUuMDg4OCA3LjgxMjUgMTIuNUM3LjgxMjUgOS45MTExNyA5LjkxMTE3IDcuODEyNSAxMi41IDcuODEyNUMxNS4wODg4IDcuODEyNSAxNy4xODc1IDkuOTExMTcgMTcuMTg3NSAxMi41QzE3LjE4NzUgMTUuMDg4OCAxNS4wODg4IDE3LjE4NzUgMTIuNSAxNy4xODc1WiIgZmlsbD0iIzNCODJFNiIvPjwvc3ZnPg==`;
@@ -57,6 +60,7 @@ const MapViewUpdater = ({ centerLat, centerLng }: { centerLat: number; centerLng
 
 export const RiderMap = ({ marketId, centerLat = -1.9441, centerLng = 30.0619, marketName }: { marketId: string, centerLat?: number, centerLng?: number, marketName?: string }) => {
   const instanceId = React.useId();
+  const containerRef = useRef<HTMLDivElement | null>(null);
   const { data } = useSocket<RiderLocation>(process.env.NEXT_PUBLIC_DELIVERY_SERVICE_URL || 'http://localhost:3008', 'rider:public:locations');
   const [riders, setRiders] = useState<Record<string, RiderLocation>>({});
   const [profiles, setProfiles] = useState<Record<string, RiderProfile>>({});
@@ -67,6 +71,19 @@ export const RiderMap = ({ marketId, centerLat = -1.9441, centerLng = 30.0619, m
   const [mapMode, setMapMode] = useState<'standard' | 'satellite'>('standard');
 
   const isAdmin = marketId === 'all-admin';
+  const mapShellKey = `${mapInstanceKey}-${marketId}`;
+
+  const releaseLeafletContainer = () => {
+    const leafletContainers = containerRef.current?.querySelectorAll('.leaflet-container') || [];
+    leafletContainers.forEach((element) => {
+      delete (element as HTMLElement & { _leaflet_id?: number })._leaflet_id;
+    });
+  };
+
+  useLayoutEffect(() => {
+    releaseLeafletContainer();
+    return releaseLeafletContainer;
+  }, [mapInstanceKey, marketId]);
 
   useEffect(() => {
     setIsClient(true);
@@ -119,9 +136,9 @@ export const RiderMap = ({ marketId, centerLat = -1.9441, centerLng = 30.0619, m
   if (!isClient || !mapInstanceKey) return <div className="w-full h-full bg-background-surface animate-pulse"></div>;
 
   return (
-    <div className="w-full h-full relative z-0">
+    <div key={mapShellKey} ref={containerRef} className="w-full h-full relative z-0">
       <MapContainer 
-        key={`${mapInstanceKey}-${marketId}`}
+        key={mapShellKey}
         center={[centerLat, centerLng]} 
         zoom={isAdmin ? 12 : 15} 
         style={{ height: '100%', width: '100%' }}
@@ -188,7 +205,7 @@ export const RiderMap = ({ marketId, centerLat = -1.9441, centerLng = 30.0619, m
                     </div>
                     {profile?.rating && (
                       <div className="bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded text-[10px] font-bold">
-                        ⭐ {profile.rating.toFixed(1)}
+                        ★ {profile.rating.toFixed(1)}
                       </div>
                     )}
                   </div>
@@ -218,7 +235,7 @@ export const RiderMap = ({ marketId, centerLat = -1.9441, centerLng = 30.0619, m
           onClick={() => setMapMode(mapMode === 'standard' ? 'satellite' : 'standard')}
           className="bg-white p-2 rounded-lg shadow-lg border border-border hover:bg-background-surface transition-colors flex items-center gap-2 text-xs font-bold text-text-primary"
         >
-          {mapMode === 'standard' ? '🛰️ Satellite View' : '🗺️ Standard View'}
+          {mapMode === 'standard' ? 'Satellite View' : 'Standard View'}
         </button>
       </div>
     </div>

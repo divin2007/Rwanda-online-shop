@@ -7,6 +7,7 @@ import { CatalogAttributeFields } from '@/components/catalog/CatalogAttributeFie
 import { CategoryDrilldownPicker } from '@/components/catalog/CategoryDrilldownPicker';
 import { useAuth } from '@/context/AuthContext';
 import { productApi, sellerApi } from '@/lib/api';
+import { resolveUploadUrl } from '@/lib/uploadUrls';
 import { useApi } from '@/hooks/useApi';
 import { CatalogCategory, ProductVariantDraft, categoryFor, fallbackCatalogCategories } from '@/lib/catalog';
 import toast from 'react-hot-toast';
@@ -56,6 +57,10 @@ function NewProductPageContent() {
     stockType: 'finite',
     stockQuantity: '', 
     weight: '', 
+    minWeight: '',
+    maxWeight: '',
+    minPrice: '',
+    maxPrice: '',
     isMadeInRwanda: true,
     isNegotiable: false,
     images: [] as string[],
@@ -88,6 +93,10 @@ function NewProductPageContent() {
               stockType: product.stockType || 'finite',
               stockQuantity: product.stockQuantity?.toString() || '',
               weight: product.weight?.toString() || '',
+              minWeight: product.minWeight?.toString() || '',
+              maxWeight: product.maxWeight?.toString() || '',
+              minPrice: product.minPrice?.toString() || '',
+              maxPrice: product.maxPrice?.toString() || '',
               isMadeInRwanda: product.isMadeInRwanda ?? true,
               isNegotiable: product.isNegotiable ?? false,
               images: product.images || [],
@@ -165,6 +174,10 @@ function NewProductPageContent() {
         price: Number(formData.price),
         stockQuantity: formData.stockType === 'finite' ? Number(formData.stockQuantity) : 999999,
         weight: Number(formData.weight) || 0,
+        minWeight: formData.minWeight ? Number(formData.minWeight) : undefined,
+        maxWeight: formData.maxWeight ? Number(formData.maxWeight) : undefined,
+        minPrice: formData.minPrice ? Number(formData.minPrice) : undefined,
+        maxPrice: formData.maxPrice ? Number(formData.maxPrice) : undefined,
         sellerId: user.id
       };
 
@@ -255,7 +268,7 @@ function NewProductPageContent() {
                             onChange={(categoryId, category) => setFormData(current => ({
                               ...current,
                               category: categoryId,
-                              unit: current.unit || category.defaultUnit || 'pcs',
+                              unit: category.defaultUnit || current.unit || 'pcs',
                               attributes: {},
                               variants: [],
                             }))}
@@ -267,7 +280,7 @@ function NewProductPageContent() {
                           <div className="grid grid-cols-2 gap-6">
                              {formData.images.map((img, i) => (
                                <div key={i} className="aspect-square border border-[#e0e0e0] rounded-lg relative group overflow-hidden">
-                                  <img src={img} alt={`Product image ${i + 1}`} className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-110" />
+                                  <img src={resolveUploadUrl(img, 'product')} alt={`Product image ${i + 1}`} className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-110" />
                                   <button 
                                     type="button" 
                                     onClick={() => setFormData({...formData, images: formData.images.filter((_, idx) => idx !== i)})} 
@@ -323,10 +336,38 @@ function NewProductPageContent() {
                                value={formData.unit}
                                onChange={e => setFormData({...formData, unit: e.target.value})}
                              >
-                                <option value="pcs">Pieces</option>
-                                <option value="kg">Kilograms</option>
-                                <option value="pair">Pairs</option>
-                                <option value="set">Set</option>
+                                {[
+                                  ['pcs', 'Pieces'],
+                                  ['kg', 'Kilograms'],
+                                  ['bundle', 'Bundles'],
+                                  ['bunch', 'Bunches'],
+                                  ['punnet', 'Punnets'],
+                                  ['crate', 'Crates'],
+                                  ['pack', 'Packs'],
+                                  ['pair', 'Pairs'],
+                                  ['set', 'Sets'],
+                                  ['box', 'Boxes'],
+                                  ['litre', 'Litres'],
+                                  ['bottle', 'Bottles'],
+                                  ['cup', 'Cups'],
+                                  ['pot', 'Pots'],
+                                  ['tray', 'Trays'],
+                                  ['m', 'Metres'],
+                                  ['m²', 'Square metres'],
+                                  ['pcs/crate', 'Pieces per crate'],
+                                  ['bag', 'Bags'],
+                                  ['bucket', 'Buckets'],
+                                  ['roll', 'Rolls'],
+                                  ['spool', 'Spools'],
+                                  ['ream', 'Reams'],
+                                  ['job', 'Jobs'],
+                                  ['trip', 'Trips'],
+                                  ['page', 'Pages'],
+                                  ['session', 'Sessions'],
+                                  ['day', 'Days'],
+                                ].map(([value, label]) => (
+                                  <option key={value} value={value}>{label}</option>
+                                ))}
                              </select>
                           </div>
                        </div>
@@ -356,6 +397,33 @@ function NewProductPageContent() {
                             value={formData.weight}
                             onChange={e => setFormData({...formData, weight: e.target.value})}
                           />
+                       </div>
+
+                       <div className="grid grid-cols-1 gap-8 md:grid-cols-2">
+                          <div className="space-y-4 animate-reveal">
+                             <label className="text-[10px] font-black uppercase tracking-[0.4em] text-[#1b1c1c]/40">Min Weight (kg)</label>
+                             <input
+                               type="number"
+                               step="0.01"
+                               min="0"
+                               placeholder="e.g. 1"
+                               className="w-full bg-white border border-[#e0e0e0]/10 p-5 text-xl font-bold outline-none focus:border-[#ff6b00]"
+                               value={formData.minWeight}
+                               onChange={e => setFormData({...formData, minWeight: e.target.value})}
+                             />
+                          </div>
+                          <div className="space-y-4 animate-reveal">
+                             <label className="text-[10px] font-black uppercase tracking-[0.4em] text-[#1b1c1c]/40">Max Weight (kg)</label>
+                             <input
+                               type="number"
+                               step="0.01"
+                               min="0"
+                               placeholder="e.g. 5"
+                               className="w-full bg-white border border-[#e0e0e0]/10 p-5 text-xl font-bold outline-none focus:border-[#ff6b00]"
+                               value={formData.maxWeight}
+                               onChange={e => setFormData({...formData, maxWeight: e.target.value})}
+                             />
+                          </div>
                        </div>
 
                        <div className="pt-6 border-t border-[#e0e0e0]/10 space-y-4">
@@ -389,6 +457,32 @@ function NewProductPageContent() {
                                 <span className="text-[9px] text-[#414844] opacity-60">Require buyers to chat with you to agree on a price.</span>
                              </div>
                           </label>
+                          {formData.isNegotiable && (
+                            <div className="grid grid-cols-1 gap-8 rounded-lg border border-[#e0e0e0]/20 bg-white/70 p-5 md:grid-cols-2">
+                              <div className="space-y-3">
+                                <label className="text-[10px] font-black uppercase tracking-[0.3em] text-[#1b1c1c]/40">Min Price (RWF)</label>
+                                <input
+                                  type="number"
+                                  min="0"
+                                  placeholder="20000"
+                                  className="w-full bg-[#fcf9f8] border border-[#e0e0e0]/20 p-4 text-sm font-bold outline-none focus:border-[#ff6b00]"
+                                  value={formData.minPrice}
+                                  onChange={e => setFormData({...formData, minPrice: e.target.value})}
+                                />
+                              </div>
+                              <div className="space-y-3">
+                                <label className="text-[10px] font-black uppercase tracking-[0.3em] text-[#1b1c1c]/40">Max Price (RWF)</label>
+                                <input
+                                  type="number"
+                                  min="0"
+                                  placeholder="30000"
+                                  className="w-full bg-[#fcf9f8] border border-[#e0e0e0]/20 p-4 text-sm font-bold outline-none focus:border-[#ff6b00]"
+                                  value={formData.maxPrice}
+                                  onChange={e => setFormData({...formData, maxPrice: e.target.value})}
+                                />
+                              </div>
+                            </div>
+                          )}
                        </div>
                     </div>
                  </div>

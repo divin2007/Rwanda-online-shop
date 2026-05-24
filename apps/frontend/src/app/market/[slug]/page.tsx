@@ -11,6 +11,7 @@ import { SellerVideoFeed } from '@/components/ui/SellerVideoFeed';
 import { useApi } from '@/hooks/useApi';
 import { useSocket } from '@/hooks/useSocket';
 import { marketApi, productApi, reviewApi } from '@/lib/api';
+import { resolveUploadUrl } from '@/lib/uploadUrls';
 
 const RiderMap = dynamic(() => import('@/components/ui/RiderMap').then(mod => mod.RiderMap), { ssr: false });
 
@@ -116,6 +117,7 @@ export default function MarketPage({ params }: { params: Promise<{ slug: string 
   const [promotions, setPromotions] = useState<any[]>([]);
   const [facets, setFacets] = useState<any>(null);
   const [adVideo, setAdVideo] = useState<any>(null);
+  const [marketStories, setMarketStories] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -140,11 +142,13 @@ export default function MarketPage({ params }: { params: Promise<{ slug: string 
       };
 
       setAllProducts(readData(prodRes, []));
-      setPromotions(readData(promRes, []));
+      setPromotions([...readData(promRes, [])].sort((a: any, b: any) => Number(b.promotion?.discountPercentage || b.promotion?.discount || 0) - Number(a.promotion?.discountPercentage || a.promotion?.discount || 0)));
       setFacets(readData(facetRes, null));
       const vList = readData(videoRes, []);
-      const shopAd = Array.isArray(vList) ? vList.find((v: any) => v.placement === 'SHOP_AD') || vList[0] : null;
+      const videos = Array.isArray(vList) ? vList : [];
+      const shopAd = videos.find((v: any) => v.placement === 'SHOP_AD') || videos.find((v: any) => v.placement === 'PRODUCT_AD') || null;
       setAdVideo(shopAd || null);
+      setMarketStories(videos.filter((v: any) => v.placement === 'STORY' && v.isArchived !== true).slice(0, 8));
     } finally {
       setLoading(false);
     }
@@ -218,6 +222,30 @@ export default function MarketPage({ params }: { params: Promise<{ slug: string 
     () => [...allProducts].sort((a, b) => Number(b.rating || 0) - Number(a.rating || 0)).slice(0, 6),
     [allProducts]
   );
+  const topSellers = useMemo(() => {
+    const sellerMap = new Map<string, any>();
+    allProducts.forEach(product => {
+      const seller = product.sellerId && typeof product.sellerId === 'object' ? product.sellerId : null;
+      const sellerId = String(seller?._id || seller?.userId || product.sellerId || '');
+      if (!sellerId) return;
+      const current = sellerMap.get(sellerId) || {
+        id: sellerId,
+        name: seller?.stallName || seller?.shopDetails?.name || product.seller?.name || 'Verified seller',
+        description: seller?.shopDetails?.description || product.description || 'Verified seller in this market.',
+        rating: Number(seller?.rating || product.rating || 0),
+        sales: Number(seller?.totalOrders || product.totalOrders || product.orders || 0),
+        image: seller?.shopDetails?.logoUrl || seller?.shopDetails?.imageUrl || product.images?.[0],
+        products: 0,
+      };
+      current.products += 1;
+      current.sales += Number(product.totalOrders || product.orders || 0);
+      current.rating = Math.max(Number(current.rating || 0), Number(seller?.rating || product.rating || 0));
+      sellerMap.set(sellerId, current);
+    });
+    return Array.from(sellerMap.values())
+      .sort((a, b) => (Number(b.rating || 0) + Number(b.sales || 0) * 0.01) - (Number(a.rating || 0) + Number(a.sales || 0) * 0.01))
+      .slice(0, 6);
+  }, [allProducts]);
 
   const maxMarketDiscount = useMemo(() => {
     const activePromos = Array.isArray(promotions) ? promotions : [];
@@ -226,10 +254,19 @@ export default function MarketPage({ params }: { params: Promise<{ slug: string 
   }, [promotions]);
 
   const marketReviews = Array.isArray(marketReviewsData) ? marketReviewsData : [];
+  const avgMarketRating = marketReviews.length
+    ? (marketReviews.reduce((sum: number, review: any) => sum + Number(review.rating || 0), 0) / marketReviews.length).toFixed(1)
+    : (market?.rating ? Number(market.rating).toFixed(1) : '0.0');
   const open = isMarketOpen(market);
   const sellers = Number(market?.totalSellers || 0);
   const productsCount = Number(market?.activeProducts || allProducts.length || 0);
-  const imageUrl = market?.imageUrl || 'https://images.unsplash.com/photo-1488459716781-31db52582fe9?auto=format&fit=crop&q=85&w=1800';
+  const fallbackMarketImage = 'https://images.unsplash.com/photo-1488459716781-31db52582fe9?auto=format&fit=crop&q=85&w=1800';
+  const imageUrl = market?.bannerUrl
+    ? resolveUploadUrl(market.bannerUrl, 'seller')
+    : market?.imageUrl
+      ? resolveUploadUrl(market.imageUrl, 'market')
+      : fallbackMarketImage;
+  const logoUrl = market?.logoUrl ? resolveUploadUrl(market.logoUrl, 'seller') : imageUrl;
 
   if (marketLoading) {
     return (
@@ -263,7 +300,7 @@ export default function MarketPage({ params }: { params: Promise<{ slug: string 
           <div className="absolute bottom-0 left-0 w-full px-8 pb-6 flex flex-col md:flex-row md:items-end justify-between gap-4">
             <div className="flex gap-4 items-center">
               <div className="w-20 h-20 bg-white p-1.5 rounded-lg border border-[#e2bfb0] shadow-lg shrink-0">
-                <img alt="Market Logo" className="w-full h-full object-cover rounded" src={imageUrl} />
+                <img alt="Market Logo" className="w-full h-full object-cover rounded" src={logoUrl} />
               </div>
               <div className="text-white">
                 <div className="flex items-center gap-1.5">
@@ -293,6 +330,31 @@ export default function MarketPage({ params }: { params: Promise<{ slug: string 
             </div>
           </div>
         </section>
+
+        {adVideo && (
+          <section className="grid gap-4 rounded-xl border border-[#e2bfb0] bg-white p-4 shadow-sm md:grid-cols-[0.85fr_1.15fr] md:p-5">
+            <div className="overflow-hidden rounded-lg bg-[#111815]">
+              <video
+                src={resolveUploadUrl(adVideo.videoUrl, 'product', '/seller-videos/upload')}
+                poster={adVideo.thumbnailUrl || adVideo.productId?.images?.[0] ? resolveUploadUrl(adVideo.thumbnailUrl || adVideo.productId?.images?.[0], 'product') : imageUrl}
+                controls
+                playsInline
+                preload="metadata"
+                className="aspect-video h-full w-full object-cover"
+              />
+            </div>
+            <div className="flex flex-col justify-center gap-2">
+              <p className="text-[10px] font-black uppercase tracking-[0.18em] text-primary">Market spotlight</p>
+              <h2 className="text-xl font-black tracking-tight text-text-primary">{adVideo.title || `What's new at ${market.name}`}</h2>
+              <p className="line-clamp-3 text-sm font-medium leading-relaxed text-text-muted">
+                {adVideo.caption || 'Watch the latest seller update from this market.'}
+              </p>
+              <Link href={`/videos?marketId=${market._id}`} className="mt-2 inline-flex w-max items-center gap-2 rounded border border-primary px-4 py-2 text-[10px] font-black uppercase tracking-widest text-primary transition-colors hover:bg-primary hover:text-white">
+                View more videos <ArrowRight size={13} />
+              </Link>
+            </div>
+          </section>
+        )}
 
         {/* Tab Selection Tab-Bar */}
         <div className="flex border-b border-[#e2bfb0] pb-px overflow-x-auto gap-8 text-xs font-bold uppercase tracking-wider scrollbar-hide pt-4">
@@ -423,24 +485,33 @@ export default function MarketPage({ params }: { params: Promise<{ slug: string 
               <section className="bg-white border border-[#e2bfb0] p-6 rounded-lg shadow-sm">
                 <div className="flex items-center justify-between mb-4">
                   <h3 className="font-bold text-sm uppercase tracking-wider text-text-primary">Market Stories</h3>
-                  <Link href="/videos" className="text-xs font-bold text-primary hover:underline">View All</Link>
+                  <Link href={`/videos?marketId=${market._id}`} className="text-xs font-bold text-primary hover:underline">View All</Link>
                 </div>
-                <div className="flex gap-4 overflow-x-auto pb-2 scrollbar-hide">
-                  {[
-                    { name: "Mama Keza", category: "Fresh Produce", img: "https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&q=80&w=250" },
-                    { name: "David's Grains", category: "Arabica Supply", img: "https://images.unsplash.com/photo-1588508065123-287b28e013da?auto=format&fit=crop&q=80&w=250" },
-                    { name: "Craft Collective", category: "Heritage Artisans", img: "https://images.unsplash.com/photo-1586023492125-27b2c045efd7?auto=format&fit=crop&q=80&w=250" }
-                  ].map((story, i) => (
-                    <Link href="/videos" key={i} className="flex-shrink-0 w-36 h-52 relative rounded-xl overflow-hidden group cursor-pointer border border-[#e2bfb0] shadow-sm">
-                      <img src={story.img} className="w-full h-full object-cover transition-transform group-hover:scale-105 duration-500" alt={story.name} />
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent"></div>
-                      <div className="absolute bottom-3 left-3 right-3 text-white">
-                        <p className="font-bold text-xs">{story.name}</p>
-                        <p className="text-[9px] opacity-80">{story.category}</p>
-                      </div>
-                    </Link>
-                  ))}
-                </div>
+                {marketStories.length > 0 ? (
+                  <div className="flex gap-4 overflow-x-auto pb-2 scrollbar-hide">
+                    {marketStories.map((story) => (
+                      <Link href={`/videos?story=${story._id}`} key={story._id} className="flex-shrink-0 w-36 h-52 relative rounded-xl overflow-hidden group cursor-pointer border border-[#e2bfb0] shadow-sm bg-[#111815]">
+                        <video
+                          src={resolveUploadUrl(story.videoUrl, 'product', '/seller-videos/upload')}
+                          poster={story.thumbnailUrl ? resolveUploadUrl(story.thumbnailUrl, 'product') : imageUrl}
+                          muted
+                          playsInline
+                          preload="metadata"
+                          className="w-full h-full object-cover transition-transform group-hover:scale-105 duration-500"
+                        />
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent"></div>
+                        <div className="absolute bottom-3 left-3 right-3 text-white">
+                          <p className="font-bold text-xs line-clamp-2">{story.title || story.sellerId?.stallName || market.name}</p>
+                          <p className="text-[9px] opacity-80 line-clamp-1">{story.caption || 'Story expires after 24 hours'}</p>
+                        </div>
+                      </Link>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="rounded-lg border border-dashed border-[#e2bfb0] bg-background-surface p-6 text-center">
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-text-muted">No live stories yet</p>
+                  </div>
+                )}
               </section>
 
               {/* Promotions rail */}
@@ -481,28 +552,36 @@ export default function MarketPage({ params }: { params: Promise<{ slug: string 
               {/* Top Rated Sellers Carousel */}
               <section className="bg-[#f5f3f3]/50 border border-[#e2bfb0] p-6 rounded-lg shadow-sm">
                 <h3 className="font-bold text-sm uppercase tracking-wider text-text-primary mb-4">Top Rated Sellers</h3>
-                <div className="flex gap-4 overflow-x-auto pb-2 scrollbar-hide">
-                  {[
-                    { name: "Kigali Grains Co.", rating: "4.8", sales: "892 sales", desc: "Specialist in wholesale beans and maize.", img: "https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&q=80&w=150" },
-                    { name: "Mutesi Fresh Mart", rating: "4.9", sales: "1.2k sales", desc: "Farm-to-table organic produce delivered daily.", img: "https://images.unsplash.com/photo-1615485290382-441e4d049cb5?auto=format&fit=crop&q=80&w=150" },
-                    { name: "Western Coffee Ex.", rating: "5.0", sales: "45 sales", desc: "Exporters of premium certified coffee beans.", img: "https://images.unsplash.com/photo-1588508065123-287b28e013da?auto=format&fit=crop&q=80&w=150" }
-                  ].map((seller, idx) => (
-                    <div key={idx} className="flex-shrink-0 w-60 bg-white p-5 rounded-lg border border-[#e2bfb0] flex flex-col items-center text-center shadow-sm">
+                {topSellers.length > 0 ? (
+                  <div className="flex gap-4 overflow-x-auto pb-2 scrollbar-hide">
+                  {topSellers.map((seller) => (
+                    <div key={seller.id} className="flex-shrink-0 w-56 bg-white p-4 rounded-lg border border-[#e2bfb0] flex flex-col items-center text-center shadow-sm">
                       <div className="w-16 h-16 rounded-full overflow-hidden mb-3 border-2 border-primary relative">
-                        <img alt="Seller Avatar" className="w-full h-full object-cover" src={seller.img} />
+                        {seller.image ? (
+                          <img alt="Seller Avatar" className="w-full h-full object-cover" src={resolveUploadUrl(seller.image, 'product')} />
+                        ) : (
+                          <div className="flex h-full w-full items-center justify-center bg-primary/10 text-lg font-black text-primary">
+                            {seller.name?.[0] || 'S'}
+                          </div>
+                        )}
                       </div>
                       <h5 className="font-bold text-xs text-text-primary">{seller.name}</h5>
                       <div className="flex items-center gap-1 my-1 text-accent-premium">
                         <Star size={10} className="fill-current" />
-                        <span className="text-[10px] font-mono font-bold text-text-muted">{seller.rating} ({seller.sales})</span>
+                        <span className="text-[10px] font-mono font-bold text-text-muted">{Number(seller.rating || 0).toFixed(1)} ({seller.sales} sales)</span>
                       </div>
-                      <p className="text-[11px] text-text-muted leading-relaxed mb-4 line-clamp-2">{seller.desc}</p>
+                      <p className="text-[11px] text-text-muted leading-relaxed mb-4 line-clamp-2">{seller.description}</p>
                       <Link href={`/markets?search=${encodeURIComponent(seller.name)}`} className="w-full border border-primary text-primary hover:bg-primary hover:text-white py-1.5 rounded text-xs font-bold transition-colors">
                         Visit Stall
                       </Link>
                     </div>
                   ))}
-                </div>
+                  </div>
+                ) : (
+                  <div className="rounded-lg border border-dashed border-[#e2bfb0] bg-white p-6 text-center">
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Seller activity will appear as products are listed.</p>
+                  </div>
+                )}
               </section>
             </div>
           </div>
@@ -546,7 +625,7 @@ export default function MarketPage({ params }: { params: Promise<{ slug: string 
                 <div className="grid gap-6 sm:grid-cols-2">
                   {[
                     { title: 'Secure MoMo Checkout', desc: 'Pay safely with MTN Mobile Money. Funds are kept secure under our buyer protection scheme until your delivery is complete.' },
-                    { title: 'Price Negotiation', desc: 'Look for products with the ⚡ Negotiable badge to start a price agreement chat directly with the vendor.' },
+                    { title: 'Price Negotiation', desc: 'Look for products with the Negotiable badge to start a price agreement chat directly with the vendor.' },
                     { title: 'Tracked Courier Network', desc: 'Our dedicated local riders ensure fast, reliable delivery straight to your location with real-time tracking.' },
                     { title: 'Verified Quality', desc: 'Every vendor is officially registered and vetted by market administration to ensure premium quality standards.' },
                   ].map((guide, idx) => (
@@ -614,54 +693,16 @@ export default function MarketPage({ params }: { params: Promise<{ slug: string 
                 </div>
                 <div className="flex items-center gap-4">
                   <div className="text-right">
-                    <p className="text-2xl font-bold text-primary">4.9</p>
+                    <p className="text-2xl font-bold text-primary">{avgMarketRating}</p>
                     <p className="text-[9px] font-mono uppercase text-text-muted font-bold">Global Rating</p>
                   </div>
                 </div>
               </div>
 
-              {/* Stitch Review Grid Layout */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {/* Review 1 */}
-                <div className="bg-background-surface p-5 rounded-lg border-l-4 border-primary space-y-3">
-                  <div className="flex justify-between items-start">
-                    <div className="flex gap-3 items-center">
-                      <div className="w-10 h-10 rounded-full bg-white flex items-center justify-center font-bold text-primary border border-[#e2bfb0]">JN</div>
-                      <div>
-                        <p className="text-xs font-bold text-text-primary">Jean-Paul N.</p>
-                        <p className="text-[10px] text-text-muted font-semibold">2 hours ago • Verified Purchase</p>
-                      </div>
-                    </div>
-                    <div className="flex text-accent-premium gap-0.5">
-                      {[1, 2, 3, 4, 5].map(star => <Star key={star} size={14} className="fill-current" />)}
-                    </div>
-                  </div>
-                  <p className="text-xs md:text-sm leading-relaxed text-text-secondary">The Nyamirambo Hub continues to be the most reliable market for bulk grains. The RMF verification on the sellers really makes a difference in trade confidence.</p>
-                </div>
-
-                {/* Review 2 */}
-                <div className="bg-background-surface p-5 rounded-lg border-l-4 border-outline space-y-3">
-                  <div className="flex justify-between items-start">
-                    <div className="flex gap-3 items-center">
-                      <div className="w-10 h-10 rounded-full bg-white flex items-center justify-center font-bold text-primary border border-[#e2bfb0]">AM</div>
-                      <div>
-                        <p className="text-xs font-bold text-text-primary">Alice M.</p>
-                        <p className="text-[10px] text-text-muted font-semibold">Yesterday • Verified Purchase</p>
-                      </div>
-                    </div>
-                    <div className="flex text-accent-premium gap-0.5">
-                      {[1, 2, 3, 4].map(star => <Star key={star} size={14} className="fill-current" />)}
-                      <Star size={14} />
-                    </div>
-                  </div>
-                  <p className="text-xs md:text-sm leading-relaxed text-text-secondary">Great fresh produce, although parking at the physical hub was a bit tight. Using the RMF delivery service was much smoother for my second order.</p>
-                </div>
-              </div>
-
               {/* Dynamic Database Reviews */}
-              {marketReviews.length > 0 && (
-                <div className="space-y-4 pt-6 border-t border-border-light">
-                  <p className="text-[10px] font-bold uppercase tracking-widest text-text-muted mb-4">All Customer Reviews</p>
+              {marketReviews.length > 0 ? (
+                <div className="space-y-4">
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-text-muted mb-4">Customer Reviews</p>
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                     {marketReviews.map((review: any) => (
                       <div key={review._id} className="rounded-xl border border-border-light bg-white p-5 shadow-sm space-y-3">
@@ -679,6 +720,11 @@ export default function MarketPage({ params }: { params: Promise<{ slug: string 
                       </div>
                     ))}
                   </div>
+                </div>
+              ) : (
+                <div className="rounded-xl border border-dashed border-[#e2bfb0] bg-background-surface p-12 text-center">
+                  <p className="text-xs font-bold uppercase tracking-widest text-primary">No reviews yet</p>
+                  <h3 className="mt-4 text-xl font-bold text-text-primary">Reviews will appear here after completed orders.</h3>
                 </div>
               )}
             </div>

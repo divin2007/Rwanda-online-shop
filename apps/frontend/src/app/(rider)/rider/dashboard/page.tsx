@@ -10,6 +10,9 @@ import Link from 'next/link';
 import toast from 'react-hot-toast';
 import dynamic from 'next/dynamic';
 const RiderMap = dynamic(() => import('@/components/ui/RiderMap').then(mod => mod.RiderMap), { ssr: false });
+const RIDER_LOCATION_HEARTBEAT_MS = 20000;
+const AVAILABLE_DELIVERIES_REFRESH_MS = 10000;
+const ACTIVE_DELIVERIES_REFRESH_MS = 10000;
 
 export default function RiderDashboardPage() {
   const { user } = useAuth();
@@ -17,36 +20,54 @@ export default function RiderDashboardPage() {
   // Real Data Hooks
   const { data: profile, loading: profileLoading } = useApi(riderApi, 'get', `/riders/me?userId=${user?.id}`);
   const { data: statsData } = useApi(riderApi, 'get', `/riders/stats/${user?.id}`);
-  const { data: deliveriesData, execute: fetchDeliveries } = useApi(deliveryApi, 'get', `/deliveries/rider/${user?.id}?status=assigned,picked_up,en_route_to_dropoff`);
-  const { data: availableData, execute: fetchAvailable } = useApi(deliveryApi, 'get', '/deliveries/available');
+  const { data: deliveriesData, execute: fetchDeliveries } = useApi(deliveryApi, 'get', user?.id ? `/deliveries/rider/${user.id}?status=assigned,en_route_to_pickup,pending_handover,picked_up,en_route_to_dropoff` : '', { refreshInterval: ACTIVE_DELIVERIES_REFRESH_MS });
+  const { data: availableData, execute: fetchAvailable } = useApi(deliveryApi, 'get', '/deliveries/available', { refreshInterval: AVAILABLE_DELIVERIES_REFRESH_MS });
   const { data: walletData } = useApi(walletApi, 'get', `/wallets/me?userId=${user?.id}`);
 
   // Track HTML5 Geolocation coordinates
   const [coords, setCoords] = useState<{ lat: number, lng: number } | null>(null);
 
   // Initialize socket for live streaming
-  const { emit: emitSocket, isConnected: socketConnected } = useSocket(
+  const { data: liveDelivery, emit: emitSocket, isConnected: socketConnected } = useSocket<any>(
     process.env.NEXT_PUBLIC_DELIVERY_SERVICE_URL || 'http://localhost:3008',
-    ''
+    'delivery:assigned'
   );
 
-  // Stream location updates via WebSocket
+  // Keep riders in the live broadcast pool even when they are standing still.
   useEffect(() => {
-    if (socketConnected && user?.id && coords) {
+    if (!socketConnected || !user?.id || !coords) return;
+
+    const emitLocation = () => {
       emitSocket('rider:location:update', {
         riderId: user.id,
         lat: coords.lat,
         lng: coords.lng,
       });
-    }
+    };
+
+    emitLocation();
+    const timer = window.setInterval(emitLocation, RIDER_LOCATION_HEARTBEAT_MS);
+    return () => window.clearInterval(timer);
   }, [socketConnected, user?.id, coords, emitSocket]);
 
   useEffect(() => {
+    if (!liveDelivery?._id) return;
+    fetchAvailable();
+    toast.success('New delivery available nearby');
+  }, [liveDelivery, fetchAvailable]);
+
+  useEffect(() => {
     if (!profile) return;
-    
+    const fallbackCoords = {
+      lat: Number(profile.currentLocation?.lat) || -1.9441,
+      lng: Number(profile.currentLocation?.lng) || 30.0619,
+    };
+
     // Set initial coordinates from database if they exist
     if (profile.currentLocation?.lat && profile.currentLocation?.lng) {
       setCoords({ lat: profile.currentLocation.lat, lng: profile.currentLocation.lng });
+    } else {
+      setCoords(fallbackCoords);
     }
 
     if (typeof window !== 'undefined' && navigator.geolocation) {
@@ -71,10 +92,14 @@ export default function RiderDashboardPage() {
 
       const handleLocationError = (error: GeolocationPositionError) => {
         console.warn('High accuracy geolocation failed or denied, trying low accuracy...', error.message);
+        setCoords((current) => current || fallbackCoords);
         // Fallback or retry with low accuracy option
         navigator.geolocation.getCurrentPosition(
           handleLocationSuccess,
-          (err) => console.error('Low accuracy geolocation fallback failed:', err.message),
+          (err) => {
+            console.error('Low accuracy geolocation fallback failed:', err.message);
+            setCoords((current) => current || fallbackCoords);
+          },
           { enableHighAccuracy: false, timeout: 15000, maximumAge: 10000 }
         );
       };
@@ -88,6 +113,8 @@ export default function RiderDashboardPage() {
 
       return () => navigator.geolocation.clearWatch(watchId);
     }
+
+    setCoords((current) => current || fallbackCoords);
   }, [profile, user?.id, emitSocket]);
 
   const stats = statsData || { earnings: 0, completion: 100, rating: 5, drops: 0 };

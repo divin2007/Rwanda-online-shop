@@ -11,9 +11,28 @@ import { Sparkles, Search, Filter, RefreshCw, ShoppingBag, Grid, AlertCircle } f
 const CATEGORIES = [
   { label: 'All Products', value: 'all' },
   { label: 'Made in Rwanda', value: 'Made in Rwanda' },
-  { label: 'Food & Groceries', value: 'Food' },
-  { label: 'Handicrafts & Decor', value: 'Crafts' },
-  { label: 'Textiles & Apparel', value: 'Textiles' },
+  { label: 'Groceries & Produce', value: 'grocery' },
+  { label: 'Food & Beverage', value: 'food' },
+  { label: 'Fashion & Apparel', value: 'fashion' },
+  { label: 'Shoes & Footwear', value: 'shoes' },
+  { label: 'Sportswear & Fitness', value: 'sportswear' },
+  { label: 'Bakery & Patisserie', value: 'bakery' },
+  { label: 'Hardware & Materials', value: 'hardware' },
+  { label: 'Handicrafts & Art', value: 'handicrafts' },
+  { label: 'Home & Furnishings', value: 'home' },
+  { label: 'Electronics & Tech', value: 'electronics' },
+  { label: 'Cosmetics & Care', value: 'cosmetics' },
+  { label: 'Automotive & Moto', value: 'automotive' },
+  { label: 'Stationery & Books', value: 'education' },
+  { label: 'Agriculture & Farming', value: 'agriculture' },
+  { label: 'Services', value: 'services' },
+  { label: 'Events & Rentals', value: 'events' },
+  { label: 'Real Estate', value: 'property' },
+  { label: 'Pets & Animal Care', value: 'pets' },
+  { label: 'Solar & Clean Water', value: 'solar-energy' },
+  { label: 'Office & Business', value: 'office-business' },
+  { label: 'Finance & Insurance', value: 'finance' },
+  { label: 'Other Goods', value: 'other' },
 ];
 
 export default function ProductsPage() {
@@ -21,16 +40,49 @@ export default function ProductsPage() {
   const { user } = useAuth();
   
   const [products, setProducts] = useState<any[]>([]);
+  const [categoryFilters, setCategoryFilters] = useState(CATEGORIES);
   const [loading, setLoading] = useState(false);
   const [hasMore, setHasMore] = useState(true);
   const [skip, setSkip] = useState(0);
   
   const [searchQuery, setSearchQuery] = useState('');
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
   
   const sentinelRef = useRef<HTMLDivElement>(null);
   const loadingRef = useRef(false);
-  const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const searchTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    productApi.get('/products/catalog/categories')
+      .then((res) => {
+        if (!isMounted) return;
+        const categoryList = res.data?.data || res.data || [];
+        const rootCategories = Array.isArray(categoryList)
+          ? categoryList.filter((category: any) => category.isActive !== false && !category.parentId)
+          : [];
+
+        if (rootCategories.length > 0) {
+          setCategoryFilters([
+            CATEGORIES[0],
+            CATEGORIES[1],
+            ...rootCategories.map((category: any) => ({
+              label: category.label,
+              value: category.id,
+            })),
+          ]);
+        }
+      })
+      .catch((err) => {
+        console.warn('[ProductsPage] Catalog category fallback in use:', err?.message || err);
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   // Core fetch function
   const fetchProducts = async (reset = false) => {
@@ -45,8 +97,8 @@ export default function ProductsPage() {
       isActive: 'true',
     });
 
-    if (searchQuery.trim()) {
-      params.set('search', searchQuery.trim());
+    if (debouncedSearchQuery.trim()) {
+      params.set('search', debouncedSearchQuery.trim());
     }
     
     if (selectedCategory !== 'all') {
@@ -79,13 +131,29 @@ export default function ProductsPage() {
     }
   };
 
+  useEffect(() => {
+    if (searchTimeoutRef.current) {
+      clearTimeout(searchTimeoutRef.current);
+    }
+
+    searchTimeoutRef.current = setTimeout(() => {
+      setDebouncedSearchQuery(searchQuery);
+    }, 350);
+
+    return () => {
+      if (searchTimeoutRef.current) {
+        clearTimeout(searchTimeoutRef.current);
+      }
+    };
+  }, [searchQuery]);
+
   // Reset page when filters or search change
   useEffect(() => {
     setSkip(0);
     setProducts([]);
     setHasMore(true);
     fetchProducts(true);
-  }, [selectedCategory, searchQuery]);
+  }, [selectedCategory, debouncedSearchQuery]);
 
   // Set up intersection observer for infinite scroll
   useEffect(() => {
@@ -162,16 +230,16 @@ export default function ProductsPage() {
             </div>
           </section>
 
-          {/* Category Chip Slider */}
-          <section className="animate-reveal [animation-delay:150ms] mb-10 overflow-x-auto pb-2 scrollbar-hide">
-            <div className="flex gap-3">
-              {CATEGORIES.map((cat) => {
+          {/* Category selector */}
+          <section className="animate-reveal [animation-delay:150ms] mb-10">
+            <div className="grid max-h-40 w-full grid-cols-2 gap-2 overflow-y-auto pr-1 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-6">
+              {categoryFilters.map((cat) => {
                 const isActive = selectedCategory === cat.value;
                 return (
                   <button
                     key={cat.value}
                     onClick={() => setSelectedCategory(cat.value)}
-                    className={`inline-flex h-11 shrink-0 items-center justify-center rounded border px-5 font-mono text-[11px] font-bold uppercase tracking-[0.1em] transition-colors ${
+                    className={`inline-flex min-h-9 w-full items-center justify-center rounded border px-2 py-2 text-center font-mono text-[9px] font-bold uppercase leading-tight transition-colors ${
                       isActive
                         ? 'border-primary bg-primary text-white'
                         : 'border-[#e2bfb0] bg-white text-text-secondary hover:border-primary hover:text-primary hover:bg-[#ffedd5]'
@@ -188,7 +256,7 @@ export default function ProductsPage() {
           </section>
 
           {/* Dynamic recommendation alert details */}
-          {user && selectedCategory === 'all' && !searchQuery && (
+          {user && selectedCategory === 'all' && !debouncedSearchQuery && (
             <div className="animate-reveal [animation-delay:200ms] mb-6 flex items-center gap-3 rounded-lg border border-[#e2bfb0] bg-[#ffedd5]/35 p-4 text-[#7c3a00]">
               <Sparkles className="text-primary shrink-0 animate-bounce" size={20} />
               <p className="text-sm font-bold leading-relaxed">
@@ -244,7 +312,7 @@ export default function ProductsPage() {
             {/* End of results message */}
             {!hasMore && products.length > 0 && (
               <div className="mt-8 text-center text-sm font-bold text-text-muted border-t border-border-light/40 pt-8">
-                🎉 You've reached the end of our Rwandan catalog!
+                You've reached the end of our Rwandan catalog!
               </div>
             )}
           </section>

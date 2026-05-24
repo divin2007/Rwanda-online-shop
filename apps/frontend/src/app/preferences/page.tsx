@@ -8,7 +8,7 @@ import { Layout } from '@/components/layout/Layout';
 import { useAuth } from '@/context/AuthContext';
 import { marketApi, productApi, userApi } from '@/lib/api';
 
-type Category = { id: string; label: string; aliases?: string[]; isActive?: boolean };
+type Category = { id: string; label: string; aliases?: string[]; isActive?: boolean; parentId?: string | null };
 type Market = { _id: string; name: string; imageUrl?: string; location?: { district?: string; address?: string } };
 
 export default function PreferencesPage() {
@@ -35,7 +35,7 @@ export default function PreferencesPage() {
       const categoryList = Array.isArray(categoryRes.data?.data) ? categoryRes.data.data : [];
       const marketList = Array.isArray(marketRes.data?.data) ? marketRes.data.data : [];
       const prefs = preferenceRes?.data?.data || {};
-      setCategories(categoryList.filter((category: Category) => category.isActive !== false));
+      setCategories(categoryList.filter((category: Category) => category.isActive !== false && !category.parentId));
       setMarkets(marketList);
       setCategoryIds(Array.isArray(prefs.categoryIds) ? prefs.categoryIds : []);
       setMarketIds(Array.isArray(prefs.marketIds) ? prefs.marketIds.map(String) : []);

@@ -8,7 +8,7 @@
   ],
   "scripts": {
     "build": "turbo run build",
-    "dev": "npm run build --workspace @rmf/database && turbo run dev --concurrency=20",
+    "dev": "npm run build --workspace @rmf/database && turbo run dev --concurrency=20 --continue=always --env-mode=loose",
     "wait-for-services": "node scripts/wait-for-services.js",
     "seed": "npm run seed --workspace market-service",
     "clear-db": "node apps/market-service/scripts/clear-db.js",

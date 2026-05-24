@@ -24,6 +24,7 @@ import {
 } from 'lucide-react';
 
 const AnalyticsCharts = dynamic(() => import('@/components/ui/AnalyticsCharts').then(mod => mod.AnalyticsCharts), { ssr: false });
+const SELLER_DASHBOARD_REFRESH_MS = 10000;
 
 export default function SellerDashboardPage() {
   const { user } = useAuth();
@@ -39,7 +40,7 @@ export default function SellerDashboardPage() {
   const { data: profile, loading: profileLoading, error: profileError } = useApi(sellerApi, 'get', profileUrl || '');
 
   const { data: productsData } = useApi(productApi, 'get', `/products?sellerId=${user?.id}`);
-  const { data: ordersData, loading: ordersLoading, execute: fetchOrders } = useApi(orderApi, 'get', `/orders?sellerId=${user?.id}&status=awaiting_quote,quote_sent,placed,confirmed,preparing,ready_for_pickup`);
+  const { data: ordersData, loading: ordersLoading, execute: fetchOrders } = useApi(orderApi, 'get', user?.id ? `/orders?sellerId=${user.id}&status=awaiting_quote,quote_sent,placed,confirmed,preparing,ready_for_pickup` : '', { refreshInterval: SELLER_DASHBOARD_REFRESH_MS });
   const { data: walletData } = useApi(walletApi, 'get', `/wallets/me?userId=${user?.id}`);
   const { data: analyticsData } = useApi(adminApi, 'get', `/seller/dashboard/analytics/${user?.id}`);
   const { data: sellerSummary } = useApi(adminApi, 'get', `/analytics/seller/${user?.id}`);

@@ -43,8 +43,8 @@ const videoHtml = (rawUrl?: string | null) => {
 <head>
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
   <style>
-    html, body { margin:0; width:100%; height:100%; background:#000; overflow:hidden; }
-    video { position:fixed; inset:0; width:100%; height:100%; object-fit:contain; background:#000; }
+    html, body { margin:0; width:100%; height:100%; background:transparent; overflow:hidden; }
+    video { position:fixed; inset:0; width:100%; height:100%; object-fit:cover; background:transparent; }
     button { position:fixed; inset:0; width:100%; height:100%; border:0; background:transparent; display:flex; align-items:center; justify-content:center; }
     span { width:72px; height:72px; border-radius:50%; background:#ff6b00; color:white; display:flex; align-items:center; justify-content:center; font-size:34px; font-family:-apple-system,BlinkMacSystemFont,sans-serif; box-shadow:0 12px 40px rgba(0,0,0,.45); }
     button.hidden { display:none; }
@@ -205,7 +205,7 @@ export function SellerVideoFeed({ marketId, sellerId, placement, compact, search
                 originWhitelist={['*']}
                 scrollEnabled={false}
                 bounces={false}
-                backgroundColor="#000"
+                backgroundColor="transparent"
                 androidLayerType="hardware"
               />
             ) : null}
@@ -320,7 +320,7 @@ function FullVideoCard({
           originWhitelist={['*']}
           scrollEnabled={false}
           bounces={false}
-          backgroundColor="#000"
+          backgroundColor="transparent"
           androidLayerType="hardware"
         />
       ) : (
@@ -506,7 +506,7 @@ const styles = StyleSheet.create({
   },
   modal: {
     flex: 1,
-    backgroundColor: '#000',
+    backgroundColor: 'transparent',
   },
   closeButton: {
     position: 'absolute',
@@ -522,7 +522,7 @@ const styles = StyleSheet.create({
   },
   fullCard: {
     width: '100%',
-    backgroundColor: '#000',
+    backgroundColor: 'transparent',
   },
   videoShade: {
     position: 'absolute',
@@ -530,7 +530,7 @@ const styles = StyleSheet.create({
     right: 0,
     bottom: 0,
     height: 270,
-    backgroundColor: 'rgba(0,0,0,0.28)',
+    backgroundColor: 'transparent',
   },
   videoInfo: {
     position: 'absolute',

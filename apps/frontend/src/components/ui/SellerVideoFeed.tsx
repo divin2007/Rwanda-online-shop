@@ -6,7 +6,8 @@ import { Heart, MessageCircle, Send, Store, ThumbsDown, Video } from 'lucide-rea
 import toast from 'react-hot-toast';
 import { useAuth } from '@/context/AuthContext';
 import { productApi } from '@/lib/api';
-import { getMarketUrl } from '@/lib/urls';
+import { getMarketUrl, getProductUrl } from '@/lib/urls';
+import { resolveUploadUrl } from '@/lib/uploadUrls';
 
 type SellerVideo = {
   _id: string;
@@ -14,7 +15,7 @@ type SellerVideo = {
   caption?: string;
   videoUrl: string;
   thumbnailUrl?: string;
-  placement?: 'PRODUCT_AD' | 'SHOP_AD';
+  placement?: 'PRODUCT_AD' | 'SHOP_AD' | 'STORY';
   tags?: string[];
   likeCount?: number;
   dislikeCount?: number;
@@ -65,7 +66,7 @@ export function SellerVideoFeed({
   title?: string;
   description?: string;
   compact?: boolean;
-  placement?: 'PRODUCT_AD' | 'SHOP_AD';
+  placement?: 'PRODUCT_AD' | 'SHOP_AD' | 'STORY';
   search?: string;
   onTagClick?: (tag: string) => void;
 }) {
@@ -163,12 +164,18 @@ export function SellerVideoFeed({
             const shopName = video.sellerId?.shopDetails?.name || video.sellerId?.stallName || 'Verified seller';
             const marketSlug = video.marketId?.slug;
             const productImage = video.productId?.images?.find(Boolean);
+            const videoSrc = resolveUploadUrl(video.videoUrl, 'product', '/seller-videos/upload');
+            const posterSrc = video.thumbnailUrl
+              ? resolveUploadUrl(video.thumbnailUrl, 'product')
+              : productImage
+                ? resolveUploadUrl(productImage, 'product')
+                : undefined;
             return (
               <article key={video._id} className={`${compact ? 'w-[18rem] shrink-0 snap-start' : 'snap-start'} overflow-hidden rounded-2xl border border-[#eaded4] bg-white shadow-sm`}>
                 <div className="relative aspect-[9/16] bg-[#1b1c1c]">
                   <video
-                    src={video.videoUrl}
-                    poster={video.thumbnailUrl || productImage}
+                    src={videoSrc}
+                    poster={posterSrc}
                     controls
                     playsInline
                     preload="metadata"
@@ -187,7 +194,7 @@ export function SellerVideoFeed({
                   <div className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 to-transparent p-4 text-white">
                     <p className="line-clamp-1 text-sm font-black">{shopName}</p>
                     <p className="line-clamp-2 text-xs font-semibold text-white/75">
-                      {video.placement === 'SHOP_AD' ? 'Shop advert: ' : ''}{video.caption || video.title}
+                      {video.placement === 'SHOP_AD' ? 'Shop advert: ' : video.placement === 'STORY' ? 'Story: ' : ''}{video.caption || video.title}
                     </p>
                     <p className="mt-2 line-clamp-1 text-[11px] font-black uppercase tracking-widest text-[#ffb26b]">
                       {video.marketId?.name || 'RMF market'}{video.productId?.name ? ` · ${video.productId.name}` : ''}
@@ -197,7 +204,7 @@ export function SellerVideoFeed({
                 <div className="space-y-3 p-4">
                   <div>
                     <span className="mb-2 inline-flex rounded-full bg-[#ffedd5] px-2.5 py-1 text-[10px] font-black uppercase tracking-wider text-[#c2410c]">
-                      {video.placement === 'SHOP_AD' ? 'Shop advert' : 'Product demo'}
+                      {video.placement === 'SHOP_AD' ? 'Shop advert' : video.placement === 'STORY' ? '24h story' : 'Product demo'}
                     </span>
                     <h3 className="line-clamp-2 text-lg font-black leading-tight text-[#1b1c1c]">{video.title}</h3>
                     <div className="mt-2 flex flex-wrap gap-2">
@@ -213,10 +220,10 @@ export function SellerVideoFeed({
                     </div>
                   </div>
 
-                  {video.productId ? (
-                    <Link href={marketSlug ? `${getMarketUrl(marketSlug)}/product/${video.productId._id}` : `/markets?search=${encodeURIComponent(video.productId.name || '')}`} className="flex items-center gap-3 rounded-xl border border-[#eaded4] p-3 hover:border-[#ff6b00]/40">
+                  {video.productId?._id ? (
+                    <Link href={getProductUrl(video.productId._id)} className="flex items-center gap-3 rounded-xl border border-[#eaded4] p-3 hover:border-[#ff6b00]/40">
                       <div className="flex h-11 w-11 items-center justify-center overflow-hidden rounded-lg bg-[#fff7ed]">
-                        {productImage ? <img src={productImage} alt="" className="h-full w-full object-cover" /> : <Store size={18} className="text-[#ff6b00]" />}
+                        {productImage ? <img src={resolveUploadUrl(productImage, 'product')} alt="" className="h-full w-full object-cover" /> : <Store size={18} className="text-[#ff6b00]" />}
                       </div>
                       <div className="min-w-0 flex-1">
                         <p className="line-clamp-1 text-sm font-black text-[#1b1c1c]">{video.productId.name}</p>

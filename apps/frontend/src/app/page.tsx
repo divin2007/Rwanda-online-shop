@@ -18,6 +18,7 @@ import {
   Shirt,
   ShoppingCart,
   Star,
+  Trophy,
   Users,
   Utensils,
 } from 'lucide-react';
@@ -29,6 +30,7 @@ import { marketApi, productApi, orderApi, userApi } from '@/lib/api';
 import { Footer } from '@/components/layout/Footer';
 import { useLanguage } from '@/context/LanguageContext';
 import { useAuth } from '@/context/AuthContext';
+import { getMarketUrl, getProductUrl } from '@/lib/urls';
 
 const RiderMap = dynamic(() => import('@/components/ui/RiderMap').then(mod => mod.RiderMap), {
   ssr: false,
@@ -131,184 +133,6 @@ const sellerImages = [
   'https://images.unsplash.com/photo-1512486130939-2c4f79935e4f?auto=format&fit=crop&q=80&w=300',
 ];
 
-const fallbackMarkets: Market[] = [
-  {
-    _id: 'kimironko-market',
-    name: 'Kimironko Market',
-    slug: 'kimironko-market',
-    location: { address: 'Kigali, Remera' },
-    image: marketImages[0],
-    totalSellers: 240,
-    activeProducts: 3300,
-    rating: 4.8,
-  },
-  {
-    _id: 'nyabugogo-market',
-    name: 'Nyabugogo',
-    slug: 'nyabugogo',
-    location: { address: 'Kigali, Nyarugenge' },
-    image: marketImages[1],
-    totalSellers: 160,
-    activeProducts: 3200,
-    rating: 4.6,
-  },
-  {
-    _id: 'nironko-market',
-    name: 'Nironko Market',
-    slug: 'nironko-market',
-    location: { address: 'Kigali, Remera' },
-    image: marketImages[2],
-    totalSellers: 240,
-    activeProducts: 3200,
-    rating: 4.7,
-  },
-  {
-    _id: 'kigali-city-market',
-    name: 'Kigali City Market',
-    slug: 'kigali-city-market',
-    location: { address: 'Kigali, Nyarugenge' },
-    image: marketImages[3],
-    totalSellers: 210,
-    activeProducts: 4100,
-    rating: 4.8,
-  },
-  {
-    _id: 'gisozi-market',
-    name: 'Gisozi Market',
-    slug: 'gisozi-market',
-    location: { address: 'Kigali, Gasabo' },
-    image: marketImages[4],
-    totalSellers: 95,
-    activeProducts: 1600,
-    rating: 4.5,
-  },
-  {
-    _id: 'made-in-rwanda-shops',
-    name: 'Made in Rwanda',
-    slug: 'made-in-rwanda',
-    location: { address: 'Rwanda' },
-    image: marketImages[5],
-    totalSellers: 130,
-    activeProducts: 980,
-    rating: 4.9,
-  },
-];
-
-const fallbackProducts: DisplayProduct[] = [
-  {
-    id: 'arabica-coffee',
-    name: 'Arabica Coffee Beans',
-    category: 'Food',
-    price: 6500,
-    market: 'Kimironko Market',
-    seller: 'Arabica Coffee',
-    image: 'https://images.unsplash.com/photo-1447933601403-0c6688de566e?auto=format&fit=crop&q=80&w=700',
-    href: '/markets?search=Arabica%20Coffee',
-    rating: 4.9,
-    orders: 450,
-    madeInRwanda: true,
-    tag: 'Best seller',
-  },
-  {
-    id: 'imigongo-art',
-    name: 'Imigongo Art Cut',
-    category: 'Crafts',
-    price: 12000,
-    market: 'Kigali City Market',
-    seller: 'Imigongo Art',
-    image: 'https://images.unsplash.com/photo-1610701596007-11502861dcfa?auto=format&fit=crop&q=80&w=700',
-    href: '/markets?search=Imigongo',
-    rating: 4.8,
-    orders: 312,
-    madeInRwanda: true,
-    tag: 'Made in Rwanda',
-  },
-  {
-    id: 'kitenge-fabric',
-    name: 'Kitenge Fabric',
-    category: 'Textiles',
-    price: 8500,
-    market: 'Nyabugogo',
-    seller: 'Kitenge House',
-    image: 'https://images.unsplash.com/photo-1452860606245-08befc0ff44b?auto=format&fit=crop&q=80&w=700',
-    href: '/markets?search=Kitenge',
-    rating: 4.7,
-    orders: 290,
-    madeInRwanda: true,
-    tag: 'Verified',
-  },
-  {
-    id: 'agaseke-basket',
-    name: 'Agaseke Basket Set',
-    category: 'Crafts',
-    price: 18000,
-    market: 'Made in Rwanda',
-    seller: 'Umurava Crafts',
-    image: 'https://images.unsplash.com/photo-1596464716127-f2a82984de30?auto=format&fit=crop&q=80&w=700',
-    href: '/markets?search=Agaseke',
-    rating: 4.9,
-    orders: 188,
-    madeInRwanda: true,
-  },
-  {
-    id: 'fresh-green-beans',
-    name: 'High-Grade Beans',
-    category: 'Food',
-    price: 3200,
-    market: 'Kimironko Market',
-    seller: 'Fresh Trade',
-    image: 'https://images.unsplash.com/photo-1515543904379-3d757afe72e4?auto=format&fit=crop&q=80&w=700',
-    href: '/markets?search=Beans',
-    rating: 4.6,
-    orders: 260,
-  },
-  {
-    id: 'traditional-pottery',
-    name: 'Traditional Pottery',
-    category: 'Crafts',
-    price: 24000,
-    market: 'Made in Rwanda',
-    seller: 'Sed by Traditional',
-    image: 'https://images.unsplash.com/photo-1578749556568-bc2c40e68b61?auto=format&fit=crop&q=80&w=700',
-    href: '/markets?search=Pottery',
-    rating: 4.8,
-    orders: 144,
-    madeInRwanda: true,
-  },
-  {
-    id: 'kitenge-wrap',
-    name: 'Authentic Kitenge Wrap',
-    category: 'Textiles',
-    price: 15500,
-    market: 'Kigali City Market',
-    seller: 'Haye Textiles',
-    image: 'https://images.unsplash.com/photo-1604176354204-9268737828e4?auto=format&fit=crop&q=80&w=700',
-    href: '/markets?search=Made%20in%20Rwanda',
-    rating: 4.7,
-    orders: 134,
-    madeInRwanda: true,
-  },
-  {
-    id: 'seasonal-produce',
-    name: 'Seasonal Produce Box',
-    category: 'Food',
-    price: 9800,
-    market: 'Kimironko Market',
-    seller: 'Aline Fresh Foods',
-    image: 'https://images.unsplash.com/photo-1518843875459-f738682238a6?auto=format&fit=crop&q=80&w=700',
-    href: '/markets?search=Produce',
-    rating: 4.6,
-    orders: 205,
-  },
-];
-
-const fallbackSellers: SellerSummary[] = [
-  { name: 'Arabica Coffee', specialty: '8,500 RWF Source', market: 'Kimironko', rating: 5, products: 36, image: sellerImages[0], source: 'RMF' },
-  { name: 'Imigongo Art', specialty: 'Verified Sellers', market: 'Kigali', rating: 5, products: 24, image: sellerImages[1] },
-  { name: 'Kinongo', specialty: 'Verified Sellers', market: 'Kigali, Remera', rating: 4, products: 21, image: sellerImages[2] },
-  { name: 'Emile N.', specialty: 'Verified Sellers', market: 'Kigali', rating: 4, products: 18, image: sellerImages[3] },
-];
-
 const chipLinks = [
   { label: 'Kimironko', query: 'Kimironko' },
   { label: 'Nyabugogo', query: 'Nyabugogo' },
@@ -320,13 +144,9 @@ const chipLinks = [
   { label: 'Others', query: 'All', icon: MoreHorizontal },
 ];
 
-const fallbackSellerCounts = [240, 160, 240, 210, 95, 130, 84, 76];
-const fallbackProductCounts = [3300, 3200, 3200, 4100, 1600, 980, 1200, 860];
-const fallbackOrderCounts = [450, 312, 290, 188, 144];
-
 const isRemoteImage = (value?: string) => Boolean(value && /^https?:\/\//i.test(value));
 
-const marketHref = (market: Market) => `/market/${market.slug || market._id}`;
+const marketHref = (market: Market) => getMarketUrl(market.slug || market._id);
 
 const marketImage = (market: Market, index: number) => {
   const candidate = market.imageUrl || market.image;
@@ -336,13 +156,11 @@ const marketImage = (market: Market, index: number) => {
 const marketLocation = (market: Market) => market.location?.address || 'Kigali, Rwanda';
 
 const marketSellerCount = (market: Market, index: number) => {
-  const count = Number(market.totalSellers || 0);
-  return count > 0 ? count : fallbackSellerCounts[index % fallbackSellerCounts.length];
+  return Number(market.totalSellers || 0);
 };
 
 const marketProductCount = (market: Market, index: number) => {
-  const count = Number(market.activeProducts || 0);
-  return count > 0 ? count : fallbackProductCounts[index % fallbackProductCounts.length];
+  return Number(market.activeProducts || 0);
 };
 
 const sellerNameFromProduct = (product: Product) => {
@@ -355,11 +173,6 @@ const sellerNameFromProduct = (product: Product) => {
 const getMarketId = (product: Product) => {
   if (!product.marketId) return '';
   return typeof product.marketId === 'object' ? product.marketId._id || '' : product.marketId;
-};
-
-const getMarketSlug = (product: Product, market?: Market) => {
-  if (typeof product.marketId === 'object' && product.marketId.slug) return product.marketId.slug;
-  return market?.slug;
 };
 
 const getDistanceKm = (fromLat: number, fromLng: number, coordinates?: [number, number]) => {
@@ -410,8 +223,9 @@ const CompactMarketCard = ({ market, index }: { market: Market; index: number })
             <MapPin size={13} className="text-primary/50" />
             <span className="truncate max-w-[120px]">{marketLocation(market)}</span>
             {market.distance !== undefined && market.distance !== Number.POSITIVE_INFINITY && (
-              <span className="ml-auto inline-flex items-center rounded-full bg-primary/10 px-2 py-0.5 text-[9px] font-black text-primary animate-reveal">
-                📍 {market.distance.toFixed(1)} km
+              <span className="ml-auto inline-flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-[9px] font-black text-primary animate-reveal">
+                <MapPin size={10} className="shrink-0" />
+                {market.distance.toFixed(1)} km
               </span>
             )}
           </p>
@@ -483,31 +297,30 @@ const MiniFeaturedMarketCard = ({ market, index }: { market: Market; index: numb
   const [imageSrc, setImageSrc] = useState(marketImage(market, index));
 
   return (
-    <Link href={marketHref(market)} className="group block">
-      <div className="relative h-32 overflow-hidden rounded-xl bg-background-surface shadow-sm transition-all duration-300 group-hover:shadow-md">
+    <Link href={marketHref(market)} className="group flex items-center gap-3 rounded-lg border border-border-light/40 bg-background-surface/30 p-2.5 transition-all hover:bg-background-surface/80 hover:border-[#a04100]/30">
+      <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-md bg-background-surface">
         <Image
           src={imageSrc}
           alt={market.name}
           fill
           unoptimized
-          sizes="180px"
-          className="object-cover transition duration-700 group-hover:scale-110"
+          sizes="48px"
+          className="object-cover transition duration-700 group-hover:scale-105"
           onError={() => setImageSrc(fallback)}
         />
-        <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
       </div>
-      <h3 className="mt-3 line-clamp-1 text-sm font-bold leading-tight text-text-primary group-hover:text-primary transition-colors">{market.name}</h3>
-      <p className="mt-1 flex items-center justify-between gap-1 text-[11px] font-medium text-text-muted">
-        <span className="flex items-center gap-1 truncate">
-          <MapPin size={10} className="text-primary/40 shrink-0" />
+      <div className="min-w-0 flex-1">
+        <h3 className="line-clamp-1 text-xs font-bold leading-tight text-text-primary group-hover:text-primary transition-colors">{market.name}</h3>
+        <p className="mt-0.5 flex items-center gap-1 text-[10px] font-semibold text-text-muted">
+          <MapPin size={9} className="text-primary/50 shrink-0" />
           <span className="truncate">{marketLocation(market)}</span>
+        </p>
+      </div>
+      {market.distance !== undefined && market.distance !== Number.POSITIVE_INFINITY && (
+        <span className="shrink-0 text-[9px] font-black text-primary bg-primary/10 px-1.5 py-0.5 rounded-full">
+          {market.distance.toFixed(1)} km
         </span>
-        {market.distance !== undefined && market.distance !== Number.POSITIVE_INFINITY && (
-          <span className="text-[9px] font-black text-primary shrink-0 animate-reveal">
-            ({market.distance.toFixed(1)} km)
-          </span>
-        )}
-      </p>
+      )}
     </Link>
   );
 };
@@ -596,7 +409,8 @@ const MostBoughtPanel = ({
             <p className="text-xs font-semibold text-white/90">{market?.name || 'Kimironko Market Hub'}</p>
             {market?.totalOrders !== undefined && market.totalOrders > 0 && (
               <span className="inline-flex items-center gap-1 rounded-full bg-[#ff6b00] px-2.5 py-0.5 text-[8px] font-black uppercase tracking-widest text-white shadow-md border border-[#ff6b00]/30 animate-pulse">
-                🏆 {market.totalOrders} orders
+                <Trophy size={10} className="shrink-0" />
+                {market.totalOrders} orders
               </span>
             )}
           </div>
@@ -615,7 +429,7 @@ const MostBoughtPanel = ({
               <p className="line-clamp-1 text-[11px] font-medium text-white/85">{product.seller}</p>
             </div>
             <span className="rounded-sm bg-white/20 px-2.5 py-0.5 font-mono text-[11px] font-black text-white">
-              {(product.orders || fallbackOrderCounts[index] || 120).toLocaleString()} orders
+              {(product.orders || 0).toLocaleString()} orders
             </span>
           </Link>
         ))}
@@ -632,6 +446,21 @@ export default function HomePage() {
   const { data: profileData, execute: refetchProfile } = useApi<any>(userApi, 'get', user ? '/users/profile' : '');
   const { data: marketsData, error: marketsError, execute: refetchMarkets } = useApi<Market[]>(marketApi, 'get', '/markets?activeOnly=true');
   const { data: productsData, error: productsError, execute: refetchProducts } = useApi<Product[]>(productApi, 'get', '/products/recommendations/for-me?limit=24');
+  const { data: videosData, execute: refetchVideos } = useApi<any>(productApi, 'get', '/seller-videos?limit=8');
+  const { data: madeInRwandaData, execute: refetchMadeInRwanda } = useApi<Product[]>(productApi, 'get', '/products?isMadeInRwanda=true&limit=8');
+  const { data: catalogCategoriesData, execute: refetchCatalogCategories } = useApi<any[]>(productApi, 'get', '/products/catalog/categories');
+  const [activeVideoIdx, setActiveVideoIdx] = useState(0);
+
+  const liveVideos = useMemo(() => {
+    return Array.isArray(videosData) ? videosData : [];
+  }, [videosData]);
+
+  const activeVideo = liveVideos[activeVideoIdx] || liveVideos[0] || null;
+
+  const latestVideo = useMemo(() => {
+    return liveVideos.length > 0 ? liveVideos[0] : null;
+  }, [liveVideos]);
+
 
   // Real-time WebSocket synchronization
   const orderSocketUrl = process.env.NEXT_PUBLIC_ORDER_SERVICE_URL || 'http://localhost:3006';
@@ -643,10 +472,13 @@ export default function HomePage() {
       if (socketMessage.type === 'STATUS_UPDATE' && (socketMessage.status === 'delivered' || socketMessage.status === 'confirmed')) {
         refetchMarkets();
         refetchProducts();
+        refetchVideos();
+        refetchMadeInRwanda();
+        refetchCatalogCategories();
         if (user) refetchProfile();
       }
     }
-  }, [socketMessage, refetchMarkets, refetchProducts, refetchProfile, user]);
+  }, [socketMessage, refetchMarkets, refetchProducts, refetchVideos, refetchMadeInRwanda, refetchCatalogCategories, refetchProfile, user]);
 
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
 
@@ -731,12 +563,10 @@ export default function HomePage() {
     const liveProducts = Array.isArray(productsData) ? productsData : [];
     const normalized = liveProducts
       .filter(product => product.name && Number(product.price || 0) > 0)
-      .map((product, index) => {
+      .map((product) => {
         const market = marketById.get(getMarketId(product));
         const objectMarket = typeof product.marketId === 'object' ? product.marketId : undefined;
         const marketName = objectMarket?.name || market?.name || 'Local market';
-        const marketSlug = getMarketSlug(product, market);
-
         return {
           id: product._id,
           name: product.name,
@@ -744,10 +574,10 @@ export default function HomePage() {
           price: product.price,
           market: marketName,
           seller: sellerNameFromProduct(product),
-          image: isRemoteImage(product.images?.[0]) ? product.images![0] : fallbackProducts[index % fallbackProducts.length].image,
-          href: marketSlug ? `/market/${marketSlug}` : '/markets',
+          image: isRemoteImage(product.images?.[0]) ? product.images![0] : 'https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&q=80&w=600',
+          href: getProductUrl(product._id),
           rating: Number(product.rating || 4.7),
-          orders: Number(product.totalOrders || fallbackOrderCounts[index % fallbackOrderCounts.length]),
+          orders: Number(product.totalOrders || 0),
           madeInRwanda: Boolean(product.isMadeInRwanda),
           tag: product.isMadeInRwanda ? 'Made in Rwanda' : undefined,
         };
@@ -756,6 +586,121 @@ export default function HomePage() {
     return normalized;
   }, [marketById, productsData]);
 
+  const madeInRwandaProducts = useMemo<DisplayProduct[]>(() => {
+    const rawList = Array.isArray(madeInRwandaData) ? madeInRwandaData : [];
+    return rawList
+      .filter(product => product.name && Number(product.price || 0) > 0)
+      .map((product) => {
+        const market = marketById.get(getMarketId(product));
+        const objectMarket = typeof product.marketId === 'object' ? product.marketId : undefined;
+        const marketName = objectMarket?.name || market?.name || 'Local market';
+        return {
+          id: product._id,
+          name: product.name,
+          category: product.category || 'Market goods',
+          price: product.price,
+          market: marketName,
+          seller: sellerNameFromProduct(product),
+          image: isRemoteImage(product.images?.[0]) ? product.images![0] : 'https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&q=80&w=600',
+          href: getProductUrl(product._id),
+          rating: Number(product.rating || 4.7),
+          orders: Number(product.totalOrders || 0),
+          madeInRwanda: true,
+          tag: 'Made in Rwanda',
+        };
+      });
+  }, [marketById, madeInRwandaData]);
+
+  const categoryImages: Record<string, string> = {
+    grocery: 'https://images.unsplash.com/photo-1615485290382-441e4d049cb5?auto=format&fit=crop&q=80&w=200',
+    food: 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&q=80&w=200',
+    bakery: 'https://images.unsplash.com/photo-1509440159596-0249088772ff?auto=format&fit=crop&q=80&w=200',
+    fashion: 'https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&q=80&w=200',
+    shoes: 'https://images.unsplash.com/photo-1549298916-b41d501d3772?auto=format&fit=crop&q=80&w=200',
+    sportswear: 'https://images.unsplash.com/photo-1517838277536-f5f99be501cd?auto=format&fit=crop&q=80&w=200',
+    hardware: 'https://images.unsplash.com/photo-1581244277943-fe4a9c777189?auto=format&fit=crop&q=80&w=200',
+    handicrafts: 'https://images.unsplash.com/photo-1586023492125-27b2c045efd7?auto=format&fit=crop&q=80&w=200',
+    home: 'https://images.unsplash.com/photo-1586023492125-27b2c045efd7?auto=format&fit=crop&q=80&w=200',
+    electronics: 'https://images.unsplash.com/photo-1588508065123-287b28e013da?auto=format&fit=crop&q=80&w=200',
+    cosmetics: 'https://images.unsplash.com/photo-1522335789203-aabd1fc54bc9?auto=format&fit=crop&q=80&w=200',
+    automotive: 'https://images.unsplash.com/photo-1511919884226-fd3cad34687c?auto=format&fit=crop&q=80&w=200',
+    education: 'https://images.unsplash.com/photo-1456513080510-7bf3a84b82f8?auto=format&fit=crop&q=80&w=200',
+    agriculture: 'https://images.unsplash.com/photo-1500937386664-56d1dfef3854?auto=format&fit=crop&q=80&w=200',
+    services: 'https://images.unsplash.com/photo-1521791136064-7986c2920216?auto=format&fit=crop&q=80&w=200',
+    events: 'https://images.unsplash.com/photo-1511795409834-ef04bbd61622?auto=format&fit=crop&q=80&w=200',
+    property: 'https://images.unsplash.com/photo-1560518883-ce09059eeffa?auto=format&fit=crop&q=80&w=200',
+    pets: 'https://images.unsplash.com/photo-1450778869180-41d0601e046e?auto=format&fit=crop&q=80&w=200',
+    'solar-energy': 'https://images.unsplash.com/photo-1509391366360-2e959784a276?auto=format&fit=crop&q=80&w=200',
+    'office-business': 'https://images.unsplash.com/photo-1497366754035-f200968a6e72?auto=format&fit=crop&q=80&w=200',
+    finance: 'https://images.unsplash.com/photo-1554224155-6726b3ff858f?auto=format&fit=crop&q=80&w=200',
+    other: 'https://images.unsplash.com/photo-1516594798947-e65505dbb29d?auto=format&fit=crop&q=80&w=200',
+  };
+
+  const dynamicBrandCategories = useMemo(() => {
+    const rawList = Array.isArray(catalogCategoriesData) ? catalogCategoriesData : [];
+    const categoryById = new Map(rawList.map(cat => [cat.id, cat]));
+
+    const labelMap: Record<string, string> = {
+      grocery: 'Groceries & Produce',
+      food: 'Food & Beverage',
+      fashion: 'Fashion & Apparel',
+      shoes: 'Shoes & Footwear',
+      sportswear: 'Sportswear & Fitness',
+      bakery: 'Bakery & Patisserie',
+      hardware: 'Hardware & Materials',
+      handicrafts: 'Handicrafts & Art',
+      home: 'Home & Furnishings',
+      electronics: 'Electronics & Tech',
+      cosmetics: 'Cosmetics & Care',
+      automotive: 'Automotive & Moto',
+      education: 'Stationery & Books',
+      agriculture: 'Agriculture & Farming',
+      services: 'Services',
+      events: 'Events & Rentals',
+      property: 'Real Estate',
+      pets: 'Pets & Animal Care',
+      'solar-energy': 'Solar & Clean Water',
+      'office-business': 'Office & Business',
+      finance: 'Finance & Insurance',
+      other: 'Other Goods',
+    };
+
+    // Fallbacks if database has no categories or is empty
+    const fallbackList = [
+      { id: 'grocery', label: 'Groceries & Produce', image: categoryImages.grocery },
+      { id: 'food', label: 'Food & Beverage', image: categoryImages.food },
+      { id: 'bakery', label: 'Bakery & Patisserie', image: categoryImages.bakery },
+      { id: 'fashion', label: 'Fashion & Apparel', image: categoryImages.fashion },
+      { id: 'shoes', label: 'Shoes & Footwear', image: categoryImages.shoes },
+      { id: 'sportswear', label: 'Sportswear & Fitness', image: categoryImages.sportswear },
+      { id: 'hardware', label: 'Hardware & Materials', image: categoryImages.hardware },
+      { id: 'handicrafts', label: 'Handicrafts & Art', image: categoryImages.handicrafts },
+      { id: 'home', label: 'Home & Furnishings', image: categoryImages.home },
+      { id: 'electronics', label: 'Electronics & Tech', image: categoryImages.electronics },
+      { id: 'cosmetics', label: 'Cosmetics & Care', image: categoryImages.cosmetics },
+      { id: 'automotive', label: 'Automotive & Moto', image: categoryImages.automotive },
+      { id: 'education', label: 'Stationery & Books', image: categoryImages.education },
+      { id: 'agriculture', label: 'Agriculture & Farming', image: categoryImages.agriculture },
+      { id: 'services', label: 'Services', image: categoryImages.services },
+      { id: 'events', label: 'Events & Rentals', image: categoryImages.events },
+      { id: 'property', label: 'Real Estate', image: categoryImages.property },
+      { id: 'pets', label: 'Pets & Animal Care', image: categoryImages.pets },
+      { id: 'solar-energy', label: 'Solar & Clean Water', image: categoryImages['solar-energy'] },
+      { id: 'office-business', label: 'Office & Business', image: categoryImages['office-business'] },
+      { id: 'finance', label: 'Finance & Insurance', image: categoryImages.finance },
+      { id: 'other', label: 'Other Goods', image: categoryImages.other },
+    ];
+
+    return fallbackList.slice(0, 12).map((fallback) => {
+      const cat = categoryById.get(fallback.id);
+      return {
+        id: fallback.id,
+        label: labelMap[fallback.id] || cat?.label || cat?.name || fallback.label,
+        image: fallback.image,
+      };
+    });
+  }, [catalogCategoriesData]);
+
   const topProducts = useMemo(
     () => [...displayProducts].sort((a, b) => (b.orders - a.orders) || (b.rating - a.rating)),
     [displayProducts]
@@ -763,6 +708,12 @@ export default function HomePage() {
 
   const selectedMarket = featuredMarkets[0] || liveMarkets[0];
   const liveDataUnavailable = Boolean(marketsError || productsError);
+  const supportingLocalBrandsDescription = t('supporting_local_brands_desc') === 'supporting_local_brands_desc'
+    ? 'Supporting local industry and manufacturing excellence'
+    : t('supporting_local_brands_desc');
+  const viewAllBrandsLabel = t('view_all_brands') === 'view_all_brands'
+    ? 'View All Local Brands'
+    : t('view_all_brands');
 
   return (
     <Layout>
@@ -845,11 +796,19 @@ export default function HomePage() {
                   <h2 className="text-3xl font-bold tracking-tight text-text-primary">{t('rwandas_market_hubs')}</h2>
                   <p className="mt-1.5 text-base font-medium text-text-muted">{t('choose_preferred_marketplace')}</p>
                 </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {displayMarkets.slice(0, 6).map((market, index) => (
-                    <CompactMarketCard key={market._id} market={market} index={index} />
-                  ))}
-                </div>
+                {displayMarkets.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center py-12 px-4 rounded-xl border border-dashed border-[#e2bfb0] bg-background-surface/50 text-center">
+                    <MapPin className="h-10 w-10 text-primary/45" />
+                    <h3 className="mt-4 text-base font-bold text-text-primary">No Active Market Hubs</h3>
+                    <p className="mt-2 text-xs font-semibold text-text-secondary">Please check back later or start onboarding as a seller.</p>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {displayMarkets.slice(0, 6).map((market, index) => (
+                      <CompactMarketCard key={market._id} market={market} index={index} />
+                    ))}
+                  </div>
+                )}
               </section>
 
               {/* Spacious Trending Products Shelf */}
@@ -859,19 +818,28 @@ export default function HomePage() {
                     <h2 className="text-3xl font-bold tracking-tight text-text-primary">{t('trending_products')}</h2>
                     <p className="mt-1.5 text-base font-medium text-text-muted">{t('most_popular_items')}</p>
                   </div>
-                  <Link href="/markets" className="hidden items-center gap-2 text-base font-bold text-primary hover:underline sm:inline-flex">
-                    {t('shop_all_trending')}
-                    <ArrowRight size={18} />
-                  </Link>
+                  {topProducts.length > 0 && (
+                    <Link href="/markets" className="hidden items-center gap-2 text-base font-bold text-primary hover:underline sm:inline-flex">
+                      {t('shop_all_trending')}
+                      <ArrowRight size={18} />
+                    </Link>
+                  )}
                 </div>
-                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-                  {topProducts.slice(0, 4).map(product => (
-                    <CompactProductCard key={product.id} product={product} />
-                  ))}
-                </div>
+                {topProducts.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center py-12 px-4 rounded-xl border border-dashed border-[#e2bfb0] bg-background-surface/50 text-center">
+                    <Package className="h-10 w-10 text-primary/45" />
+                    <h3 className="mt-4 text-base font-bold text-text-primary">No Trending Products Found</h3>
+                    <p className="mt-2 text-xs font-semibold text-text-secondary">Sellers haven't listed any items today.</p>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+                    {topProducts.slice(0, 4).map(product => (
+                      <CompactProductCard key={product.id} product={product} />
+                    ))}
+                  </div>
+                )}
               </section>
-
-              {/* Made in Rwanda Brands Section */}
+              {/* Made in Rwanda Brands Section */}
               <section className="animate-reveal [animation-delay:900ms] rounded-lg border border-[#e2bfb0] bg-[#f5f3f3]/50 p-8 relative overflow-hidden">
                 <div className="absolute top-0 right-0 w-32 h-32 opacity-5 pointer-events-none">
                   <svg className="fill-primary" viewBox="0 0 100 100">
@@ -881,39 +849,47 @@ export default function HomePage() {
                 <div className="flex flex-col md:flex-row justify-between md:items-center mb-8 gap-4">
                   <div>
                     <h2 className="text-3xl font-bold tracking-tight text-text-primary">Made in Rwanda</h2>
-                    <p className="mt-1.5 text-base font-medium text-text-muted">{t('supporting_local_brands_desc') || 'Supporting local industry and manufacturing excellence'}</p>
+                    <p className="mt-1.5 text-base font-medium text-text-muted">{supportingLocalBrandsDescription}</p>
                   </div>
                   <Link href="/markets?search=Made%20in%20Rwanda" className="rmf-btn-primary self-start text-xs uppercase tracking-wider py-2 px-4 flex items-center gap-2">
-                    {t('view_all_brands') || 'View All Local Brands'}
+                    {viewAllBrandsLabel}
                     <ArrowRight size={14} />
                   </Link>
                 </div>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-6">
-                  {[
-                    { label: 'Textiles', image: 'https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&q=80&w=150' },
-                    { label: 'Tech', image: 'https://images.unsplash.com/photo-1588508065123-287b28e013da?auto=format&fit=crop&q=80&w=150' },
-                    { label: 'Furniture', image: 'https://images.unsplash.com/photo-1586023492125-27b2c045efd7?auto=format&fit=crop&q=80&w=150' },
-                    { label: 'Agri-Processing', image: 'https://images.unsplash.com/photo-1615485290382-441e4d049cb5?auto=format&fit=crop&q=80&w=150' },
-                  ].map((brand) => (
-                    <Link href={`/markets?search=${encodeURIComponent(brand.label)}`} key={brand.label} className="group block text-center space-y-3 cursor-pointer">
-                      <div className="aspect-square bg-white border border-[#e2bfb0] rounded-full flex items-center justify-center p-4 group-hover:bg-[#ffedd5]/20 group-hover:border-[#ff6b00] transition-all duration-300 shadow-sm relative overflow-hidden">
+                                 {/* Compact category bubbles */}
+                <div className="grid grid-cols-3 sm:grid-cols-6 md:grid-cols-8 lg:grid-cols-12 xl:flex xl:flex-wrap xl:justify-center gap-4 mb-8">
+                  {dynamicBrandCategories.map((brand) => (
+                    <Link href={`/markets?category=${brand.id}`} key={brand.id} className="group block text-center space-y-2 cursor-pointer">
+                      <div className="w-16 h-16 sm:w-20 sm:h-20 mx-auto bg-white border border-[#e2bfb0] rounded-full flex items-center justify-center group-hover:bg-[#ffedd5]/20 group-hover:border-[#ff6b00] transition-all duration-300 shadow-sm relative overflow-hidden">
                         <Image
-                          src={brand.image}
-                          alt={`${brand.label} brand preview`}
-                          fill
-                          unoptimized
-                          sizes="120px"
-                          className="object-cover transition-transform duration-500 group-hover:scale-110"
+                           src={brand.image}
+                           alt={`${brand.label} brand preview`}
+                           fill
+                           unoptimized
+                           sizes="80px"
+                           className="object-cover transition-transform duration-500 group-hover:scale-110"
                         />
                         <div className="absolute inset-0 bg-[#a04100]/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
                       </div>
-                      <span className="font-mono text-xs font-bold uppercase tracking-[0.08em] text-text-secondary group-hover:text-primary transition-colors">{brand.label}</span>
+                      <span className="block text-[10px] sm:text-xs font-black uppercase tracking-[0.08em] text-text-secondary group-hover:text-primary transition-colors">{brand.label}</span>
                     </Link>
                   ))}
                 </div>
+
+                {/* Dynamic Made in Rwanda product shelf */}
+                {madeInRwandaProducts.length > 0 && (
+                  <div className="border-t border-[#e2bfb0]/40 pt-6">
+                    <p className="mb-4 text-[10px] font-bold uppercase tracking-[0.25em] text-[#a04100]">{t('featured_local_products') || 'Featured Local Products'}</p>
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                      {madeInRwandaProducts.slice(0, 4).map(product => (
+                        <CompactProductCard key={product.id} product={product} />
+                      ))}
+                    </div>
+                  </div>
+                )}
               </section>
             </main>
-
+ 
             <aside className="space-y-6">
               {/* Market Stories Section */}
               <section className="animate-reveal [animation-delay:950ms] rounded-lg border border-[#e2bfb0] bg-white p-6">
@@ -926,73 +902,103 @@ export default function HomePage() {
                     {t('open_feed') || 'Open feed'}
                   </Link>
                 </div>
-                <Link href="/videos" className="relative block aspect-[9/16] rounded-xl overflow-hidden shadow-md group border border-[#e2bfb0]">
+
+                {/* Instagram style story bubbles */}
+                {liveVideos.length > 0 && (
+                  <div className="flex gap-3 overflow-x-auto pb-4 scrollbar-hide">
+                    {liveVideos.slice(0, 5).map((video, idx) => {
+                      const seller = video.sellerId && typeof video.sellerId === 'object' ? video.sellerId : null;
+                      const avatar = seller?.avatar || sellerImages[idx % sellerImages.length];
+                      const isActive = idx === activeVideoIdx;
+                      return (
+                        <button
+                          key={video._id}
+                          onClick={() => setActiveVideoIdx(idx)}
+                          className="flex flex-col items-center shrink-0 space-y-1 focus:outline-none"
+                        >
+                          <div className={`relative p-0.5 rounded-full border-2 transition-all duration-300 ${
+                            isActive ? 'border-[#ff6b00]' : 'border-border-light hover:border-[#ff9f1c]'
+                          }`}>
+                            <div className="w-12 h-12 rounded-full overflow-hidden relative">
+                              <Image src={avatar} alt="Seller Avatar" fill unoptimized sizes="48px" className="object-cover" />
+                            </div>
+                            <span className="absolute -bottom-1 left-1/2 -translate-x-1/2 rounded bg-[#ff6b00] px-1 py-0.25 text-[7px] font-black text-white uppercase scale-90">LIVE</span>
+                          </div>
+                          <span className="text-[9px] font-bold text-text-muted truncate max-w-[50px]">
+                            {seller ? `@${seller.stallName || seller.shopDetails?.name || 'Seller'}` : '@Seller'}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+
+                <Link href="/videos" className="relative block aspect-[16/10] rounded-xl overflow-hidden shadow-sm group border border-[#e2bfb0] bg-background-surface">
                   <Image
-                    src="https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&q=80&w=400"
-                    alt="Market story preview"
+                    src={activeVideo ? activeVideo.thumbnailUrl || activeVideo.videoUrl || "https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&q=80&w=400" : "https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&q=80&w=400"}
+                    alt={activeVideo ? activeVideo.title : "Market story preview"}
                     fill
                     unoptimized
-                    sizes="300px"
+                    sizes="320px"
                     className="object-cover transition duration-700 group-hover:scale-105"
                   />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/25 to-transparent flex flex-col justify-end p-4">
-                    <div className="flex items-center gap-2 mb-2">
-                      <div className="h-6 w-6 rounded-full border border-white bg-primary/20 backdrop-blur-md overflow-hidden relative">
-                        <Image
-                          src={sellerImages[0]}
-                          alt="Seller Avatar"
-                          fill
-                          unoptimized
-                          sizes="24px"
-                        />
-                      </div>
-                      <span className="text-[10px] font-black text-white uppercase tracking-wider">@HuyeProducer</span>
-                    </div>
-                    <h4 className="text-white font-bold text-sm line-clamp-2 leading-snug">Morning harvest ready for Kigali transport!</h4>
-                    <div className="flex justify-between items-center text-white/70 text-[9px] font-bold uppercase tracking-wider mt-2.5">
-                      <span>12.4k Views</span>
-                      <span className="inline-flex items-center gap-1 rounded bg-[#ff6b00] px-2 py-0.5 text-[8px] font-black tracking-widest text-white shadow-md animate-pulse">
-                        LIVE
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent flex flex-col justify-end p-3">
+                    <h4 className="text-white font-bold text-xs line-clamp-1 leading-snug">
+                      {activeVideo ? activeVideo.title : 'Authentic Made in Rwanda products'}
+                    </h4>
+                    <div className="flex justify-between items-center text-white/70 text-[9px] font-bold uppercase tracking-wider mt-1.5">
+                      <span>{activeVideo ? `${activeVideo.viewsCount || activeVideo.views || 45} views` : '12.4k Views'}</span>
+                      <span className="inline-flex items-center gap-0.5 text-primary-light">
+                        View Story <ArrowRight size={10} />
                       </span>
                     </div>
                   </div>
                 </Link>
               </section>
-
+ 
               <section className="animate-reveal [animation-delay:1000ms] rounded-lg border border-[#e2bfb0] bg-white p-6">
                 <div className="mb-6 flex items-center justify-between">
                   <div>
                     <h2 className="text-2xl font-bold tracking-tight text-text-primary">{t('featured_markets')}</h2>
                     <p className="mt-1 text-xs font-medium text-text-muted">{t('explore_top_local_hubs')}</p>
                   </div>
-                  <Link href="/markets" className="inline-flex items-center gap-1 text-sm font-bold text-primary hover:underline">
-                    {t('view_all')}
-                    <ChevronDown size={16} />
-                  </Link>
+                  {featuredMarkets.length > 0 && (
+                    <Link href="/markets" className="inline-flex items-center gap-1 text-sm font-bold text-primary hover:underline">
+                      {t('view_all')}
+                      <ChevronDown size={16} />
+                    </Link>
+                  )}
                 </div>
-                <div className="grid grid-cols-2 gap-4">
-                  {featuredMarkets.slice(0, 4).map((market, index) => (
-                    <MiniFeaturedMarketCard key={market._id} market={market} index={index} />
-                  ))}
-                </div>
+                {featuredMarkets.length === 0 ? (
+                  <div className="py-6 text-center text-xs font-semibold text-text-muted">No featured hubs available.</div>
+                ) : (
+                  <div className="flex flex-col gap-3">
+                    {featuredMarkets.slice(0, 4).map((market, index) => (
+                      <MiniFeaturedMarketCard key={market._id} market={market} index={index} />
+                    ))}
+                  </div>
+                )}
               </section>
 
-              <MostBoughtPanel products={topProducts} market={selectedMarket} />
+              {topProducts.length > 0 && (
+                <MostBoughtPanel products={topProducts} market={selectedMarket} />
+              )}
 
-              <section className="animate-reveal [animation-delay:1200ms] rounded-lg border border-[#e2bfb0] bg-white p-6">
-                {/* Adjusted grid to grid-cols-2 to give elements beautiful size */}
-                <div className="grid grid-cols-2 gap-4">
+              <section className="animate-reveal [animation-delay:1200ms] rounded-lg border border-[#e2bfb0] bg-white p-4">
+                <div className="grid grid-cols-2 gap-3">
                   {[
-                    [t('verified_vendors'), BadgeCheck, 'accent-premium'],
-                    [t('buyer_protection'), ShieldCheck, 'primary'],
-                    [t('momo_checkout'), ShoppingCart, 'primary'],
-                    [t('fast_delivery'), Clock3, 'primary'],
-                  ].map(([label, Icon, color]) => {
+                    [t('verified_vendors'), BadgeCheck, 'text-[#ff9f1c] bg-[#ff9f1c]/10'],
+                    [t('buyer_protection'), ShieldCheck, 'text-[#ff6b00] bg-[#ff6b00]/10'],
+                    [t('momo_checkout'), ShoppingCart, 'text-[#a04100] bg-[#a04100]/10'],
+                    [t('fast_delivery'), Clock3, 'text-text-muted bg-background-surface'],
+                  ].map(([label, Icon, colorClass]) => {
                     const TrustIcon = Icon as typeof BadgeCheck;
                     return (
-                      <div key={label as string} className="group rounded-xl bg-background-surface p-4 transition-all duration-300 hover:bg-white hover:shadow-md hover:border-border-light border border-transparent">
-                        <TrustIcon size={20} className={`text-${color} transition-transform duration-500 group-hover:scale-110`} />
-                        <p className="mt-3 text-[12px] font-bold leading-tight text-text-primary">{label as string}</p>
+                      <div key={label as string} className="flex items-center gap-2 rounded-lg bg-background-surface/40 p-2 border border-border-light/20 transition-all hover:bg-white hover:shadow-sm">
+                        <div className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-md ${colorClass}`}>
+                          <TrustIcon size={14} />
+                        </div>
+                        <p className="text-[10px] font-bold leading-tight text-text-primary truncate">{label as string}</p>
                       </div>
                     );
                   })}

@@ -23,8 +23,43 @@ type RequestOptions = RequestInit & {
 };
 
 const extra = (Constants.expoConfig?.extra || {}) as Record<string, string | undefined>;
-const defaultHost = Platform.OS === 'android' ? 'http://10.0.2.2' : 'http://localhost';
+
+// Dynamically resolve the host machine IP in development (crucial for physical devices & emulators in Expo Go)
+const getPackagerHost = () => {
+  const hostUri = Constants.expoConfig?.hostUri;
+  if (!hostUri) return null;
+  const ip = hostUri.split(':')[0];
+  if (!ip) return null;
+
+  // Ignore virtual network adapter subnets (WSL2/Hyper-V/Docker commonly use 172.x.x.x) and link-local (169.254.x.x)
+  if (
+    ip.startsWith('172.') ||
+    ip.startsWith('169.254.') ||
+    ip === '127.0.0.1' ||
+    ip === 'localhost'
+  ) {
+    return null;
+  }
+
+  return `http://${ip}`;
+};
+
+const getPlatformFallbackHost = () => {
+  const packager = getPackagerHost();
+  if (packager) return packager;
+
+  if (Platform.OS === 'android') {
+    // Android emulator loopback to host machine
+    return 'http://10.0.2.2';
+  }
+  // iOS simulator or Web
+  return 'http://localhost';
+};
+
+const defaultHost = getPlatformFallbackHost();
 const host = process.env.EXPO_PUBLIC_RMF_API_HOST || extra.rmfApiHost || defaultHost;
+
+console.log('[RMF API Client] Resolved backend API host:', host);
 
 const servicePorts: Record<ServiceName, number> = {
   user: 3001,
@@ -165,4 +200,4 @@ export const api = {
     }),
 };
 
-export { ApiError, serviceUrl };
+export { ApiError, serviceUrl, host };

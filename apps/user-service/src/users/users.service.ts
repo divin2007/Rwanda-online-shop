@@ -206,6 +206,29 @@ export class UsersService {
           message: ticketData.message
         }
       }, { headers });
+      await axios.post(`${notificationUrl}/notifications/admin-notify`, {
+        type: 'admin.support_ticket_created',
+        params: {
+          ticketId: savedTicket._id.toString(),
+          name: ticketData.name,
+          userEmail: ticketData.email,
+          subject: ticketData.subject,
+          message: ticketData.message,
+        },
+      }, { headers }).catch(() => undefined);
+      if (ticketData.userId) {
+        await axios.post(`${notificationUrl}/notifications/in-app`, {
+          userId: ticketData.userId,
+          type: 'support.message.sent',
+          params: {
+            ticketId: savedTicket._id.toString(),
+            referenceId: savedTicket._id.toString(),
+            referenceType: 'SupportTicket',
+            subject: ticketData.subject,
+            preview: String(ticketData.message || '').slice(0, 120),
+          },
+        }, { headers }).catch(() => undefined);
+      }
     } catch (e: any) {
       console.warn(`[UsersService] Failed to send admin notification for ticket ${savedTicket._id}: ${e.message}`);
     }

@@ -4,7 +4,7 @@ import {
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import {
-  Bell, ChevronRight, Heart, LogOut, Settings, Sparkles, Wallet,
+  Bell, ChevronRight, Heart, LogOut, Settings, Sparkles, Wallet, Clock, Truck, ShieldCheck,
 } from 'lucide-react-native';
 import { useAuth } from '../../src/context/AuthContext';
 
@@ -76,57 +76,123 @@ export default function AccountScreen() {
 
   return (
     <ScrollView style={s.root} contentContainerStyle={s.content} showsVerticalScrollIndicator={false}>
-      {/* Hero card */}
-      <View style={s.hero}>
-        <View style={s.avatar}>
-          <Text style={s.avatarText}>{(user.fullName || 'U').slice(0, 2).toUpperCase()}</Text>
-        </View>
-        <View style={{ flex: 1, gap: 3 }}>
-          <Text style={s.heroName}>{user.fullName}</Text>
-          <Text style={s.heroEmail}>{user.email}</Text>
-        </View>
-        <View style={s.roleBadge}>
-          <Text style={s.roleBadgeText}>{roleLabel}</Text>
+      {/* Premium Alibaba Orange Banner Header */}
+      <View style={s.alibabaHeader}>
+        <View style={s.alibabaBlob1} />
+        <View style={s.alibabaBlob2} />
+        
+        <View style={s.profileRow}>
+          <View style={s.avatarBig}>
+            <Text style={s.avatarBigText}>{(user.fullName || 'U').slice(0, 2).toUpperCase()}</Text>
+          </View>
+          <View style={s.profileMeta}>
+            <Text style={s.profileName}>{user.fullName}</Text>
+            <Text style={s.profileEmail}>{user.email}</Text>
+            <View style={s.profileBadgeRow}>
+              <View style={s.roleBadgePremium}>
+                <Text style={s.roleBadgePremiumText}>{roleLabel}</Text>
+              </View>
+              <View style={s.momoBadge}>
+                <Text style={s.momoBadgeText}>MoMo Secured</Text>
+              </View>
+            </View>
+          </View>
         </View>
       </View>
 
-      {/* Menu rows */}
-      <View style={s.panel}>
+      {/* Quick Dashboard Info Grid (Wallet & Wishlist) */}
+      <View style={s.statsContainer}>
+        {/* Wallet Overview Panel */}
+        <TouchableOpacity style={s.quickWalletCard} onPress={() => router.push('/wallet' as any)} activeOpacity={0.88}>
+          <View style={s.walletTextRow}>
+            <Wallet color="#E05300" size={16} />
+            <Text style={s.walletTitleText}>RMF WALLET</Text>
+          </View>
+          <Text style={s.walletBalanceVal}>Manage Funds</Text>
+          <Text style={s.walletActionText}>MoMo payouts ›</Text>
+        </TouchableOpacity>
+
+        {/* Wishlist Overview Panel */}
+        <TouchableOpacity style={s.quickWishlistCard} onPress={() => router.push('/wishlist' as any)} activeOpacity={0.88}>
+          <View style={s.walletTextRow}>
+            <Heart color="#DC2626" size={16} />
+            <Text style={s.wishlistTitleText}>SAVED ITEMS</Text>
+          </View>
+          <Text style={s.wishlistVal}>Wishlist</Text>
+          <Text style={s.walletActionText}>Saved products ›</Text>
+        </TouchableOpacity>
+      </View>
+
+      {/* "My Orders" Status Dashboard */}
+      <View style={s.orderStatusPanel}>
+        <View style={s.panelTitleRow}>
+          <Text style={s.panelTitle}>My Purchase Logs</Text>
+          <TouchableOpacity onPress={() => router.push('/orders' as any)} activeOpacity={0.7}>
+            <Text style={s.panelLinkText}>All Orders ›</Text>
+          </TouchableOpacity>
+        </View>
+        
+        <View style={s.orderStatusGrid}>
+          <TouchableOpacity style={s.orderStatusItem} onPress={() => router.push('/orders' as any)} activeOpacity={0.8}>
+            <Clock color="#E05300" size={22} />
+            <Text style={s.orderStatusLabel}>Pending</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity style={s.orderStatusItem} onPress={() => router.push('/orders' as any)} activeOpacity={0.8}>
+            <Sparkles color="#E05300" size={22} />
+            <Text style={s.orderStatusLabel}>Processing</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity style={s.orderStatusItem} onPress={() => router.push('/orders' as any)} activeOpacity={0.8}>
+            <Truck color="#E05300" size={22} />
+            <Text style={s.orderStatusLabel}>In Transit</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity style={s.orderStatusItem} onPress={() => router.push('/orders' as any)} activeOpacity={0.8}>
+            <ShieldCheck color="#22c55e" size={22} />
+            <Text style={s.orderStatusLabel}>Delivered</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+
+      {/* Services List Panel */}
+      <View style={s.servicesPanel}>
+        <Text style={s.servicesTitle}>My Alibaba Services</Text>
         {rows.map((row, idx) => {
           const Icon = row.icon;
           return (
             <TouchableOpacity
               key={row.label}
-              style={[s.row, idx < rows.length - 1 && s.rowBorder]}
+              style={[s.serviceRow, idx < rows.length - 1 && s.serviceRowBorder]}
               onPress={() => router.push(row.route as any)}
               activeOpacity={0.7}
             >
-              <View style={s.rowIcon}>
-                <Icon color={ORANGE} size={18} />
+              <View style={s.serviceIconWrap}>
+                <Icon color="#E05300" size={16} />
               </View>
               <View style={{ flex: 1 }}>
-                <Text style={s.rowLabel}>{row.label}</Text>
-                <Text style={s.rowSub}>{row.sub}</Text>
+                <Text style={s.serviceLabel}>{row.label}</Text>
+                <Text style={s.serviceSub}>{row.sub}</Text>
               </View>
-              <ChevronRight color="#C4C4C4" size={16} />
+              <ChevronRight color="#C4C4C4" size={14} />
             </TouchableOpacity>
           );
         })}
       </View>
 
       {/* Sign out */}
-      <TouchableOpacity style={s.logoutBtn} onPress={handleLogout} activeOpacity={0.85}>
-        <LogOut color={RED} size={18} />
-        <Text style={s.logoutText}>Sign out</Text>
+      <TouchableOpacity style={s.logoutBtnPremium} onPress={handleLogout} activeOpacity={0.85}>
+        <LogOut color="#DC2626" size={18} />
+        <Text style={s.logoutBtnPremiumText}>Log Out Account</Text>
       </TouchableOpacity>
 
-      <Text style={s.version}>RMF Mobile · v1.0</Text>
+      <Text style={s.version}>RMF Mobile · Alibaba Redesign v1.0</Text>
     </ScrollView>
   );
 }
 
 const s = StyleSheet.create({
-  root: { flex: 1, backgroundColor: '#F9FAFB' },
+  root: { flex: 1, backgroundColor: '#F5F5F7' },
   // Guest
   guestContent: { flexGrow: 1, padding: 24, justifyContent: 'center', gap: 20 },
   guestCard: {
@@ -189,84 +255,307 @@ const s = StyleSheet.create({
   skipText: { color: MUTED, fontSize: 13, fontWeight: '600', textDecorationLine: 'underline', marginTop: 4 },
   trustRow: { flexDirection: 'row', justifyContent: 'center', gap: 14, flexWrap: 'wrap' },
   trustText: { color: '#9CA3AF', fontSize: 11, fontWeight: '600' },
-  // Authenticated
-  content: { padding: 16, gap: 14, paddingBottom: 40 },
-  hero: {
-    backgroundColor: CARD,
-    borderRadius: 18,
-    padding: 16,
+
+  // Authenticated layout
+  content: { paddingBottom: 40 },
+  alibabaHeader: {
+    backgroundColor: ORANGE,
+    paddingTop: 40,
+    paddingBottom: 30,
+    paddingHorizontal: 20,
+    position: 'relative',
+    overflow: 'hidden',
+    borderBottomLeftRadius: 30,
+    borderBottomRightRadius: 30,
+  },
+  alibabaBlob1: {
+    position: 'absolute',
+    right: -40,
+    top: -40,
+    width: 140,
+    height: 140,
+    borderRadius: 70,
+    backgroundColor: 'rgba(255, 255, 255, 0.12)',
+  },
+  alibabaBlob2: {
+    position: 'absolute',
+    left: -30,
+    bottom: -50,
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+  },
+  profileRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 14,
-    borderWidth: 1,
-    borderColor: LINE,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 2,
+    gap: 16,
+    zIndex: 10,
   },
-  avatar: {
-    width: 52,
-    height: 52,
-    borderRadius: 16,
-    backgroundColor: ORANGE,
+  avatarBig: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: '#ffffff',
     alignItems: 'center',
     justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 4,
   },
-  avatarText: { color: CARD, fontSize: 20, fontWeight: '900' },
-  heroName: { color: INK, fontSize: 17, fontWeight: '900' },
-  heroEmail: { color: MUTED, fontSize: 12, fontWeight: '500' },
-  roleBadge: {
-    backgroundColor: ORANGE_SOFT,
-    borderWidth: 1,
-    borderColor: '#FED7AA',
-    borderRadius: 8,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
+  avatarBigText: {
+    color: ORANGE,
+    fontSize: 24,
+    fontWeight: '900',
   },
-  roleBadgeText: { color: ORANGE_DARK, fontSize: 10, fontWeight: '900', textTransform: 'uppercase' },
-  panel: {
-    backgroundColor: CARD,
+  profileMeta: {
+    flex: 1,
+    gap: 3,
+  },
+  profileName: {
+    color: '#ffffff',
+    fontSize: 20,
+    fontWeight: '900',
+    letterSpacing: -0.2,
+  },
+  profileEmail: {
+    color: 'rgba(255, 255, 255, 0.85)',
+    fontSize: 12,
+    fontWeight: '500',
+  },
+  profileBadgeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 2,
+  },
+  roleBadgePremium: {
+    backgroundColor: 'rgba(255, 255, 255, 0.22)',
+    borderRadius: 6,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+  },
+  roleBadgePremiumText: {
+    color: '#ffffff',
+    fontSize: 9,
+    fontWeight: '800',
+    textTransform: 'uppercase',
+  },
+  momoBadge: {
+    backgroundColor: 'rgba(255, 215, 0, 0.3)',
+    borderWidth: 0.5,
+    borderColor: '#FFD700',
+    borderRadius: 6,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+  },
+  momoBadgeText: {
+    color: '#FFD700',
+    fontSize: 9,
+    fontWeight: '800',
+  },
+
+  // Stats Card Row
+  statsContainer: {
+    flexDirection: 'row',
+    paddingHorizontal: 16,
+    marginTop: -16,
+    gap: 12,
+    zIndex: 20,
+  },
+  quickWalletCard: {
+    flex: 1,
+    backgroundColor: '#ffffff',
     borderRadius: 16,
-    borderWidth: 1,
-    borderColor: LINE,
-    overflow: 'hidden',
+    padding: 14,
+    gap: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 6,
+    elevation: 3,
+  },
+  quickWishlistCard: {
+    flex: 1,
+    backgroundColor: '#ffffff',
+    borderRadius: 16,
+    padding: 14,
+    gap: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 6,
+    elevation: 3,
+  },
+  walletTextRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  walletTitleText: {
+    fontSize: 9,
+    fontWeight: '900',
+    color: '#E05300',
+    letterSpacing: 0.5,
+  },
+  wishlistTitleText: {
+    fontSize: 9,
+    fontWeight: '900',
+    color: '#DC2626',
+    letterSpacing: 0.5,
+  },
+  walletBalanceVal: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: INK,
+    marginTop: 2,
+  },
+  wishlistVal: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: INK,
+    marginTop: 2,
+  },
+  walletActionText: {
+    fontSize: 9,
+    color: MUTED,
+    fontWeight: '600',
+  },
+
+  // Purchase Logs Status
+  orderStatusPanel: {
+    backgroundColor: CARD,
+    borderRadius: 20,
+    marginHorizontal: 16,
+    marginTop: 16,
+    padding: 16,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.04,
-    shadowRadius: 8,
+    shadowOpacity: 0.03,
+    shadowRadius: 4,
     elevation: 2,
   },
-  row: {
+  panelTitleRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    borderBottomWidth: 0.5,
+    borderBottomColor: '#F0F0F2',
+    paddingBottom: 10,
+    marginBottom: 12,
+  },
+  panelTitle: {
+    fontSize: 14,
+    fontWeight: '900',
+    color: INK,
+  },
+  panelLinkText: {
+    fontSize: 11,
+    color: ORANGE,
+    fontWeight: '700',
+  },
+  orderStatusGrid: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    alignItems: 'center',
+  },
+  orderStatusItem: {
+    alignItems: 'center',
+    gap: 6,
+    paddingVertical: 4,
+  },
+  orderStatusLabel: {
+    fontSize: 11,
+    color: INK,
+    fontWeight: '700',
+  },
+
+  // Services Panel
+  servicesPanel: {
+    backgroundColor: CARD,
+    borderRadius: 20,
+    marginHorizontal: 16,
+    marginTop: 16,
+    paddingHorizontal: 16,
+    paddingVertical: 6,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.03,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  servicesTitle: {
+    fontSize: 14,
+    fontWeight: '900',
+    color: INK,
+    paddingTop: 14,
+    paddingBottom: 10,
+    borderBottomWidth: 0.5,
+    borderBottomColor: '#F0F0F2',
+  },
+  serviceRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
-    paddingHorizontal: 16,
     paddingVertical: 14,
   },
-  rowBorder: { borderBottomWidth: 1, borderBottomColor: LINE },
-  rowIcon: {
-    width: 38,
-    height: 38,
+  serviceRowBorder: {
+    borderBottomWidth: 0.5,
+    borderBottomColor: '#F0F0F2',
+  },
+  serviceIconWrap: {
+    width: 32,
+    height: 32,
     borderRadius: 10,
     backgroundColor: ORANGE_SOFT,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  rowLabel: { color: INK, fontSize: 15, fontWeight: '700' },
-  rowSub: { color: MUTED, fontSize: 12, fontWeight: '500', marginTop: 1 },
-  logoutBtn: {
-    height: 52,
-    borderRadius: 14,
+  serviceLabel: {
+    color: INK,
+    fontSize: 13,
+    fontWeight: '800',
+  },
+  serviceSub: {
+    color: MUTED,
+    fontSize: 11,
+    fontWeight: '500',
+    marginTop: 1,
+  },
+
+  // Logout Premium
+  logoutBtnPremium: {
+    height: 50,
+    borderRadius: 16,
     borderWidth: 1,
     borderColor: '#FCA5A5',
     backgroundColor: '#FEF2F2',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 10,
+    gap: 8,
+    marginHorizontal: 16,
+    marginTop: 24,
+    shadowColor: '#DC2626',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 4,
+    elevation: 1,
   },
-  logoutText: { color: RED, fontSize: 15, fontWeight: '800' },
-  version: { color: '#D1D5DB', fontSize: 11, fontWeight: '600', textAlign: 'center' },
+  logoutBtnPremiumText: {
+    color: RED,
+    fontSize: 13,
+    fontWeight: '900',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  version: {
+    color: '#CBD5E1',
+    fontSize: 10,
+    fontWeight: '700',
+    textAlign: 'center',
+    marginTop: 20,
+  },
 });

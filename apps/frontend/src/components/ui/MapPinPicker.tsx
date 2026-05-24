@@ -1,8 +1,11 @@
 'use client';
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useLayoutEffect, useState, useRef } from 'react';
 import { MapContainer, TileLayer, Marker, useMapEvents, useMap, Polyline, Circle } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
+import { patchLeafletSafeRemove } from '@/lib/leafletSafeRemove';
+
+patchLeafletSafeRemove();
 
 // Fix for default marker icons in Next.js using a Data URI to bypass Tracking Prevention
 const markerSvg = `PHN2ZyB3aWR0aD0iMjUiIGhlaWdodD0iNDEiIHZpZXdCb3g9IjAgMCAyNSA0MSIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cGF0aCBkPSJNMTIuNSAwQzUuNTk2NDUgMCAwIDUuNTk2NDUgMCAxMi41QzAgMjEuODc1IDEyLjUgNDEgMTIuNSA0MUMxMi41IDQxIDI1IDIxLjg3NSAyNSAxMi41QzI1IDUuNTk2NDUgMTkuNDAzNiAwIDEyLjUgMFpNMTIuNSAxNy4xODc1QzkuOTExMTcgMTcuMTg3NSA3LjgxMjUgMTUuMDg4OCA3LjgxMjUgMTIuNUM3LjgxMjUgOS45MTExNyA5LjkxMTE3IDcuODEyNSAxMi41IDcuODEyNUMxNS4wODg4IDcuODEyNSAxNy4xODc1IDkuOTExMTcgMTcuMTg3NSAxMi41QzE3LjE4NzUgMTUuMDg4OCAxNS4wODg4IDE3LjE4NzUgMTIuNSAxNy4xODc1WiIgZmlsbD0iIzNCODJFNiIvPjwvc3ZnPg==`;
@@ -58,6 +61,7 @@ export const MapPinPicker = ({
   selectedLocation,
   marketLocation
 }: MapPinPickerProps) => {
+  const containerRef = useRef<HTMLDivElement | null>(null);
   const [position, setPosition] = useState<L.LatLng | null>(
     selectedLocation ? new L.LatLng(selectedLocation.lat, selectedLocation.lng) : null
   );
@@ -75,6 +79,19 @@ export const MapPinPicker = ({
   const [flyToLocation, setFlyToLocation] = useState<{ lat: number, lon: number } | null>(null);
   const [isClient, setIsClient] = useState(false);
   const [mapInstanceKey, setMapInstanceKey] = useState('');
+  const mapShellKey = `${mapInstanceKey}-${centerLat}-${centerLng}`;
+
+  const releaseLeafletContainer = () => {
+    const leafletContainers = containerRef.current?.querySelectorAll('.leaflet-container') || [];
+    leafletContainers.forEach((element) => {
+      delete (element as HTMLElement & { _leaflet_id?: number })._leaflet_id;
+    });
+  };
+
+  useLayoutEffect(() => {
+    releaseLeafletContainer();
+    return releaseLeafletContainer;
+  }, [mapInstanceKey, centerLat, centerLng]);
 
   useEffect(() => {
     setIsClient(true);
@@ -152,7 +169,7 @@ export const MapPinPicker = ({
   };
 
   return (
-    <div className="w-full h-full relative z-0">
+    <div key={mapShellKey} ref={containerRef} className="w-full h-full relative z-0">
       {/* Search Container */}
       <div className="absolute top-4 left-4 right-4 z-[500] max-w-md mx-auto">
         <div className="relative group">
@@ -189,7 +206,7 @@ export const MapPinPicker = ({
       </div>
 
       <MapContainer 
-        key={mapInstanceKey}
+        key={mapShellKey}
         center={marketLocation ? [marketLocation.lat, marketLocation.lng] : [centerLat, centerLng]} 
         zoom={13} 
         style={{ height: '100%', width: '100%' }}

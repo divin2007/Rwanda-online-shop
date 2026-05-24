@@ -25,6 +25,10 @@ export const productSchema = new Schema({
     ]
   },
   weight: { type: Number }, // in kg
+  minWeight: { type: Number },
+  maxWeight: { type: Number },
+  minPrice: { type: Number },
+  maxPrice: { type: Number },
   attributes: { type: Map, of: Schema.Types.Mixed },
   variantAxes: [{
     key: { type: String, required: true },

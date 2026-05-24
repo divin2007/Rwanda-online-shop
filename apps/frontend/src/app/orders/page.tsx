@@ -8,7 +8,11 @@ import { Layout } from '@/components/layout/Layout';
 import { ReceiptView } from '@/components/ui/ReceiptView';
 import { useLanguage } from '@/context/LanguageContext';
 import { useSearchParams, useRouter } from 'next/navigation';
+import { resolveUploadUrl } from '@/lib/uploadUrls';
 import toast from 'react-hot-toast';
+import { ShoppingBag } from 'lucide-react';
+
+const ORDER_LIST_AUTO_REFRESH_MS = 10000;
 
 function OrderHistoryContent() {
   const { user, isLoading } = useAuth();
@@ -21,7 +25,7 @@ function OrderHistoryContent() {
     }
   }, [user, isLoading, router]);
 
-  const { data: orders, loading, execute: fetchOrders } = useApi(orderApi, 'get', user?.id ? `/orders?buyerId=${user?.id}` : '');
+  const { data: orders, loading, execute: fetchOrders } = useApi(orderApi, 'get', user?.id ? `/orders?buyerId=${user?.id}` : '', { refreshInterval: ORDER_LIST_AUTO_REFRESH_MS });
   const [receiptOrder, setReceiptOrder] = useState<any>(null);
   const [deliveryCache, setDeliveryCache] = useState<Record<string, any>>({});
   const searchParams = useSearchParams();
@@ -78,6 +82,9 @@ function OrderHistoryContent() {
     preparing: 'bg-orange-100 text-orange-800 border-orange-300',
     ready_for_pickup: 'bg-teal-100 text-teal-800 border-teal-300',
     delivered: 'bg-gray-100 text-gray-800 border-gray-300',
+    disputed: 'bg-red-100 text-red-800 border-red-300',
+    resolved: 'bg-slate-100 text-slate-800 border-slate-300',
+    cancelled: 'bg-gray-100 text-gray-700 border-gray-300',
   };
 
   if (isLoading || !user) {
@@ -121,8 +128,10 @@ function OrderHistoryContent() {
               <div key={i} className="h-40 bg-[#f0eded] animate-pulse border border-[#e0e0e0]" />
             ))
           ) : !orders || orders.length === 0 ? (
-            <div className="bg-white border-2 border-dashed border-[#e0e0e0] p-24 text-center">
-              <div className="text-6xl mb-6 opacity-80">🛍️</div>
+            <div className="bg-white border-2 border-dashed border-[#e0e0e0] p-24 flex flex-col items-center justify-center text-center">
+              <div className="mb-6 opacity-60 text-primary">
+                <ShoppingBag size={56} strokeWidth={1.5} />
+              </div>
               <h3 className="text-2xl font-sans text-[#1b1c1c] mb-2">{t('no_orders_yet')}</h3>
               <p className="text-[11px] font-black text-[#414844] uppercase tracking-widest opacity-60 mb-8">{t('recent_purchases_appear_here')}</p>
               <Link href="/markets" className="bg-[#e05300] text-white px-10 py-4 text-[10px] font-black uppercase tracking-[0.4em] hover:bg-[#ff6b00] transition-all inline-block shadow-lg">
@@ -130,15 +139,15 @@ function OrderHistoryContent() {
               </Link>
             </div>
           ) : (
-            orders.map((order: any) => (
-              <div key={order._id} className="bg-white border border-[#e0e0e0] hover:border-[#ff6b00] transition-colors p-6 md:p-8 flex flex-col lg:flex-row items-start lg:items-center justify-between gap-8 group">
+            orders.map((order: any, idx: number) => (
+              <div key={`${order._id || 'order'}-${idx}`} className="bg-white border border-[#e0e0e0] hover:border-[#ff6b00] transition-colors p-6 md:p-8 flex flex-col lg:flex-row items-start lg:items-center justify-between gap-8 group">
                 
                 {/* Left: Product Info & Meta */}
                 <div className="flex items-center gap-6 flex-1 min-w-0">
                   <div className="w-24 h-24 bg-[#fcf9f8] border border-[#e0e0e0] flex-shrink-0 overflow-hidden hidden sm:block">
                     {order.products?.[0]?.imageUrl || order.products?.[0]?.images?.[0] ? (
                       <img 
-                        src={order.products?.[0]?.imageUrl || order.products?.[0]?.images?.[0]} 
+                        src={resolveUploadUrl(order.products?.[0]?.imageUrl || order.products?.[0]?.images?.[0], 'product')} 
                         className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" 
                         alt="" 
                       />
@@ -182,7 +191,7 @@ function OrderHistoryContent() {
                       href={`/orders/${order._id}/tracking`} 
                       className="flex-1 sm:flex-none text-center bg-[#e05300] text-white px-6 py-4 text-[10px] font-black uppercase tracking-[0.3em] hover:bg-[#ff6b00] transition-all shadow-md"
                     >
-                      {t('track')}
+                      Open Order
                     </Link>
                     <button 
                       onClick={() => setReceiptOrder(order)} 

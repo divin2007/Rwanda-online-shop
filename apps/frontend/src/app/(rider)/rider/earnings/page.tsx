@@ -10,6 +10,7 @@ import { ReceiptView, type ReceiptOrder } from '@/components/ui/ReceiptView';
 import { useLanguage } from '@/context/LanguageContext';
 import toast from 'react-hot-toast';
 import Link from 'next/link';
+import { Wallet, DollarSign, Map, FileText, Bike } from 'lucide-react';
 
 export default function RiderEarningsPage() {
   const { user } = useAuth();
@@ -108,7 +109,7 @@ export default function RiderEarningsPage() {
         momoNumber: payoutPhone,
         note: 'Rider payout request via RMF'
       });
-      toast.success('✅ Payout request submitted! Funds will arrive within 24 hours.');
+      toast.success('Payout request submitted! Funds will arrive within 24 hours.');
       setIsPayoutModalOpen(false);
       setPayoutAmount('');
       setPayoutPhone('');
@@ -133,57 +134,72 @@ export default function RiderEarningsPage() {
       {/* Receipt Modal */}
       {selectedReceipt && <ReceiptView order={selectedReceipt} role="rider" onClose={() => setSelectedReceipt(null)} />}
       {isFetchingReceipt && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/20 backdrop-blur-sm">
+        <div className="rmf-modal-overlay">
           <div className="animate-spin w-10 h-10 border-4 border-primary border-t-transparent rounded-full"></div>
         </div>
       )}
 
       {/* Payout Request Modal */}
       {isPayoutModalOpen && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl p-8 max-w-md w-full shadow-2xl">
-            <h2 className="text-2xl font-bold text-text-primary mb-2">💸 {t('rider_request_payout')}</h2>
-            <p className="text-text-secondary text-sm mb-6">
-              Funds will be sent to your MTN or Airtel MoMo account within 24 hours.
-            </p>
-
-            {/* Available Balance Display */}
-            <div className="bg-primary/5 border border-primary/20 rounded-2xl p-4 mb-6 text-center">
-              <p className="text-xs text-text-secondary uppercase tracking-wider mb-1">Available to withdraw</p>
-              <p className="text-3xl font-bold text-primary">{(wallet?.balance || 0).toLocaleString()} RWF</p>
+        <div className="rmf-modal-overlay animate-reveal">
+          <div className="rmf-modal-panel max-w-4xl">
+            <div className="rmf-modal-header">
+              <div>
+                <p className="rmf-kicker">Wallet payout</p>
+                <h2 className="mt-2 flex items-center gap-2 text-2xl font-bold text-text-primary">
+                  <Wallet size={24} className="text-primary" />
+                  {t('rider_request_payout')}
+                </h2>
+                <p className="mt-2 max-w-2xl text-sm font-semibold text-text-secondary">
+                  Funds will be sent to your MTN or Airtel MoMo account within 24 hours.
+                </p>
+              </div>
+              <button onClick={() => setIsPayoutModalOpen(false)} className="rmf-modal-close" aria-label="Close payout request">&times;</button>
             </div>
 
-            <form onSubmit={handlePayoutRequest} className="space-y-4">
-              <div>
-                <label className="block text-sm font-bold text-text-primary mb-1">Amount (RWF)</label>
-                <input
-                  type="number"
-                  required
-                  min="1000"
-                  max={wallet?.balance || 0}
-                  className="w-full p-3 border-2 border-border rounded-xl focus:border-primary outline-none text-lg font-bold"
-                  placeholder="e.g. 5000"
-                  value={payoutAmount}
-                  onChange={e => setPayoutAmount(e.target.value)}
-                />
-                <p className="text-xs text-text-muted mt-1">Minimum: 1,000 RWF</p>
+            <form onSubmit={handlePayoutRequest} className="flex min-h-0 flex-1 flex-col">
+              <div className="rmf-modal-body grid gap-6 lg:grid-cols-[0.85fr_1.15fr]">
+                <div className="rounded-lg border border-primary/20 bg-primary/5 p-6">
+                  <p className="text-xs font-black uppercase tracking-wider text-text-secondary">Available to withdraw</p>
+                  <p className="mt-3 text-4xl font-bold text-primary">{(wallet?.balance || 0).toLocaleString()} RWF</p>
+                  <p className="mt-4 text-sm font-semibold leading-6 text-text-secondary">
+                    Minimum payout is 1,000 RWF. Confirm the phone number carefully before sending the request.
+                  </p>
+                </div>
+
+                <div className="space-y-5">
+                  <div>
+                    <label className="block text-sm font-bold text-text-primary mb-1">Amount (RWF)</label>
+                    <input
+                      type="number"
+                      required
+                      min="1000"
+                      max={wallet?.balance || 0}
+                      className="rmf-input w-full text-lg font-bold"
+                      placeholder="e.g. 5000"
+                      value={payoutAmount}
+                      onChange={e => setPayoutAmount(e.target.value)}
+                    />
+                    <p className="text-xs text-text-muted mt-1">Minimum: 1,000 RWF</p>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-bold text-text-primary mb-1">MoMo Phone Number</label>
+                    <input
+                      type="tel"
+                      required
+                      className="rmf-input w-full"
+                      placeholder="e.g. 0788000000"
+                      value={payoutPhone}
+                      onChange={e => setPayoutPhone(e.target.value)}
+                    />
+                    <p className="text-xs text-text-muted mt-1">Accepts MTN & Airtel Rwanda numbers</p>
+                  </div>
+                </div>
               </div>
-              <div>
-                <label className="block text-sm font-bold text-text-primary mb-1">MoMo Phone Number</label>
-                <input
-                  type="tel"
-                  required
-                  className="w-full p-3 border-2 border-border rounded-xl focus:border-primary outline-none"
-                  placeholder="e.g. 0788000000"
-                  value={payoutPhone}
-                  onChange={e => setPayoutPhone(e.target.value)}
-                />
-                <p className="text-xs text-text-muted mt-1">Accepts MTN & Airtel Rwanda numbers</p>
-              </div>
-              <div className="flex gap-3 pt-2">
-                <Button type="button" variant="outline" fullWidth onClick={() => setIsPayoutModalOpen(false)}>Cancel</Button>
-                <Button type="submit" fullWidth disabled={isRequestingPayout}>
-                  {isRequestingPayout ? 'Submitting...' : '💸 Request Payout'}
+              <div className="rmf-modal-footer">
+                <Button type="button" variant="outline" onClick={() => setIsPayoutModalOpen(false)}>Cancel</Button>
+                <Button type="submit" disabled={isRequestingPayout}>
+                  {isRequestingPayout ? 'Submitting...' : 'Request Payout'}
                 </Button>
               </div>
             </form>
@@ -196,7 +212,7 @@ export default function RiderEarningsPage() {
         <aside className="w-full md:w-64 bg-background-card border-r border-border p-6 hidden md:block">
           <div className="mb-8">
             <div className="w-14 h-14 rounded-full bg-primary/10 flex items-center justify-center text-2xl font-bold text-primary mb-3">
-              {profile?.fullName?.[0] || '🛵'}
+              {profile?.fullName ? profile.fullName[0] : <Bike size={24} className="text-primary" />}
             </div>
             <h2 className="font-heading font-bold text-xl">{profile?.fullName || 'Rider'}</h2>
             <p className="text-sm text-text-secondary">{profile?.plateNumber || 'No Vehicle'}</p>
@@ -206,8 +222,12 @@ export default function RiderEarningsPage() {
             </div>
           </div>
           <nav className="space-y-2">
-            <Link href="/rider/dashboard" className="block px-4 py-2 text-text-secondary hover:bg-background-surface hover:text-text-primary font-medium rounded-lg">🗺️ Live Tasks</Link>
-            <Link href="/rider/earnings" className="block px-4 py-2 bg-primary/10 text-primary font-bold rounded-lg">💰 {t('rider_earnings')}</Link>
+            <Link href="/rider/dashboard" className="flex items-center gap-2 px-4 py-2 text-text-secondary hover:bg-background-surface hover:text-text-primary font-medium rounded-lg">
+              <Map size={16} /> Live Tasks
+            </Link>
+            <Link href="/rider/earnings" className="flex items-center gap-2 px-4 py-2 bg-primary/10 text-primary font-bold rounded-lg">
+              <DollarSign size={16} /> {t('rider_earnings')}
+            </Link>
           </nav>
         </aside>
 
@@ -220,7 +240,7 @@ export default function RiderEarningsPage() {
               disabled={!wallet?.balance || wallet.balance < 1000}
               className="flex items-center gap-2"
             >
-              💸 {t('rider_request_payout')}
+              <Wallet size={16} /> {t('rider_request_payout')}
             </Button>
           </div>
 
@@ -252,7 +272,7 @@ export default function RiderEarningsPage() {
           {wallet?.balance >= 1000 && (
             <div className="mb-6 p-4 bg-status-success/5 border border-status-success/20 rounded-2xl flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <span className="text-2xl">💰</span>
+                <Wallet size={24} className="text-status-success shrink-0" />
                 <div>
                   <p className="font-bold text-status-success">You have funds ready to withdraw!</p>
                   <p className="text-sm text-text-secondary">Request a payout to your MoMo account anytime.</p>
@@ -288,7 +308,7 @@ export default function RiderEarningsPage() {
                   {!ledger || ledger.length === 0 ? (
                     <tr><td colSpan={5} className="p-12 text-center text-text-secondary">
                       <div className="flex flex-col items-center gap-2">
-                        <span className="text-4xl">🛵</span>
+                        <Bike size={48} className="text-primary animate-pulse" />
                         <p className="font-medium">Complete your first delivery to see earnings here!</p>
                       </div>
                     </td></tr>
@@ -303,8 +323,8 @@ export default function RiderEarningsPage() {
                         <td className="p-4 text-sm text-text-secondary">{tx.balanceAfter.toLocaleString()} RWF</td>
                         <td className="p-4 text-center">
                           {tx.transactionId && (
-                            <button onClick={() => handleViewReceipt(tx)} className="text-primary hover:text-primary-hover font-bold text-sm">
-                              🧾 View
+                            <button onClick={() => handleViewReceipt(tx)} className="text-primary hover:text-primary-hover font-bold text-sm inline-flex items-center gap-1 justify-center">
+                              <FileText size={14} /> View
                             </button>
                           )}
                         </td>

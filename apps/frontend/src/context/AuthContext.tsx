@@ -8,6 +8,11 @@ interface User {
   email: string;
   phone?: string;
   role: 'BUYER' | 'SELLER' | 'RIDER' | 'ADMIN';
+  preferences?: {
+    discovery?: {
+      categoryIds?: string[];
+    };
+  };
 }
 
 interface AuthContextType {
@@ -43,7 +48,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           localStorage.removeItem('refreshToken');
           setUser(null);
         } else {
-          console.error('Failed to authenticate user', error);
+          console.warn(
+            error.response
+              ? `Failed to authenticate user: ${error.response?.data?.message || error.message}`
+              : 'Authentication service unavailable; continuing as guest.'
+          );
         }
       } finally {
         setIsLoading(false);

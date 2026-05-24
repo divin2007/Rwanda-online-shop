@@ -5,6 +5,7 @@ import Image from 'next/image';
 import { formatCurrency } from '@/lib/format';
 import { getProductUrl } from '@/lib/urls';
 import { useLanguage } from '@/context/LanguageContext';
+import { resolveUploadUrl } from '@/lib/uploadUrls';
 
 interface HorizontalProductCardProps {
   product: {
@@ -26,14 +27,18 @@ interface HorizontalProductCardProps {
 
 export const HorizontalProductCard = ({ product }: HorizontalProductCardProps) => {
   const { t } = useLanguage();
+  const imageUrl = product.images?.[0]
+    ? resolveUploadUrl(product.images[0], 'product')
+    : 'https://images.unsplash.com/photo-1590073844006-33379778ae09';
+
   return (
     <Link 
-      href={getProductUrl(product._id, product.marketId?.slug)}
+      href={getProductUrl(product._id)}
       className="flex items-center gap-6 p-4 bg-white border border-transparent hover:border-[#e0e0e0] transition-all group"
     >
       <div className="relative w-24 h-24 flex-shrink-0 bg-[#fcf9f8] overflow-hidden border border-[#e0e0e0]">
         <Image
-          src={product.images?.[0] || 'https://images.unsplash.com/photo-1590073844006-33379778ae09'}
+          src={imageUrl}
           alt={product.name}
           fill
           unoptimized

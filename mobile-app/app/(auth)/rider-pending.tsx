@@ -8,7 +8,7 @@ import {
   ActivityIndicator, StyleSheet, Text, TouchableOpacity, View,
 } from 'react-native';
 import { useRouter } from 'expo-router';
-import { CheckCircle2, Clock, LogOut, XCircle } from 'lucide-react-native';
+import { CheckCircle2, Clock, LogOut, XCircle, FileText, Search, Rocket, UserCheck } from 'lucide-react-native';
 import { useAuth } from '../../src/context/AuthContext';
 import { api } from '../../src/lib/api';
 
@@ -61,16 +61,16 @@ export default function RiderPendingScreen() {
             <View style={s.iconCircle}>
               <Clock color={ORANGE} size={36} />
             </View>
-            <Text style={s.title}>Application submitted 🎉</Text>
+            <Text style={s.title}>Application submitted</Text>
             <Text style={s.body}>
               Our team is reviewing your documents. This usually takes less than 24 hours.
               You'll be notified once approved.
             </Text>
             <View style={s.stepsBox}>
-              <StepRow done icon="✅" text="Account created" />
-              <StepRow done icon="📄" text="Documents submitted" />
-              <StepRow icon="🔍" text="Admin verification (in progress)" />
-              <StepRow icon="🚀" text="Account activated" />
+              <StepRow done icon={<UserCheck color={GREEN} size={16} />} text="Account created" />
+              <StepRow done icon={<FileText color={GREEN} size={16} />} text="Documents submitted" />
+              <StepRow icon={<Search color={ORANGE} size={16} />} text="Admin verification (in progress)" />
+              <StepRow icon={<Rocket color={MUTED} size={16} />} text="Account activated" />
             </View>
             <TouchableOpacity style={s.checkBtn} onPress={checkApproval} disabled={checking} activeOpacity={0.85}>
               {checking ? (
@@ -87,7 +87,7 @@ export default function RiderPendingScreen() {
             <View style={[s.iconCircle, { backgroundColor: '#DCFCE7' }]}>
               <CheckCircle2 color={GREEN} size={36} />
             </View>
-            <Text style={s.title}>You're approved! 🚀</Text>
+            <Text style={s.title}>You're approved!</Text>
             <Text style={s.body}>Welcome to the RMF rider team. Redirecting you now…</Text>
             <ActivityIndicator color={ORANGE} style={{ marginTop: 16 }} />
           </>
@@ -119,10 +119,10 @@ export default function RiderPendingScreen() {
   );
 }
 
-function StepRow({ done = false, icon, text }: { done?: boolean; icon: string; text: string }) {
+function StepRow({ done = false, icon, text }: { done?: boolean; icon: React.ReactNode; text: string }) {
   return (
     <View style={sr.row}>
-      <Text style={sr.icon}>{icon}</Text>
+      <View style={sr.iconContainer}>{icon}</View>
       <Text style={[sr.text, done && sr.textDone]}>{text}</Text>
     </View>
   );
@@ -160,7 +160,7 @@ const s = StyleSheet.create({
 
 const sr = StyleSheet.create({
   row: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  icon: { fontSize: 16 },
+  iconContainer: { width: 20, alignItems: 'center', justifyContent: 'center' },
   text: { color: MUTED, fontSize: 13, fontWeight: '600', flex: 1 },
   textDone: { color: GREEN, fontWeight: '700' },
 });

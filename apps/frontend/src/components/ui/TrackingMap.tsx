@@ -1,8 +1,11 @@
 'use client';
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useLayoutEffect, useRef } from 'react';
 import { MapContainer, TileLayer, Marker, Polyline, Popup, useMap } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
+import { patchLeafletSafeRemove } from '@/lib/leafletSafeRemove';
+
+patchLeafletSafeRemove();
 
 // Fix for default marker icons in Next.js using a Data URI to bypass Tracking Prevention
 // NOTE: same valid SVG used in RiderMap.tsx
@@ -49,6 +52,7 @@ const MapController = ({ flyToLocation, center }: { flyToLocation: { lat: number
 };
 
 export const TrackingMap = ({ lat, lng, pickup, dropoff, routeGeometry }: TrackingMapProps) => {
+  const containerRef = useRef<HTMLDivElement | null>(null);
   const [isClient, setIsClient] = useState(false);
   const [mapInstanceKey, setMapInstanceKey] = useState('');
   const [liveRoute, setLiveRoute] = useState<[number, number][]>([]);
@@ -57,6 +61,19 @@ export const TrackingMap = ({ lat, lng, pickup, dropoff, routeGeometry }: Tracki
   const [isSearching, setIsSearching] = useState(false);
   const [flyToLocation, setFlyToLocation] = useState<{ lat: number, lon: number } | null>(null);
   const [mapMode, setMapMode] = useState<'standard' | 'satellite'>('standard');
+  const mapShellKey = `${mapInstanceKey}-${lat}-${lng}`;
+
+  const releaseLeafletContainer = () => {
+    const leafletContainers = containerRef.current?.querySelectorAll('.leaflet-container') || [];
+    leafletContainers.forEach((element) => {
+      delete (element as HTMLElement & { _leaflet_id?: number })._leaflet_id;
+    });
+  };
+
+  useLayoutEffect(() => {
+    releaseLeafletContainer();
+    return releaseLeafletContainer;
+  }, [mapInstanceKey, lat, lng]);
 
   useEffect(() => {
     setIsClient(true);
@@ -128,7 +145,7 @@ export const TrackingMap = ({ lat, lng, pickup, dropoff, routeGeometry }: Tracki
   const center: [number, number] = [lat, lng];
 
   return (
-    <div className="w-full h-full relative z-0">
+    <div key={mapShellKey} ref={containerRef} className="w-full h-full relative z-0">
       {/* Search Overlay */}
       <div className="absolute top-4 left-4 right-4 z-[500] max-w-sm">
         <div className="relative">
@@ -164,7 +181,7 @@ export const TrackingMap = ({ lat, lng, pickup, dropoff, routeGeometry }: Tracki
       </div>
 
       <MapContainer 
-        key={`${mapInstanceKey}-${lat}-${lng}`}
+        key={mapShellKey}
         center={center} 
         zoom={15} 
         style={{ height: '100%', width: '100%' }}

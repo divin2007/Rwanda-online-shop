@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import { Alert, RefreshControl, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View, Modal, ActivityIndicator, Dimensions } from 'react-native';
-import { useLocalSearchParams } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import {
   AlertTriangle, CheckCircle2, MapPin, MessageCircle,
   Package, RefreshCcw, ShieldCheck, Truck, UserCircle, X,
+  CreditCard, Phone
 } from 'lucide-react-native';
 import { WebView } from 'react-native-webview';
 import { OrderLineCard } from '../../src/components/Cards';
@@ -151,6 +152,7 @@ const buildNegotiationMapHtml = (initLat: number, initLng: number, marketLat?: n
 };
 
 export default function OrderTrackingScreen() {
+  const router = useRouter();
   const { orderId } = useLocalSearchParams<{ orderId: string }>();
   const { user } = useAuth();
   const userId = idOf(user?.id || (user as any)?._id || (user as any)?.userId);
@@ -193,6 +195,24 @@ export default function OrderTrackingScreen() {
       .then(setDeliveryData)
       .catch(() => undefined);
   }, [deliveryId]);
+
+  const mapStatusToIndex = (status: string) => {
+    switch (status) {
+      case 'pending':
+      case 'confirmed':
+        return 0;
+      case 'preparing':
+        return 1;
+      case 'ready_for_pickup':
+      case 'picked_up':
+        return 2;
+      case 'delivered':
+      case 'resolved':
+        return 3;
+      default:
+        return 0;
+    }
+  };
 
   useEffect(() => {
     if (payload?.order) setData(payload.order);
@@ -347,11 +367,36 @@ export default function OrderTrackingScreen() {
   if (error && !order) return <ErrorBlock message={error} onRetry={refresh} />;
   if (!order) return null;
 
+  // Security gate: Ensure user is authorized to view this order
+  const isBuyer = sameId(userId, order?.buyer?.userId ?? (order as any)?.buyerId);
+  const isSeller = sameId(order?.seller?.userId, userId) || sameId(order?.seller?.sellerId, user?.sellerId);
+  const isRider = sameId(order?.delivery?.riderId, user?.riderId) || sameId(deliveryData?.riderId, user?.riderId);
+  const isAdmin = user?.role === 'ADMIN';
+
+  if (!isAdmin && !isBuyer && !isSeller && !isRider) {
+    return (
+      <View style={{ flex: 1, backgroundColor: colors.bg, alignItems: 'center', justifyContent: 'center', padding: 24 }}>
+        <View style={{ backgroundColor: colors.card, padding: 28, borderRadius: 24, alignItems: 'center', gap: 12, borderWidth: 0.5, borderColor: colors.divider }}>
+          <AlertTriangle color={colors.danger} size={48} />
+          <Text style={{ fontSize: 18, fontWeight: '900', color: colors.ink }}>Access Denied</Text>
+          <Text style={{ fontSize: 13, color: colors.muted, textAlign: 'center', lineHeight: 18 }}>
+            Security warning: You do not have authorization to view this order transaction record.
+          </Text>
+          <TouchableOpacity 
+            style={{ marginTop: 12, height: 46, paddingHorizontal: 24, borderRadius: 12, backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center' }}
+            onPress={() => router.replace('/orders' as any)}
+          >
+            <Text style={{ color: '#fff', fontSize: 13, fontWeight: '700' }}>Back to My Orders</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    );
+  }
+
   const lines = asArray<any>(order.products?.length ? order.products : order.product ? [order.product] : []);
   const history = asArray<any>(order.statusHistory);
   const paymentStatus = order.payment?.status || 'pending';
   const status = String(order.status || 'placed').toLowerCase();
-  const isBuyer = sameId(userId, order.buyer?.userId ?? (order as any).buyerId);
   const canPickLocation = isBuyer && (
     ['awaiting_quote', 'quote_sent'].includes(status) ||
     (status === 'placed' && paymentStatus !== 'paid')
@@ -394,7 +439,7 @@ export default function OrderTrackingScreen() {
         >
           <Package color={colors.greenDark} size={22} />
           <View style={{ flex: 1 }}>
-            <Text style={styles.confirmTitle}>📦 Package arrived?</Text>
+            <Text style={styles.confirmTitle}>Package arrived?</Text>
             <Text style={styles.confirmSub}>Tap to inspect and confirm receipt — this releases escrow.</Text>
           </View>
         </TouchableOpacity>
@@ -428,8 +473,8 @@ export default function OrderTrackingScreen() {
             onPress={retryPayment}
             activeOpacity={0.85}
           >
-            <RefreshCcw color={colors.greenDark} size={16} />
-            <Text style={styles.actionText}>💳 Pay with MTN MoMo ({money(order.financials?.totalAmount)})</Text>
+            <CreditCard color={colors.greenDark} size={16} />
+            <Text style={styles.actionText}>Pay with MTN MoMo ({money(order.financials?.totalAmount)})</Text>
           </TouchableOpacity>
         )}
       </View>
@@ -446,8 +491,18 @@ export default function OrderTrackingScreen() {
           <Truck color={colors.orange} size={18} />
           <View style={{ flex: 1 }}>
             <Text style={styles.riderName}>{rider.fullName || 'Your rider'}</Text>
-            {rider.plateNumber ? <Text style={styles.riderMeta}>🛵 {rider.plateNumber}</Text> : null}
-            {rider.phone ? <Text style={styles.riderMeta}>📞 {rider.phone}</Text> : null}
+            {rider.plateNumber ? (
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 4 }}>
+                <Truck color={colors.muted} size={12} />
+                <Text style={styles.riderMeta}>Plate: {rider.plateNumber}</Text>
+              </View>
+            ) : null}
+            {rider.phone ? (
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 4 }}>
+                <Phone color={colors.muted} size={12} />
+                <Text style={styles.riderMeta}>Phone: {rider.phone}</Text>
+              </View>
+            ) : null}
           </View>
         </View>
       )}

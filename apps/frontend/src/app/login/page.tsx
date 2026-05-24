@@ -20,13 +20,21 @@ export default function LoginPage() {
   const router = useRouter();
 
   const routeForRole = React.useCallback((role?: string) => {
-    if (role === 'SELLER') return '/seller/onboarding';
+    if (role === 'SELLER') return '/seller/dashboard';
     if (role === 'RIDER') return '/rider/dashboard';
     if (role === 'ADMIN') return '/admin';
     return '/dashboard';
   }, []);
 
   const routeAfterLogin = React.useCallback(async (role?: string) => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const redirectUrl = params.get('redirect');
+      if (redirectUrl) return redirectUrl;
+    }
+    if (role === 'SELLER') return '/seller/dashboard';
+    if (role === 'RIDER') return '/rider/dashboard';
+    if (role === 'ADMIN') return '/admin';
     if (role !== 'BUYER') return routeForRole(role);
     try {
       const res = await userApi.get('/users/preferences/discovery');
@@ -38,7 +46,13 @@ export default function LoginPage() {
 
   useEffect(() => {
     if (!authLoading && user) {
-      router.replace(routeForRole(user.role));
+      const params = new URLSearchParams(window.location.search);
+      const redirectUrl = params.get('redirect');
+      if (redirectUrl) {
+        router.replace(redirectUrl);
+      } else {
+        router.replace(routeForRole(user.role));
+      }
     }
   }, [authLoading, routeForRole, router, user]);
 

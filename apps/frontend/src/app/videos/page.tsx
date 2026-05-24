@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { Layout } from '@/components/layout/Layout';
+import { SellerStoriesShelf } from '@/components/ui/SellerStoriesShelf';
 import { SellerVideoFeed } from '@/components/ui/SellerVideoFeed';
 import { Search } from 'lucide-react';
 
@@ -29,6 +30,7 @@ export default function VideosPage() {
             </label>
           </div>
         </section>
+        <SellerStoriesShelf />
         <SellerVideoFeed
           title={search.trim() ? `Videos matching "${search.trim()}"` : 'All market videos'}
           description="Browse fresh seller videos across every connected RMF market."
