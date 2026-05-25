@@ -15,7 +15,7 @@ export const CheckoutContent = () => {
   const { user } = useAuth();
   const router = useRouter();
   const [coords, setCoords] = useState<{lat: number, lng: number} | null>(null);
-  const [paymentMethod, setPaymentMethod] = useState<'MTN_MOMO' | 'AIRTEL_MONEY'>('MTN_MOMO');
+  const [paymentMethod, setPaymentMethod] = useState<'MTN_MOMO' | 'AIRTEL_MONEY' | 'TIGO_CASH'>('MTN_MOMO');
   const [phone, setPhone] = useState('');
   const [notes, setNotes] = useState('');
   const [nid, setNid] = useState('');
@@ -257,10 +257,11 @@ export const CheckoutContent = () => {
           <section className="space-y-8">
             <h2 className="text-2xl font-bold text-text-primary tracking-tight border-b border-border-light pb-6">2. Payment & Details</h2>
             
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
               {[
                 { id: 'MTN_MOMO', label: 'MTN MoMo', color: 'bg-[#FFCC00] text-black border-[#FFCC00]', desc: 'Pay via MTN Mobile Money' },
-                { id: 'AIRTEL_MONEY', label: 'Airtel Money', color: 'bg-[#ED1C24] text-white border-[#ED1C24]', desc: 'Pay via Airtel Money' }
+                { id: 'AIRTEL_MONEY', label: 'Airtel Money', color: 'bg-[#ED1C24] text-white border-[#ED1C24]', desc: 'Pay via Airtel Money' },
+                { id: 'TIGO_CASH', label: 'Tigo Cash', color: 'bg-[#0066B3] text-white border-[#0066B3]', desc: 'Pay via Tigo Cash' }
               ].map(method => (
                 <button 
                   key={method.id}
@@ -277,7 +278,7 @@ export const CheckoutContent = () => {
                     </div>
                   )}
                   <div className={`w-14 h-14 ${method.color} border rounded-full flex items-center justify-center text-xl font-black shadow-sm`}>
-                    {method.id === 'MTN_MOMO' ? 'M' : 'A'}
+                    {method.id === 'MTN_MOMO' ? 'M' : method.id === 'AIRTEL_MONEY' ? 'A' : 'T'}
                   </div>
                   <div className="text-center">
                     <span className="text-xs font-bold uppercase tracking-widest text-text-primary block mb-1">{method.label}</span>

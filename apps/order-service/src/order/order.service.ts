@@ -48,7 +48,9 @@ export class OrderService implements OnModuleInit, OnModuleDestroy {
     private fraudDetection: FraudDetectionService,
     private buyerProtection: BuyerProtectionService,
     private paymentService: PaymentService,
-    private orderGateway: OrderGateway
+    private orderGateway: OrderGateway,
+    @InjectModel('User') private userModel: Model<any>,
+    @InjectModel('LedgerEntry') private ledgerModel: Model<any>
   ) { }
 
   private normalizeId(value: any): string | null {
@@ -668,54 +670,295 @@ export class OrderService implements OnModuleInit, OnModuleDestroy {
     return updated;
   }
 
-  // M4 fix: accepts a `payFor` param so we never pay both parties from the same call.
-  // 'seller' is called at PICKED_UP; 'rider' is called at DELIVERED.
-  private async triggerPayoutFlow(order: any, payFor: 'seller' | 'rider' | 'both' = 'both') {
+  private getPlatformSettlementPhone(): string | null {
+    return process.env.PAYPACK_PLATFORM_PHONE
+      || process.env.RMF_PLATFORM_MOMO_NUMBER
+      || process.env.PLATFORM_MOMO_NUMBER
+      || null;
+  }
+
+  private toObjectId(value: any): Types.ObjectId | null {
+    const id = this.normalizeId(value);
+    return id && Types.ObjectId.isValid(id) ? new Types.ObjectId(id) : null;
+  }
+
+  private async getSellerSettlementTarget(order: any): Promise<{ userId: string | null; phone: string | null }> {
+    let sellerUserId = this.normalizeId(order?.seller?.userId || order?.sellerUserId);
+    if (!sellerUserId && order?.seller?.sellerId) {
+      const profile = await this.sellerModel.findById(order.seller.sellerId).select('userId').lean().exec();
+      sellerUserId = this.normalizeId(profile?.userId);
+    }
+
+    const sellerUser = sellerUserId
+      ? await this.userModel.findById(sellerUserId).select('phone').lean().exec()
+      : null;
+
+    return {
+      userId: sellerUserId,
+      phone: sellerUser?.phone || order?.seller?.phone || null,
+    };
+  }
+
+  private async getDeliveryForSettlement(order: any): Promise<any | null> {
+    const deliveryId = this.normalizeId(order?.deliveryId || order?.delivery?._id);
+    if (!deliveryId) return null;
+
     try {
       const deliveryUrl = process.env.DELIVERY_SERVICE_URL || 'http://localhost:3008/api/v1';
-      const walletUrl = process.env.WALLET_SERVICE_URL || 'http://localhost:3007/api/v1';
       const secret = process.env.INTERNAL_SERVICE_SECRET;
       const headers = secret ? { 'x-internal-service-key': secret } : {};
+      const deliveryRes = await axios.get(`${deliveryUrl}/deliveries/${deliveryId}`, { headers, timeout: 5000 });
+      return deliveryRes.data?.data || deliveryRes.data || null;
+    } catch (error: any) {
+      this.logger.warn(`Could not load delivery ${deliveryId} for settlement: ${error.message}`);
+      return null;
+    }
+  }
 
+  private async getRiderSettlementTarget(order: any): Promise<{ userId: string | null; phone: string | null; delivery: any | null }> {
+    const delivery = await this.getDeliveryForSettlement(order);
+    const riderUserId = this.normalizeId(delivery?.rider?.userId || order?.rider?.userId || order?.delivery?.rider?.userId);
+    let phone = delivery?.rider?.phone || order?.rider?.phone || order?.delivery?.rider?.phone || null;
+
+    if (!phone && riderUserId) {
+      const riderUser = await this.userModel.findById(riderUserId).select('phone').lean().exec();
+      phone = riderUser?.phone || null;
+    }
+
+    return { userId: riderUserId, phone, delivery };
+  }
+
+  private async recordSettlementLedger(input: {
+    order: any;
+    userId?: string | null;
+    account: string;
+    amount: number;
+    type?: 'credit' | 'debit';
+    description: string;
+    externalRef?: string;
+    status?: string;
+    metadata?: Record<string, any>;
+  }) {
+    const transactionId = this.toObjectId(input.order?._id);
+    if (!transactionId) {
+      throw new Error('Cannot record settlement ledger without a valid order id');
+    }
+
+    const query: Record<string, any> = {
+      transactionId,
+      account: input.account,
+    };
+    const userObjectId = this.toObjectId(input.userId);
+    if (userObjectId) query.userId = userObjectId;
+
+    const existing = await this.ledgerModel.findOne(query).lean().exec();
+    if (existing) return existing;
+
+    return new this.ledgerModel({
+      ledgerId: `SET-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      userId: userObjectId || undefined,
+      transactionId,
+      type: input.type || 'credit',
+      account: input.account,
+      amount: Math.round(Number(input.amount || 0)),
+      currency: 'RWF',
+      description: input.description,
+      balanceAfter: 0,
+      provider: 'paypack',
+      externalRef: input.externalRef,
+      status: input.status || 'posted',
+      metadata: {
+        orderNumber: input.order?.orderNumber,
+        accountingOnly: true,
+        ...input.metadata,
+      },
+    }).save();
+  }
+
+  private async updateSettlementState(orderId: any, fields: Record<string, any>) {
+    await this.orderModel.findByIdAndUpdate(orderId, {
+      $set: {
+        ...fields,
+        'settlement.updatedAt': new Date(),
+      },
+    }).exec();
+  }
+
+  private async paypackCashoutAndRecord(input: {
+    order: any;
+    userId?: string | null;
+    phone: string;
+    amount: number;
+    account: string;
+    purpose: 'seller_payout' | 'rider_payout' | 'platform_commission';
+    description: string;
+    stateRefPath: string;
+    stateStatusPath: string;
+    stateDatePath: string;
+  }) {
+    const amount = Math.round(Number(input.amount || 0));
+    if (amount <= 0) {
+      await this.updateSettlementState(input.order._id, { [input.stateStatusPath]: 'skipped' });
+      return { skipped: true };
+    }
+
+    const existing = await this.recordSettlementLedger({
+      order: input.order,
+      userId: input.userId,
+      account: input.account,
+      amount,
+      description: `${input.description} (idempotency check)`,
+      status: 'reserved',
+      metadata: { purpose: input.purpose },
+    });
+
+    if (existing?.status === 'posted' && existing?.externalRef) {
+      return { success: true, transactionId: existing.externalRef, duplicate: true };
+    }
+
+    const payout = await this.paymentService.requestPaypackCashout({
+      amount,
+      phone: input.phone,
+      idempotencyKey: `${input.purpose}:${this.normalizeId(input.order._id)}:${amount}`,
+      purpose: input.purpose,
+    });
+
+    if (!payout.success) {
+      await this.ledgerModel.updateOne(
+        { _id: existing._id },
+        {
+          $set: {
+            account: `${input.account}_failed`,
+            status: 'failed',
+            description: `${input.description} failed: ${payout.error || 'Paypack error'}`,
+            externalRef: payout.transactionId,
+            metadata: {
+              ...(existing.metadata || {}),
+              error: payout.error,
+            },
+          },
+        }
+      ).exec();
+      await this.updateSettlementState(input.order._id, {
+        [input.stateStatusPath]: 'failed',
+        'settlement.status': 'failed',
+        'settlement.lastError': payout.error || 'Paypack cashout failed',
+      });
+      throw new Error(payout.error || 'Paypack cashout failed');
+    }
+
+    await this.ledgerModel.updateOne(
+      { _id: existing._id },
+      {
+        $set: {
+          status: 'posted',
+          description: input.description,
+          externalRef: payout.transactionId,
+          metadata: {
+            ...(existing.metadata || {}),
+            phoneLast4: String(input.phone).slice(-4),
+          },
+        },
+      }
+    ).exec();
+
+    await this.updateSettlementState(input.order._id, {
+      [input.stateStatusPath]: 'paid',
+      [input.stateRefPath]: payout.transactionId,
+      [input.stateDatePath]: new Date(),
+    });
+
+    return payout;
+  }
+
+  // Real money movement is Paypack-only. This method records internal accounting
+  // after cashout, but never credits RMF-managed wallet balances.
+  private async triggerPayoutFlow(order: any, payFor: 'seller' | 'rider' | 'both' = 'both') {
+    try {
       const shouldPaySeller = payFor === 'seller' || payFor === 'both';
       const shouldPayRider = payFor === 'rider' || payFor === 'both';
+      const subtotal = Number(order.financials?.subtotal || 0);
+      const deliveryFee = Number(order.financials?.deliveryFee || 0);
+      const platformCommission = Math.round(Number(order.financials?.platformCommission ?? Math.max(subtotal * 0.015, 100)));
+      const sellerPayout = Math.max(0, Math.round(Number(order.financials?.sellerPayout ?? (subtotal - platformCommission))));
+      const riderPayout = Math.max(0, Math.round(Number(order.financials?.riderPayout ?? (deliveryFee * 0.9))));
 
-      // 1. Get delivery info to find the rider
-      const deliveryRes = await axios.get(`${deliveryUrl}/deliveries/${order.deliveryId}`, { headers });
-      const delivery = deliveryRes.data?.data;
+      if (shouldPaySeller) {
+        const sellerTarget = await this.getSellerSettlementTarget(order);
+        if (!sellerTarget.userId || !sellerTarget.phone) {
+          await this.updateSettlementState(order._id, {
+            'settlement.sellerStatus': 'failed',
+            'settlement.status': 'failed',
+            'settlement.lastError': 'Seller phone number is missing for Paypack settlement',
+          });
+          throw new Error(`Cannot process seller payout for order ${order._id}: seller Paypack phone missing`);
+        }
 
-      if (!delivery || !delivery.rider?.userId) {
-        this.logger.warn(`Cannot process payout for order ${order._id}: Rider not found on delivery`);
-        return;
+        await this.paypackCashoutAndRecord({
+          order,
+          userId: sellerTarget.userId,
+          phone: sellerTarget.phone,
+          amount: sellerPayout,
+          account: 'seller_paypack_payout',
+          purpose: 'seller_payout',
+          description: `Paypack seller payout for order ${order.orderNumber}`,
+          stateRefPath: 'settlement.sellerPayoutRef',
+          stateStatusPath: 'settlement.sellerStatus',
+          stateDatePath: 'settlement.sellerSettledAt',
+        });
       }
 
-      // Robustness: If seller.userId is missing (legacy orders), try to lookup from profile
-      let sellerUserId = order.seller?.userId;
-      if (!sellerUserId && order.seller?.sellerId) {
-        const profile = await this.sellerModel.findById(order.seller.sellerId).exec();
-        sellerUserId = profile?.userId;
+      if (shouldPaySeller && platformCommission > 0) {
+        const platformPhone = this.getPlatformSettlementPhone();
+        if (!platformPhone) {
+          await this.updateSettlementState(order._id, {
+            'settlement.platformStatus': 'failed',
+            'settlement.status': 'failed',
+            'settlement.lastError': 'PAYPACK_PLATFORM_PHONE or RMF_PLATFORM_MOMO_NUMBER is missing',
+          });
+          throw new Error('Platform Paypack settlement phone is not configured');
+        }
+
+        await this.paypackCashoutAndRecord({
+          order,
+          phone: platformPhone,
+          amount: platformCommission,
+          account: 'rmf_platform_commission_paypack_cashout',
+          purpose: 'platform_commission',
+          description: `Paypack platform commission settlement for order ${order.orderNumber}`,
+          stateRefPath: 'settlement.platformCommissionRef',
+          stateStatusPath: 'settlement.platformStatus',
+          stateDatePath: 'settlement.platformSettledAt',
+        });
       }
 
-      if (!sellerUserId) {
-        this.logger.error(`Cannot process payout for order ${order._id}: Seller userId missing and could not be recovered`);
-        return;
+      if (shouldPayRider) {
+        const riderTarget = await this.getRiderSettlementTarget(order);
+        if (!riderTarget.userId || !riderTarget.phone) {
+          await this.updateSettlementState(order._id, {
+            'settlement.riderStatus': 'pending_rider_assignment',
+            'settlement.status': shouldPaySeller ? 'partial' : 'pending',
+          });
+          this.logger.warn(`Rider payout for order ${order._id} is pending until a rider and phone are assigned.`);
+          return;
+        }
+
+        await this.paypackCashoutAndRecord({
+          order,
+          userId: riderTarget.userId,
+          phone: riderTarget.phone,
+          amount: riderPayout,
+          account: 'rider_paypack_payout',
+          purpose: 'rider_payout',
+          description: `Paypack rider payout for order ${order.orderNumber}`,
+          stateRefPath: 'settlement.riderPayoutRef',
+          stateStatusPath: 'settlement.riderStatus',
+          stateDatePath: 'settlement.riderSettledAt',
+        });
       }
 
-      // 2. Call wallet-service to process the transaction (idempotent)
-      await axios.post(`${walletUrl}/wallets/transaction`, {
-        transactionId: order._id,
-        orderNumber: order.orderNumber,
-        description: `Order #${order.orderNumber} ${payFor === 'seller' ? 'Handover' : 'Final Delivery'} Payout`,
-        sellerId: sellerUserId,
-        riderId: delivery.rider.userId,
-        subtotal: order.financials.subtotal,
-        deliveryFee: order.financials.deliveryFee,
-        sellerPayout: shouldPaySeller ? (order.financials.sellerPayout || order.financials.subtotal * 0.985) : 0,
-        riderPayout: shouldPayRider ? (order.financials.riderPayout || order.financials.deliveryFee * 0.9) : 0,
-        commissionFloorApplied: order.financials.platformCommission === 100
-      }, { headers });
-
-      this.logger.log(`Payout (${payFor}) processed for order ${order.orderNumber}`);
+      await this.updateSettlementState(order._id, { 'settlement.status': 'settled', 'settlement.lastError': null });
+      this.logger.log(`Paypack payout (${payFor}) processed for order ${order.orderNumber}`);
     } catch (err) {
       this.logger.error(`Payout flow error: ${err.message}`);
       throw err;
@@ -725,6 +968,11 @@ export class OrderService implements OnModuleInit, OnModuleDestroy {
   async processPaymentCallback(orderNumber: string, status: PaymentStatus, transactionRef: string): Promise<any> {
     const order = await this.orderModel.findOne({ orderNumber });
     if (!order) throw new NotFoundException('Order not found');
+
+    if (order.payment?.status === status) {
+      this.logger.log(`Ignoring duplicate payment callback for ${orderNumber}; payment is already ${status}.`);
+      return order;
+    }
 
     this.validateTransition(order.payment.status, status, PAYMENT_TRANSITIONS);
 
@@ -805,9 +1053,45 @@ export class OrderService implements OnModuleInit, OnModuleDestroy {
       this.decrementProductStock(updated).catch(err => {
         this.logger.error(`Failed to decrement stock for order ${orderNumber}: ${err.message}`);
       });
+
+      this.buyerProtection.seedReserveFromCommission(
+        this.normalizeId(updated._id)!,
+        updated.financials || {}
+      ).catch(err => {
+        this.logger.warn(`Failed to record BPF reserve contribution for order ${orderNumber}: ${err.message}`);
+      });
+
+      this.triggerPayoutFlow(updated, 'both').catch(err => {
+        this.logger.error(`Failed to trigger Paypack settlement for order ${orderNumber}: ${err.message}`);
+      });
     }
 
     return updated;
+  }
+
+  async processPaymentCallbackByReference(
+    status: PaymentStatus,
+    transactionRef: string,
+    orderNumber?: string,
+  ): Promise<any> {
+    const cleanRef = String(transactionRef || '').replace(/^PAYPACK:/, '');
+    const candidateRefs = Array.from(new Set([
+      transactionRef,
+      cleanRef,
+      cleanRef ? `PAYPACK:${cleanRef}` : '',
+    ].filter(Boolean)));
+
+    let order = orderNumber ? await this.orderModel.findOne({ orderNumber }) : null;
+    if (!order) {
+      order = await this.orderModel.findOne({ 'payment.transactionRef': { $in: candidateRefs } });
+    }
+    if (!order) throw new NotFoundException('Order not found for payment reference');
+
+    const storedRef = order.payment?.transactionRef && candidateRefs.includes(order.payment.transactionRef)
+      ? order.payment.transactionRef
+      : transactionRef;
+
+    return this.processPaymentCallback(order.orderNumber, status, storedRef);
   }
 
   private async decrementProductStock(order: any) {
@@ -981,13 +1265,14 @@ export class OrderService implements OnModuleInit, OnModuleDestroy {
 
     this.validateTransition(order.status, OrderStatus.RESOLVED, ORDER_TRANSITIONS);
 
-    if (resolution === DisputeResolution.REFUND && order.financials.totalAmount <= 10000) {
-      console.log(`Instant Refund processed for order ${id} via Buyer Protection Fund (1% pool).`);
-      await this.buyerProtection.executeInstantRefund(id, order.financials.totalAmount, order.buyer.userId);
-    } else if (resolution === DisputeResolution.REFUND) {
-      await this.buyerProtection.escalateForManualReview(id, order.financials.totalAmount);
+    let refundResult: any = null;
+    if (resolution === DisputeResolution.REFUND) {
+      refundResult = await this.buyerProtection.executeInstantRefund(
+        order,
+        order.financials.totalAmount,
+        `Dispute resolution refund for order ${order.orderNumber || id}`
+      );
     }
-    // In actual implementation, this would trigger a message to Wallet service
 
     return await this.orderModel.findByIdAndUpdate(
       id,
@@ -995,7 +1280,15 @@ export class OrderService implements OnModuleInit, OnModuleDestroy {
         $set: {
           status: OrderStatus.RESOLVED,
           'dispute.resolvedAt': new Date(),
-          'dispute.resolution': resolution
+          'dispute.resolution': resolution,
+          ...(resolution === DisputeResolution.REFUND ? {
+            'payment.status': PaymentStatus.REFUNDED,
+            'refund.status': 'refunded',
+            'refund.amount': order.financials.totalAmount,
+            'refund.transactionRef': refundResult?.transactionRef,
+            'refund.reason': `Dispute resolution: ${resolution}`,
+            'refund.refundedAt': new Date(),
+          } : {})
         }
       },
       { new: true }
@@ -1094,13 +1387,11 @@ export class OrderService implements OnModuleInit, OnModuleDestroy {
   private async startPaymentPolling(orderNumber: string, referenceId: string) {
     let attempts = 0;
     const maxAttempts = process.env.NODE_ENV !== 'production' ? 6 : 24; // 30s in dev, 2 min in prod
-    // Only auto-confirm when BOTH conditions are true:
-    // 1. MTN_MOMO_TARGET_ENV is explicitly set to 'sandbox' (not just non-production)
-    // 2. NODE_ENV is NOT 'production'
-    // This prevents accidental auto-confirmation in production if the env var is misconfigured
-    const isExplicitSandbox = process.env.MTN_MOMO_TARGET_ENV === 'sandbox';
     const isNotProduction = process.env.NODE_ENV !== 'production';
-    const shouldAutoConfirm = isExplicitSandbox && isNotProduction;
+    const shouldAutoConfirm = isNotProduction && (
+      process.env.MTN_MOMO_TARGET_ENV === 'sandbox' ||
+      process.env.PAYPACK_AUTO_CONFIRM === 'true'
+    );
 
     const order = await this.orderModel.findOne({ orderNumber }).exec();
     const paymentMethod = order?.payment?.method || 'MTN_MOMO';
@@ -1242,6 +1533,8 @@ export class OrderService implements OnModuleInit, OnModuleDestroy {
           messages: {
             senderId: quoteActorId,
             senderRole: 'SELLER',
+            channel: 'ORDER',
+            recipientRole: 'BUYER',
             type: 'QUOTE',
             content: financials.note || (options.allowAdminOverride ? `A quote has been sent for ${subtotal.toLocaleString()} RWF` : `I have sent a quote for ${subtotal.toLocaleString()} RWF`),
             quoteAmount: subtotal,
@@ -1254,12 +1547,14 @@ export class OrderService implements OnModuleInit, OnModuleDestroy {
 
     if (updated) {
       const lastMsg = updated.messages[updated.messages.length - 1];
+      const plainOrder = updated.toObject ? updated.toObject() : updated;
       this.orderGateway.sendOrderUpdate({
         type: 'NEW_MESSAGE',
         orderId: id,
         message: lastMsg,
         status: OrderStatus.QUOTE_SENT
       });
+      await this.notifyOrderMessageParticipants(plainOrder, id, lastMsg);
       this.orderGateway.sendOrderUpdate({ type: 'STATUS_UPDATE', orderId: id, status: OrderStatus.QUOTE_SENT });
 
       // Notify Buyer about new Quote
@@ -1319,6 +1614,8 @@ export class OrderService implements OnModuleInit, OnModuleDestroy {
           messages: {
             senderId: userId,
             senderRole: 'BUYER',
+            channel: 'ORDER',
+            recipientRole: 'SELLER',
             type: 'COUNTER_QUOTE',
             content: note || `I would like to propose ${subtotal.toLocaleString()} RWF instead.`,
             quoteAmount: subtotal,
@@ -1331,12 +1628,14 @@ export class OrderService implements OnModuleInit, OnModuleDestroy {
 
     if (updated) {
       const lastMsg = updated.messages[updated.messages.length - 1];
+      const plainOrder = updated.toObject ? updated.toObject() : updated;
       this.orderGateway.sendOrderUpdate({
         type: 'NEW_MESSAGE',
         orderId: id,
         message: lastMsg,
         status: OrderStatus.AWAITING_QUOTE
       });
+      await this.notifyOrderMessageParticipants(plainOrder, id, lastMsg);
       this.orderGateway.sendOrderUpdate({ type: 'STATUS_UPDATE', orderId: id, status: OrderStatus.AWAITING_QUOTE });
 
       // Notify Seller about Counter Offer
@@ -1372,6 +1671,8 @@ export class OrderService implements OnModuleInit, OnModuleDestroy {
           messages: {
             senderId: userId,
             senderRole: 'BUYER',
+            channel: 'ORDER',
+            recipientRole: 'SELLER',
             type: 'TEXT',
             content: reason || 'I have decided to decline this quote. Thank you.',
             timestamp: new Date()
@@ -1382,6 +1683,15 @@ export class OrderService implements OnModuleInit, OnModuleDestroy {
     );
 
     if (updated) {
+      const lastMsg = updated.messages[updated.messages.length - 1];
+      const plainOrder = updated.toObject ? updated.toObject() : updated;
+      this.orderGateway.sendOrderUpdate({
+        type: 'NEW_MESSAGE',
+        orderId: id,
+        message: lastMsg,
+        status: OrderStatus.CANCELLED
+      });
+      await this.notifyOrderMessageParticipants(plainOrder, id, lastMsg);
       this.orderGateway.sendOrderUpdate({ type: 'STATUS_UPDATE', orderId: id, status: OrderStatus.CANCELLED });
     }
 
@@ -1603,8 +1913,10 @@ export class OrderService implements OnModuleInit, OnModuleDestroy {
           messages: {
             senderId: userId,
             senderRole: 'BUYER',
+            channel: 'ORDER',
+            recipientRole: 'SELLER',
             type: 'TEXT',
-            content: `📍 Delivery location set: ${address} (Fee: ${deliveryFee.toLocaleString()} RWF)`,
+            content: `Delivery location set: ${address}. Delivery fee: ${deliveryFee.toLocaleString()} RWF.`,
             timestamp: new Date()
           }
         }
@@ -1618,7 +1930,8 @@ export class OrderService implements OnModuleInit, OnModuleDestroy {
       this.orderGateway.sendOrderUpdate({
         type: 'NEW_MESSAGE',
         orderId: id,
-        message: lastMsg
+        message: lastMsg,
+        channel: lastMsg?.channel || 'ORDER'
       });
       await this.notifyOrderMessageParticipants(plainOrder, id, lastMsg);
       this.orderGateway.sendOrderUpdate({

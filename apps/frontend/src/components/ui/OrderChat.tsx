@@ -178,8 +178,8 @@ export const OrderChat: React.FC<OrderChatProps> = ({
         setMessages(prev => prev.some(message => message.timestamp === lastMsg.timestamp) ? prev : [...prev, lastMsg]);
         setNewMessage('');
       }
-    } catch (error) {
-      toast.error('Failed to send message');
+    } catch (error: any) {
+      toast.error(error?.response?.data?.message || 'Failed to send message');
     } finally {
       setIsSending(false);
     }
@@ -294,7 +294,7 @@ export const OrderChat: React.FC<OrderChatProps> = ({
       if (response.data.success) {
         const updatedOrder = response.data.data;
         setCurrentDeliveryFee(updatedOrder.financials?.deliveryFee || currentDeliveryFee);
-        setMessages(updatedOrder.messages || messages);
+        setMessages(filterMessages(updatedOrder.messages || messages));
         setShowLocationPicker(false);
         toast.success(`Location set! Delivery fee: ${(updatedOrder.financials?.deliveryFee || 500).toLocaleString()} RWF`);
         onOrderUpdated?.();

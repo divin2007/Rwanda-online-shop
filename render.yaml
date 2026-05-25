@@ -115,6 +115,22 @@ services:
       # Internal service secret for authenticated microservice-to-microservice calls
       - key: INTERNAL_SERVICE_SECRET
         fromEnv: INTERNAL_SERVICE_SECRET
+      - key: PAYPACK_CLIENT_ID
+        fromEnv: PAYPACK_CLIENT_ID
+      - key: PAYPACK_CLIENT_SECRET
+        fromEnv: PAYPACK_CLIENT_SECRET
+      - key: PAYPACK_BASE_URL
+        value: "https://payments.paypack.rw/api"
+      - key: PAYPACK_WEBHOOK_MODE
+        value: "production"
+      - key: PAYPACK_WEBHOOK_SECRET
+        fromEnv: PAYPACK_WEBHOOK_SECRET
+      - key: PAYPACK_AUTO_CONFIRM
+        value: "false"
+      - key: PAYPACK_PLATFORM_PHONE
+        fromEnv: PAYPACK_PLATFORM_PHONE
+      - key: ALLOW_LEGACY_PAYMENT_GATEWAYS
+        value: "false"
       - key: MTN_MOMO_API_KEY
         fromEnv: MTN_MOMO_API_KEY
       - key: MTN_MOMO_USER_ID

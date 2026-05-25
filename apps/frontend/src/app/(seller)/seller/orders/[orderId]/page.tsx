@@ -8,11 +8,14 @@ import { OrderChat } from '@/components/ui/OrderChat';
 import { useAuth } from '@/context/AuthContext';
 import { useApi } from '@/hooks/useApi';
 import { orderApi, deliveryApi } from '@/lib/api';
+import { resolveUploadUrl } from '@/lib/uploadUrls';
 import toast from 'react-hot-toast';
 
 type ChatMessage = {
   senderId: string;
   senderRole: 'BUYER' | 'SELLER';
+  channel?: 'ORDER' | 'DELIVERY' | 'DISPUTE';
+  recipientRole?: 'BUYER' | 'SELLER' | 'RIDER' | 'ADMIN';
   content: string;
   imageUrl?: string;
   type?: 'TEXT' | 'QUOTE' | 'COUNTER_QUOTE';
@@ -407,7 +410,7 @@ export default function SellerOrderDetailPage({ params }: { params: Promise<{ or
                          <td className="px-8 py-6">
                             <div className="flex items-center gap-4">
                                <div className="w-12 h-12 bg-[#fcf9f8] border border-[#e0e0e0] flex-shrink-0">
-                                  <img src={item.images?.[0] || 'https://images.unsplash.com/photo-1544441893-675973e31985'} className="w-full h-full object-cover" alt={item.name} />
+                                  <img src={resolveUploadUrl(item.images?.[0], 'product') || 'https://images.unsplash.com/photo-1544441893-675973e31985'} className="w-full h-full object-cover" alt={item.name} />
                                </div>
                                <div>
                                   <p className="text-sm font-sans text-[#1b1c1c]">{item.name || 'Heritage Item'}</p>

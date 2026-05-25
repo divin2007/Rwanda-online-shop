@@ -8,7 +8,7 @@ import { DeliveryGateway } from './delivery.gateway';
 
 const DELIVERY_TRANSITIONS: Record<string, string[]> = {
   [DeliveryStatus.ASSIGNED]: [DeliveryStatus.EN_ROUTE_TO_PICKUP, DeliveryStatus.FAILED],
-  [DeliveryStatus.EN_ROUTE_TO_PICKUP]: [DeliveryStatus.PENDING_HANDOVER, DeliveryStatus.PICKED_UP, DeliveryStatus.FAILED],
+  [DeliveryStatus.EN_ROUTE_TO_PICKUP]: [DeliveryStatus.PENDING_HANDOVER, DeliveryStatus.FAILED],
   [DeliveryStatus.PENDING_HANDOVER]: [DeliveryStatus.PICKED_UP, DeliveryStatus.FAILED],
   [DeliveryStatus.PICKED_UP]: [DeliveryStatus.EN_ROUTE_TO_DROPOFF, DeliveryStatus.DELIVERED, DeliveryStatus.FAILED],
   [DeliveryStatus.EN_ROUTE_TO_DROPOFF]: [DeliveryStatus.DELIVERED, DeliveryStatus.FAILED],
@@ -26,11 +26,22 @@ export class DeliveryService {
   constructor(
     @InjectModel('Delivery') private deliveryModel: Model<any>,
     @InjectModel('RiderProfile') private riderModel: Model<any>,
+    @InjectModel('Transaction') private orderModel: Model<any>,
     @Inject(forwardRef(() => DeliveryGateway))
     private readonly deliveryGateway: DeliveryGateway
   ) {
     this.locationService = new LocationService();
     this.routeService = new RouteService();
+  }
+
+  private normalizeId(value: any): string | null {
+    if (value === null || value === undefined) return null;
+    if (typeof value === 'string') return value;
+    if (typeof value === 'number') return String(value);
+    if (typeof value.toHexString === 'function') return value.toHexString();
+    if (value._id !== undefined && value._id !== value) return this.normalizeId(value._id);
+    if (value.id !== undefined && value.id !== value) return this.normalizeId(value.id);
+    return String(value);
   }
 
   private validateTransition(currentStatus: string, newStatus: string): void {
@@ -261,6 +272,21 @@ export class DeliveryService {
 
     if (actorUserId && actorUserId !== 'internal-service' && newStatus === DeliveryStatus.DELIVERED && String(delivery.rider?.userId || '') !== String(actorUserId)) {
       throw new BadRequestException('Only the assigned rider can complete this delivery');
+    }
+
+    if (newStatus === DeliveryStatus.PICKED_UP && delivery.status !== DeliveryStatus.PICKED_UP) {
+      if (actorUserId && actorUserId !== 'internal-service' && String(delivery.rider?.userId || '') !== String(actorUserId)) {
+        throw new BadRequestException('Only the assigned rider can mark this delivery as picked up');
+      }
+
+      const hasPickupProof = Boolean(delivery.pickup?.pickupPhotoUrl && delivery.pickup?.qrScannedAt && delivery.pickup?.qrPayload);
+      const hasHandoverApproval = Boolean(delivery.pickup?.sellerConfirmed && delivery.pickup?.riderConfirmed);
+      if (!hasPickupProof) {
+        throw new BadRequestException('Pickup requires packaged goods photo and verified stall QR first');
+      }
+      if (!hasHandoverApproval) {
+        throw new BadRequestException('Pickup requires seller and rider handover confirmation');
+      }
     }
 
     this.validateTransition(delivery.status, newStatus);
@@ -512,12 +538,27 @@ export class DeliveryService {
     return updatedDelivery;
   }
 
-  async confirmHandover(id: string, role: 'seller' | 'rider', actorUserId?: string): Promise<any> {
+  async confirmHandover(id: string, role: 'seller' | 'rider', actorUserId?: string, actorRole?: string): Promise<any> {
     const delivery = await this.deliveryModel.findById(id);
     if (!delivery) throw new NotFoundException('Delivery not found');
 
-    if (role === 'rider' && actorUserId && String(delivery.rider?.userId || '') !== String(actorUserId)) {
+    if (delivery.status !== DeliveryStatus.PENDING_HANDOVER) {
+      throw new StateConflictError('Pickup photo and stall QR must be verified before handover confirmation');
+    }
+
+    const normalizedRole = String(actorRole || '').toUpperCase();
+    const isAdmin = normalizedRole === 'ADMIN';
+
+    if (role === 'rider' && actorUserId && !isAdmin && String(delivery.rider?.userId || '') !== String(actorUserId)) {
       throw new BadRequestException('Only the assigned rider can confirm rider handover');
+    }
+
+    if (role === 'seller' && actorUserId && !isAdmin) {
+      const order = await this.orderModel.findById(delivery.orderId).select('seller sellerUserId').lean().exec();
+      const sellerUserId = this.normalizeId(order?.seller?.userId || order?.sellerUserId);
+      if (!sellerUserId || sellerUserId !== this.normalizeId(actorUserId)) {
+        throw new BadRequestException('Only the order seller can confirm seller handover');
+      }
     }
 
     const updateField = role === 'seller' ? 'pickup.sellerConfirmed' : 'pickup.riderConfirmed';

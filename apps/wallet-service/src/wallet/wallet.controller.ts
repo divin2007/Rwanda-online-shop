@@ -17,8 +17,8 @@ import { UserRole } from '@rmf/shared-types';
 
 /**
  * Verify internal microservice calls via shared secret header.
- * Used for wallet creation triggered by user-service during registration,
- * and transaction processing triggered by order-service.
+ * Wallet money movement is disabled; these routes are legacy surfaces
+ * that return read-only history or fail old callers explicitly.
  */
 function verifyInternalSecret(req: any): void {
   const secret = process.env.INTERNAL_SERVICE_SECRET;

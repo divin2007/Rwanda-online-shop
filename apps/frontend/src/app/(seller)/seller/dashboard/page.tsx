@@ -9,6 +9,7 @@ import { Layout } from '@/components/layout/Layout';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import dynamic from 'next/dynamic';
+import { resolveUploadUrl } from '@/lib/uploadUrls';
 import { 
   AlertTriangle, 
   ShieldCheck, 
@@ -40,7 +41,7 @@ export default function SellerDashboardPage() {
   const { data: profile, loading: profileLoading, error: profileError } = useApi(sellerApi, 'get', profileUrl || '');
 
   const { data: productsData } = useApi(productApi, 'get', `/products?sellerId=${user?.id}`);
-  const { data: ordersData, loading: ordersLoading, execute: fetchOrders } = useApi(orderApi, 'get', user?.id ? `/orders?sellerId=${user.id}&status=awaiting_quote,quote_sent,placed,confirmed,preparing,ready_for_pickup` : '', { refreshInterval: SELLER_DASHBOARD_REFRESH_MS });
+  const { data: ordersData, loading: ordersLoading, execute: fetchOrders } = useApi(orderApi, 'get', user?.id ? `/orders?sellerId=${user.id}&status=awaiting_quote,quote_sent,placed,confirmed,preparing,ready_for_pickup,picked_up,in_transit,awaiting_confirmation` : '', { refreshInterval: SELLER_DASHBOARD_REFRESH_MS });
   const { data: walletData } = useApi(walletApi, 'get', `/wallets/me?userId=${user?.id}`);
   const { data: analyticsData } = useApi(adminApi, 'get', `/seller/dashboard/analytics/${user?.id}`);
   const { data: sellerSummary } = useApi(adminApi, 'get', `/analytics/seller/${user?.id}`);
@@ -143,6 +144,9 @@ export default function SellerDashboardPage() {
     confirmed: 'bg-green-50 text-green-700 border-green-200',
     preparing: 'bg-[#f7faf8] text-[#405046] border-[#dfe7e2]',
     ready_for_pickup: 'bg-[#e8f5ed] text-[#ff6b00] border-[#ffedd5]',
+    picked_up: 'bg-[#e8f5ed] text-[#ff6b00] border-[#ffedd5]',
+    in_transit: 'bg-blue-50 text-blue-700 border-blue-200',
+    awaiting_confirmation: 'bg-purple-50 text-purple-700 border-purple-200',
   };
 
   return (
@@ -227,7 +231,7 @@ export default function SellerDashboardPage() {
                       <div className="w-16 h-16 bg-[#fcf9f8] border border-[#e0e0e0] flex-shrink-0 overflow-hidden">
                         {order.products?.[0]?.imageUrl || order.products?.[0]?.images?.[0] ? (
                           <img
-                            src={order.products?.[0]?.imageUrl || order.products?.[0]?.images?.[0]}
+                            src={resolveUploadUrl(order.products?.[0]?.imageUrl || order.products?.[0]?.images?.[0], 'product')}
                             className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
                             alt=""
                           />

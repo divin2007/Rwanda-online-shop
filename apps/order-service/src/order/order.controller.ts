@@ -4,6 +4,7 @@ import {
   Controller,
   ForbiddenException,
   Get,
+  Head,
   Param,
   Patch,
   Post,
@@ -26,6 +27,7 @@ import { AddMessageDto } from './dto/add-message.dto';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { SendQuoteDto } from './dto/send-quote.dto';
 import { OrderService } from './order.service';
+import { PaymentService } from './payment.service';
 
 /**
  * Verify internal microservice calls via shared secret header.
@@ -60,7 +62,10 @@ function verifyInternalOrJwt(req: any): string {
 @UseGuards(JwtAuthGuard)
 @Controller('orders')
 export class OrderController {
-  constructor(private readonly orderService: OrderService) {}
+  constructor(
+    private readonly orderService: OrderService,
+    private readonly paymentService: PaymentService,
+  ) {}
 
   private normalizeId(value: any): string | undefined {
     if (value === null || value === undefined) return undefined;
@@ -206,6 +211,42 @@ export class OrderController {
   async paymentCallback(@Body() body: { orderNumber: string; status: PaymentStatus; transactionRef: string }, @Req() req: any) {
     this.isValidWebhook(req, body);
     const order = await this.orderService.processPaymentCallback(body.orderNumber, body.status, body.transactionRef);
+    return { success: true, data: order };
+  }
+
+  @Public()
+  @Head('payment/paypack/callback')
+  paypackWebhookHealthcheck() {
+    return;
+  }
+
+  @Public()
+  @Post('payment/paypack/callback')
+  async paypackPaymentCallback(@Body() body: any, @Req() req: any) {
+    const isValid = this.paymentService.verifyPaypackWebhook(body, req.headers || {}, req.rawBody);
+    if (!isValid) {
+      throw new UnauthorizedException('Invalid Paypack webhook signature');
+    }
+
+    let event;
+    try {
+      event = this.paymentService.parsePaypackWebhook(body);
+    } catch (error: any) {
+      throw new BadRequestException(error.message || 'Invalid Paypack webhook payload');
+    }
+
+    const status = event.status === 'SUCCESSFUL'
+      ? PaymentStatus.PAID
+      : event.status === 'FAILED'
+        ? PaymentStatus.FAILED
+        : PaymentStatus.PENDING;
+
+    const order = await this.orderService.processPaymentCallbackByReference(
+      status,
+      event.transactionRef,
+      event.orderNumber,
+    );
+
     return { success: true, data: order };
   }
 

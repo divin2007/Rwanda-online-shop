@@ -25,6 +25,7 @@ const QrReader = dynamic(() => import('react-qr-reader').then(mod => mod.QrReade
 
 const ORDER_AUTO_REFRESH_MS = 5000;
 const DELIVERY_AUTO_REFRESH_MS = 5000;
+const REVIEWABLE_ORDER_STATUSES = ['delivered', 'resolved'];
 
 type ReviewTarget = {
   key: string;
@@ -144,10 +145,10 @@ const OrderReviewPanel = ({
   }, [order._id]);
 
   useEffect(() => {
-    if (order.status === 'delivered') fetchReviews();
+    if (REVIEWABLE_ORDER_STATUSES.includes(order.status)) fetchReviews();
   }, [fetchReviews, order.status]);
 
-  if (order.status !== 'delivered') return null;
+  if (!REVIEWABLE_ORDER_STATUSES.includes(order.status)) return null;
 
   const targets: ReviewTarget[] = [
     order.seller?.sellerId && {
@@ -405,6 +406,7 @@ export default function OrderTrackingPage({ params }: { params: Promise<{ orderI
 
   const liveStatus = statusUpdate?.status || statusUpdate?.order?.status;
   const currentStatus = order?.status === 'delivered' ? 'delivered' : (liveStatus || order?.status || 'placed');
+  const isFinalOrderStatus = ['delivered', 'resolved'].includes(currentStatus);
   const showTrackingMap = currentStatus === 'in_transit' || currentStatus === 'picked_up' || 
     (deliveryData && ['assigned', 'en_route_to_pickup', 'pending_handover'].includes(deliveryData.status));
   const showBroadcastMap = !showTrackingMap && (currentStatus === 'placed' || currentStatus === 'confirmed' || currentStatus === 'preparing' || currentStatus === 'ready_for_pickup');
@@ -546,7 +548,7 @@ export default function OrderTrackingPage({ params }: { params: Promise<{ orderI
               ['Buyer payment secured', order.payment?.status === 'paid'],
               ['Seller prepares goods', ['preparing', 'ready_for_pickup', 'picked_up', 'in_transit', 'awaiting_confirmation', 'delivered'].includes(currentStatus)],
               ['Rider photo and QR proof', Boolean(deliveryData?.pickup?.pickupPhotoUrl || pickupPhotoUrl || deliveryData?.pickup?.qrScannedAt)],
-              ['Buyer confirms receipt', currentStatus === 'delivered'],
+              ['Buyer confirms receipt', isFinalOrderStatus],
             ].map(([label, done]) => (
               <div key={label as string} className={`rounded-md border p-3 ${done ? 'border-[#ffedd5] bg-[#e8f5ed]' : 'border-[#e0e0e0] bg-[#fcf9f8]'}`}>
                 <div className={`mb-2 h-2 w-2 rounded-full ${done ? 'bg-[#ff6b00]' : 'bg-[#a7b0aa]'}`} />
@@ -745,16 +747,16 @@ export default function OrderTrackingPage({ params }: { params: Promise<{ orderI
             ) : (
               <Card>
                 <div className="text-center py-10">
-                  {currentStatus === 'delivered' ? (
+                  {isFinalOrderStatus ? (
                     <Sparkles size={64} className="mx-auto text-primary mb-4" />
                   ) : (
                     <Clock size={64} className="mx-auto text-text-secondary mb-4" />
                   )}
                   <h3 className="text-xl font-bold mb-2">
-                    {currentStatus === 'delivered' ? t('track_delivered') : t('track_placed')}
+                    {isFinalOrderStatus ? t('track_delivered') : t('track_placed')}
                   </h3>
                   <p className="text-text-secondary">
-                    {currentStatus === 'delivered' 
+                    {isFinalOrderStatus
                       ? t('track_enjoy') 
                       : t('track_payment_success')}
                   </p>

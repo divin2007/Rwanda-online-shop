@@ -195,7 +195,7 @@ export class DeliveryController {
   async confirmHandover(@Param('id') id: string, @Body() body: { role: 'seller' | 'rider' }, @Request() req: any) {
     const jwtRole = String(req.user?.role || '').toUpperCase();
     const role = jwtRole === 'RIDER' ? 'rider' : jwtRole === 'SELLER' ? 'seller' : body.role;
-    const delivery = await this.deliveryService.confirmHandover(id, role, req.user?.userId);
+    const delivery = await this.deliveryService.confirmHandover(id, role, req.user?.userId, jwtRole);
     return { success: true, data: delivery };
   }
 }

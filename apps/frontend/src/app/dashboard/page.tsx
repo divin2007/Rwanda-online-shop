@@ -9,6 +9,8 @@ import { useWishlist } from '@/context/WishlistContext';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { CreditCard, History, TrendingUp, ShoppingBag } from 'lucide-react';
+import { resolveUploadUrl } from '@/lib/uploadUrls';
+import { getProductUrl } from '@/lib/urls';
 
 const BUYER_DASHBOARD_REFRESH_MS = 10000;
 
@@ -34,7 +36,7 @@ export default function DashboardPage() {
   }, [user, isLoading, router]);
 
   // Fetch Real Data
-  const { data: ordersData, loading: ordersLoading } = useApi(orderApi, 'get', isBuyer && user?.id ? `/orders?buyerId=${user.id}&status=placed,confirmed,preparing,ready_for_pickup,picked_up,in_transit` : '', { refreshInterval: BUYER_DASHBOARD_REFRESH_MS });
+  const { data: ordersData, loading: ordersLoading } = useApi(orderApi, 'get', isBuyer && user?.id ? `/orders?buyerId=${user.id}&status=placed,confirmed,preparing,ready_for_pickup,picked_up,in_transit,awaiting_confirmation` : '', { refreshInterval: BUYER_DASHBOARD_REFRESH_MS });
   const { data: walletData, loading: walletLoading } = useApi(walletApi, 'get', isBuyer && user?.id ? `/wallets/me?userId=${user.id}` : '');
   const { data: transactionsData } = useApi(walletApi, 'get', isBuyer && user?.id ? `/wallets/me/transactions?userId=${user.id}` : '');
   const { data: recommendedData } = useApi(productApi, 'get', isBuyer ? '/products/recommendations/for-me?limit=8' : '');
@@ -144,7 +146,7 @@ export default function DashboardPage() {
                     
                     <div className="flex gap-6 mb-6">
                        <div className="w-24 h-24 bg-background-surface rounded-xl overflow-hidden border border-border-light">
-                          <img src={order.products?.[0]?.images?.[0] || 'https://images.unsplash.com/photo-1590073844006-33379778ae09'} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" alt={order.products?.[0]?.name} />
+                          <img src={resolveUploadUrl(order.products?.[0]?.imageUrl || order.products?.[0]?.images?.[0], 'product') || 'https://images.unsplash.com/photo-1590073844006-33379778ae09'} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" alt={order.products?.[0]?.name} />
                        </div>
                        <div className="flex-grow pt-2">
                           <p className="text-[9px] font-bold text-accent-premium uppercase tracking-widest mb-1">{t('order')} #{order._id.substring(0,8).toUpperCase()}</p>
@@ -215,7 +217,7 @@ export default function DashboardPage() {
               
               <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
                 {wishlist.length > 0 ? wishlist.slice(0, 4).map((item: any, idx: number) => (
-                  <Link key={`${item._id || 'wishlist'}-${idx}`} href={`/product/${item._id}`} className="group relative bg-white border border-border-light rounded-2xl p-3 shadow-sm hover:shadow-md transition-all">
+                  <Link key={`${item._id || 'wishlist'}-${idx}`} href={getProductUrl(item._id)} className="group relative bg-white border border-border-light rounded-2xl p-3 shadow-sm hover:shadow-md transition-all">
                     <div className="aspect-[3/4] bg-background-surface overflow-hidden rounded-xl mb-4 relative">
                       <img src={item.images?.[0]} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" alt={item.name} />
                       <div className="absolute inset-0 bg-primary/0 group-hover:bg-primary/5 transition-colors"></div>
@@ -239,7 +241,7 @@ export default function DashboardPage() {
            </div>
            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6 text-left">
              {recommended.map((prod: any, idx: number) => (
-               <Link href={`/product/${prod._id}`} key={`${prod._id || 'recommended'}-${idx}`} className="group relative bg-white border border-border-light rounded-2xl p-3 shadow-sm hover:shadow-md transition-all flex flex-col">
+               <Link href={getProductUrl(prod._id)} key={`${prod._id || 'recommended'}-${idx}`} className="group relative bg-white border border-border-light rounded-2xl p-3 shadow-sm hover:shadow-md transition-all flex flex-col">
                  <div className="aspect-[4/5] bg-background-surface overflow-hidden rounded-xl mb-4 relative">
                    <img src={prod.images?.[0]} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" alt={prod.name} />
                    <div className="absolute inset-0 bg-primary/0 group-hover:bg-primary/5 transition-colors"></div>

@@ -79,10 +79,6 @@ export class RiderService {
       throw new NotFoundException('Rider profile not found');
     }
 
-    // 4C fix: create wallet with rider role on approval so deductWeeklyInsurance finds them
-    this.ensureWalletExists(updated.userId).catch(e => {
-      this.logger.warn(`Failed to create wallet for rider ${updated.userId}: ${e.message}`);
-    });
     // 4A/3F: sync role to user-service
     this.syncRoleToUserService(updated.userId, 'RIDER').catch(() => {});
     // Notify rider of approval
@@ -275,18 +271,15 @@ export class RiderService {
       }
     }
 
-    // 4B fix: fetch real earnings from wallet-service instead of returning 0
-    let earnings = 0;
-    try {
-      const axios = require('axios');
-      const walletUrl = process.env.WALLET_SERVICE_URL || 'http://localhost:3007/api/v1';
-      const secret = process.env.INTERNAL_SERVICE_SECRET;
-      const headers = secret ? { 'x-internal-service-key': secret } : {};
-      const res = await axios.get(`${walletUrl}/wallets/${userId}/balance`, { headers });
-      earnings = res.data?.data?.totalEarnings || 0;
-    } catch {
-      this.logger.warn(`Could not fetch wallet earnings for rider ${userId}`);
-    }
+    const delivered = await this.deliveryModel.find({
+      'rider.userId': userId,
+      status: 'delivered',
+    }).select('fee deliveryFee riderPayout').lean().exec();
+    const earnings = delivered.reduce((sum: number, delivery: any) => {
+      const payout = Number(delivery.riderPayout ?? 0);
+      const fee = Number(delivery.fee ?? delivery.deliveryFee ?? 0);
+      return sum + (payout > 0 ? payout : Math.round(fee * 0.9));
+    }, 0);
 
     return {
       earnings,
@@ -294,19 +287,6 @@ export class RiderService {
       rating: rider.rating || 5.0,
       drops
     };
-  }
-
-  // Helper: create wallet with rider role on approval
-  private async ensureWalletExists(userId: string) {
-    try {
-      const axios = require('axios');
-      const walletUrl = process.env.WALLET_SERVICE_URL || 'http://localhost:3007/api/v1';
-      const secret = process.env.INTERNAL_SERVICE_SECRET;
-      const headers = secret ? { 'x-internal-service-key': secret } : {};
-      await axios.post(`${walletUrl}/wallets/user/${userId}`, {}, { headers });
-    } catch (e: any) {
-      this.logger.warn(`Failed to ensure wallet exists for rider ${userId}: ${e.message}`);
-    }
   }
 
   private async syncRoleToUserService(userId: string, role: string) {

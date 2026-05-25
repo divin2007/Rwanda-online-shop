@@ -180,7 +180,7 @@ export class CreateOrderDto {
   @IsOptional()
   @IsObject()
   payment?: {
-    method?: 'MTN_MOMO' | 'AIRTEL_MONEY';
+    method?: 'MTN_MOMO' | 'AIRTEL_MONEY' | 'TIGO_CASH';
     [key: string]: any;
   };
 

@@ -48,10 +48,13 @@ import * as express from 'express';
 import { mkdirSync } from 'fs';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create(AppModule, { bodyParser: false });
   
-  app.use(express.json({ limit: '50mb' }));
-  app.use(express.urlencoded({ limit: '50mb', extended: true }));
+  const captureRawBody = (req: any, _res: any, buf: Buffer) => {
+    if (buf?.length) req.rawBody = Buffer.from(buf);
+  };
+  app.use(express.json({ limit: '50mb', verify: captureRawBody }));
+  app.use(express.urlencoded({ limit: '50mb', extended: true, verify: captureRawBody }));
   const uploadRoot = join(process.cwd(), 'uploads');
   if (!existsSync(uploadRoot)) mkdirSync(uploadRoot, { recursive: true });
   app.use('/uploads', express.static(uploadRoot));

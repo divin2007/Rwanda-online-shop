@@ -57,7 +57,7 @@ export class NotificationService {
     'order.preparing': 'Your order is being prepared',
     'order.ready': 'Your order is ready for pickup',
     'order.delivered': 'Your order has been delivered',
-    'refund.processed': 'Refund credited to your wallet',
+    'refund.processed': 'Refund sent to your mobile money number',
     'dispute.manual_review': 'Dispute under review',
     'quote.sent': 'You have received a quote',
     'quote.accepted': 'Quote accepted — payment confirmed',
@@ -97,8 +97,8 @@ export class NotificationService {
         rw: `Komande yawe ${params.orderNumber} yageze. Mwizihirwe!`
       },
       'refund.processed': {
-        en: `Refund of ${params.amount} RWF for order ${params.orderId} has been credited to your wallet.`,
-        rw: `Amafaranga ${params.amount} RWF ya komande ${params.orderId} yasubijwe muri wallet yawe.`
+        en: `Refund of ${params.amount} RWF for order ${params.orderId} has been sent through Paypack to your mobile money number.`,
+        rw: `Amafaranga ${params.amount} RWF ya komande ${params.orderId} yoherejwe kuri Mobile Money yawe biciye muri Paypack.`
       },
       'dispute.manual_review': {
         en: `Order ${params.orderId} requires manual dispute review for ${params.amount} RWF.`,

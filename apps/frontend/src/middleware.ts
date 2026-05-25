@@ -105,10 +105,6 @@ export function middleware(req: NextRequest) {
     subdomain = hostParts[0];
   }
 
-  if (subdomain && (url.pathname === '/product' || url.pathname.startsWith('/product/'))) {
-    return NextResponse.next();
-  }
-
   if (subdomain && cleanHostname.endsWith('.localhost')) {
     const isPlatformRoute = PLATFORM_ROUTES.some(route => 
       url.pathname === route || url.pathname.startsWith(route + '/')

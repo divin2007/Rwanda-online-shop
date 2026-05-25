@@ -88,6 +88,12 @@ export default function SellerEarningsPage() {
     }
     return 0;
   });
+  const paypackSettledTotal = (ledger || [])
+    .filter((tx: any) => tx.account === 'seller_paypack_payout' && tx.status === 'posted')
+    .reduce((sum: number, tx: any) => sum + Number(tx.amount || 0), 0);
+  const paypackPendingTotal = (ledger || [])
+    .filter((tx: any) => tx.account === 'seller_paypack_payout' && tx.status !== 'posted')
+    .reduce((sum: number, tx: any) => sum + Number(tx.amount || 0), 0);
 
   const hasFetched = useRef(false);
   useEffect(() => {
@@ -101,23 +107,7 @@ export default function SellerEarningsPage() {
 
   const requestPayout = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (Number(payoutForm.amount) < 500) return toast.error('Minimum payout is 500 RWF');
-    
-    try {
-      const res = await walletApi.post(`/wallets/user/${user?.id}/payout`, { 
-        amount: Number(payoutForm.amount), 
-        method: 'momo', 
-        recipientPhone: payoutForm.phone 
-      });
-      if (res.data?.success) {
-        toast.success('Payout requested successfully.');
-        setPayoutForm({ amount: '', phone: '' });
-        fetchWallet();
-        fetchLedger();
-      }
-    } catch (err: any) {
-      toast.error(err.response?.data?.error || 'Failed to request payout');
-    }
+    toast('Manual wallet payouts are disabled. Seller payouts are sent automatically through Paypack when orders settle.');
   };
 
   const fetchAndOpenReceipt = async (transactionId: string) => {
@@ -137,11 +127,11 @@ export default function SellerEarningsPage() {
   };
 
   const handleViewReceipt = async (tx: any) => {
-    if (tx.account && tx.account.startsWith('user_wallet')) {
+    if (tx.account === 'seller_paypack_payout' || tx.account === 'seller_paypack_payout_failed') {
       const mockReceipt: ReceiptOrder = {
         _id: tx.transactionId,
         orderNumber: `PAY-${tx.transactionId.substring(0,8).toUpperCase()}`,
-        status: tx.account === 'user_wallet' ? 'delivered' : tx.account === 'user_wallet_failed' ? 'cancelled' : 'placed',
+        status: tx.status === 'posted' ? 'delivered' : tx.status === 'failed' ? 'cancelled' : 'placed',
         createdAt: tx.createdAt,
         buyer: {
           fullName: 'Mobile Money Gateway',
@@ -154,7 +144,7 @@ export default function SellerEarningsPage() {
         products: [
           {
             productId: 'withdrawal',
-            name: 'Mobile Money Cash Out',
+            name: 'Paypack Seller Settlement',
             unitPrice: tx.amount,
             quantity: 1
           }
@@ -170,7 +160,7 @@ export default function SellerEarningsPage() {
         },
         payment: {
           method: 'MTN Mobile Money',
-          status: tx.account === 'user_wallet' ? 'paid' : 'pending',
+          status: tx.status === 'posted' ? 'paid' : 'pending',
           transactionRef: tx.transactionId
         },
         notes: tx.description
@@ -206,19 +196,19 @@ export default function SellerEarningsPage() {
             <div className="bg-[#e05300] text-white p-16 relative overflow-hidden group shadow-2xl border border-[#e0e0e0] rounded-lg">
                <div className="absolute top-0 right-0 w-64 h-64 bg-[#ffd700]/5 rounded-full -mr-32 -mt-32 group-hover:scale-110 transition-transform duration-1000"></div>
                <div className="relative z-10">
-                  <p className="text-[11px] font-black uppercase tracking-[0.4em] text-[#ff6b00] mb-6">Available Liquidity</p>
+                  <p className="text-[11px] font-black uppercase tracking-[0.4em] text-[#ff6b00] mb-6">Paypack Settled</p>
                   <h2 className="text-8xl font-sans tracking-normal mb-16 text-white drop-shadow-2xl">
-                    {walletLoading ? '---' : (wallet?.balance?.toLocaleString() || 0)} <span className="text-3xl not-italic opacity-40 ml-4">RWF</span>
+                    {walletLoading ? '---' : paypackSettledTotal.toLocaleString()} <span className="text-3xl not-italic opacity-40 ml-4">RWF</span>
                   </h2>
                   <div className="flex gap-12 pt-12 border-t border-white/5">
                      <div>
                         <p className="text-[9px] font-bold uppercase tracking-widest opacity-40 mb-2">Total Settled</p>
-                        <p className="text-2xl font-sans text-white/90">{(wallet?.totalEarnings || 0).toLocaleString()} <span className="text-[10px] not-italic opacity-40">RWF</span></p>
+                        <p className="text-2xl font-sans text-white/90">{paypackSettledTotal.toLocaleString()} <span className="text-[10px] not-italic opacity-40">RWF</span></p>
                      </div>
                      <div className="w-px h-12 bg-white/10 mt-2"></div>
                      <div>
                         <p className="text-[9px] font-bold uppercase tracking-widest opacity-40 mb-2">Pending Escrow</p>
-                        <p className="text-2xl font-sans text-white/40">{(wallet?.pendingBalance || 0).toLocaleString()} <span className="text-[10px] not-italic opacity-40">RWF</span></p>
+                        <p className="text-2xl font-sans text-white/40">{paypackPendingTotal.toLocaleString()} <span className="text-[10px] not-italic opacity-40">RWF</span></p>
                      </div>
                   </div>
                </div>
@@ -381,7 +371,7 @@ export default function SellerEarningsPage() {
           {/* Payout Action Sidebar */}
           <div className="space-y-12">
             <div className="bg-white border border-[#e0e0e0] rounded-lg p-10 shadow-2xl">
-              <h3 className="text-[11px] font-black uppercase tracking-[0.4em] text-[#1b1c1c] mb-12">Tactical Liquidation</h3>
+              <h3 className="text-[11px] font-black uppercase tracking-[0.4em] text-[#1b1c1c] mb-12">Paypack Settlement</h3>
               <form onSubmit={requestPayout} className="space-y-8">
                 <div className="space-y-4">
                   <label className="text-[9px] font-black text-[#414844] uppercase tracking-widest opacity-60">Liquidation Amount (RWF)</label>
@@ -416,9 +406,12 @@ export default function SellerEarningsPage() {
                       <span>1.5% Applied</span>
                    </div>
                 </div>
+                <p className="text-center text-[10px] font-bold uppercase tracking-widest text-[#414844]/60">
+                  Manual wallet payouts are disabled. Paypack sends seller payouts automatically.
+                </p>
                 <button 
                   type="submit" 
-                  disabled={!wallet || wallet.balance < 500}
+                  disabled
                   className="w-full rmf-btn-primary py-5 bg-[#ff6b00] hover:bg-[#e05300]"
                 >
                   Initiate Payout →

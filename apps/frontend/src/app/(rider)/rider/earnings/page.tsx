@@ -50,11 +50,11 @@ export default function RiderEarningsPage() {
   };
 
   const handleViewReceipt = async (tx: any) => {
-    if (tx.account && tx.account.startsWith('user_wallet')) {
+    if (tx.account === 'rider_paypack_payout' || tx.account === 'rider_paypack_payout_failed') {
       const mockReceipt: ReceiptOrder = {
         _id: tx.transactionId,
         orderNumber: `PAY-${tx.transactionId.substring(0,8).toUpperCase()}`,
-        status: tx.account === 'user_wallet' ? 'delivered' : tx.account === 'user_wallet_failed' ? 'cancelled' : 'placed',
+        status: tx.status === 'posted' ? 'delivered' : tx.status === 'failed' ? 'cancelled' : 'placed',
         createdAt: tx.createdAt,
         buyer: {
           fullName: 'Mobile Money Gateway',
@@ -67,7 +67,7 @@ export default function RiderEarningsPage() {
         products: [
           {
             productId: 'withdrawal',
-            name: 'Mobile Money Cash Out',
+            name: 'Paypack Rider Settlement',
             unitPrice: tx.amount,
             quantity: 1
           }
@@ -83,7 +83,7 @@ export default function RiderEarningsPage() {
         },
         payment: {
           method: 'MTN Mobile Money',
-          status: tx.account === 'user_wallet' ? 'paid' : 'pending',
+          status: tx.status === 'posted' ? 'paid' : 'pending',
           transactionRef: tx.transactionId
         },
         notes: tx.description
@@ -96,29 +96,7 @@ export default function RiderEarningsPage() {
 
   const handlePayoutRequest = async (e: React.FormEvent) => {
     e.preventDefault();
-    const amount = Number(payoutAmount);
-    if (amount < 1000) return toast.error('Minimum payout is 1,000 RWF');
-    if (amount > (wallet?.balance || 0)) return toast.error('Amount exceeds your available balance');
-    if (!payoutPhone.match(/^07[2389]\d{7}$/)) return toast.error('Enter a valid Rwandan MoMo number (e.g. 0788000000)');
-
-    setIsRequestingPayout(true);
-    try {
-      await walletApi.post('/wallets/payout-request', {
-        userId: user?.id,
-        amount,
-        momoNumber: payoutPhone,
-        note: 'Rider payout request via RMF'
-      });
-      toast.success('Payout request submitted! Funds will arrive within 24 hours.');
-      setIsPayoutModalOpen(false);
-      setPayoutAmount('');
-      setPayoutPhone('');
-      fetchWallet();
-    } catch (e: any) {
-      toast.error(e?.response?.data?.message || 'Payout request failed');
-    } finally {
-      setIsRequestingPayout(false);
-    }
+    toast('Manual wallet payouts are disabled. Rider payouts are sent automatically through Paypack when deliveries settle.');
   };
 
   // Stats derived from ledger
@@ -128,6 +106,9 @@ export default function RiderEarningsPage() {
     const now = new Date();
     return txDate.getMonth() === now.getMonth() && txDate.getFullYear() === now.getFullYear() && tx.type === 'credit';
   }).reduce((sum: number, tx: any) => sum + tx.amount, 0) || 0;
+  const paypackSettledTotal = ledger?.filter((tx: any) => (
+    tx.account === 'rider_paypack_payout' && tx.status === 'posted'
+  )).reduce((sum: number, tx: any) => sum + Number(tx.amount || 0), 0) || 0;
 
   return (
     <Layout>
@@ -237,7 +218,7 @@ export default function RiderEarningsPage() {
             <h1 className="text-2xl font-heading font-bold text-text-primary">{t('rider_earnings')}</h1>
             <Button
               onClick={() => setIsPayoutModalOpen(true)}
-              disabled={!wallet?.balance || wallet.balance < 1000}
+              disabled
               className="flex items-center gap-2"
             >
               <Wallet size={16} /> {t('rider_request_payout')}
@@ -247,14 +228,14 @@ export default function RiderEarningsPage() {
           {/* Stats Cards */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
             <Card className="bg-gradient-to-br from-primary to-primary/80 text-white">
-              <p className="text-white/70 text-xs uppercase tracking-wider mb-1">Available Balance</p>
-              <h2 className="text-3xl font-bold">{(wallet?.balance || 0).toLocaleString()}</h2>
-              <p className="text-white/70 text-sm mt-1">RWF</p>
+              <p className="text-white/70 text-xs uppercase tracking-wider mb-1">Paid by Paypack</p>
+              <h2 className="text-3xl font-bold">{paypackSettledTotal.toLocaleString()}</h2>
+              <p className="text-white/70 text-sm mt-1">RWF settled</p>
             </Card>
             <Card>
               <p className="text-text-secondary text-xs uppercase tracking-wider mb-1">Total Career</p>
-              <h2 className="text-3xl font-bold text-text-primary">{(wallet?.totalEarnings || 0).toLocaleString()}</h2>
-              <p className="text-text-muted text-sm mt-1">RWF earned</p>
+              <h2 className="text-3xl font-bold text-text-primary">{paypackSettledTotal.toLocaleString()}</h2>
+              <p className="text-text-muted text-sm mt-1">RWF settled</p>
             </Card>
             <Card>
               <p className="text-text-secondary text-xs uppercase tracking-wider mb-1">This Month</p>

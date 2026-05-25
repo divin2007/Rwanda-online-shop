@@ -1,5 +1,5 @@
 'use client';
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Layout } from '@/components/layout/Layout';
 import Link from 'next/link';
 import { Mail, Phone, MapPin, ShieldAlert, Send, CheckCircle2 } from 'lucide-react';
@@ -11,6 +11,15 @@ export default function ContactPage() {
   const [loading, setLoading] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
+
+  useEffect(() => {
+    if (!user) return;
+    setFormData((current) => ({
+      ...current,
+      name: current.name || user.fullName || '',
+      email: current.email || user.email || '',
+    }));
+  }, [user]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -30,12 +39,19 @@ export default function ContactPage() {
         }),
       });
 
-      if (!res.ok) {
-        throw new Error('Failed to send message');
+      const payload = await res.json().catch(() => null);
+
+      if (!res.ok || payload?.success === false) {
+        throw new Error(payload?.message || payload?.error || 'Failed to send message');
       }
 
       setSuccessMessage('Your message has been sent successfully. We will get back to you shortly.');
-      setFormData({ name: '', email: '', subject: '', message: '' });
+      setFormData({
+        name: user?.fullName || formData.name,
+        email: user?.email || formData.email,
+        subject: '',
+        message: '',
+      });
     } catch (err: any) {
       setErrorMessage(err.message || 'Something went wrong. Please try again later.');
     } finally {

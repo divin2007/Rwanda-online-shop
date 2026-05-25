@@ -298,25 +298,10 @@ export class UsersService {
     const userObj = savedUser.toObject();
     delete userObj.passwordHash;
 
-    // 1B fix: ensure wallet exists for the new user (fire-and-forget)
-    this.ensureWallet(userObj._id.toString()).catch(() => {});
     // 1D fix: send welcome notification (fire-and-forget)
     this.sendWelcomeNotification(userObj._id.toString(), userObj.fullName).catch(() => {});
 
     return userObj;
-  }
-
-  // 1B fix: create wallet for new user so balance queries never fail
-  private async ensureWallet(userId: string) {
-    try {
-      const axios = require('axios');
-      const walletUrl = process.env.WALLET_SERVICE_URL || 'http://localhost:3007/api/v1';
-      const secret = process.env.INTERNAL_SERVICE_SECRET;
-      const headers = secret ? { 'x-internal-service-key': secret } : {};
-      await axios.post(`${walletUrl}/wallets/user/${userId}`, {}, { headers });
-    } catch (e: any) {
-      console.warn(`[UsersService] Wallet init for ${userId}: ${e.message}`);
-    }
   }
 
   // 1D fix: send welcome notification after registration

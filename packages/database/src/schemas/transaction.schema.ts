@@ -57,6 +57,28 @@ export const transactionSchema = new Schema({
     transactionRef: { type: String },
     paidAt: { type: Date }
   },
+  settlement: {
+    status: { type: String, enum: ['pending', 'partial', 'settled', 'failed'], default: 'pending' },
+    sellerStatus: { type: String, enum: ['pending', 'paid', 'failed', 'skipped'], default: 'pending' },
+    sellerPayoutRef: { type: String },
+    sellerSettledAt: { type: Date },
+    riderStatus: { type: String, enum: ['pending', 'pending_rider_assignment', 'paid', 'failed', 'skipped'], default: 'pending' },
+    riderPayoutRef: { type: String },
+    riderSettledAt: { type: Date },
+    platformStatus: { type: String, enum: ['pending', 'paid', 'failed', 'skipped'], default: 'pending' },
+    platformCommissionRef: { type: String },
+    platformSettledAt: { type: Date },
+    lastError: { type: String },
+    updatedAt: { type: Date }
+  },
+  refund: {
+    status: { type: String, enum: ['none', 'pending', 'refunded', 'failed'], default: 'none' },
+    amount: { type: Number },
+    transactionRef: { type: String },
+    reason: { type: String },
+    refundedAt: { type: Date },
+    error: { type: String }
+  },
   notes: { type: String },
   status: { type: String, enum: Object.values(OrderStatus), default: OrderStatus.PLACED },
   schedule: {

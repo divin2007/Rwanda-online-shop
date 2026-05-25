@@ -38,5 +38,18 @@ export function getMarketUrl(slug: string): string {
  * Product details are platform-wide, so keep them off market subdomains/slug paths.
  */
 export function getProductUrl(productId: string): string {
+  if (typeof window !== 'undefined') {
+    const { protocol, hostname, port } = window.location;
+    const portSuffix = port ? `:${port}` : '';
+
+    if (hostname.endsWith('.localhost')) {
+      return `${protocol}//localhost${portSuffix}/product/${productId}`;
+    }
+
+    if (hostname.endsWith('.rwshop.org') && hostname !== 'rwshop.org' && hostname !== 'www.rwshop.org') {
+      return `https://rwshop.org/product/${productId}`;
+    }
+  }
+
   return `/product/${productId}`;
 }

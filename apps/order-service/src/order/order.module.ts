@@ -1,6 +1,6 @@
 import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
-import { transactionSchema, marketSchema, sellerProfileSchema, userSchema, productSchema, deliverySchema } from '@rmf/database';
+import { transactionSchema, marketSchema, sellerProfileSchema, userSchema, productSchema, deliverySchema, ledgerEntrySchema } from '@rmf/database';
 import { OrderService } from './order.service';
 import { OrderController } from './order.controller';
 import { FraudDetectionService } from './fraud-detection.service';
@@ -20,6 +20,7 @@ import { PaymentService } from './payment.service';
       { name: 'User', schema: userSchema },
       { name: 'Product', schema: productSchema },
       { name: 'Delivery', schema: deliverySchema },
+      { name: 'LedgerEntry', schema: ledgerEntrySchema },
     ]),
     MulterModule.register({})
   ],
