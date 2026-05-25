@@ -1,8 +1,9 @@
-import { Controller, Get } from '@nestjs/common';
+import { Controller, Get, SetMetadata } from '@nestjs/common';
 import { HealthCheck, HealthCheckService, HealthIndicatorResult, MongooseHealthIndicator } from '@nestjs/terminus';
 import { Socket } from 'net';
 
 @Controller('health')
+@SetMetadata('isPublic', true)
 export class HealthController {
   constructor(
     private health: HealthCheckService,
