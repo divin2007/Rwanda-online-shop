@@ -1,256 +1,434 @@
 services:
   - type: web
     name: rmf-user-service
-    env: node
-    buildCommand: ./build.sh user-service
-    startCommand: ./start.sh user-service
+    runtime: node
+    plan: starter
+    buildCommand: bash ./build.sh user-service
+    startCommand: bash ./start.sh user-service
+    healthCheckPath: /api/v1/health
+    autoDeploy: true
     envVars:
       - key: NODE_VERSION
         value: "20"
+      - key: NODE_ENV
+        value: production
       - key: MONGODB_URI
-        fromEnv: MONGODB_URI
+        sync: false
       - key: JWT_SECRET
-        fromEnv: JWT_SECRET
+        generateValue: true
+      - key: INTERNAL_SERVICE_SECRET
+        generateValue: true
       - key: CORS_ORIGIN
-        fromEnv: CORS_ORIGIN
-      - key: GOOGLE_CLIENT_ID
-        fromEnv: GOOGLE_CLIENT_ID
-      - key: GOOGLE_CLIENT_SECRET
-        fromEnv: GOOGLE_CLIENT_SECRET
-      - key: GOOGLE_CALLBACK_URL
-        fromEnv: GOOGLE_CALLBACK_URL
+        value: "https://www.rwshop.org,https://rwshop.org,https://rmf-frontend.onrender.com"
       - key: FRONTEND_URL
         value: "https://www.rwshop.org"
+      - key: NOTIFICATION_SERVICE_URL
+        value: "https://rmf-notification-service.onrender.com/api/v1"
+      - key: GOOGLE_CLIENT_ID
+        sync: false
+      - key: GOOGLE_CLIENT_SECRET
+        sync: false
+      - key: GOOGLE_CALLBACK_URL
+        value: "https://rmf-user-service.onrender.com/api/v1/auth/google/callback"
 
   - type: web
     name: rmf-market-service
-    env: node
-    buildCommand: ./build.sh market-service
-    startCommand: ./start.sh market-service
+    runtime: node
+    plan: starter
+    buildCommand: bash ./build.sh market-service
+    startCommand: bash ./start.sh market-service
+    healthCheckPath: /api/v1/health
+    autoDeploy: true
     envVars:
       - key: NODE_VERSION
         value: "20"
+      - key: NODE_ENV
+        value: production
       - key: MONGODB_URI
-        fromEnv: MONGODB_URI
-      - key: JWT_SECRET
-        fromEnv: JWT_SECRET
-      - key: CORS_ORIGIN
-        fromEnv: CORS_ORIGIN
-      # Required for market list caching (M3 fix — was missing)
+        fromService:
+          type: web
+          name: rmf-user-service
+          envVarKey: MONGODB_URI
       - key: REDIS_URL
-        fromEnv: REDIS_URL
+        sync: false
+      - key: JWT_SECRET
+        fromService:
+          type: web
+          name: rmf-user-service
+          envVarKey: JWT_SECRET
+      - key: CORS_ORIGIN
+        value: "https://www.rwshop.org,https://rwshop.org,https://rmf-frontend.onrender.com"
+      - key: MARKET_SERVICE_PUBLIC_URL
+        value: "https://rmf-market-service.onrender.com"
+      - key: PRODUCT_SERVICE_PUBLIC_URL
+        value: "https://rmf-product-service.onrender.com"
 
   - type: web
     name: rmf-product-service
-    env: node
-    buildCommand: ./build.sh product-service
-    startCommand: ./start.sh product-service
+    runtime: node
+    plan: starter
+    buildCommand: bash ./build.sh product-service
+    startCommand: bash ./start.sh product-service
+    healthCheckPath: /api/v1/health
+    autoDeploy: true
     envVars:
       - key: NODE_VERSION
         value: "20"
+      - key: NODE_ENV
+        value: production
       - key: MONGODB_URI
-        fromEnv: MONGODB_URI
+        fromService:
+          type: web
+          name: rmf-user-service
+          envVarKey: MONGODB_URI
       - key: REDIS_URL
-        fromEnv: REDIS_URL
+        sync: false
       - key: JWT_SECRET
-        fromEnv: JWT_SECRET
+        fromService:
+          type: web
+          name: rmf-user-service
+          envVarKey: JWT_SECRET
+      - key: INTERNAL_SERVICE_SECRET
+        fromService:
+          type: web
+          name: rmf-user-service
+          envVarKey: INTERNAL_SERVICE_SECRET
       - key: CORS_ORIGIN
-        fromEnv: CORS_ORIGIN
+        value: "https://www.rwshop.org,https://rwshop.org,https://rmf-frontend.onrender.com"
+      - key: PRODUCT_SERVICE_PUBLIC_URL
+        value: "https://rmf-product-service.onrender.com"
+      - key: MARKET_SERVICE_PUBLIC_URL
+        value: "https://rmf-market-service.onrender.com"
 
   - type: web
     name: rmf-seller-service
-    env: node
-    buildCommand: ./build.sh seller-service
-    startCommand: ./start.sh seller-service
+    runtime: node
+    plan: starter
+    buildCommand: bash ./build.sh seller-service
+    startCommand: bash ./start.sh seller-service
+    healthCheckPath: /api/v1/health
+    autoDeploy: true
     envVars:
       - key: NODE_VERSION
         value: "20"
+      - key: NODE_ENV
+        value: production
       - key: MONGODB_URI
-        fromEnv: MONGODB_URI
+        fromService:
+          type: web
+          name: rmf-user-service
+          envVarKey: MONGODB_URI
       - key: JWT_SECRET
-        fromEnv: JWT_SECRET
+        fromService:
+          type: web
+          name: rmf-user-service
+          envVarKey: JWT_SECRET
+      - key: INTERNAL_SERVICE_SECRET
+        fromService:
+          type: web
+          name: rmf-user-service
+          envVarKey: INTERNAL_SERVICE_SECRET
       - key: CORS_ORIGIN
-        fromEnv: CORS_ORIGIN
+        value: "https://www.rwshop.org,https://rwshop.org,https://rmf-frontend.onrender.com"
+      - key: USER_SERVICE_URL
+        value: "https://rmf-user-service.onrender.com/api/v1"
+      - key: NOTIFICATION_SERVICE_URL
+        value: "https://rmf-notification-service.onrender.com/api/v1"
+      - key: SELLER_SERVICE_PUBLIC_URL
+        value: "https://rmf-seller-service.onrender.com"
 
   - type: web
     name: rmf-rider-service
-    env: node
-    buildCommand: ./build.sh rider-service
-    startCommand: ./start.sh rider-service
+    runtime: node
+    plan: starter
+    buildCommand: bash ./build.sh rider-service
+    startCommand: bash ./start.sh rider-service
+    healthCheckPath: /api/v1/health
+    autoDeploy: true
     envVars:
       - key: NODE_VERSION
         value: "20"
+      - key: NODE_ENV
+        value: production
       - key: MONGODB_URI
-        fromEnv: MONGODB_URI
+        fromService:
+          type: web
+          name: rmf-user-service
+          envVarKey: MONGODB_URI
       - key: JWT_SECRET
-        fromEnv: JWT_SECRET
+        fromService:
+          type: web
+          name: rmf-user-service
+          envVarKey: JWT_SECRET
+      - key: INTERNAL_SERVICE_SECRET
+        fromService:
+          type: web
+          name: rmf-user-service
+          envVarKey: INTERNAL_SERVICE_SECRET
       - key: CORS_ORIGIN
-        fromEnv: CORS_ORIGIN
+        value: "https://www.rwshop.org,https://rwshop.org,https://rmf-frontend.onrender.com"
+      - key: USER_SERVICE_URL
+        value: "https://rmf-user-service.onrender.com/api/v1"
+      - key: NOTIFICATION_SERVICE_URL
+        value: "https://rmf-notification-service.onrender.com/api/v1"
+      - key: RIDER_SERVICE_PUBLIC_URL
+        value: "https://rmf-rider-service.onrender.com"
 
   - type: web
     name: rmf-order-service
-    env: node
-    buildCommand: ./build.sh order-service
-    startCommand: ./start.sh order-service
+    runtime: node
+    plan: starter
+    buildCommand: bash ./build.sh order-service
+    startCommand: bash ./start.sh order-service
+    healthCheckPath: /api/v1/health
+    autoDeploy: true
     envVars:
       - key: NODE_VERSION
         value: "20"
+      - key: NODE_ENV
+        value: production
       - key: MONGODB_URI
-        fromEnv: MONGODB_URI
+        fromService:
+          type: web
+          name: rmf-user-service
+          envVarKey: MONGODB_URI
       - key: JWT_SECRET
-        fromEnv: JWT_SECRET
-      - key: CORS_ORIGIN
-        fromEnv: CORS_ORIGIN
-      - key: DELIVERY_SERVICE_URL
-        value: "https://rmf-delivery-service.onrender.com"
-      - key: PRODUCT_SERVICE_URL
-        value: "https://rmf-product-service.onrender.com"
-      - key: WALLET_SERVICE_URL
-        value: "https://rmf-wallet-service.onrender.com"
-      - key: MARKET_SERVICE_URL
-        value: "https://rmf-market-service.onrender.com"
-      # Required for order notifications (M2 fix — was missing, caused silent failures)
-      - key: NOTIFICATION_SERVICE_URL
-        value: "https://rmf-notification-service.onrender.com"
-      # Internal service secret for authenticated microservice-to-microservice calls
+        fromService:
+          type: web
+          name: rmf-user-service
+          envVarKey: JWT_SECRET
       - key: INTERNAL_SERVICE_SECRET
-        fromEnv: INTERNAL_SERVICE_SECRET
+        fromService:
+          type: web
+          name: rmf-user-service
+          envVarKey: INTERNAL_SERVICE_SECRET
+      - key: CORS_ORIGIN
+        value: "https://www.rwshop.org,https://rwshop.org,https://rmf-frontend.onrender.com"
+      - key: ORDER_SERVICE_PUBLIC_URL
+        value: "https://rmf-order-service.onrender.com"
+      - key: DELIVERY_SERVICE_URL
+        value: "https://rmf-delivery-service.onrender.com/api/v1"
+      - key: PRODUCT_SERVICE_URL
+        value: "https://rmf-product-service.onrender.com/api/v1"
+      - key: WALLET_SERVICE_URL
+        value: "https://rmf-wallet-service.onrender.com/api/v1"
+      - key: MARKET_SERVICE_URL
+        value: "https://rmf-market-service.onrender.com/api/v1"
+      - key: NOTIFICATION_SERVICE_URL
+        value: "https://rmf-notification-service.onrender.com/api/v1"
       - key: PAYPACK_CLIENT_ID
-        fromEnv: PAYPACK_CLIENT_ID
+        sync: false
       - key: PAYPACK_CLIENT_SECRET
-        fromEnv: PAYPACK_CLIENT_SECRET
+        sync: false
       - key: PAYPACK_BASE_URL
         value: "https://payments.paypack.rw/api"
       - key: PAYPACK_WEBHOOK_MODE
-        value: "production"
+        value: production
       - key: PAYPACK_WEBHOOK_SECRET
-        fromEnv: PAYPACK_WEBHOOK_SECRET
+        sync: false
       - key: PAYPACK_AUTO_CONFIRM
         value: "false"
       - key: PAYPACK_PLATFORM_PHONE
-        fromEnv: PAYPACK_PLATFORM_PHONE
+        sync: false
       - key: ALLOW_LEGACY_PAYMENT_GATEWAYS
         value: "false"
       - key: MTN_MOMO_API_KEY
-        fromEnv: MTN_MOMO_API_KEY
+        sync: false
       - key: MTN_MOMO_USER_ID
-        fromEnv: MTN_MOMO_USER_ID
+        sync: false
       - key: MTN_MOMO_API_SECRET
-        fromEnv: MTN_MOMO_API_SECRET
+        sync: false
       - key: MTN_MOMO_TARGET_ENV
-        fromEnv: MTN_MOMO_TARGET_ENV
+        value: mtnrwanda
       - key: AIRTEL_MONEY_API_KEY
-        fromEnv: AIRTEL_MONEY_API_KEY
+        sync: false
       - key: AIRTEL_MONEY_SECRET
-        fromEnv: AIRTEL_MONEY_SECRET
+        sync: false
       - key: AIRTEL_MONEY_TARGET_ENV
-        fromEnv: AIRTEL_MONEY_TARGET_ENV
-      # Configurable fraud threshold (MD4 fix)
+        value: production
       - key: FRAUD_HIGH_VALUE_THRESHOLD
         value: "2000000"
-      # Configurable delivery fee rate (M9 fix)
       - key: DELIVERY_FEE_PER_5KM
         value: "500"
 
   - type: web
     name: rmf-wallet-service
-    env: node
-    buildCommand: ./build.sh wallet-service
-    startCommand: ./start.sh wallet-service
+    runtime: node
+    plan: starter
+    buildCommand: bash ./build.sh wallet-service
+    startCommand: bash ./start.sh wallet-service
+    healthCheckPath: /api/v1/health
+    autoDeploy: true
     envVars:
       - key: NODE_VERSION
         value: "20"
+      - key: NODE_ENV
+        value: production
       - key: MONGODB_URI
-        fromEnv: MONGODB_URI
+        fromService:
+          type: web
+          name: rmf-user-service
+          envVarKey: MONGODB_URI
       - key: JWT_SECRET
-        fromEnv: JWT_SECRET
-      - key: CORS_ORIGIN
-        fromEnv: CORS_ORIGIN
+        fromService:
+          type: web
+          name: rmf-user-service
+          envVarKey: JWT_SECRET
       - key: INTERNAL_SERVICE_SECRET
-        fromEnv: INTERNAL_SERVICE_SECRET
+        fromService:
+          type: web
+          name: rmf-user-service
+          envVarKey: INTERNAL_SERVICE_SECRET
+      - key: CORS_ORIGIN
+        value: "https://www.rwshop.org,https://rwshop.org,https://rmf-frontend.onrender.com"
 
   - type: web
     name: rmf-delivery-service
-    env: node
-    buildCommand: ./build.sh delivery-service
-    startCommand: ./start.sh delivery-service
+    runtime: node
+    plan: starter
+    buildCommand: bash ./build.sh delivery-service
+    startCommand: bash ./start.sh delivery-service
+    healthCheckPath: /api/v1/health
+    autoDeploy: true
     envVars:
       - key: NODE_VERSION
         value: "20"
+      - key: NODE_ENV
+        value: production
       - key: MONGODB_URI
-        fromEnv: MONGODB_URI
+        fromService:
+          type: web
+          name: rmf-user-service
+          envVarKey: MONGODB_URI
       - key: JWT_SECRET
-        fromEnv: JWT_SECRET
-      - key: CORS_ORIGIN
-        fromEnv: CORS_ORIGIN
-      # WebSocket CORS — must list all frontend origins (M1 fix)
-      - key: ALLOWED_ORIGINS
-        value: "https://www.rwshop.org,https://rwshop.org"
-      # Needed for delivery→order status sync
-      - key: ORDER_SERVICE_URL
-        value: "https://rmf-order-service.onrender.com"
-      - key: NOTIFICATION_SERVICE_URL
-        value: "https://rmf-notification-service.onrender.com"
+        fromService:
+          type: web
+          name: rmf-user-service
+          envVarKey: JWT_SECRET
       - key: INTERNAL_SERVICE_SECRET
-        fromEnv: INTERNAL_SERVICE_SECRET
+        fromService:
+          type: web
+          name: rmf-user-service
+          envVarKey: INTERNAL_SERVICE_SECRET
+      - key: CORS_ORIGIN
+        value: "https://www.rwshop.org,https://rwshop.org,https://rmf-frontend.onrender.com"
+      - key: ALLOWED_ORIGINS
+        value: "https://www.rwshop.org,https://rwshop.org,https://rmf-frontend.onrender.com"
+      - key: DELIVERY_SERVICE_PUBLIC_URL
+        value: "https://rmf-delivery-service.onrender.com"
+      - key: ORDER_SERVICE_URL
+        value: "https://rmf-order-service.onrender.com/api/v1"
+      - key: NOTIFICATION_SERVICE_URL
+        value: "https://rmf-notification-service.onrender.com/api/v1"
 
   - type: web
     name: rmf-notification-service
-    env: node
-    buildCommand: ./build.sh notification-service
-    startCommand: ./start.sh notification-service
+    runtime: node
+    plan: starter
+    buildCommand: bash ./build.sh notification-service
+    startCommand: bash ./start.sh notification-service
+    healthCheckPath: /api/v1/health
+    autoDeploy: true
     envVars:
       - key: NODE_VERSION
         value: "20"
+      - key: NODE_ENV
+        value: production
       - key: MONGODB_URI
-        fromEnv: MONGODB_URI
-      - key: SENDGRID_API_KEY
-        fromEnv: SENDGRID_API_KEY
+        fromService:
+          type: web
+          name: rmf-user-service
+          envVarKey: MONGODB_URI
       - key: JWT_SECRET
-        fromEnv: JWT_SECRET
-      - key: CORS_ORIGIN
-        fromEnv: CORS_ORIGIN
+        fromService:
+          type: web
+          name: rmf-user-service
+          envVarKey: JWT_SECRET
       - key: INTERNAL_SERVICE_SECRET
-        fromEnv: INTERNAL_SERVICE_SECRET
+        fromService:
+          type: web
+          name: rmf-user-service
+          envVarKey: INTERNAL_SERVICE_SECRET
+      - key: CORS_ORIGIN
+        value: "https://www.rwshop.org,https://rwshop.org,https://rmf-frontend.onrender.com"
+      - key: SENDGRID_API_KEY
+        sync: false
+      - key: SMTP_HOST
+        sync: false
+      - key: SMTP_PORT
+        sync: false
+      - key: SMTP_USER
+        sync: false
+      - key: SMTP_PASS
+        sync: false
 
   - type: web
     name: rmf-review-service
-    env: node
-    buildCommand: ./build.sh review-service
-    startCommand: ./start.sh review-service
+    runtime: node
+    plan: starter
+    buildCommand: bash ./build.sh review-service
+    startCommand: bash ./start.sh review-service
+    healthCheckPath: /api/v1/health
+    autoDeploy: true
     envVars:
       - key: NODE_VERSION
         value: "20"
+      - key: NODE_ENV
+        value: production
       - key: MONGODB_URI
-        fromEnv: MONGODB_URI
+        fromService:
+          type: web
+          name: rmf-user-service
+          envVarKey: MONGODB_URI
       - key: JWT_SECRET
-        fromEnv: JWT_SECRET
+        fromService:
+          type: web
+          name: rmf-user-service
+          envVarKey: JWT_SECRET
       - key: CORS_ORIGIN
-        fromEnv: CORS_ORIGIN
+        value: "https://www.rwshop.org,https://rwshop.org,https://rmf-frontend.onrender.com"
 
   - type: web
     name: rmf-admin-service
-    env: node
-    buildCommand: ./build.sh admin-service
-    startCommand: ./start.sh admin-service
+    runtime: node
+    plan: starter
+    buildCommand: bash ./build.sh admin-service
+    startCommand: bash ./start.sh admin-service
+    healthCheckPath: /api/v1/health
+    autoDeploy: true
     envVars:
       - key: NODE_VERSION
         value: "20"
+      - key: NODE_ENV
+        value: production
       - key: MONGODB_URI
-        fromEnv: MONGODB_URI
+        fromService:
+          type: web
+          name: rmf-user-service
+          envVarKey: MONGODB_URI
       - key: JWT_SECRET
-        fromEnv: JWT_SECRET
+        fromService:
+          type: web
+          name: rmf-user-service
+          envVarKey: JWT_SECRET
       - key: CORS_ORIGIN
-        fromEnv: CORS_ORIGIN
+        value: "https://www.rwshop.org,https://rwshop.org,https://rmf-frontend.onrender.com"
 
   - type: web
     name: rmf-frontend
-    env: node
-    buildCommand: ./build.sh frontend
-    startCommand: "cd apps/frontend && npx next start"
+    runtime: node
+    plan: starter
+    buildCommand: bash ./build.sh frontend
+    startCommand: cd apps/frontend && npx next start -H 0.0.0.0 -p $PORT
+    healthCheckPath: /
+    autoDeploy: true
     envVars:
       - key: NODE_VERSION
         value: "20"
+      - key: NODE_ENV
+        value: production
+      - key: NEXT_PUBLIC_SITE_URL
+        value: "https://www.rwshop.org"
       - key: NEXT_PUBLIC_USER_SERVICE_URL
         value: "https://rmf-user-service.onrender.com"
       - key: NEXT_PUBLIC_MARKET_SERVICE_URL
@@ -273,6 +451,5 @@ services:
         value: "https://rmf-review-service.onrender.com"
       - key: NEXT_PUBLIC_ADMIN_SERVICE_URL
         value: "https://rmf-admin-service.onrender.com"
-      # Max API retries on network errors (N1 fix — was falling back to hardcoded 2)
       - key: NEXT_PUBLIC_API_MAX_RETRIES
         value: "3"

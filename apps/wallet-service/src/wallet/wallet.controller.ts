@@ -22,7 +22,9 @@ import { UserRole } from '@rmf/shared-types';
  */
 function verifyInternalSecret(req: any): void {
   const secret = process.env.INTERNAL_SERVICE_SECRET;
-  if (!secret) return; // Dev mode — skip check
+  if (!secret) {
+    throw new UnauthorizedException('INTERNAL_SERVICE_SECRET must be configured for internal wallet-service access');
+  }
   const provided = req.headers?.['x-internal-service-key'];
   if (provided !== secret) {
     throw new UnauthorizedException('Invalid internal service key');

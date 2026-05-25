@@ -58,6 +58,35 @@ export class DeliveryService {
     return delivery;
   }
 
+  async canUserViewDelivery(delivery: any, userId: string, role?: string): Promise<boolean> {
+    const actorId = this.normalizeId(userId);
+    const normalizedRole = String(role || '').toUpperCase();
+    if (!actorId) return false;
+    if (normalizedRole === 'ADMIN') return true;
+
+    const riderUserId = this.normalizeId(delivery?.rider?.userId);
+    if (normalizedRole === 'RIDER' && riderUserId && riderUserId === actorId) {
+      return true;
+    }
+
+    const orderId = this.normalizeId(delivery?.orderId);
+    if (!orderId) return false;
+
+    const order = await this.orderModel
+      .findById(orderId)
+      .select('buyer buyerId seller sellerUserId')
+      .lean()
+      .exec();
+    if (!order) return false;
+
+    const buyerId = this.normalizeId(order.buyer?.userId || order.buyerId);
+    const sellerId = this.normalizeId(order.seller?.userId || order.sellerUserId);
+
+    if (normalizedRole === 'BUYER') return Boolean(buyerId && buyerId === actorId);
+    if (normalizedRole === 'SELLER') return Boolean(sellerId && sellerId === actorId);
+    return Boolean((buyerId && buyerId === actorId) || (sellerId && sellerId === actorId));
+  }
+
   async calculateDeliveryFee(from: Coordinates, to: Coordinates, weightFactor: number = 1): Promise<{ fee: number, route: any }> {
     const route = await this.routeService.getOptimizedRoute(from, to);
     
@@ -389,13 +418,17 @@ export class DeliveryService {
     return updatedDelivery;
   }
 
-  async streamLocation(id: string, coords: Coordinates): Promise<any> {
+  async streamLocation(id: string, coords: Coordinates, actorUserId?: string, actorRole?: string): Promise<any> {
     if (!this.locationService.validateCoordinates(coords)) {
       throw new BadRequestException('Invalid coordinates');
     }
 
     const delivery = await this.deliveryModel.findById(id);
     if (!delivery) throw new NotFoundException('Delivery not found');
+    const isAdmin = String(actorRole || '').toUpperCase() === 'ADMIN';
+    if (!isAdmin && String(delivery.rider?.userId || '') !== String(actorUserId || '')) {
+      throw new BadRequestException('Only the assigned rider can stream location for this delivery');
+    }
 
     // Route deviation detection logic
     const pickupCoords = { lat: delivery.pickup.coordinates.lat, lng: delivery.pickup.coordinates.lng };
@@ -583,7 +616,7 @@ export class DeliveryService {
     return updatedDelivery;
   }
 
-  async rejectDelivery(id: string): Promise<any> {
+  async rejectDelivery(id: string, actorUserId?: string, actorRole?: string): Promise<any> {
     // Validate ID format
     if (!id.match(/^[0-9a-fA-F]{24}$/)) {
       throw new BadRequestException('Invalid delivery ID format');
@@ -592,11 +625,16 @@ export class DeliveryService {
     // Rejecting a delivery should NOT fail it permanently.
     // Instead, unassign the rider so the delivery goes back to the pool
     // for other riders. Only fail the delivery if explicitly requested.
-    const delivery = await this.deliveryModel.findOneAndUpdate(
-      {
+    const query: any = {
         _id: id,
         status: { $in: [DeliveryStatus.ASSIGNED, DeliveryStatus.EN_ROUTE_TO_PICKUP] }
-      },
+      };
+    if (String(actorRole || '').toUpperCase() !== 'ADMIN') {
+      query['rider.userId'] = actorUserId;
+    }
+
+    const delivery = await this.deliveryModel.findOneAndUpdate(
+      query,
       {
         $set: {
           status: DeliveryStatus.ASSIGNED,

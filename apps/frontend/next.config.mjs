@@ -21,6 +21,7 @@ const nextConfig = {
       { protocol: 'https', hostname: '**.googleapis.com' },
       { protocol: 'https', hostname: 'images.unsplash.com' },
       { protocol: 'https', hostname: '**.imgur.com' },
+      { protocol: 'https', hostname: '**.onrender.com' },
       { protocol: 'http', hostname: 'localhost', port: '3002' },
       { protocol: 'http', hostname: 'localhost', port: '3003' },
       { protocol: 'http', hostname: 'localhost', port: '3004' },

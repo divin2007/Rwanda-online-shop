@@ -11,9 +11,14 @@ fi
 
 echo "--- BUILDING SERVICE: $SERVICE ---"
 
-# Install all workspace dependencies
+# Install all workspace dependencies. Prefer npm ci on Render so deploys use
+# the committed lockfile instead of drifting dependency resolution.
 echo "Installing dependencies..."
-npm install
+if [ -f package-lock.json ]; then
+  npm ci --include=dev
+else
+  npm install
+fi
 
 # Build the specific service AND all its internal workspace dependencies (shared packages)
 echo "Running turbo build for $SERVICE (with dependencies)..."

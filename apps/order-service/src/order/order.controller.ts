@@ -52,11 +52,23 @@ function verifyInternalOrJwt(req: any): string {
   if (secret) {
     const provided = req.headers?.['x-internal-service-key'] || req.headers?.['x-internal-secret'];
     if (provided === secret) return 'internal-service';
-  } else {
-    return req.body?.userId || 'system';
   }
 
   throw new UnauthorizedException('Valid JWT or internal service key required');
+}
+
+function verifyInternalService(req: any): string {
+  const secret = process.env.INTERNAL_SERVICE_SECRET;
+  if (!secret) {
+    throw new UnauthorizedException('INTERNAL_SERVICE_SECRET must be configured for internal order-service mutations');
+  }
+
+  const provided = req.headers?.['x-internal-service-key'] || req.headers?.['x-internal-secret'];
+  if (provided !== secret) {
+    throw new UnauthorizedException('Valid internal service key required');
+  }
+
+  return 'internal-service';
 }
 
 @UseGuards(JwtAuthGuard)
@@ -435,7 +447,7 @@ export class OrderController {
     @Body() body: { deliveryFee: number; searchSurcharge?: number; radiusMeters?: number; userId?: string },
     @Req() req: any,
   ) {
-    const userId = verifyInternalOrJwt(req);
+    const userId = verifyInternalService(req);
     const order = await this.orderService.updateDeliveryDispatchFee(
       id,
       Number(body.deliveryFee),

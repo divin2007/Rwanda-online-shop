@@ -13,6 +13,7 @@ import {
   BadRequestException,
   UseGuards,
   ForbiddenException,
+  UnauthorizedException,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { randomUUID } from 'crypto';
@@ -20,15 +21,45 @@ import { existsSync, mkdirSync, writeFileSync } from 'fs';
 import { extname, join } from 'path';
 import { DeliveryService } from './delivery.service';
 import type { Coordinates } from '@rmf/location';
-import { DeliveryStatus } from '@rmf/shared-types';
-import { Public, JwtAuthGuard } from '@rmf/auth';
+import { DeliveryStatus, UserRole } from '@rmf/shared-types';
+import { Public, JwtAuthGuard, Roles } from '@rmf/auth';
 
-function verifyInternalSecret(req: any): void {
+function verifyInternalSecret(req: any): boolean {
   const secret = process.env.INTERNAL_SERVICE_SECRET;
-  if (!secret) return;
+  if (!secret) {
+    throw new ForbiddenException('INTERNAL_SERVICE_SECRET must be configured for internal delivery-service access');
+  }
   const provided = req.headers?.['x-internal-service-key'] || req.headers?.['x-internal-secret'];
   if (provided !== secret) {
     throw new ForbiddenException('Valid internal service key required');
+  }
+  return true;
+}
+
+function getInternalOrJwtActor(req: any): { isInternal: boolean; userId?: string; role?: string } {
+  const provided = req.headers?.['x-internal-service-key'] || req.headers?.['x-internal-secret'];
+  const secret = process.env.INTERNAL_SERVICE_SECRET;
+  if (provided || secret) {
+    if (secret && provided === secret) return { isInternal: true, role: 'INTERNAL' };
+    if (provided) throw new ForbiddenException('Valid internal service key required');
+  }
+
+  const authHeader = req.headers?.authorization || '';
+  if (!authHeader.startsWith('Bearer ')) {
+    throw new UnauthorizedException('Authentication is required to view this delivery');
+  }
+
+  try {
+    const jwt = require('jsonwebtoken');
+    if (process.env.NODE_ENV === 'production' && !process.env.JWT_SECRET) {
+      throw new Error('JWT_SECRET is not configured');
+    }
+    const decoded = jwt.verify(authHeader.substring(7), process.env.JWT_SECRET || 'dev-secret-change-in-prod');
+    const userId = decoded?.sub || decoded?.userId || decoded?.id;
+    if (!userId) throw new Error('JWT is missing a subject');
+    return { isInternal: false, userId: String(userId), role: String(decoded?.role || '') };
+  } catch {
+    throw new UnauthorizedException('Invalid or expired authentication token');
   }
 }
 
@@ -36,13 +67,16 @@ function verifyInternalSecret(req: any): void {
 export class DeliveryController {
   constructor(private readonly deliveryService: DeliveryService) {}
 
+  @Public()
   @Post('fee')
-  async calculateFee(@Body() data: { from: Coordinates; to: Coordinates; weightFactor?: number }) {
+  async calculateFee(@Body() data: { from: Coordinates; to: Coordinates; weightFactor?: number }, @Request() req: any) {
+    getInternalOrJwtActor(req);
     const feeInfo = await this.deliveryService.calculateDeliveryFee(data.from, data.to, data.weightFactor);
     return { success: true, data: feeInfo };
   }
 
-  @Public()
+  @UseGuards(JwtAuthGuard)
+  @Roles(UserRole.RIDER, UserRole.ADMIN)
   @Get('available')
   async getAvailable() {
     const deliveries = await this.deliveryService.getAvailableDeliveries();
@@ -81,19 +115,25 @@ export class DeliveryController {
 
   @Public()
   @Get(':id')
-  async getDeliveryById(@Param('id') id: string) {
+  async getDeliveryById(@Param('id') id: string, @Request() req: any) {
+    const actor = getInternalOrJwtActor(req);
     const delivery = await this.deliveryService.getDeliveryById(id);
+    if (!actor.isInternal && !(await this.deliveryService.canUserViewDelivery(delivery, actor.userId!, actor.role))) {
+      throw new ForbiddenException('You can only view deliveries attached to your own orders');
+    }
     return { success: true, data: delivery };
   }
 
   @Public()
   @Post()
-  async create(@Body() data: any) {
+  async create(@Body() data: any, @Request() req: any) {
+    verifyInternalSecret(req);
     const delivery = await this.deliveryService.createDelivery(data);
     return { success: true, data: delivery };
   }
 
   @UseGuards(JwtAuthGuard)
+  @Roles(UserRole.RIDER)
   @Patch(':id/accept')
   async accept(@Param('id') id: string, @Request() req: any) {
     const delivery = await this.deliveryService.acceptDelivery(id, req.user.userId);
@@ -101,9 +141,10 @@ export class DeliveryController {
   }
 
   @UseGuards(JwtAuthGuard)
+  @Roles(UserRole.RIDER, UserRole.ADMIN)
   @Patch(':id/reject')
-  async reject(@Param('id') id: string) {
-    const delivery = await this.deliveryService.rejectDelivery(id);
+  async reject(@Param('id') id: string, @Request() req: any) {
+    const delivery = await this.deliveryService.rejectDelivery(id, req.user?.userId, req.user?.role);
     return { success: true, data: delivery };
   }
 
@@ -184,9 +225,10 @@ export class DeliveryController {
   }
 
   @UseGuards(JwtAuthGuard)
+  @Roles(UserRole.RIDER, UserRole.ADMIN)
   @Post(':id/location')
-  async streamLocation(@Param('id') id: string, @Body() coords: Coordinates) {
-    const delivery = await this.deliveryService.streamLocation(id, coords);
+  async streamLocation(@Param('id') id: string, @Body() coords: Coordinates, @Request() req: any) {
+    const delivery = await this.deliveryService.streamLocation(id, coords, req.user?.userId, req.user?.role);
     return { success: true, data: delivery };
   }
 
