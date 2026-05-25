@@ -613,17 +613,19 @@ export class OrderService implements OnModuleInit, OnModuleDestroy {
         });
       }
 
-      // M4 fix: split payout triggers so seller is only paid at PICKED_UP
-      // and rider is only paid at DELIVERED — prevents potential double-pay.
+      // Escrow release: funds stay held after buyer payment and rider pickup.
+      // Payouts only begin once delivery is confirmed.
       if (newStatus === OrderStatus.PICKED_UP) {
-        // Pay seller when rider picks up the goods (handover architecture)
-        this.triggerPayoutFlow(updated, 'seller').catch(err => {
-          this.logger.error(`Failed to trigger seller payout for order ${id}: ${err.message}`);
+        this.updateSettlementState(updated._id, {
+          'settlement.status': 'release_pending',
+          'settlement.lastError': null,
+        }).catch(err => {
+          this.logger.error(`Failed to update escrow release state for order ${id}: ${err.message}`);
         });
       }
 
       if (newStatus === OrderStatus.DELIVERED) {
-        // Pay rider when buyer confirms delivery, and ensure seller is paid if picked_up was skipped (idempotent)
+        // Pay seller, platform, and rider when buyer confirms delivery.
         this.triggerPayoutFlow(updated, 'both').catch(err => {
           this.logger.error(`Failed to trigger payout for order ${id}: ${err.message}`);
         });
@@ -1016,6 +1018,12 @@ export class OrderService implements OnModuleInit, OnModuleDestroy {
         );
       }
       updates['payment.paidAt'] = new Date();
+      updates['settlement.status'] = 'escrow_held';
+      updates['settlement.sellerStatus'] = 'pending';
+      updates['settlement.riderStatus'] = 'pending';
+      updates['settlement.platformStatus'] = 'pending';
+      updates['settlement.lastError'] = null;
+      updates['settlement.updatedAt'] = new Date();
       // Auto-transition order to CONFIRMED
       this.validateTransition(order.status, OrderStatus.CONFIRMED, ORDER_TRANSITIONS);
       updates.status = OrderStatus.CONFIRMED;
@@ -1061,9 +1069,7 @@ export class OrderService implements OnModuleInit, OnModuleDestroy {
         this.logger.warn(`Failed to record BPF reserve contribution for order ${orderNumber}: ${err.message}`);
       });
 
-      this.triggerPayoutFlow(updated, 'both').catch(err => {
-        this.logger.error(`Failed to trigger Paypack settlement for order ${orderNumber}: ${err.message}`);
-      });
+      this.logger.log(`Payment captured for ${orderNumber}; funds are held in escrow until delivery confirmation.`);
     }
 
     return updated;
@@ -1386,7 +1392,7 @@ export class OrderService implements OnModuleInit, OnModuleDestroy {
 
   private async startPaymentPolling(orderNumber: string, referenceId: string) {
     let attempts = 0;
-    const maxAttempts = process.env.NODE_ENV !== 'production' ? 6 : 24; // 30s in dev, 2 min in prod
+    const maxAttempts = process.env.NODE_ENV !== 'production' ? 6 : 120; // 30s in dev, 10 min in prod
     const isNotProduction = process.env.NODE_ENV !== 'production';
     const shouldAutoConfirm = isNotProduction && (
       process.env.MTN_MOMO_TARGET_ENV === 'sandbox' ||

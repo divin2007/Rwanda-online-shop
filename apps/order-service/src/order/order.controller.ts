@@ -197,6 +197,12 @@ export class OrderController {
     return { success: true, data: orders };
   }
 
+  @Public()
+  @Get('payment/paypack/readiness')
+  paypackReadiness() {
+    return { success: true, data: this.paymentService.getPaypackReadiness() };
+  }
+
   @Get(':id')
   async getOrder(@Param('id') id: string, @Req() req: any) {
     const order = await this.orderService.getOrderById(id);

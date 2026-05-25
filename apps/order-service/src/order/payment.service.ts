@@ -27,6 +27,17 @@ export interface PaypackRefundRequest {
   originalTransactionRef?: string;
 }
 
+export interface PaypackReadiness {
+  baseUrl: string;
+  webhookMode: string;
+  cashinConfigured: boolean;
+  webhookConfigured: boolean;
+  settlementConfigured: boolean;
+  productionSafe: boolean;
+  missing: string[];
+  webhookPath: string;
+}
+
 @Injectable()
 export class PaymentService {
   private readonly logger = new Logger(PaymentService.name);
@@ -113,10 +124,41 @@ export class PaymentService {
     }
   }
 
+  getPaypackReadiness(): PaypackReadiness {
+    const missing: string[] = [];
+    const clientId = process.env.PAYPACK_CLIENT_ID;
+    const clientSecret = process.env.PAYPACK_CLIENT_SECRET;
+    const webhookSecret = process.env.PAYPACK_WEBHOOK_SECRET || process.env.PAYPACK_WEBHOOK_SIGN_KEY;
+    const platformPhone = process.env.PAYPACK_PLATFORM_PHONE || process.env.RMF_PLATFORM_MOMO_NUMBER || process.env.PLATFORM_MOMO_NUMBER;
+
+    if (!clientId) missing.push('PAYPACK_CLIENT_ID');
+    if (!clientSecret) missing.push('PAYPACK_CLIENT_SECRET');
+    if (!webhookSecret) missing.push('PAYPACK_WEBHOOK_SECRET');
+    if (!platformPhone) missing.push('PAYPACK_PLATFORM_PHONE');
+
+    const cashinConfigured = Boolean(clientId && clientSecret);
+    const webhookConfigured = Boolean(webhookSecret);
+    const settlementConfigured = Boolean(platformPhone);
+
+    return {
+      baseUrl: this.paypackConfig.baseUrl,
+      webhookMode: this.paypackConfig.webhookMode,
+      cashinConfigured,
+      webhookConfigured,
+      settlementConfigured,
+      productionSafe: process.env.NODE_ENV !== 'production' || (cashinConfigured && webhookConfigured && settlementConfigured),
+      missing,
+      webhookPath: '/api/v1/orders/payment/paypack/callback',
+    };
+  }
+
   verifyPaypackWebhook(body: any, headers: Record<string, any>, rawBody?: Buffer | string): boolean {
     const signature = String(
       headers?.['x-paypack-signature'] ||
       headers?.['X-Paypack-Signature'] ||
+      headers?.['x-paypack-webhook-signature'] ||
+      headers?.['x-webhook-signature'] ||
+      headers?.['x-signature'] ||
       body?.signature ||
       ''
     ).replace(/^sha256=/i, '').trim();
@@ -144,7 +186,7 @@ export class PaymentService {
       Buffer.from(this.stableStringify(bodyWithoutSignature)),
     ].filter(Boolean) as Buffer[];
 
-    return candidates.some(candidate => this.verifyHmacSha256Base64(candidate, signature, secret));
+    return candidates.some(candidate => this.verifyHmacSha256(candidate, signature, secret));
   }
 
   parsePaypackWebhook(body: any): ParsedPaypackWebhook {
@@ -425,11 +467,20 @@ export class PaymentService {
     return `{${Object.keys(value).sort().map(key => `${JSON.stringify(key)}:${this.stableStringify(value[key])}`).join(',')}}`;
   }
 
-  private verifyHmacSha256Base64(payload: Buffer, signature: string, secret: string): boolean {
-    const computed = crypto.createHmac('sha256', secret).update(payload).digest('base64');
+  private verifyHmacSha256(payload: Buffer, signature: string, secret: string): boolean {
+    const normalizedSignature = String(signature || '').trim();
+    const computedHex = crypto.createHmac('sha256', secret).update(payload).digest('hex');
+    const computedBase64 = crypto.createHmac('sha256', secret).update(payload).digest('base64');
+
     try {
-      const signatureBuffer = Buffer.from(signature, 'base64');
-      const computedBuffer = Buffer.from(computed, 'base64');
+      if (/^[a-f0-9]{64}$/i.test(normalizedSignature)) {
+        const signatureBuffer = Buffer.from(normalizedSignature, 'hex');
+        const computedBuffer = Buffer.from(computedHex, 'hex');
+        return signatureBuffer.length === computedBuffer.length && crypto.timingSafeEqual(signatureBuffer, computedBuffer);
+      }
+
+      const signatureBuffer = Buffer.from(normalizedSignature, 'base64');
+      const computedBuffer = Buffer.from(computedBase64, 'base64');
       return signatureBuffer.length === computedBuffer.length && crypto.timingSafeEqual(signatureBuffer, computedBuffer);
     } catch {
       return false;

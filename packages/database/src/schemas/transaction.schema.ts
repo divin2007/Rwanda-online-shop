@@ -58,7 +58,7 @@ export const transactionSchema = new Schema({
     paidAt: { type: Date }
   },
   settlement: {
-    status: { type: String, enum: ['pending', 'partial', 'settled', 'failed'], default: 'pending' },
+    status: { type: String, enum: ['pending', 'escrow_held', 'release_pending', 'partial', 'settled', 'failed'], default: 'pending' },
     sellerStatus: { type: String, enum: ['pending', 'paid', 'failed', 'skipped'], default: 'pending' },
     sellerPayoutRef: { type: String },
     sellerSettledAt: { type: Date },
