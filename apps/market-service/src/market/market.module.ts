@@ -10,22 +10,11 @@ import { Keyv } from 'keyv';
 import { StorageModule } from '../storage/storage.module';
 
 const createRedisCache = (namespace: string) => {
-  const redisUrl = process.env.REDIS_URL?.trim()
-    || (process.env.REDIS_HOST?.trim()
-      ? `redis://${process.env.REDIS_HOST.trim()}:${process.env.REDIS_PORT || '6379'}`
-      : undefined);
-
-  if (!redisUrl) {
-    console.warn(`[${namespace}] Redis cache disabled: REDIS_URL is not configured.`);
-    return undefined;
-  }
-
-  const connectTimeout = Number(process.env.REDIS_CONNECT_TIMEOUT_MS || 1000);
+  const redisUrl = process.env.REDIS_URL || `redis://${process.env.REDIS_HOST || '127.0.0.1'}:${process.env.REDIS_PORT || '6379'}`;
   const client = createClient({
     url: redisUrl,
     socket: {
-      connectTimeout,
-      reconnectStrategy: retries => (retries > 2 ? false : Math.min(retries * 100, 1000)),
+      reconnectStrategy: retries => Math.min(retries * 100, 2000),
     },
   });
 
@@ -37,7 +26,10 @@ const createRedisCache = (namespace: string) => {
     namespace,
     throwOnConnectError: false,
     throwErrors: false,
-    connectionTimeout: connectTimeout,
+    // Dev machines can be busy while Docker Redis is waking up. A 1.5s timeout
+    // closes the client while node-redis can still receive replies, which can
+    // crash the market service. Keep cache optional but give Redis time to connect.
+    connectionTimeout: 10000,
   });
   const cache = new Keyv(adapter, { namespace, useKeyPrefix: false });
 
@@ -48,14 +40,14 @@ const createRedisCache = (namespace: string) => {
   return cache;
 };
 
-const marketCache = createRedisCache('market-cache');
-
 @Module({
   imports: [
     StorageModule,
     AuthGuardModule.forRoot(),
     CacheModule.register({
-      ...(marketCache ? { stores: [marketCache] } : {}),
+      stores: [
+        createRedisCache('market-cache'),
+      ],
     }),
     MongooseModule.forFeature([{ name: 'Market', schema: marketSchema }]),
   ],
