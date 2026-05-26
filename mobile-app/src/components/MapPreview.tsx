@@ -4,6 +4,7 @@ import { MapPin, Navigation } from 'lucide-react-native';
 import { WebView } from 'react-native-webview';
 import { colors } from '../theme';
 import { Coordinates } from '../types';
+import { buildLeafletSatelliteLayer, buildLeafletStandardLayer } from '../lib/mapTiles';
 
 export type MapPoint = {
   label: string;
@@ -95,13 +96,8 @@ const leafletHtml = `
   <script>
     var map = L.map('map', { zoomControl: true, attributionControl: false }).setView([-1.9441, 30.0619], 13);
     
-    var standardLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      maxZoom: 19
-    }).addTo(map);
-
-    var satelliteLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
-      maxZoom: 19
-    });
+    ${buildLeafletStandardLayer('standardLayer', true)}
+    ${buildLeafletSatelliteLayer('satelliteLayer')}
 
     var markersGroup = L.featureGroup().addTo(map);
 

@@ -28,6 +28,8 @@ type MapboxFeature = {
   center?: [number, number];
   place_name?: string;
   relevance?: number;
+  place_type?: string[];
+  context?: Array<{ id?: string; text?: string }>;
 };
 
 type OpenCageResult = {
@@ -106,23 +108,17 @@ export class LocationService {
       return { address: 'Unknown Location', city: 'Kigali' };
     }
 
-    try {
-      const params = new URLSearchParams({
-        lat: String(coords.lat),
-        lon: String(coords.lng),
-        format: 'jsonv2',
-      });
-      const baseUrl = process.env.NOMINATIM_BASE_URL || 'https://nominatim.openstreetmap.org';
-      const result = await this.fetchJson<NominatimReverseResult>(`${baseUrl}/reverse?${params.toString()}`);
-      const city = result.address?.city || result.address?.town || result.address?.village || result.address?.county || result.address?.state || 'Kigali';
-      return {
-        address: result.display_name || 'Unknown Location',
-        city,
-        provider: 'nominatim',
-      };
-    } catch {
-      return { address: 'Unknown Location', city: 'Kigali' };
+    const providers = this.getProviderOrder();
+    for (const provider of providers) {
+      try {
+        const result = await this.reverseGeocodeWithProvider(provider, coords);
+        if (result) return result;
+      } catch {
+        // Try the next provider. The fallback below keeps maps/order flows usable.
+      }
     }
+
+    return { address: 'Unknown Location', city: 'Kigali', provider: 'fallback' };
   }
 
   /**
@@ -172,6 +168,12 @@ export class LocationService {
     if (provider === 'mapbox') return this.geocodeWithMapbox(query);
     if (provider === 'opencage') return this.geocodeWithOpenCage(query);
     return this.geocodeWithNominatim(query);
+  }
+
+  private async reverseGeocodeWithProvider(provider: 'mapbox' | 'opencage' | 'nominatim', coords: Coordinates): Promise<Address | null> {
+    if (provider === 'mapbox') return this.reverseGeocodeWithMapbox(coords);
+    if (provider === 'opencage') return this.reverseGeocodeWithOpenCage(coords);
+    return this.reverseGeocodeWithNominatim(coords);
   }
 
   private async geocodeWithMapbox(query: string): Promise<GeocodedCoordinates | null> {
@@ -243,6 +245,76 @@ export class LocationService {
       formattedAddress: firstResult?.display_name,
       confidence: 'medium',
     };
+  }
+
+  private async reverseGeocodeWithMapbox(coords: Coordinates): Promise<Address | null> {
+    const token = process.env.MAPBOX_ACCESS_TOKEN;
+    if (!token) return null;
+    const params = new URLSearchParams({
+      access_token: token,
+      country: 'rw',
+      limit: '1',
+      types: 'address,poi,place,locality,neighborhood',
+    });
+    const response = await this.fetchJson<{ features?: MapboxFeature[] }>(
+      `https://api.mapbox.com/geocoding/v5/mapbox.places/${coords.lng},${coords.lat}.json?${params.toString()}`,
+    );
+    const feature = response.features?.[0];
+    if (!feature?.place_name) return null;
+    return {
+      address: feature.place_name,
+      city: this.cityFromMapboxFeature(feature),
+      provider: 'mapbox',
+    };
+  }
+
+  private async reverseGeocodeWithOpenCage(coords: Coordinates): Promise<Address | null> {
+    const key = process.env.OPENCAGE_API_KEY;
+    if (!key) return null;
+    const params = new URLSearchParams({
+      q: `${coords.lat},${coords.lng}`,
+      key,
+      countrycode: 'rw',
+      limit: '1',
+      no_annotations: '1',
+    });
+    const response = await this.fetchJson<{ results?: OpenCageResult[] }>(
+      `https://api.opencagedata.com/geocode/v1/json?${params.toString()}`,
+    );
+    const result = response.results?.[0];
+    if (!result?.formatted) return null;
+    return {
+      address: result.formatted,
+      city: this.cityFromAddress(result.formatted),
+      provider: 'opencage',
+    };
+  }
+
+  private async reverseGeocodeWithNominatim(coords: Coordinates): Promise<Address | null> {
+    const params = new URLSearchParams({
+      lat: String(coords.lat),
+      lon: String(coords.lng),
+      format: 'jsonv2',
+    });
+    const baseUrl = process.env.NOMINATIM_BASE_URL || 'https://nominatim.openstreetmap.org';
+    const result = await this.fetchJson<NominatimReverseResult>(`${baseUrl}/reverse?${params.toString()}`);
+    const city = result.address?.city || result.address?.town || result.address?.village || result.address?.county || result.address?.state || 'Kigali';
+    return {
+      address: result.display_name || 'Unknown Location',
+      city,
+      provider: 'nominatim',
+    };
+  }
+
+  private cityFromMapboxFeature(feature: MapboxFeature): string {
+    const directCity = feature.context?.find(item => /place|locality|district|region/.test(item.id || ''))?.text;
+    if (directCity) return directCity;
+    return this.cityFromAddress(feature.place_name || '');
+  }
+
+  private cityFromAddress(address: string): string {
+    const known = ['Kigali', 'Rubavu', 'Musanze', 'Huye', 'Nyagatare', 'Nyarugenge', 'Gasabo', 'Kicukiro', 'Rwamagana', 'Muhanga'];
+    return known.find(city => address.toLowerCase().includes(city.toLowerCase())) || 'Kigali';
   }
 
   private isRwandaCoordinate(coords: Coordinates): boolean {

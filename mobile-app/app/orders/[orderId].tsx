@@ -13,6 +13,7 @@ import { ErrorBlock, LoadingBlock } from '../../src/components/StateView';
 import { useAuth } from '../../src/context/AuthContext';
 import { api } from '../../src/lib/api';
 import { formatDateTime, money, shortId } from '../../src/lib/format';
+import { buildLeafletStandardLayer } from '../../src/lib/mapTiles';
 import { asArray } from '../../src/lib/normalize';
 import { colors } from '../../src/theme';
 import { Order, OrderMessage, Coordinates } from '../../src/types';
@@ -83,7 +84,7 @@ const buildNegotiationMapHtml = (initLat: number, initLng: number, marketLat?: n
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
   var map = L.map('map', { zoomControl: true, attributionControl: false }).setView([${initLat},${initLng}], 14);
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19}).addTo(map);
+  ${buildLeafletStandardLayer('standardLayer', true)}
 
   var marketIcon = L.divIcon({
     html: '<div style="background-color:#e05300;width:14px;height:14px;border:3px solid #ffffff;border-radius:50%;box-shadow:0 0 10px rgba(0,0,0,0.3);"></div>',

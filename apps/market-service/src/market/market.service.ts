@@ -245,6 +245,28 @@ export class MarketService implements OnModuleInit {
     return market;
   }
 
+  async geocode(query: string): Promise<any> {
+    const trimmedQuery = query?.trim();
+    if (!trimmedQuery || trimmedQuery.length < 2) {
+      throw new BadRequestException('Search query must be at least 2 characters');
+    }
+
+    return this.locationService.geocode(trimmedQuery);
+  }
+
+  async reverseGeocode(lat: number, lng: number): Promise<any> {
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+      throw new BadRequestException('Latitude and longitude are required');
+    }
+
+    const coordinates = { lat, lng };
+    if (!this.locationService.validateCoordinates(coordinates)) {
+      throw new BadRequestException('Invalid coordinates provided');
+    }
+
+    return this.locationService.reverseGeocode(coordinates);
+  }
+
   async update(id: string, updateData: any): Promise<any> {
     if (updateData.location && updateData.location.coordinates) {
       if (!this.locationService.validateCoordinates(updateData.location.coordinates)) {

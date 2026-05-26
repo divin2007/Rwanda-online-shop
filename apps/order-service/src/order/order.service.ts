@@ -2,6 +2,7 @@ import { Injectable, NotFoundException, BadRequestException, Logger, OnModuleIni
 import axios from 'axios';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
+import { v4 as uuidv4 } from 'uuid';
 import { OrderStatus, PaymentStatus, DisputeResolution } from '@rmf/shared-types';
 import { StateConflictError } from '@rmf/shared-utils';
 import { LocationService } from '@rmf/location';
@@ -502,6 +503,17 @@ export class OrderService implements OnModuleInit, OnModuleDestroy {
       const paymentResult = await this.paymentService.requestPaymentPrompt(saved);
 
       if (!paymentResult.success) {
+        await this.orderModel.findByIdAndUpdate(saved._id, {
+          $push: {
+            paymentAttempts: {
+              method: saved.payment?.method,
+              status: PaymentStatus.FAILED,
+              attemptedAt: new Date(),
+              failureReason: paymentResult.error || 'Could not reach payment provider',
+            }
+          }
+        });
+
         if (shouldAutoConfirmPayments) {
           this.logger.warn(`[SANDBOX] Payment failed but auto-confirming order ${orderNumber} for local development.`);
           const autoConfirmed = await this.orderModel.findByIdAndUpdate(
@@ -545,6 +557,14 @@ export class OrderService implements OnModuleInit, OnModuleDestroy {
             'payment.transactionRef': paymentResult.transactionId,
             'payment.status': PaymentStatus.PENDING,
             'payment.method': saved.payment?.method,
+          },
+          $push: {
+            paymentAttempts: {
+              method: saved.payment?.method,
+              transactionRef: paymentResult.transactionId,
+              status: PaymentStatus.PENDING,
+              attemptedAt: new Date(),
+            }
           }
         },
         { new: true }
@@ -1492,8 +1512,24 @@ export class OrderService implements OnModuleInit, OnModuleDestroy {
 
     const shouldAutoConfirmPayments = process.env.AUTO_CONFIRM_PAYMENTS === 'true';
 
+    (order as any)._paypackRetryNonce = uuidv4();
     const paymentResult = await this.paymentService.requestPaymentPrompt(order);
     if (!paymentResult.success) {
+      await this.orderModel.findByIdAndUpdate(id, {
+        $push: {
+          paymentAttempts: {
+            method: order.payment?.method,
+            status: PaymentStatus.FAILED,
+            attemptedAt: new Date(),
+            failureReason: paymentResult.error || 'Could not reach payment provider',
+          }
+        },
+        $set: {
+          'payment.status': PaymentStatus.FAILED,
+          'payment.errorMessage': paymentResult.error || 'Could not reach payment provider',
+        }
+      });
+
       if (shouldAutoConfirmPayments) {
         this.logger.warn(`[SANDBOX] Payment retry failed but auto-confirming order ${order.orderNumber} for local development.`);
         const autoConfirmed = await this.orderModel.findByIdAndUpdate(
@@ -1534,6 +1570,15 @@ export class OrderService implements OnModuleInit, OnModuleDestroy {
         $set: {
           'payment.transactionRef': paymentResult.transactionId,
           'payment.status': PaymentStatus.PENDING,
+          'payment.errorMessage': null,
+        },
+        $push: {
+          paymentAttempts: {
+            method: order.payment?.method,
+            transactionRef: paymentResult.transactionId,
+            status: PaymentStatus.PENDING,
+            attemptedAt: new Date(),
+          }
         }
       },
       { new: true }

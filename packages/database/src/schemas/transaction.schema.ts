@@ -55,6 +55,7 @@ export const transactionSchema = new Schema({
     method: { type: String }, // MoMo, etc.
     status: { type: String, enum: Object.values(PaymentStatus), default: PaymentStatus.PENDING },
     transactionRef: { type: String },
+    errorMessage: { type: String },
     paidAt: { type: Date }
   },
   settlement: {

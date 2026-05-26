@@ -90,6 +90,20 @@ export class MarketController {
   }
 
   @Public()
+  @Get('geocode/search')
+  async geocode(@Query('query') query: string) {
+    const result = await this.marketService.geocode(query);
+    return { success: true, data: result };
+  }
+
+  @Public()
+  @Get('geocode/reverse')
+  async reverseGeocode(@Query('lat') lat: string, @Query('lng') lng: string) {
+    const result = await this.marketService.reverseGeocode(Number(lat), Number(lng));
+    return { success: true, data: result };
+  }
+
+  @Public()
   @Get(':id')
   async findById(@Param('id') id: string) {
     const market = await this.marketService.findById(id);

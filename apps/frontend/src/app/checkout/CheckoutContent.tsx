@@ -10,6 +10,13 @@ import { orderApi, marketApi, deliveryApi } from '@/lib/api';
 import { useSocket } from '@/hooks/useSocket';
 import toast from 'react-hot-toast';
 
+const normalizeRwandaPhone = (value: string) => {
+  const digits = value.replace(/\D/g, '');
+  if (digits.startsWith('2507') && digits.length === 12) return `0${digits.slice(3)}`;
+  if (digits.startsWith('7') && digits.length === 9) return `0${digits}`;
+  return digits;
+};
+
 export const CheckoutContent = () => {
   const { cartTotal, items, clearCart } = useCart();
   const { user } = useAuth();
@@ -84,7 +91,8 @@ export const CheckoutContent = () => {
     if (!user) return toast.error('Please log in as a buyer before checkout.');
     if (user.role !== 'BUYER') return toast.error('Checkout is only available from buyer accounts. Please switch accounts before placing an order.');
     if (!coords) return toast.error('Please drop a pin for your delivery location.');
-    if (!phone) return toast.error('Please enter your mobile money number.');
+    const paymentPhone = normalizeRwandaPhone(phone);
+    if (!/^07\d{8}$/.test(paymentPhone)) return toast.error('Enter a valid Rwanda mobile money number, for example 078xxxxxxx.');
     if (total > 50000 && !nid) return toast.error('National ID is required for large orders.');
 
     setIsPlacingOrder(true);
@@ -112,7 +120,7 @@ export const CheckoutContent = () => {
           buyer: {
             userId: user?.id,
             fullName: user?.fullName || 'Guest Buyer',
-            phone: phone,
+            phone: paymentPhone,
             nationalId: nid || undefined,
             deliveryAddress: {
               address: "Pinned Location",
@@ -162,7 +170,17 @@ export const CheckoutContent = () => {
             nextRun: new Date()
           } : undefined,
           notes: notes
-        }).then(res => ({ success: true, sellerName: firstItem.sellerName, data: res.data }))
+        }).then(res => {
+          const order = res.data?.data || res.data;
+          if (order?.payment?.status === 'failed') {
+            return {
+              success: false,
+              sellerName: firstItem.sellerName,
+              error: order.payment?.errorMessage || 'Payment prompt could not be sent. Confirm the MoMo number and retry.',
+            };
+          }
+          return { success: true, sellerName: firstItem.sellerName, data: res.data };
+        })
           .catch(err => {
             const msg = err.response?.data?.message || err.response?.data?.error || err.message;
             return { 

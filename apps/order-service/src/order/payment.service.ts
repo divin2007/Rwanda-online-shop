@@ -437,7 +437,9 @@ export class PaymentService {
   }
 
   private paypackIdempotencyKey(order: any, method: string): string {
-    const raw = `${order.orderNumber || order._id || uuidv4()}:${method}:cashin`;
+    const attempts = Array.isArray(order.paymentAttempts) ? order.paymentAttempts.length : 0;
+    const retryNonce = order._paypackRetryNonce || '';
+    const raw = `${order.orderNumber || order._id || uuidv4()}:${method}:cashin:${attempts + 1}:${retryNonce}`;
     return crypto.createHash('sha256').update(raw).digest('hex').slice(0, 32);
   }
 

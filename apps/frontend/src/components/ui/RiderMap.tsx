@@ -1,10 +1,11 @@
 'use client';
 import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
-import { MapContainer, TileLayer, Marker, Popup, Tooltip, Polyline, useMap } from 'react-leaflet';
+import { MapContainer, Marker, Popup, Tooltip, Polyline, useMap } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
 import { useSocket } from '@/hooks/useSocket';
 import { patchLeafletSafeRemove } from '@/lib/leafletSafeRemove';
+import { RmfTileLayer } from './RmfTileLayer';
 interface RiderProfile {
   userId: string;
   fullName?: string;
@@ -144,14 +145,7 @@ export const RiderMap = ({ marketId, centerLat = -1.9441, centerLng = 30.0619, m
         style={{ height: '100%', width: '100%' }}
       >
         <MapViewUpdater centerLat={centerLat} centerLng={centerLng} />
-        {mapMode === 'standard' ? (
-          <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
-        ) : (
-          <TileLayer 
-            url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}" 
-            attribution="Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EBP, and the GIS User Community"
-          />
-        )}
+        <RmfTileLayer variant={mapMode === 'satellite' ? 'satellite' : 'standard'} />
         
         {/* Market Locations */}
         {isAdmin ? (

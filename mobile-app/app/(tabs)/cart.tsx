@@ -14,6 +14,7 @@ import { useAuth } from '../../src/context/AuthContext';
 import { useCart } from '../../src/context/CartContext';
 import { api, serviceUrl } from '../../src/lib/api';
 import { money } from '../../src/lib/format';
+import { buildLeafletStandardLayer } from '../../src/lib/mapTiles';
 import { colors } from '../../src/theme';
 import { CartItem, Coordinates, Order } from '../../src/types';
 
@@ -37,6 +38,13 @@ const idOf = (value: any): string | undefined => {
   return String(value);
 };
 
+const normalizeRwandaPhone = (value: string) => {
+  const digits = value.replace(/\D/g, '');
+  if (digits.startsWith('2507') && digits.length === 12) return `0${digits.slice(3)}`;
+  if (digits.startsWith('7') && digits.length === 9) return `0${digits}`;
+  return digits;
+};
+
 // Build a self-contained Leaflet HTML page that posts picked coordinates back
 const buildMapHtml = (initLat: number, initLng: number) => `<!DOCTYPE html>
 <html><head>
@@ -48,7 +56,7 @@ const buildMapHtml = (initLat: number, initLng: number) => `<!DOCTYPE html>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
   var map = L.map('map').setView([${initLat},${initLng}], 15);
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19}).addTo(map);
+  ${buildLeafletStandardLayer('standardLayer', true)}
   var marker = L.marker([${initLat},${initLng}],{draggable:true}).addTo(map);
   marker.bindPopup('Drag to set delivery pin').openPopup();
   function send(latlng){
@@ -159,8 +167,9 @@ export default function CartScreen() {
       Alert.alert('Session issue', 'Please sign in again before placing this order.');
       return;
     }
-    if (!phone.trim()) {
-      Alert.alert('Phone required', 'Add the mobile money number for payment authorization.');
+    const paymentPhone = normalizeRwandaPhone(phone);
+    if (!/^07\d{8}$/.test(paymentPhone)) {
+      Alert.alert('Phone required', 'Enter a valid Rwanda mobile money number, for example 078xxxxxxx.');
       return;
     }
 
@@ -187,7 +196,7 @@ export default function CartScreen() {
           buyer: {
             userId,
             fullName: user.fullName,
-            phone,
+            phone: paymentPhone,
             deliveryAddress: location
               ? {
                   address: addressText.trim() || `${location.lat.toFixed(5)}, ${location.lng.toFixed(5)}`,
@@ -235,6 +244,9 @@ export default function CartScreen() {
         };
 
         const order = await api.post<Order>('order', '/orders', payload);
+        if (String(order.payment?.status || '').toLowerCase() === 'failed') {
+          throw new Error((order.payment as any)?.errorMessage || 'Payment prompt could not be sent. Confirm the MoMo number and retry.');
+        }
         createdOrders.push(order);
       }
 

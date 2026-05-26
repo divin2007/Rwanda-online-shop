@@ -1,9 +1,11 @@
 'use client';
 import React, { useEffect, useLayoutEffect, useState, useRef } from 'react';
-import { MapContainer, TileLayer, Marker, useMapEvents, useMap, Polyline, Circle } from 'react-leaflet';
+import { MapContainer, Marker, useMapEvents, useMap, Polyline, Circle } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
 import { patchLeafletSafeRemove } from '@/lib/leafletSafeRemove';
+import { LocationSearchResult, searchRwandaLocation } from '@/lib/geocoding';
+import { RmfTileLayer } from './RmfTileLayer';
 
 patchLeafletSafeRemove();
 
@@ -74,7 +76,7 @@ export const MapPinPicker = ({
 
   const [roadGeometry, setRoadGeometry] = useState<[number, number][]>([]);
   const [searchQuery, setSearchQuery] = useState('');
-  const [searchResults, setSearchResults] = useState<any[]>([]);
+  const [searchResults, setSearchResults] = useState<LocationSearchResult[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [flyToLocation, setFlyToLocation] = useState<{ lat: number, lon: number } | null>(null);
   const [isClient, setIsClient] = useState(false);
@@ -105,20 +107,7 @@ export const MapPinPicker = ({
     }
     setIsSearching(true);
     try {
-      // Relaxed viewbox but strict country code to ensure we find ALL local areas
-      const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(val)}&countrycodes=rw&addressdetails=1&limit=15`;
-      const res = await fetch(url);
-      const data = await res.json();
-      
-      if (!data || data.length === 0) {
-        // Fallback for very specific neighborhoods: try searching with 'Kigali' suffix
-        const fallbackUrl = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(val + ', Kigali')}&countrycodes=rw&addressdetails=1&limit=5`;
-        const fbRes = await fetch(fallbackUrl);
-        const fbData = await fbRes.json();
-        setSearchResults(fbData || []);
-      } else {
-        setSearchResults(data);
-      }
+      setSearchResults(await searchRwandaLocation(val));
     } catch (e) {
       console.error('Search failed', e);
     } finally {
@@ -158,14 +147,14 @@ export const MapPinPicker = ({
 
   if (!isClient || !mapInstanceKey) return <div className="w-full h-full bg-background-surface animate-pulse flex items-center justify-center">Loading Map...</div>;
 
-  const handleSelectResult = (result: any) => {
-    const lat = parseFloat(result.lat);
-    const lng = parseFloat(result.lon);
+  const handleSelectResult = (result: LocationSearchResult) => {
+    const lat = result.lat;
+    const lng = result.lng;
     setFlyToLocation({ lat, lon: lng });
     setPosition(new L.LatLng(lat, lng));
     onLocationSelected({ lat, lng });
     setSearchResults([]);
-    setSearchQuery(result.display_name);
+    setSearchQuery(result.label);
   };
 
   return (
@@ -187,16 +176,19 @@ export const MapPinPicker = ({
           {/* Results Dropdown */}
           {searchResults.length > 0 && (
             <div className="absolute top-full left-0 right-0 mt-2 bg-background-card border border-border rounded-xl shadow-2xl overflow-hidden max-h-64 overflow-y-auto">
-              {searchResults.map((result, idx) => (
+              {searchResults.map((result) => (
                 <button
-                  key={idx}
+                  key={`${result.provider || 'geo'}-${result.lat}-${result.lng}-${result.label}`}
                   onClick={() => handleSelectResult(result)}
                   className="w-full text-left px-4 py-3 hover:bg-background-surface border-b border-border/50 last:border-0 transition-colors flex items-start gap-3"
                 >
                   <span className="mt-1">📍</span>
                   <div>
-                    <div className="font-semibold text-sm line-clamp-1">{result.display_name.split(',')[0]}</div>
-                    <div className="text-xs text-text-secondary line-clamp-1">{result.display_name}</div>
+                    <div className="font-semibold text-sm line-clamp-1">{result.label.split(',')[0]}</div>
+                    <div className="text-xs text-text-secondary line-clamp-1">
+                      {result.label}
+                      {result.provider ? ` · ${result.provider}` : ''}
+                    </div>
                   </div>
                 </button>
               ))}
@@ -211,10 +203,7 @@ export const MapPinPicker = ({
         zoom={13} 
         style={{ height: '100%', width: '100%' }}
       >
-        <TileLayer
-          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-        />
+        <RmfTileLayer />
         <MapController flyToLocation={flyToLocation} />
         {marketLocation && (
           <>

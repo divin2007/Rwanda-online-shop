@@ -1,9 +1,11 @@
 'use client';
 import React, { useState, useEffect, useLayoutEffect, useRef } from 'react';
-import { MapContainer, TileLayer, Marker, useMapEvents, useMap } from 'react-leaflet';
+import { MapContainer, Marker, useMapEvents, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { patchLeafletSafeRemove } from '@/lib/leafletSafeRemove';
+import { RmfTileLayer } from './RmfTileLayer';
+import { LocationSearchResult, searchRwandaLocation } from '@/lib/geocoding';
 
 patchLeafletSafeRemove();
 
@@ -58,7 +60,7 @@ export const LeafletMap = ({
   const containerRef = useRef<HTMLDivElement | null>(null);
   const [position, setPosition] = useState<Coordinates | null>(initialLocation || null);
   const [searchQuery, setSearchQuery] = useState('');
-  const [searchResults, setSearchResults] = useState<any[]>([]);
+  const [searchResults, setSearchResults] = useState<LocationSearchResult[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [flyToLocation, setFlyToLocation] = useState<{ lat: number, lon: number } | null>(null);
   const [mapInstanceKey, setMapInstanceKey] = useState('');
@@ -92,18 +94,7 @@ export const LeafletMap = ({
     }
     setIsSearching(true);
     try {
-      const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(val)}&countrycodes=rw&addressdetails=1&limit=15`;
-      const res = await fetch(url);
-      const data = await res.json();
-      
-      if (!data || data.length === 0) {
-        const fallbackUrl = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(val + ', Kigali')}&countrycodes=rw&addressdetails=1&limit=5`;
-        const fbRes = await fetch(fallbackUrl);
-        const fbData = await fbRes.json();
-        setSearchResults(fbData || []);
-      } else {
-        setSearchResults(data);
-      }
+      setSearchResults(await searchRwandaLocation(val));
     } catch (e) {
       console.error('Search failed', e);
     } finally {
@@ -119,10 +110,12 @@ export const LeafletMap = ({
     return () => clearTimeout(timer);
   }, [searchQuery]);
 
-  const handleSelectResult = (result: any) => {
-    setFlyToLocation({ lat: parseFloat(result.lat), lon: parseFloat(result.lon) });
+  const handleSelectResult = (result: LocationSearchResult) => {
+    const coords = { lat: result.lat, lng: result.lng };
+    setFlyToLocation({ lat: result.lat, lon: result.lng });
+    handlePositionChange(coords);
     setSearchResults([]);
-    setSearchQuery(result.display_name);
+    setSearchQuery(result.label);
   };
 
   const center = initialLocation ? [initialLocation.lat, initialLocation.lng] as [number, number] : DEFAULT_CENTER;
@@ -150,16 +143,19 @@ export const LeafletMap = ({
           {/* Dropdown Results */}
           {searchResults.length > 0 && (
             <div className="absolute top-full left-0 right-0 mt-2 bg-background-card border border-border rounded-lg shadow-2xl overflow-hidden max-h-60 overflow-y-auto">
-              {searchResults.map((result, idx) => (
+              {searchResults.map((result) => (
                 <button
-                  key={idx}
+                  key={`${result.provider || 'geo'}-${result.lat}-${result.lng}-${result.label}`}
                   onClick={() => handleSelectResult(result)}
                   className="w-full text-left px-4 py-2 hover:bg-background-surface border-b border-border/50 last:border-0 transition-colors flex items-start gap-2"
                 >
                   <span className="mt-1 text-xs">📍</span>
                   <div>
-                    <div className="font-medium text-xs line-clamp-1">{result.display_name.split(',')[0]}</div>
-                    <div className="text-[10px] text-text-secondary line-clamp-1">{result.display_name}</div>
+                    <div className="font-medium text-xs line-clamp-1">{result.label.split(',')[0]}</div>
+                    <div className="text-[10px] text-text-secondary line-clamp-1">
+                      {result.label}
+                      {result.provider ? ` · ${result.provider}` : ''}
+                    </div>
                   </div>
                 </button>
               ))}
@@ -169,10 +165,7 @@ export const LeafletMap = ({
       </div>
 
       <MapContainer key={mapShellKey} center={center} zoom={13} style={{ height: '100%', width: '100%' }}>
-        <TileLayer
-          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-        />
+        <RmfTileLayer />
         <MapController flyToLocation={flyToLocation} />
         <LocationMarker position={position} setPosition={handlePositionChange} />
       </MapContainer>

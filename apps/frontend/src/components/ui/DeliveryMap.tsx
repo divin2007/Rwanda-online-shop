@@ -1,9 +1,11 @@
 'use client';
 import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
-import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap } from 'react-leaflet';
+import { MapContainer, Marker, Popup, Polyline, useMap } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
 import { patchLeafletSafeRemove } from '@/lib/leafletSafeRemove';
+import { LocationSearchResult, searchRwandaLocation } from '@/lib/geocoding';
+import { RmfTileLayer } from './RmfTileLayer';
 
 patchLeafletSafeRemove();
 
@@ -61,7 +63,7 @@ export const DeliveryMap = ({ riderLocation, pickupLocation, dropoffLocation, st
   const [mapInstanceKey, setMapInstanceKey] = useState('');
   const [liveRoute, setLiveRoute] = useState<[number, number][]>([]);
   const [searchQuery, setSearchQuery] = useState('');
-  const [searchResults, setSearchResults] = useState<any[]>([]);
+  const [searchResults, setSearchResults] = useState<LocationSearchResult[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [flyToLocation, setFlyToLocation] = useState<{ lat: number, lon: number } | null>(null);
   const mapShellKey = `${mapInstanceKey}-${riderLocation.lat}-${riderLocation.lng}`;
@@ -113,18 +115,7 @@ export const DeliveryMap = ({ riderLocation, pickupLocation, dropoffLocation, st
     }
     setIsSearching(true);
     try {
-      const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(val)}&countrycodes=rw&addressdetails=1&limit=15`;
-      const res = await fetch(url);
-      const data = await res.json();
-      
-      if (!data || data.length === 0) {
-        const fallbackUrl = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(val + ', Kigali')}&countrycodes=rw&addressdetails=1&limit=5`;
-        const fbRes = await fetch(fallbackUrl);
-        const fbData = await fbRes.json();
-        setSearchResults(fbData || []);
-      } else {
-        setSearchResults(data);
-      }
+      setSearchResults(await searchRwandaLocation(val));
     } catch (e) {
       console.error('Search failed', e);
     } finally {
@@ -141,10 +132,10 @@ export const DeliveryMap = ({ riderLocation, pickupLocation, dropoffLocation, st
 
   if (!isClient || !mapInstanceKey) return <div className="w-full h-full bg-background-surface animate-pulse rounded-xl"></div>;
 
-  const handleSelectResult = (result: any) => {
-    setFlyToLocation({ lat: parseFloat(result.lat), lon: parseFloat(result.lon) });
+  const handleSelectResult = (result: LocationSearchResult) => {
+    setFlyToLocation({ lat: result.lat, lon: result.lng });
     setSearchResults([]);
-    setSearchQuery(result.display_name.split(',')[0]);
+    setSearchQuery(result.label.split(',')[0]);
   };
 
   const center: [number, number] = [riderLocation.lat, riderLocation.lng];
@@ -167,16 +158,19 @@ export const DeliveryMap = ({ riderLocation, pickupLocation, dropoffLocation, st
 
           {searchResults.length > 0 && (
             <div className="absolute top-full left-0 right-0 mt-2 bg-background-card border border-border rounded-lg shadow-2xl overflow-hidden max-h-48 overflow-y-auto">
-              {searchResults.map((result, idx) => (
+              {searchResults.map((result) => (
                 <button
-                  key={idx}
+                  key={`${result.provider || 'geo'}-${result.lat}-${result.lng}-${result.label}`}
                   onClick={() => handleSelectResult(result)}
                   className="w-full text-left px-4 py-2 hover:bg-background-surface border-b border-border/50 last:border-0 transition-colors flex items-start gap-2"
                 >
                   <span className="mt-0.5 text-xs">📍</span>
                   <div className="min-w-0">
-                    <div className="font-medium text-xs truncate">{result.display_name.split(',')[0]}</div>
-                    <div className="text-[10px] text-text-secondary truncate">{result.display_name}</div>
+                    <div className="font-medium text-xs truncate">{result.label.split(',')[0]}</div>
+                    <div className="text-[10px] text-text-secondary truncate">
+                      {result.label}
+                      {result.provider ? ` · ${result.provider}` : ''}
+                    </div>
                   </div>
                 </button>
               ))}
@@ -192,7 +186,7 @@ export const DeliveryMap = ({ riderLocation, pickupLocation, dropoffLocation, st
         style={{ height: '100%', width: '100%' }}
         scrollWheelZoom={true}
       >
-        <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+        <RmfTileLayer />
         <MapController flyToLocation={flyToLocation} center={center} />
 
         <Marker position={[riderLocation.lat, riderLocation.lng]} icon={riderIcon}>
