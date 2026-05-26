@@ -3,9 +3,18 @@ export interface Coordinates {
   lng: number;
 }
 
+export type GeocodeConfidence = 'high' | 'medium' | 'low' | 'fallback';
+
+export interface GeocodedCoordinates extends Coordinates {
+  provider?: 'mapbox' | 'opencage' | 'nominatim' | 'fallback';
+  formattedAddress?: string;
+  confidence?: GeocodeConfidence;
+}
+
 export interface Address {
   address: string;
   city: string;
+  provider?: string;
 }
 
 export interface RouteDto {

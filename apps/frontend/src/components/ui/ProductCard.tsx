@@ -204,11 +204,11 @@ export const ProductCard = ({ product, isCompact = false }: ProductCardProps) =>
       </div>
 
       <div className={`flex flex-1 flex-col ${isCompact ? 'p-3' : 'p-4'}`}>
-        <div className="flex items-center justify-between gap-2">
-          <span className="line-clamp-1 font-mono text-[10px] font-bold uppercase tracking-[0.16em] text-[#ff6b00]">
+        <div className="flex items-start justify-between gap-2">
+          <span className="line-clamp-1 min-w-0 font-mono text-[9px] font-bold uppercase tracking-[0.12em] text-[#ff6b00] sm:text-[10px] sm:tracking-[0.16em]">
             {product.category || 'Product'}
           </span>
-          <span className={`rmf-status-chip ${available ? 'text-[#12805c]' : 'text-[#ba1a1a]'}`}>
+          <span className={`rmf-status-chip shrink-0 text-[8px] sm:text-[10px] ${available ? 'text-[#12805c]' : 'text-[#ba1a1a]'}`}>
             {available ? 'In stock' : 'Unavailable'}
           </span>
         </div>
@@ -241,7 +241,7 @@ export const ProductCard = ({ product, isCompact = false }: ProductCardProps) =>
             <button
               type="button"
               onClick={handleNegotiation}
-              className="inline-flex h-10 w-full items-center justify-center gap-2 rounded border border-[#ff6b00] bg-white px-3 font-mono text-[11px] font-bold uppercase tracking-[0.12em] text-[#ff6b00] transition-colors hover:bg-[#ffedd5]"
+              className="inline-flex min-h-10 w-full items-center justify-center gap-2 whitespace-normal rounded border border-[#ff6b00] bg-white px-2 py-2 text-center font-mono text-[10px] font-bold uppercase tracking-[0.08em] text-[#ff6b00] transition-colors hover:bg-[#ffedd5] sm:px-3 sm:text-[11px] sm:tracking-[0.12em]"
             >
               <MessageCircle size={15} />
               Negotiate
@@ -250,7 +250,7 @@ export const ProductCard = ({ product, isCompact = false }: ProductCardProps) =>
             <button
               type="button"
               onClick={handleCart}
-              className="inline-flex h-10 w-full items-center justify-center gap-2 rounded bg-[#ff6b00] px-3 font-mono text-[11px] font-bold uppercase tracking-[0.12em] text-white transition-colors hover:bg-[#e05300]"
+              className="inline-flex min-h-10 w-full items-center justify-center gap-2 whitespace-normal rounded bg-[#ff6b00] px-2 py-2 text-center font-mono text-[10px] font-bold uppercase tracking-[0.08em] text-white transition-colors hover:bg-[#e05300] sm:px-3 sm:text-[11px] sm:tracking-[0.12em]"
             >
               <ShoppingCart size={15} />
               {t('product_add_to_cart') || 'Add to cart'}

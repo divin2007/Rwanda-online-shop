@@ -7,7 +7,10 @@ import {
   auditLogSchema,
   deliverySchema,
   reviewSchema,
-  supportTicketSchema
+  supportTicketSchema,
+  sellerVideoSchema,
+  notificationLogSchema,
+  ledgerEntrySchema
 } from '@rmf/database';
 import { AuthGuardModule } from '@rmf/auth';
 import { AdminService } from './admin.service';
@@ -22,7 +25,10 @@ import { AdminController } from './admin.controller';
       { name: 'AuditLog', schema: auditLogSchema },
       { name: 'Delivery', schema: deliverySchema },
       { name: 'Review', schema: reviewSchema },
-      { name: 'SupportTicket', schema: supportTicketSchema }
+      { name: 'SupportTicket', schema: supportTicketSchema },
+      { name: 'SellerVideo', schema: sellerVideoSchema },
+      { name: 'NotificationLog', schema: notificationLogSchema },
+      { name: 'LedgerEntry', schema: ledgerEntrySchema }
     ]),
     AuthGuardModule.forRoot(),
   ],

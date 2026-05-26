@@ -29,6 +29,19 @@
 
 html {
   font-size: 100%;
+  max-width: 100%;
+  overflow-x: hidden;
+}
+
+body {
+  max-width: 100%;
+  overflow-x: hidden;
+}
+
+img,
+video,
+canvas {
+  max-width: 100%;
 }
 
 @layer base {
@@ -47,7 +60,7 @@ html {
 
 @layer components {
   .rmf-container {
-    @apply max-w-[80rem] mx-auto px-4 md:px-8;
+    @apply w-full max-w-[80rem] mx-auto px-4 md:px-8;
   }
 
   .glass-header {
@@ -75,11 +88,11 @@ html {
   }
 
   .rmf-btn-primary {
-    @apply inline-flex items-center justify-center gap-2 rounded bg-[var(--rmf-green)] text-white px-5 py-3 text-sm font-bold tracking-normal transition-colors duration-200 hover:bg-[var(--rmf-green-dark)] active:translate-y-px;
+    @apply inline-flex min-h-11 max-w-full items-center justify-center gap-2 rounded bg-[var(--rmf-green)] text-white px-5 py-3 text-sm font-bold tracking-normal transition-colors duration-200 hover:bg-[var(--rmf-green-dark)] active:translate-y-px;
   }
 
   .rmf-btn-outline {
-    @apply inline-flex items-center justify-center gap-2 rounded border border-[var(--rmf-green)] bg-white text-[var(--rmf-green)] px-5 py-3 text-sm font-bold tracking-normal transition-colors duration-200 hover:bg-[var(--rmf-green-light)];
+    @apply inline-flex min-h-11 max-w-full items-center justify-center gap-2 rounded border border-[var(--rmf-green)] bg-white text-[var(--rmf-green)] px-5 py-3 text-sm font-bold tracking-normal transition-colors duration-200 hover:bg-[var(--rmf-green-light)];
   }
 
   .rmf-form-group {
@@ -271,4 +284,55 @@ html {
 
 .animate-fade-in {
   animation: fadeIn 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@media (max-width: 767px) {
+  .grid > *,
+  .flex > * {
+    min-width: 0;
+  }
+
+  .rmf-container {
+    padding-left: 1rem;
+    padding-right: 1rem;
+  }
+
+  .text-7xl {
+    font-size: 2.75rem;
+    line-height: 0.98;
+  }
+
+  .text-6xl {
+    font-size: 2.5rem;
+    line-height: 1;
+  }
+
+  .text-5xl {
+    font-size: 2.25rem;
+    line-height: 1.05;
+  }
+
+  .text-4xl {
+    font-size: 2rem;
+    line-height: 1.08;
+  }
+
+  .rmf-btn-primary,
+  .rmf-btn-outline {
+    width: 100%;
+    padding-left: 1rem;
+    padding-right: 1rem;
+    text-align: center;
+  }
+
+  table {
+    min-width: 42rem;
+  }
+
+  .overflow-hidden:has(> table),
+  .overflow-hidden:has(table) {
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+  }
 }

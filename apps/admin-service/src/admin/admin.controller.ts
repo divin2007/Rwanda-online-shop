@@ -38,6 +38,13 @@ export class AdminController {
     return { success: true, data: analytics };
   }
 
+  @Get('admin/operations')
+  @Roles(UserRole.ADMIN)
+  async getOperationsOverview() {
+    const overview = await this.adminService.getOperationsOverview();
+    return { success: true, data: overview };
+  }
+
   @Get('analytics/seller/:id')
   @Roles(UserRole.ADMIN, UserRole.SELLER)
   async getSellerAnalytics(@Param('id') id: string, @Req() req: any) {

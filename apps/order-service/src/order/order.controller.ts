@@ -334,14 +334,14 @@ export class OrderController {
   }
 
   @Post(':id/dispute')
-  async raiseDispute(@Param('id') id: string, @Body() body: { reason: string }, @Req() req: any) {
+  async raiseDispute(@Param('id') id: string, @Body() body: { reason: string; evidenceUrls?: string[] }, @Req() req: any) {
     if (String(req.user.role).toUpperCase() !== UserRole.BUYER && !this.isAdmin(req)) {
       throw new ForbiddenException('Only buyer accounts can raise disputes');
     }
 
     const order = await this.orderService.getOrderById(id);
     this.assertBuyer(order, req, 'Only the buyer can raise a dispute');
-    const updated = await this.orderService.raiseDispute(id, body.reason);
+    const updated = await this.orderService.raiseDispute(id, body.reason, Array.isArray(body.evidenceUrls) ? body.evidenceUrls : []);
     return { success: true, data: updated };
   }
 

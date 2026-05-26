@@ -2131,9 +2131,23 @@ const mergeRmfV3Catalog = (existing: CatalogCategory[]): CatalogCategory[] => {
 export const catalogCategories: CatalogCategory[] = mergeRmfV3Catalog(rmfCoreCatalogCategories);
 
 const aliasMap = new Map<string, CatalogCategory>();
+const categoryById = new Map(catalogCategories.map(category => [category.id, category]));
+const categoryDepth = (category: CatalogCategory): number => {
+  let depth = 0;
+  let parentId = category.parentId || null;
+  while (parentId) {
+    const parent = categoryById.get(parentId);
+    if (!parent) break;
+    depth++;
+    parentId = parent.parentId || null;
+  }
+  return depth;
+};
+
 const addAlias = (key: string, category: CatalogCategory) => {
   const normalized = key.toLowerCase();
-  if (!aliasMap.has(normalized)) {
+  const existing = aliasMap.get(normalized);
+  if (!existing || categoryDepth(category) > categoryDepth(existing)) {
     aliasMap.set(normalized, category);
   }
 };
@@ -2144,13 +2158,49 @@ for (const category of catalogCategories) {
   category.aliases.forEach(alias => addAlias(alias, category));
 }
 
+const singularize = (value: string) => value.endsWith('s') && value.length > 3 ? value.slice(0, -1) : value;
+
+const withInheritedCatalogFields = (category: CatalogCategory): CatalogCategory => {
+  let inheritedAxes = [...category.variantAxes];
+  let inheritedAttributes = [...category.attributes];
+  let parentId = category.parentId || null;
+
+  while ((inheritedAxes.length === 0 || inheritedAttributes.length === 0) && parentId) {
+    const parent = categoryById.get(parentId);
+    if (!parent) break;
+    if (inheritedAxes.length === 0 && parent.variantAxes.length > 0) {
+      inheritedAxes = parent.variantAxes;
+    }
+    if (inheritedAttributes.length === 0 && parent.attributes.length > 0) {
+      inheritedAttributes = parent.attributes;
+    }
+    parentId = parent.parentId || null;
+  }
+
+  return {
+    ...category,
+    variantAxes: inheritedAxes,
+    attributes: inheritedAttributes,
+  };
+};
+
 export const resolveCatalogCategory = (value: unknown): CatalogCategory => {
   const normalized = String(value || '').trim().toLowerCase();
-  return aliasMap.get(normalized)
-    || catalogCategories.find(category =>
-      normalized.includes(category.id)
-      || category.aliases.some(alias => normalized.includes(alias))
-      || category.synonyms?.some(synonym => normalized.includes(synonym))
-    )
+  const normalizedTokens = normalized.split(/[^a-z0-9]+/).filter(Boolean).map(singularize);
+  const resolved = aliasMap.get(normalized)
+    || catalogCategories
+      .slice()
+      .sort((left, right) => categoryDepth(right) - categoryDepth(left))
+      .find(category => {
+        const candidates = [category.id, category.label, ...category.aliases, ...(category.synonyms || [])]
+          .map(candidate => candidate.toLowerCase());
+        return candidates.some(candidate => {
+          const singularCandidate = singularize(candidate);
+          return normalized.includes(candidate)
+            || normalized.includes(singularCandidate)
+            || normalizedTokens.includes(singularCandidate);
+        });
+      })
     || catalogCategories[catalogCategories.length - 1];
+  return withInheritedCatalogFields(resolved);
 };

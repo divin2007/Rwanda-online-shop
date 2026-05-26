@@ -44,6 +44,14 @@ export class NotificationController {
     return { success: true, data: result };
   }
 
+  @Public()
+  @Post('whatsapp')
+  async sendWhatsApp(@Body() body: { userId: string; phone: string; type: string; params: any; lang?: 'rw' | 'en' }, @Request() req: any) {
+    verifyInternalSecret(req);
+    const result = await this.notificationService.sendWhatsApp(body.userId, body.phone, body.type, body.params, body.lang);
+    return { success: true, data: result };
+  }
+
   // FIX [NOTIF-EMAIL]: Was fully public — anyone could send phishing emails via our domain.
   @Public()
   @Post('email')
@@ -59,6 +67,20 @@ export class NotificationController {
   async sendInApp(@Body() body: { userId: string; type: string; params: any; lang?: 'rw' | 'en' }, @Request() req: any) {
     verifyInternalSecret(req);
     const result = await this.notificationService.sendInApp(body.userId, body.type, body.params, body.lang);
+    return { success: true, data: result };
+  }
+
+  @Public()
+  @Post('dispatch')
+  async dispatch(@Body() body: {
+    userId: string;
+    type: string;
+    params: any;
+    channels?: Array<'IN_APP' | 'EMAIL' | 'SMS' | 'WHATSAPP'>;
+    lang?: 'rw' | 'en';
+  }, @Request() req: any) {
+    verifyInternalSecret(req);
+    const result = await this.notificationService.dispatch(body.userId, body.type, body.params || {}, body.channels || ['IN_APP'], body.lang);
     return { success: true, data: result };
   }
 

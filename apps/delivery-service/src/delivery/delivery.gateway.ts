@@ -202,30 +202,42 @@ export class DeliveryGateway implements OnGatewayConnection, OnGatewayDisconnect
     return R * c;
   }
 
-  // Broadcast to currently connected riders. Distance is informational only and
-  // does not block the assignment offer.
   broadcastToActiveRiders(
     deliveryReq: any,
     marketLat: number,
     marketLng: number,
-    options: { searchSurcharge?: number; deliveryFee?: number } = {}
-  ): { notifiedCount: number; riderIds: string[] } {
+    options: {
+      searchSurcharge?: number;
+      deliveryFee?: number;
+      radiusMeters?: number | null;
+      nextRadiusMeters?: number | null;
+      maxRadiusMeters?: number | null;
+      strategy?: string;
+    } = {}
+  ): { notifiedCount: number; riderIds: string[]; candidateCount: number } {
     const maxLocationAgeMs = Number(process.env.RIDER_LOCATION_MAX_AGE_MS || 120000);
     let notifiedCount = 0;
+    let candidateCount = 0;
     const riderIds: string[] = [];
-    this.logger.log(`Starting global broadcast for delivery ${deliveryReq.orderNumber}. Active riders: ${this.activeRiders.size}`);
+    const radiusMeters = Number.isFinite(Number(options.radiusMeters)) ? Number(options.radiusMeters) : null;
+    const strategy = options.strategy || (radiusMeters ? 'PROGRESSIVE_RADIUS' : 'GLOBAL_ACTIVE_RIDERS');
+    this.logger.log(`Starting rider broadcast for delivery ${deliveryReq.orderNumber}. Strategy: ${strategy}. Radius: ${radiusMeters || 'global'}m. Active riders: ${this.activeRiders.size}`);
     
     for (const [riderId, data] of this.activeRiders.entries()) {
       try {
         if (!Number.isFinite(data.lat) || !Number.isFinite(data.lng)) continue;
         if (Date.now() - Number(data.updatedAt || 0) > maxLocationAgeMs) continue;
         const distanceMeters = this.getDistanceMeters(marketLat, marketLng, data.lat, data.lng);
+        if (radiusMeters !== null && distanceMeters > radiusMeters) continue;
+        candidateCount++;
         this.server.to(data.socketId).emit('delivery:assigned', {
           ...deliveryReq,
           dispatch: {
             ...(deliveryReq.dispatch || {}),
-            broadcastMode: 'GLOBAL_ACTIVE_RIDERS',
-            radiusMeters: null,
+            broadcastMode: strategy,
+            radiusMeters,
+            nextRadiusMeters: options.nextRadiusMeters ?? null,
+            maxRadiusMeters: options.maxRadiusMeters ?? null,
             searchSurcharge: options.searchSurcharge || 0,
             deliveryFee: options.deliveryFee,
           },
@@ -243,7 +255,7 @@ export class DeliveryGateway implements OnGatewayConnection, OnGatewayDisconnect
         this.logger.error(`Failed to emit to rider ${riderId} on socket ${data.socketId}`, err);
       }
     }
-    this.logger.log(`Broadcasted delivery request to ${notifiedCount} rider(s) globally.`);
-    return { notifiedCount, riderIds };
+    this.logger.log(`Broadcasted delivery request to ${notifiedCount} rider(s).`);
+    return { notifiedCount, riderIds, candidateCount };
   }
 }

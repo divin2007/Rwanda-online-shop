@@ -168,6 +168,7 @@ function AdminDashboardContent() {
 
   const { data: analytics, execute: fetchAnalytics } = useApi(adminApi, 'get', '/admin/analytics');
   const { data: dashboardAnalytics, execute: fetchDashboardAnalytics } = useApi(adminApi, 'get', '/admin/dashboard/analytics');
+  const { data: operationsOverview, loading: operationsLoading, execute: fetchOperations } = useApi(adminApi, 'get', '/admin/operations', { refreshInterval: 30000 });
   const { data: fraudAlerts, execute: fetchFraud } = useApi(adminApi, 'get', '/admin/fraud-alerts');
   const { data: pendingSellers, execute: fetchSellers } = useApi(sellerApi, 'get', '/sellers?isApproved=false');
   const { data: approvedSellers, execute: fetchApprovedSellers } = useApi(sellerApi, 'get', '/sellers?isApproved=true');
@@ -206,6 +207,7 @@ function AdminDashboardContent() {
       fetchDisputes();
       fetchProfileChangeRequests();
       fetchPayoutRequests();
+      fetchOperations();
     }
   }, [adminSocketData]);
 
@@ -215,6 +217,7 @@ function AdminDashboardContent() {
       fetchDashboardAnalytics();
     }
     if (activeTab === 'fraud') fetchFraud();
+    if (activeTab === 'operations' || activeTab === 'live-map') fetchOperations();
     if (activeTab === 'sellers') fetchSellers();
     if (activeTab === 'products') {
       fetchPendingProducts();
@@ -239,7 +242,7 @@ function AdminDashboardContent() {
       fetchOrders().catch(() => setFetchError('Failed to load orders. Please try again.'));
       fetchAnalytics();
     }
-  }, [activeTab, fetchAnalytics, fetchDashboardAnalytics, fetchFraud, fetchSellers, fetchApprovedSellers, fetchPendingProducts, fetchRiders, fetchDisputes, fetchOrders]);
+  }, [activeTab, fetchAnalytics, fetchDashboardAnalytics, fetchOperations, fetchFraud, fetchSellers, fetchApprovedSellers, fetchPendingProducts, fetchRiders, fetchDisputes, fetchOrders]);
 
   useEffect(() => {
     if (!selectedBulkSellerId && Array.isArray(approvedSellers) && approvedSellers.length > 0) {
@@ -322,6 +325,19 @@ function AdminDashboardContent() {
   const openDisputeExposure = Array.isArray(disputes)
     ? disputes.reduce((sum: number, dispute: any) => sum + Number(dispute.financials?.totalAmount || dispute.total || 0), 0)
     : 0;
+  const operationCounts = operationsOverview?.counts || {};
+  const operationQueues = operationsOverview?.actionQueues || {};
+  const readiness = operationsOverview?.readiness || {};
+  const readinessChecks = [
+    { label: 'Paypack cash-in', ready: readiness.paypackCashinConfigured, detail: 'Client credentials' },
+    { label: 'Paypack webhook', ready: readiness.paypackWebhookConfigured, detail: 'Callback signature' },
+    { label: 'Settlement MoMo', ready: readiness.paypackSettlementConfigured, detail: 'Platform wallet' },
+    { label: 'SMS channel', ready: readiness.smsConfigured, detail: 'Delivery + order alerts' },
+    { label: 'WhatsApp channel', ready: readiness.whatsappConfigured, detail: 'Fallback support alerts' },
+    { label: 'SMTP email', ready: readiness.smtpConfigured, detail: 'Receipts and disputes' },
+    { label: 'Mapbox geocoder', ready: readiness.geocoder?.mapboxConfigured, detail: readiness.geocoder?.provider || 'auto' },
+    { label: 'OpenCage geocoder', ready: readiness.geocoder?.opencageConfigured, detail: readiness.geocoder?.provider || 'auto' },
+  ];
 
   const totalPages = Math.max(1, Math.ceil(filteredOrders.length / pageSize));
   const paginatedOrders = filteredOrders.slice((page - 1) * pageSize, page * pageSize);
@@ -726,6 +742,155 @@ function AdminDashboardContent() {
                      <RiderMap marketId="all-admin" />
                   </div>
                </div>
+            </div>
+          )}
+
+          {activeTab === 'operations' && (
+            <div className="space-y-6 animate-reveal">
+              <div className="rounded-lg border border-[#dfe7e2] bg-white p-6 shadow-sm">
+                <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+                  <div>
+                    <p className="text-[10px] font-black uppercase tracking-[0.18em] text-[#ff6b00]">Operations command</p>
+                    <h2 className="mt-2 text-2xl font-sans text-[#1b1c1c]">Platform control tower</h2>
+                    <p className="mt-2 max-w-3xl text-sm font-semibold leading-6 text-[#5f7569]">
+                      Monitor escrow release, rider dispatch, refund failures, notification channels, video moderation, and deployment readiness from one place.
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => fetchOperations()}
+                    className="inline-flex h-11 items-center justify-center rounded-md bg-[#ff6b00] px-5 text-[10px] font-black uppercase tracking-widest text-white transition hover:bg-[#e05300]"
+                  >
+                    {operationsLoading ? 'Refreshing...' : 'Refresh'}
+                  </button>
+                </div>
+              </div>
+
+              <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+                {[
+                  { label: 'Active disputes', value: operationCounts.activeDisputes || 0, tone: 'border-l-[#ef4444]' },
+                  { label: 'Refund failures', value: operationCounts.refundFailures || 0, tone: 'border-l-[#b91c1c]' },
+                  { label: 'Escrow release queue', value: operationCounts.releasePending || 0, tone: 'border-l-[#ff6b00]' },
+                  { label: 'Settlement failures', value: operationCounts.settlementFailures || 0, tone: 'border-l-[#f59e0b]' },
+                  { label: 'Assigned without rider', value: operationCounts.assignedWithoutRider || 0, tone: 'border-l-[#2563eb]' },
+                  { label: 'Stalled deliveries', value: operationCounts.stalledDeliveries || 0, tone: 'border-l-[#7c3aed]' },
+                  { label: 'Failed notifications', value: operationCounts.failedNotifications || 0, tone: 'border-l-[#dc2626]' },
+                  { label: 'Pending videos', value: operationCounts.pendingVideos || 0, tone: 'border-l-[#059669]' },
+                ].map(item => (
+                  <div key={item.label} className={`rounded-lg border border-[#dfe7e2] border-l-4 ${item.tone} bg-white p-5 shadow-sm`}>
+                    <p className="text-[9px] font-black uppercase tracking-[0.18em] text-[#5f7569]">{item.label}</p>
+                    <p className="mt-3 text-3xl font-sans text-[#1b1c1c]">{item.value}</p>
+                  </div>
+                ))}
+              </div>
+
+              <div className="grid gap-6 xl:grid-cols-[1.15fr_0.85fr]">
+                <div className="rounded-lg border border-[#dfe7e2] bg-white shadow-sm">
+                  <div className="border-b border-[#dfe7e2] p-5">
+                    <p className="text-[10px] font-black uppercase tracking-[0.18em] text-[#ff6b00]">Rider dispatch live logic</p>
+                    <h3 className="mt-1 text-xl font-sans text-[#1b1c1c]">Progressive radius assignments</h3>
+                  </div>
+                  <div className="divide-y divide-[#edf2ef]">
+                    {!Array.isArray(operationQueues.dispatches) || operationQueues.dispatches.length === 0 ? (
+                      <div className="p-8 text-sm font-semibold text-[#5f7569]">No assigned deliveries currently need attention.</div>
+                    ) : (
+                      operationQueues.dispatches.slice(0, 8).map((delivery: any) => (
+                        <div key={delivery._id || delivery.orderNumber} className="grid gap-4 p-5 md:grid-cols-[1fr_auto] md:items-center">
+                          <div>
+                            <p className="text-sm font-black text-[#1b1c1c]">{delivery.orderNumber || 'Delivery assignment'}</p>
+                            <p className="mt-1 text-xs font-semibold text-[#5f7569]">
+                              Radius {delivery.dispatch?.radiusMeters || 0}m
+                              {delivery.dispatch?.nextRadiusMeters ? ` -> ${delivery.dispatch.nextRadiusMeters}m next` : ''}
+                            </p>
+                            <p className="mt-1 text-[10px] font-bold uppercase tracking-widest text-[#8a9a90]">
+                              Pickup: {delivery.pickup?.address || 'Pending pickup address'}
+                            </p>
+                          </div>
+                          <div className="rounded-md border border-[#ffedd5] bg-[#fff7ed] px-4 py-3 text-right">
+                            <p className="text-[9px] font-black uppercase tracking-widest text-[#b45309]">Fee</p>
+                            <p className="text-lg font-black text-[#ff6b00]">{Number(delivery.financials?.deliveryFee || 0).toLocaleString()} RWF</p>
+                            <p className="text-[9px] font-bold uppercase tracking-widest text-[#b45309]">
+                              +{Number(delivery.dispatch?.searchSurcharge || 0).toLocaleString()} search
+                            </p>
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+
+                <div className="rounded-lg border border-[#dfe7e2] bg-white shadow-sm">
+                  <div className="border-b border-[#dfe7e2] p-5">
+                    <p className="text-[10px] font-black uppercase tracking-[0.18em] text-[#ff6b00]">Deployment readiness</p>
+                    <h3 className="mt-1 text-xl font-sans text-[#1b1c1c]">External services</h3>
+                  </div>
+                  <div className="grid gap-3 p-5">
+                    {readinessChecks.map(check => (
+                      <div key={check.label} className="flex items-center justify-between rounded-md border border-[#edf2ef] bg-[#fcf9f8] px-4 py-3">
+                        <div>
+                          <p className="text-sm font-black text-[#1b1c1c]">{check.label}</p>
+                          <p className="text-[10px] font-bold uppercase tracking-widest text-[#5f7569]">{check.detail}</p>
+                        </div>
+                        <span className={`rounded-full px-3 py-1 text-[8px] font-black uppercase tracking-widest ${check.ready ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-700'}`}>
+                          {check.ready ? 'Ready' : 'Missing'}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid gap-6 xl:grid-cols-2">
+                <div className="rounded-lg border border-[#dfe7e2] bg-white shadow-sm">
+                  <div className="border-b border-[#dfe7e2] p-5">
+                    <p className="text-[10px] font-black uppercase tracking-[0.18em] text-[#ff6b00]">Refund and escrow money flow</p>
+                    <h3 className="mt-1 text-xl font-sans text-[#1b1c1c]">Payout queue</h3>
+                  </div>
+                  <div className="divide-y divide-[#edf2ef]">
+                    {!Array.isArray(operationQueues.payoutAndEscrow) || operationQueues.payoutAndEscrow.length === 0 ? (
+                      <div className="p-8 text-sm font-semibold text-[#5f7569]">Escrow and payout queues are clear.</div>
+                    ) : (
+                      operationQueues.payoutAndEscrow.slice(0, 8).map((order: any) => (
+                        <div key={order._id || order.orderNumber} className="grid gap-3 p-5 md:grid-cols-[1fr_auto] md:items-center">
+                          <div>
+                            <p className="text-sm font-black text-[#1b1c1c]">{order.orderNumber || 'Order'}</p>
+                            <p className="mt-1 text-xs font-semibold text-[#5f7569]">
+                              {order.settlement?.status || 'settlement'} / {order.refund?.status || 'no refund'}
+                            </p>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => setActiveTab('disputes')}
+                            className="rounded-md border border-[#dfe7e2] bg-[#f7faf8] px-4 py-2 text-[9px] font-black uppercase tracking-widest text-[#ff6b00] hover:border-[#ff6b00]"
+                          >
+                            Review
+                          </button>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+
+                <div className="rounded-lg border border-[#dfe7e2] bg-white shadow-sm">
+                  <div className="border-b border-[#dfe7e2] p-5">
+                    <p className="text-[10px] font-black uppercase tracking-[0.18em] text-[#ff6b00]">Notification channels</p>
+                    <h3 className="mt-1 text-xl font-sans text-[#1b1c1c]">Failed delivery log</h3>
+                  </div>
+                  <div className="divide-y divide-[#edf2ef]">
+                    {!Array.isArray(operationQueues.failedLedgerEntries) || operationQueues.failedLedgerEntries.length === 0 ? (
+                      <div className="p-8 text-sm font-semibold text-[#5f7569]">No recent failed ledger entries.</div>
+                    ) : (
+                      operationQueues.failedLedgerEntries.slice(0, 8).map((entry: any) => (
+                        <div key={entry._id} className="p-5">
+                          <p className="text-sm font-black text-[#1b1c1c]">{entry.reference || entry.type || 'Ledger failure'}</p>
+                          <p className="mt-1 text-xs font-semibold text-[#5f7569]">{entry.reason || entry.description || 'Failure reason unavailable'}</p>
+                          <p className="mt-2 text-[10px] font-bold uppercase tracking-widest text-[#8a9a90]">{entry.createdAt ? new Date(entry.createdAt).toLocaleString() : 'Recent'}</p>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+              </div>
             </div>
           )}
 

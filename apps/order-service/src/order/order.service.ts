@@ -38,6 +38,7 @@ const PAYMENT_TRANSITIONS: Record<string, string[]> = {
 export class OrderService implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(OrderService.name);
   private readonly paymentPollingIntervals = new Map<string, NodeJS.Timeout>();
+  private readonly escrowReleaseTimers = new Map<string, NodeJS.Timeout>();
   private readonly locationService = new LocationService();
 
   constructor(
@@ -128,11 +129,14 @@ export class OrderService implements OnModuleInit, OnModuleDestroy {
       return;
     }
     try {
-      const url = `${process.env.NOTIFICATION_SERVICE_URL || 'http://localhost:3009/api/v1'}/notifications/in-app`;
+      const channels = /security|fraud|refund|dispute|payment|quote|order/i.test(type)
+        ? ['IN_APP', 'EMAIL']
+        : ['IN_APP'];
+      const url = `${process.env.NOTIFICATION_SERVICE_URL || 'http://localhost:3009/api/v1'}/notifications/dispatch`;
       const axios = require('axios');
       const secret = process.env.INTERNAL_SERVICE_SECRET;
       const headers = secret ? { 'x-internal-service-key': secret } : {};
-      await axios.post(url, { userId, type, params }, { headers });
+      await axios.post(url, { userId, type, params, channels }, { headers });
     } catch (error: any) {
       console.error(`Failed to trigger notification: ${type}`, error.message);
     }
@@ -342,6 +346,22 @@ export class OrderService implements OnModuleInit, OnModuleDestroy {
         }
       }
       this.logger.log(`Resumed polling for ${pendingOrders.length} pending orders`);
+
+      const releasePendingOrders = await this.orderModel.find({
+        status: { $in: [OrderStatus.DELIVERED, OrderStatus.RESOLVED] },
+        'settlement.status': 'release_pending',
+        'payment.status': PaymentStatus.PAID,
+        $or: [
+          { 'dispute.isDisputed': { $ne: true } },
+          { 'dispute.resolvedAt': { $exists: true, $ne: null } },
+        ],
+      }).exec();
+
+      for (const order of releasePendingOrders) {
+        const releaseAt = order.settlement?.releaseAvailableAt ? new Date(order.settlement.releaseAvailableAt) : new Date();
+        this.scheduleEscrowRelease(order, releaseAt);
+      }
+      this.logger.log(`Scheduled escrow release checks for ${releasePendingOrders.length} order(s)`);
     } catch (error) {
       this.logger.error('Failed to recover payment polls', error);
     }
@@ -625,9 +645,9 @@ export class OrderService implements OnModuleInit, OnModuleDestroy {
       }
 
       if (newStatus === OrderStatus.DELIVERED) {
-        // Pay seller, platform, and rider when buyer confirms delivery.
-        this.triggerPayoutFlow(updated, 'both').catch(err => {
-          this.logger.error(`Failed to trigger payout for order ${id}: ${err.message}`);
+        // Funds remain in escrow through the dispute window, then release automatically.
+        this.prepareEscrowRelease(updated).catch(err => {
+          this.logger.error(`Failed to schedule escrow release for order ${id}: ${err.message}`);
         });
 
         // Increment totalOrders for purchased products in the database
@@ -786,6 +806,78 @@ export class OrderService implements OnModuleInit, OnModuleDestroy {
     }).exec();
   }
 
+  private getEscrowReleaseDelayMs(): number {
+    if (process.env.ESCROW_RELEASE_DELAY_HOURS !== undefined) {
+      return Math.max(0, Number(process.env.ESCROW_RELEASE_DELAY_HOURS || 0) * 60 * 60 * 1000);
+    }
+    return process.env.NODE_ENV === 'production' ? 24 * 60 * 60 * 1000 : 0;
+  }
+
+  private clearEscrowReleaseTimer(orderId: any) {
+    const id = this.normalizeId(orderId);
+    if (!id) return;
+    const timer = this.escrowReleaseTimers.get(id);
+    if (timer) clearTimeout(timer);
+    this.escrowReleaseTimers.delete(id);
+  }
+
+  private scheduleEscrowRelease(order: any, releaseAt: Date) {
+    const orderId = this.normalizeId(order?._id || order?.id);
+    if (!orderId) return;
+    this.clearEscrowReleaseTimer(orderId);
+    const delayMs = Math.max(0, releaseAt.getTime() - Date.now());
+    const timer = setTimeout(() => {
+      this.releaseEscrowIfReady(orderId).catch(err => {
+        this.logger.error(`Escrow release failed for order ${orderId}: ${err.message}`);
+      });
+    }, delayMs);
+    this.escrowReleaseTimers.set(orderId, timer);
+  }
+
+  private async prepareEscrowRelease(order: any) {
+    const delayMs = this.getEscrowReleaseDelayMs();
+    const releaseAt = new Date(Date.now() + delayMs);
+    await this.updateSettlementState(order._id, {
+      'settlement.status': 'release_pending',
+      'settlement.releaseAvailableAt': releaseAt,
+      'settlement.payoutBlockedReason': delayMs > 0 ? 'Waiting for buyer dispute window to expire' : null,
+      'settlement.lastError': null,
+    });
+
+    if (delayMs > 0) {
+      this.scheduleEscrowRelease(order, releaseAt);
+      this.logger.log(`Escrow payout for order ${order.orderNumber} scheduled after dispute window at ${releaseAt.toISOString()}`);
+      return;
+    }
+
+    await this.releaseEscrowIfReady(this.normalizeId(order._id)!);
+  }
+
+  private async releaseEscrowIfReady(orderId: string) {
+    const order = await this.orderModel.findById(orderId).exec();
+    if (!order) return;
+    if (order.status !== OrderStatus.DELIVERED && order.status !== OrderStatus.RESOLVED) return;
+    if (order.dispute?.isDisputed && !order.dispute?.resolvedAt) {
+      await this.updateSettlementState(order._id, {
+        'settlement.status': 'release_pending',
+        'settlement.payoutBlockedReason': 'Active buyer dispute',
+      });
+      return;
+    }
+    const releaseAt = order.settlement?.releaseAvailableAt ? new Date(order.settlement.releaseAvailableAt) : new Date();
+    if (releaseAt.getTime() > Date.now()) {
+      this.scheduleEscrowRelease(order, releaseAt);
+      return;
+    }
+
+    await this.updateSettlementState(order._id, {
+      'settlement.releaseTriggeredAt': new Date(),
+      'settlement.payoutBlockedReason': null,
+    });
+    await this.triggerPayoutFlow(order, 'both');
+    this.clearEscrowReleaseTimer(order._id);
+  }
+
   private async paypackCashoutAndRecord(input: {
     order: any;
     userId?: string | null;
@@ -877,6 +969,28 @@ export class OrderService implements OnModuleInit, OnModuleDestroy {
   // after cashout, but never credits RMF-managed wallet balances.
   private async triggerPayoutFlow(order: any, payFor: 'seller' | 'rider' | 'both' = 'both') {
     try {
+      const latest = await this.orderModel.findById(order._id).exec();
+      if (!latest) throw new NotFoundException('Order not found for payout');
+      order = latest;
+      if (order.payment?.status !== PaymentStatus.PAID) {
+        throw new Error(`Cannot release escrow for unpaid order ${order.orderNumber}`);
+      }
+      if (order.refund?.status === 'refunded' || order.settlement?.status === 'refunded') {
+        this.logger.warn(`Skipping payout for refunded order ${order.orderNumber}`);
+        return;
+      }
+      if (order.dispute?.isDisputed && !order.dispute?.resolvedAt) {
+        await this.updateSettlementState(order._id, {
+          'settlement.status': 'release_pending',
+          'settlement.payoutBlockedReason': 'Active buyer dispute',
+        });
+        throw new Error(`Cannot release escrow for disputed order ${order.orderNumber}`);
+      }
+      if (order.settlement?.status === 'settled') {
+        this.logger.log(`Skipping duplicate payout for order ${order.orderNumber}; settlement is already settled.`);
+        return;
+      }
+
       const shouldPaySeller = payFor === 'seller' || payFor === 'both';
       const shouldPayRider = payFor === 'rider' || payFor === 'both';
       const subtotal = Number(order.financials?.subtotal || 0);
@@ -959,7 +1073,12 @@ export class OrderService implements OnModuleInit, OnModuleDestroy {
         });
       }
 
-      await this.updateSettlementState(order._id, { 'settlement.status': 'settled', 'settlement.lastError': null });
+      await this.updateSettlementState(order._id, {
+        'settlement.status': 'settled',
+        'settlement.releaseTriggeredAt': order.settlement?.releaseTriggeredAt || new Date(),
+        'settlement.payoutBlockedReason': null,
+        'settlement.lastError': null,
+      });
       this.logger.log(`Paypack payout (${payFor}) processed for order ${order.orderNumber}`);
     } catch (err) {
       this.logger.error(`Payout flow error: ${err.message}`);
@@ -1232,7 +1351,7 @@ export class OrderService implements OnModuleInit, OnModuleDestroy {
     return this.orderModel.findById(id).exec();
   }
 
-  async raiseDispute(id: string, reason: string): Promise<any> {
+  async raiseDispute(id: string, reason: string, evidenceUrls: string[] = []): Promise<any> {
     const order = await this.orderModel.findById(id);
     if (!order) throw new NotFoundException('Order not found');
 
@@ -1250,6 +1369,7 @@ export class OrderService implements OnModuleInit, OnModuleDestroy {
     if (hoursSinceDelivery > 24) {
       throw new BadRequestException('Disputes must be raised within 24 hours of delivery');
     }
+    this.clearEscrowReleaseTimer(order._id);
 
     return await this.orderModel.findByIdAndUpdate(
       id,
@@ -1258,7 +1378,11 @@ export class OrderService implements OnModuleInit, OnModuleDestroy {
           status: OrderStatus.DISPUTED,
           'dispute.isDisputed': true,
           'dispute.reason': reason,
-          'dispute.raisedAt': new Date()
+          'dispute.evidenceUrls': evidenceUrls.slice(0, 8),
+          'dispute.raisedAt': new Date(),
+          'settlement.status': 'release_pending',
+          'settlement.payoutBlockedReason': 'Active buyer dispute',
+          'settlement.updatedAt': new Date(),
         }
       },
       { new: true }
@@ -1273,14 +1397,35 @@ export class OrderService implements OnModuleInit, OnModuleDestroy {
 
     let refundResult: any = null;
     if (resolution === DisputeResolution.REFUND) {
-      refundResult = await this.buyerProtection.executeInstantRefund(
-        order,
-        order.financials.totalAmount,
-        `Dispute resolution refund for order ${order.orderNumber || id}`
-      );
+      await this.orderModel.findByIdAndUpdate(id, {
+        $set: {
+          'refund.status': 'pending',
+          'refund.amount': order.financials.totalAmount,
+          'refund.reason': `Dispute resolution: ${resolution}`,
+          'refund.requestedAt': new Date(),
+          'settlement.payoutBlockedReason': 'Refund is being processed',
+        },
+      }).exec();
+      try {
+        refundResult = await this.buyerProtection.executeInstantRefund(
+          order,
+          order.financials.totalAmount,
+          `Dispute resolution refund for order ${order.orderNumber || id}`
+        );
+      } catch (error: any) {
+        await this.orderModel.findByIdAndUpdate(id, {
+          $set: {
+            'refund.status': 'failed',
+            'refund.error': error.message || 'Refund failed',
+            'settlement.status': 'release_pending',
+            'settlement.payoutBlockedReason': 'Refund failed and needs admin review',
+          },
+        }).exec();
+        throw error;
+      }
     }
 
-    return await this.orderModel.findByIdAndUpdate(
+    const updated = await this.orderModel.findByIdAndUpdate(
       id,
       {
         $set: {
@@ -1289,16 +1434,28 @@ export class OrderService implements OnModuleInit, OnModuleDestroy {
           'dispute.resolution': resolution,
           ...(resolution === DisputeResolution.REFUND ? {
             'payment.status': PaymentStatus.REFUNDED,
+            'settlement.status': 'refunded',
+            'settlement.payoutBlockedReason': null,
             'refund.status': 'refunded',
             'refund.amount': order.financials.totalAmount,
             'refund.transactionRef': refundResult?.transactionRef,
             'refund.reason': `Dispute resolution: ${resolution}`,
             'refund.refundedAt': new Date(),
-          } : {})
+          } : {
+            'settlement.payoutBlockedReason': resolution === DisputeResolution.REDELIVER ? 'Awaiting redelivery completion' : null,
+          })
         }
       },
       { new: true }
     );
+
+    if (resolution === DisputeResolution.REJECT && updated) {
+      await this.prepareEscrowRelease(updated).catch(err => {
+        this.logger.error(`Failed to release escrow after dispute rejection for order ${id}: ${err.message}`);
+      });
+    }
+
+    return updated;
   }
 
   async getOrderById(id: string): Promise<any> {
@@ -2011,5 +2168,10 @@ export class OrderService implements OnModuleInit, OnModuleDestroy {
       this.logger.log(`Cleaned up payment polling for order ${orderNumber}`);
     }
     this.paymentPollingIntervals.clear();
+    for (const [orderId, timer] of this.escrowReleaseTimers.entries()) {
+      clearTimeout(timer);
+      this.logger.log(`Cleaned up escrow release timer for order ${orderId}`);
+    }
+    this.escrowReleaseTimers.clear();
   }
 }

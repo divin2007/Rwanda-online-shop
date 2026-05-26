@@ -2,7 +2,7 @@ import { Schema, model } from 'mongoose';
 
 export const notificationLogSchema = new Schema({
   userId: { type: Schema.Types.ObjectId, ref: 'User', required: true },
-  channel: { type: String, required: true }, // SMS, EMAIL, IN_APP
+  channel: { type: String, required: true }, // SMS, EMAIL, IN_APP, WHATSAPP
   type: { type: String, required: true },
   referenceId: { type: Schema.Types.ObjectId },
   referenceType: { type: String },

@@ -58,7 +58,7 @@ export const transactionSchema = new Schema({
     paidAt: { type: Date }
   },
   settlement: {
-    status: { type: String, enum: ['pending', 'escrow_held', 'release_pending', 'partial', 'settled', 'failed'], default: 'pending' },
+    status: { type: String, enum: ['pending', 'escrow_held', 'release_pending', 'partial', 'settled', 'refunded', 'failed'], default: 'pending' },
     sellerStatus: { type: String, enum: ['pending', 'paid', 'failed', 'skipped'], default: 'pending' },
     sellerPayoutRef: { type: String },
     sellerSettledAt: { type: Date },
@@ -68,6 +68,9 @@ export const transactionSchema = new Schema({
     platformStatus: { type: String, enum: ['pending', 'paid', 'failed', 'skipped'], default: 'pending' },
     platformCommissionRef: { type: String },
     platformSettledAt: { type: Date },
+    releaseAvailableAt: { type: Date },
+    releaseTriggeredAt: { type: Date },
+    payoutBlockedReason: { type: String },
     lastError: { type: String },
     updatedAt: { type: Date }
   },
@@ -76,6 +79,7 @@ export const transactionSchema = new Schema({
     amount: { type: Number },
     transactionRef: { type: String },
     reason: { type: String },
+    requestedAt: { type: Date },
     refundedAt: { type: Date },
     error: { type: String }
   },
@@ -90,8 +94,10 @@ export const transactionSchema = new Schema({
   dispute: {
     isDisputed: { type: Boolean, default: false },
     reason: String,
+    evidenceUrls: [{ type: String }],
     raisedAt: Date,
     resolvedAt: Date,
+    adminNote: String,
     resolution: { type: String, enum: Object.values(DisputeResolution) }
   },
   attributes: { type: Map, of: String },

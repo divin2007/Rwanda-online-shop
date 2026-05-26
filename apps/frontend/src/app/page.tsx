@@ -197,7 +197,7 @@ const CompactMarketCard = ({ market, index }: { market: Market; index: number })
       href={marketHref(market)}
       className="group block overflow-hidden rounded-lg border border-[#e2bfb0] bg-white transition-colors hover:border-[#a04100]"
     >
-      <div className="relative h-36 overflow-hidden bg-background-surface">
+      <div className="relative h-32 overflow-hidden bg-background-surface sm:h-36">
         <Image
           src={imageSrc}
           alt={market.name}
@@ -213,7 +213,7 @@ const CompactMarketCard = ({ market, index }: { market: Market; index: number })
           Verified
         </span>
       </div>
-      <div className="space-y-3 p-5">
+      <div className="space-y-3 p-3 sm:p-5">
         <div>
           <h3 className="line-clamp-1 text-base font-bold tracking-tight text-text-primary group-hover:text-primary transition-colors">{market.name}</h3>
           <p className="mt-1 line-clamp-1 text-xs font-semibold text-text-secondary">
@@ -248,7 +248,7 @@ const CompactProductCard = ({ product }: { product: DisplayProduct }) => {
       href={product.href}
       className="group block overflow-hidden rounded-lg border border-[#e2bfb0] bg-white transition-colors hover:border-[#a04100]"
     >
-      <div className="relative h-44 overflow-hidden bg-background-surface">
+      <div className="relative h-36 overflow-hidden bg-background-surface sm:h-44">
         <Image
           src={product.image}
           alt={product.name}
@@ -274,13 +274,13 @@ const CompactProductCard = ({ product }: { product: DisplayProduct }) => {
           </div>
         </div>
       </div>
-      <div className="p-5">
-        <p className="line-clamp-1 text-base font-bold tracking-tight text-text-primary group-hover:text-primary transition-colors">{product.name}</p>
+      <div className="p-3 sm:p-5">
+        <p className="line-clamp-2 text-sm font-bold tracking-tight text-text-primary transition-colors group-hover:text-primary sm:text-base">{product.name}</p>
         <p className="mt-1 line-clamp-1 text-xs font-semibold text-text-muted">by {product.seller}</p>
-        <div className="mt-5 flex items-end justify-between">
+        <div className="mt-4 flex items-end justify-between gap-2 sm:mt-5">
           <div>
             <p className="text-[10px] font-bold uppercase tracking-widest text-text-muted/60">{product.category}</p>
-            <p className="text-lg font-bold text-text-primary mt-0.5">{formatCurrency(product.price)}</p>
+            <p className="mt-0.5 text-base font-bold text-text-primary sm:text-lg">{formatCurrency(product.price)}</p>
           </div>
           <div className="flex items-center gap-1 text-xs font-bold text-amber-800 bg-amber-500/10 px-2.5 py-0.5 rounded-full">
             <Star size={12} className="fill-amber-600 text-amber-600" />
@@ -719,8 +719,8 @@ export default function HomePage() {
     <Layout>
       <div className="min-h-screen bg-background-main text-text-primary selection:bg-primary selection:text-white">
         <div className="mx-auto max-w-[1440px] px-4 py-6 md:px-8 md:py-10">
-          <div className="grid gap-6 xl:grid-cols-[minmax(0,2fr)_minmax(380px,0.9fr)]">
-            <main className="space-y-8">
+          <div className="grid min-w-0 grid-cols-1 gap-5 md:gap-6 xl:grid-cols-[minmax(0,2fr)_minmax(340px,0.9fr)]">
+            <main className="min-w-0 space-y-6 md:space-y-8">
               {/* Cinematic Hero Section */}
               <section className="animate-reveal relative min-h-[320px] overflow-hidden border border-[#e2bfb0] bg-[#1b1c1c] lg:min-h-[400px]">
                 <Image
@@ -733,23 +733,23 @@ export default function HomePage() {
                   className="object-cover object-[62%_50%] opacity-50 transition-transform duration-1000 hover:scale-105"
                 />
                 <div className="absolute inset-0 bg-black/35" />
-                <div className="relative z-10 flex min-h-[320px] max-w-2xl flex-col justify-center p-8 md:p-12 lg:min-h-[400px]">
+                <div className="relative z-10 flex min-h-[320px] max-w-2xl flex-col justify-center p-5 sm:p-8 md:p-12 lg:min-h-[400px]">
                   <div className="mb-4 inline-flex w-fit items-center gap-2 rounded-full bg-white/10 px-4 py-1.5 text-[11px] font-bold tracking-wide text-primary-light backdrop-blur-md border border-white/10">
                     <ShieldCheck size={14} className="text-primary" />
                     {t('verified_hub')}
                   </div>
-                  <h1 className="max-w-xl text-3xl font-black leading-tight tracking-normal text-white md:text-4xl lg:text-5xl">
+                  <h1 className="max-w-xl text-[2rem] font-black leading-tight tracking-normal text-white sm:text-3xl md:text-4xl lg:text-5xl">
                     {t('trusted_markets')} <span className="text-primary">{t('delivered')}</span> {t('to_you')}
                   </h1>
                   <p className="mt-6 max-w-md text-base font-medium leading-relaxed text-white/70 lg:text-lg">
                     {t('discover_verified_sellers')}
                   </p>
-                  <div className="mt-10 flex flex-wrap items-center gap-4">
+                  <div className="mt-8 grid w-full grid-cols-1 gap-3 sm:flex sm:w-auto sm:flex-wrap sm:items-center sm:gap-4 md:mt-10">
                     <Link href="/markets" className="rmf-btn-primary group">
                       {t('browse_markets')}
                       <ArrowRight size={18} className="transition-transform group-hover:translate-x-1" />
                     </Link>
-                    <Link href="/register?role=SELLER" className="rmf-btn-outline text-white hover:text-primary">
+                    <Link href="/register?role=SELLER" className="inline-flex min-h-11 items-center justify-center rounded border border-white/35 bg-white/10 px-5 py-3 text-sm font-bold text-white transition-colors hover:bg-white hover:text-[#ff6b00]">
                       {t('start_selling')}
                     </Link>
                     <div className="ml-2 hidden items-center gap-3 md:flex">
@@ -763,12 +763,12 @@ export default function HomePage() {
               </section>
 
               {/* Operational Activity and Pulse Side-by-Side */}
-              <div className="animate-reveal [animation-delay:200ms] grid gap-6 md:grid-cols-[1fr_280px]">
+              <div className="animate-reveal [animation-delay:200ms] grid min-w-0 gap-5 md:grid-cols-[minmax(0,1fr)_minmax(240px,280px)] md:gap-6">
                 <MapPanel title="Live Market Activity Map" />
                 <LivePlatformStats compact markets={liveMarkets} />
               </div>
 
-              <section className="animate-reveal [animation-delay:400ms] rounded-lg border border-[#e2bfb0] bg-white p-6">
+              <section className="animate-reveal [animation-delay:400ms] rounded-lg border border-[#e2bfb0] bg-white p-4 sm:p-6">
                 <p className="mb-4 text-[11px] font-bold uppercase tracking-[0.2em] text-primary/50">{t('pick_nearby_market')}</p>
                 <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
                   {chipLinks.map((chip, index) => {
@@ -791,9 +791,9 @@ export default function HomePage() {
               </section>
 
               {/* Flattened layout to give sections full breathability and prevent squashing */}
-              <section className="animate-reveal [animation-delay:600ms] rounded-lg border border-[#e2bfb0] bg-white p-8">
+              <section className="animate-reveal [animation-delay:600ms] rounded-lg border border-[#e2bfb0] bg-white p-4 sm:p-6 md:p-8">
                 <div className="mb-6">
-                  <h2 className="text-3xl font-bold tracking-tight text-text-primary">{t('rwandas_market_hubs')}</h2>
+                  <h2 className="text-2xl font-bold tracking-tight text-text-primary sm:text-3xl">{t('rwandas_market_hubs')}</h2>
                   <p className="mt-1.5 text-base font-medium text-text-muted">{t('choose_preferred_marketplace')}</p>
                 </div>
                 {displayMarkets.length === 0 ? (
@@ -812,10 +812,10 @@ export default function HomePage() {
               </section>
 
               {/* Spacious Trending Products Shelf */}
-              <section id="trending-products" className="animate-reveal [animation-delay:800ms] scroll-mt-24 rounded-lg border border-[#e2bfb0] bg-white p-8">
-                <div className="mb-6 flex items-center justify-between">
+              <section id="trending-products" className="animate-reveal [animation-delay:800ms] scroll-mt-24 rounded-lg border border-[#e2bfb0] bg-white p-4 sm:p-6 md:p-8">
+                <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                   <div>
-                    <h2 className="text-3xl font-bold tracking-tight text-text-primary">{t('trending_products')}</h2>
+                    <h2 className="text-2xl font-bold tracking-tight text-text-primary sm:text-3xl">{t('trending_products')}</h2>
                     <p className="mt-1.5 text-base font-medium text-text-muted">{t('most_popular_items')}</p>
                   </div>
                   {topProducts.length > 0 && (
@@ -832,7 +832,7 @@ export default function HomePage() {
                     <p className="mt-2 text-xs font-semibold text-text-secondary">Sellers haven't listed any items today.</p>
                   </div>
                 ) : (
-                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+                  <div className="grid grid-cols-1 gap-4 min-[430px]:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 md:gap-6">
                     {topProducts.slice(0, 4).map(product => (
                       <CompactProductCard key={product.id} product={product} />
                     ))}
@@ -840,7 +840,7 @@ export default function HomePage() {
                 )}
               </section>
               {/* Made in Rwanda Brands Section */}
-              <section className="animate-reveal [animation-delay:900ms] rounded-lg border border-[#e2bfb0] bg-[#f5f3f3]/50 p-8 relative overflow-hidden">
+              <section className="animate-reveal [animation-delay:900ms] rounded-lg border border-[#e2bfb0] bg-[#f5f3f3]/50 p-4 sm:p-6 md:p-8 relative overflow-hidden">
                 <div className="absolute top-0 right-0 w-32 h-32 opacity-5 pointer-events-none">
                   <svg className="fill-primary" viewBox="0 0 100 100">
                     <path d="M50 0 L100 50 L50 100 L0 50 Z"></path>
@@ -848,7 +848,7 @@ export default function HomePage() {
                 </div>
                 <div className="flex flex-col md:flex-row justify-between md:items-center mb-8 gap-4">
                   <div>
-                    <h2 className="text-3xl font-bold tracking-tight text-text-primary">Made in Rwanda</h2>
+                    <h2 className="text-2xl font-bold tracking-tight text-text-primary sm:text-3xl">Made in Rwanda</h2>
                     <p className="mt-1.5 text-base font-medium text-text-muted">{supportingLocalBrandsDescription}</p>
                   </div>
                   <Link href="/markets?search=Made%20in%20Rwanda" className="rmf-btn-primary self-start text-xs uppercase tracking-wider py-2 px-4 flex items-center gap-2">
@@ -857,7 +857,7 @@ export default function HomePage() {
                   </Link>
                 </div>
                                  {/* Compact category bubbles */}
-                <div className="grid grid-cols-3 sm:grid-cols-6 md:grid-cols-8 lg:grid-cols-12 xl:flex xl:flex-wrap xl:justify-center gap-4 mb-8">
+                <div className="grid grid-cols-2 min-[360px]:grid-cols-3 sm:grid-cols-6 md:grid-cols-8 lg:grid-cols-12 xl:flex xl:flex-wrap xl:justify-center gap-4 mb-8">
                   {dynamicBrandCategories.map((brand) => (
                     <Link href={`/markets?category=${brand.id}`} key={brand.id} className="group block text-center space-y-2 cursor-pointer">
                       <div className="w-16 h-16 sm:w-20 sm:h-20 mx-auto bg-white border border-[#e2bfb0] rounded-full flex items-center justify-center group-hover:bg-[#ffedd5]/20 group-hover:border-[#ff6b00] transition-all duration-300 shadow-sm relative overflow-hidden">
@@ -880,7 +880,7 @@ export default function HomePage() {
                 {madeInRwandaProducts.length > 0 && (
                   <div className="border-t border-[#e2bfb0]/40 pt-6">
                     <p className="mb-4 text-[10px] font-bold uppercase tracking-[0.25em] text-[#a04100]">{t('featured_local_products') || 'Featured Local Products'}</p>
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                    <div className="grid grid-cols-1 gap-4 min-[430px]:grid-cols-2 sm:grid-cols-4">
                       {madeInRwandaProducts.slice(0, 4).map(product => (
                         <CompactProductCard key={product.id} product={product} />
                       ))}
@@ -890,7 +890,7 @@ export default function HomePage() {
               </section>
             </main>
  
-            <aside className="space-y-6">
+            <aside className="min-w-0 space-y-5 md:space-y-6">
               {/* Market Stories Section */}
               <section className="animate-reveal [animation-delay:950ms] rounded-lg border border-[#e2bfb0] bg-white p-6">
                 <div className="mb-4 flex items-center justify-between">

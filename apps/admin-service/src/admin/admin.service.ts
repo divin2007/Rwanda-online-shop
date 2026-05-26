@@ -12,7 +12,10 @@ export class AdminService {
     @InjectModel('AuditLog') private auditModel: Model<any>,
     @InjectModel('Delivery') private deliveryModel: Model<any>,
     @InjectModel('Review') private reviewModel: Model<any>,
-    @InjectModel('SupportTicket') private supportTicketModel: Model<any>
+    @InjectModel('SupportTicket') private supportTicketModel: Model<any>,
+    @InjectModel('SellerVideo') private sellerVideoModel: Model<any>,
+    @InjectModel('NotificationLog') private notificationLogModel: Model<any>,
+    @InjectModel('LedgerEntry') private ledgerModel: Model<any>
   ) {}
 
   private async resolveSellerProfile(sellerId: string): Promise<any | null> {
@@ -107,6 +110,100 @@ export class AdminService {
       monthlyCommission: revenueStats[0]?.totalCommission || 0,
       activeSellers,
       timestamp: now
+    };
+  }
+
+  async getOperationsOverview(): Promise<any> {
+    const now = new Date();
+    const threeHoursAgo = new Date(now.getTime() - 3 * 60 * 60 * 1000);
+    const sixHoursAgo = new Date(now.getTime() - 6 * 60 * 60 * 1000);
+
+    const [
+      activeDisputes,
+      refundFailures,
+      releasePending,
+      settlementFailures,
+      assignedWithoutRider,
+      stalledDeliveries,
+      failedNotifications,
+      pendingVideos,
+      openSupportTickets,
+      recentLedgerFailures,
+    ] = await Promise.all([
+      this.orderModel.countDocuments({ 'dispute.isDisputed': true, 'dispute.resolvedAt': { $exists: false }, deletedAt: null }),
+      this.orderModel.countDocuments({ 'refund.status': 'failed', deletedAt: null }),
+      this.orderModel.countDocuments({ 'settlement.status': 'release_pending', deletedAt: null }),
+      this.orderModel.countDocuments({ 'settlement.status': 'failed', deletedAt: null }),
+      this.deliveryModel.countDocuments({
+        status: 'assigned',
+        $or: [{ 'rider.riderId': null }, { 'rider.riderId': { $exists: false } }],
+        deletedAt: null,
+      }),
+      this.deliveryModel.countDocuments({
+        status: { $in: ['assigned', 'en_route_to_pickup', 'pending_handover', 'picked_up', 'en_route_to_dropoff'] },
+        updatedAt: { $lt: threeHoursAgo },
+        deletedAt: null,
+      }),
+      this.notificationLogModel.countDocuments({ status: 'FAILED', createdAt: { $gte: sixHoursAgo } }),
+      this.sellerVideoModel.countDocuments({
+        moderationStatus: { $in: ['PENDING', 'FLAGGED'] },
+        deletedAt: null,
+      }),
+      this.supportTicketModel.countDocuments({ status: { $nin: ['RESOLVED', 'CLOSED'] } }),
+      this.ledgerModel.find({ status: 'failed' }).sort({ createdAt: -1 }).limit(10).lean().exec(),
+    ]);
+
+    const liveDispatches = await this.deliveryModel.find({
+      status: 'assigned',
+      deletedAt: null,
+    })
+      .select('orderNumber pickup dropoff financials dispatch createdAt updatedAt')
+      .sort({ updatedAt: -1 })
+      .limit(20)
+      .lean()
+      .exec();
+
+    const payoutQueue = await this.orderModel.find({
+      'settlement.status': { $in: ['release_pending', 'failed', 'partial'] },
+      deletedAt: null,
+    })
+      .select('orderNumber buyer seller financials payment settlement refund dispute status createdAt updatedAt')
+      .sort({ updatedAt: -1 })
+      .limit(25)
+      .lean()
+      .exec();
+
+    return {
+      generatedAt: now,
+      counts: {
+        activeDisputes,
+        refundFailures,
+        releasePending,
+        settlementFailures,
+        assignedWithoutRider,
+        stalledDeliveries,
+        failedNotifications,
+        pendingVideos,
+        openSupportTickets,
+      },
+      actionQueues: {
+        dispatches: liveDispatches,
+        payoutAndEscrow: payoutQueue,
+        failedLedgerEntries: recentLedgerFailures,
+      },
+      readiness: {
+        paypackCashinConfigured: Boolean(process.env.PAYPACK_CLIENT_ID && process.env.PAYPACK_CLIENT_SECRET),
+        paypackWebhookConfigured: Boolean(process.env.PAYPACK_WEBHOOK_SECRET),
+        paypackSettlementConfigured: Boolean(process.env.PAYPACK_PLATFORM_PHONE || process.env.RMF_PLATFORM_MOMO_NUMBER || process.env.PLATFORM_MOMO_NUMBER),
+        smsConfigured: Boolean(process.env.SMS_WEBHOOK_URL),
+        whatsappConfigured: Boolean(process.env.WHATSAPP_WEBHOOK_URL),
+        smtpConfigured: Boolean(process.env.SMTP_HOST),
+        geocoder: {
+          provider: process.env.GEOCODER_PROVIDER || 'auto',
+          mapboxConfigured: Boolean(process.env.MAPBOX_ACCESS_TOKEN),
+          opencageConfigured: Boolean(process.env.OPENCAGE_API_KEY),
+        },
+      },
     };
   }
 

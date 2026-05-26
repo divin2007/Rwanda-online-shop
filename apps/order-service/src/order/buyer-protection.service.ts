@@ -100,10 +100,11 @@ export class BuyerProtectionService {
     const secret = process.env.INTERNAL_SERVICE_SECRET;
     const headers = secret ? { 'x-internal-service-key': secret } : {};
 
-    await axios.post(`${notificationUrl}/notifications/in-app`, {
+    await axios.post(`${notificationUrl}/notifications/dispatch`, {
       userId: buyerId,
       type: 'refund.processed',
-      params: { orderId, amount: refundAmount, referenceType: 'Order', transactionRef: refund.transactionId }
+      params: { orderId, amount: refundAmount, referenceType: 'Order', transactionRef: refund.transactionId },
+      channels: ['IN_APP', 'EMAIL', 'SMS'],
     }, { headers }).catch(error => {
       this.logger.warn(`Refund notification failed for ${buyerId}: ${error.message}`);
     });

@@ -600,17 +600,17 @@ function MarketsContent() {
 
   return (
     <Layout>
-      <div className="mx-auto max-w-[1280px] px-4 py-6 md:px-8 md:py-10 space-y-10 pb-24">
+      <div className="mx-auto max-w-[1280px] space-y-8 px-0 py-2 pb-20 sm:px-4 sm:py-6 md:px-8 md:py-10 md:pb-24">
         {/* Cover Hero Section */}
-        <section className="relative h-[280px] w-full overflow-hidden rounded-xl border border-[#e2bfb0] shadow-md bg-[#ff6b00]">
+        <section className="relative h-[260px] w-full overflow-hidden rounded-xl border border-[#e2bfb0] shadow-md bg-[#ff6b00] md:h-[280px]">
           <div className="absolute inset-0 bg-gradient-to-r from-black/85 via-black/40 to-transparent z-10"></div>
           <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-white/10 via-transparent to-transparent"></div>
-          <div className="relative z-20 h-full flex flex-col justify-end px-8 pb-8 space-y-4">
+          <div className="relative z-20 h-full flex flex-col justify-end space-y-4 px-5 pb-6 sm:px-8 sm:pb-8">
             <div className="inline-flex items-center gap-2 rounded bg-white/15 px-3 py-1.5 font-mono text-[10px] font-bold uppercase tracking-wider text-white border border-white/20 self-start">
               <ShieldCheck size={16} className="text-accent-premium animate-pulse" />
               {t('verified_local_markets')}
             </div>
-            <h1 className="text-3xl md:text-5xl font-black text-white leading-tight max-w-2xl">
+            <h1 className="max-w-2xl text-[2rem] font-black leading-tight text-white md:text-5xl">
               {t('find_trusted_market_before')}
             </h1>
             <p className="max-w-xl text-xs md:text-sm text-white/80 leading-relaxed">
@@ -650,12 +650,12 @@ function MarketsContent() {
         )}
 
         {/* Discovery Filter Shelf */}
-        <section className="bg-white border border-[#e2bfb0] p-6 rounded-lg shadow-sm space-y-6">
+        <section className="space-y-5 rounded-lg border border-[#e2bfb0] bg-white p-4 shadow-sm sm:p-6">
           <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-text-primary">
             <SlidersHorizontal size={18} className="text-primary animate-pulse" />
             {t('search_and_filters')}
           </div>
-          <div className="grid gap-6 lg:grid-cols-[1.2fr_0.8fr_1fr]">
+          <div className="grid min-w-0 gap-5 lg:grid-cols-[1.2fr_0.8fr_1fr] lg:gap-6">
             <div className="space-y-3">
               <label className="text-xs font-bold text-text-muted">{t('search_markets_and_products')}</label>
               <div className="relative group">
@@ -715,7 +715,7 @@ function MarketsContent() {
 
             <div className="space-y-3">
               <label className="text-xs font-bold text-text-muted">{t('market_type')}</label>
-              <div className="grid grid-cols-3 gap-2">
+              <div className="grid grid-cols-1 gap-2 min-[420px]:grid-cols-3">
                 {[
                   { key: 'ALL', label: t('all') },
                   { key: 'PUBLIC', label: t('market_type_public') },
@@ -779,7 +779,7 @@ function MarketsContent() {
         </section>
 
         {showCatalogResults && (
-          <section className="bg-white border border-[#e2bfb0] p-6 md:p-8 rounded-lg shadow-sm space-y-6">
+          <section className="space-y-6 rounded-lg border border-[#e2bfb0] bg-white p-4 shadow-sm sm:p-6 md:p-8">
             <div className="mb-4 flex flex-col justify-between gap-4 md:flex-row md:items-end pb-4 border-b border-border-light">
               <div>
                 <p className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-primary">
@@ -794,13 +794,13 @@ function MarketsContent() {
             </div>
 
             {productsLoading ? (
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+              <div className="grid grid-cols-1 gap-4 min-[430px]:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 md:gap-6">
                 {[1, 2, 3, 4].map(i => (
                   <div key={i} className="h-72 animate-pulse rounded-lg border border-[#e2bfb0] bg-background-surface" />
                 ))}
               </div>
             ) : matchingProducts.length > 0 ? (
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+              <div className="grid grid-cols-1 gap-4 min-[430px]:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 md:gap-6">
                 {matchingProducts.map(product => (
                   <ProductCard key={product._id} product={product} />
                 ))}
@@ -828,7 +828,7 @@ function MarketsContent() {
             )}
  
             {(recommendedMarkets.length > 0 || newMarkets.length > 0 || topSellersMarkets.length > 0 || topRatedMarkets.length > 0) && (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              <div className="grid grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-3 md:gap-6">
                 {recommendedMarkets.length > 0 && (
                   <MarketShelf 
                     title={t('recommended_for_you')} 
@@ -870,13 +870,13 @@ function MarketsContent() {
           )}
   
           {loading ? (
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-6">
+            <div className="grid grid-cols-1 gap-4 min-[430px]:grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 md:gap-6">
               {[1, 2, 3, 4, 5].map(i => (
                 <div key={i} className="aspect-[4/5] bg-background-surface animate-pulse border border-[#e2bfb0] rounded-lg"></div>
               ))}
             </div>
           ) : directoryMarkets.length > 0 ? (
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-6">
+            <div className="grid grid-cols-1 gap-4 min-[430px]:grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 md:gap-6">
               {directoryMarkets.map((market: Market, idx: number) => {
                 const maxDiscount = promotionsByMarket.get(market._id) || 0;
                 return (
@@ -901,7 +901,7 @@ function MarketsContent() {
         {/* Map Explorer Section */}
         <section className="overflow-hidden rounded-xl border border-[#e2bfb0] bg-white shadow-sm">
           <div className="grid gap-0 lg:grid-cols-[0.35fr_0.65fr]">
-            <div className="flex flex-col justify-between gap-8 border-b border-border-light/50 bg-[#fdfaf7] p-8 lg:border-b-0 lg:border-r">
+            <div className="flex flex-col justify-between gap-6 border-b border-border-light/50 bg-[#fdfaf7] p-5 sm:p-8 lg:border-b-0 lg:border-r">
               <div className="space-y-4">
                 <div className="inline-flex h-12 w-12 items-center justify-center rounded-lg bg-primary text-white shadow-md">
                   <MapPin size={22} />
@@ -929,7 +929,7 @@ function MarketsContent() {
                 </div>
               </div>
             </div>
-            <div className="h-[450px] bg-background-surface">
+            <div className="h-[320px] bg-background-surface md:h-[450px]">
               <RiderMap marketId="all-admin" centerLat={-1.9441} centerLng={30.0619} marketName="Rwanda markets" />
             </div>
           </div>

@@ -177,7 +177,7 @@ export class NotificationService {
     return /message|chat|custom|support/i.test(type);
   }
 
-  private shouldSend(type: string, channel: 'IN_APP' | 'EMAIL' | 'SMS', preferences: ReturnType<NotificationService['preferencesFor']>): { allowed: boolean; reason?: string } {
+  private shouldSend(type: string, channel: 'IN_APP' | 'EMAIL' | 'SMS' | 'WHATSAPP', preferences: ReturnType<NotificationService['preferencesFor']>): { allowed: boolean; reason?: string } {
     if (this.isSecurityType(type) && !preferences.securityAlerts) {
       return { allowed: false, reason: 'security alerts are disabled' };
     }
@@ -206,10 +206,14 @@ export class NotificationService {
       return { allowed: false, reason: 'SMS notifications are disabled' };
     }
 
+    if (channel === 'WHATSAPP' && !preferences.whatsapp) {
+      return { allowed: false, reason: 'WhatsApp notifications are disabled' };
+    }
+
     return { allowed: true };
   }
 
-  private skipped(channel: 'IN_APP' | 'EMAIL' | 'SMS', userId: string, type: string, reason: string) {
+  private skipped(channel: 'IN_APP' | 'EMAIL' | 'SMS' | 'WHATSAPP', userId: string, type: string, reason: string) {
     this.logger.log(`[${channel}] Skipped ${type} for ${userId}: ${reason}`);
     return { skipped: true, channel, type, reason };
   }
@@ -262,6 +266,68 @@ export class NotificationService {
       );
     } catch (error: any) {
       this.logger.error(`Failed to send SMS to ${phone}`, error);
+      return await this.logModel.findByIdAndUpdate(
+        savedLog._id,
+        { status: 'FAILED', failureReason: error.message },
+        { returnDocument: 'after' }
+      );
+    }
+  }
+
+  async sendWhatsApp(userId: string, phone: string, type: string, params: any, lang: 'rw' | 'en' = 'rw'): Promise<any> {
+    let targetPhone = phone;
+    const user = await this.getUserContext(userId);
+    const preferenceCheck = this.shouldSend(type, 'WHATSAPP', this.preferencesFor(user));
+    if (!preferenceCheck.allowed) {
+      return this.skipped('WHATSAPP', userId, type, preferenceCheck.reason || 'disabled');
+    }
+
+    if (!targetPhone && userId) {
+      targetPhone = user?.phone;
+    }
+
+    const content = this.getTemplate(type, lang, params);
+    const logEntry = new this.logModel({
+      userId,
+      channel: 'WHATSAPP',
+      type,
+      referenceId: params.orderId || params.referenceId,
+      referenceType: params.referenceType || 'Order',
+      content,
+      status: 'PENDING',
+      sentAt: new Date()
+    });
+    const savedLog = await logEntry.save();
+
+    try {
+      if (!targetPhone) {
+        throw new Error('No phone number found for WhatsApp notification');
+      }
+      if (process.env.WHATSAPP_WEBHOOK_URL) {
+        const response = await fetch(process.env.WHATSAPP_WEBHOOK_URL, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            ...(process.env.WHATSAPP_API_KEY ? { Authorization: `Bearer ${process.env.WHATSAPP_API_KEY}` } : {}),
+          },
+          body: JSON.stringify({ userId, phone: targetPhone, type, content, params, lang }),
+        });
+        if (!response.ok) {
+          throw new Error(`WhatsApp provider returned ${response.status}`);
+        }
+      } else if (process.env.NODE_ENV !== 'production') {
+        this.logger.log(`[WhatsApp dev log to ${targetPhone}]: ${content}`);
+      } else {
+        throw new Error('WhatsApp provider is not configured');
+      }
+
+      return await this.logModel.findByIdAndUpdate(
+        savedLog._id,
+        { status: 'DELIVERED', deliveredAt: new Date() },
+        { returnDocument: 'after' }
+      );
+    } catch (error: any) {
+      this.logger.error(`Failed to send WhatsApp to ${targetPhone || userId}`, error);
       return await this.logModel.findByIdAndUpdate(
         savedLog._id,
         { status: 'FAILED', failureReason: error.message },
@@ -381,6 +447,18 @@ export class NotificationService {
     }
 
     return savedLog;
+  }
+
+  async dispatch(userId: string, type: string, params: any, channels: Array<'IN_APP' | 'EMAIL' | 'SMS' | 'WHATSAPP'> = ['IN_APP'], lang: 'rw' | 'en' = 'en'): Promise<any[]> {
+    const uniqueChannels = Array.from(new Set(channels.length ? channels : ['IN_APP']));
+    const user = await this.getUserContext(userId);
+    const tasks = uniqueChannels.map(channel => {
+      if (channel === 'EMAIL') return this.sendEmail(userId, user?.email || '', type, params, lang);
+      if (channel === 'SMS') return this.sendSms(userId, user?.phone || '', type, params, lang);
+      if (channel === 'WHATSAPP') return this.sendWhatsApp(userId, user?.phone || '', type, params, lang);
+      return this.sendInApp(userId, type, params, lang);
+    });
+    return Promise.all(tasks);
   }
 
   async notifyAdmins(type: string, params: any): Promise<void> {

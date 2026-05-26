@@ -117,7 +117,7 @@ export const MarketCard = ({ market, isCompact = false, maxDiscount }: MarketCar
           {market.description || 'Shop verified sellers, fresh products, and delivery-ready local goods.'}
         </p>
 
-        <div className={`grid gap-2 ${market.totalOrders && market.totalOrders > 0 ? 'grid-cols-3' : 'grid-cols-2'} ${isCompact ? 'mt-3' : 'mt-4'}`}>
+        <div className={`grid gap-2 ${market.totalOrders && market.totalOrders > 0 ? (isCompact ? 'grid-cols-2' : 'grid-cols-3') : 'grid-cols-2'} ${isCompact ? 'mt-3' : 'mt-4'}`}>
           <div className={`rounded border border-[#ebdcd0] bg-[#fbf9f8] ${isCompact ? 'p-2' : 'p-3'}`}>
             <div className="flex items-center gap-1.5 text-[#ff6b00]">
               <Store size={isCompact ? 12 : 15} />
@@ -137,7 +137,7 @@ export const MarketCard = ({ market, isCompact = false, maxDiscount }: MarketCar
           </div>
 
           {market.totalOrders !== undefined && market.totalOrders > 0 && (
-            <div className={`rounded border border-[#e2bfb0] bg-[#ffedd5] ${isCompact ? 'p-2' : 'p-3'}`}>
+            <div className={`rounded border border-[#e2bfb0] bg-[#ffedd5] ${isCompact ? 'col-span-2 p-2' : 'p-3'}`}>
               <div className="flex items-center gap-1.5 text-[#ff6b00]">
                 <TrendingUp size={isCompact ? 12 : 15} />
                 <span className={`${isCompact ? 'text-sm' : 'text-lg'} font-black text-[#1b1c1c]`}>{market.totalOrders}</span>

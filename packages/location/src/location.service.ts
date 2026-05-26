@@ -1,4 +1,4 @@
-import { Coordinates, Address, RouteDto } from './interfaces/location.interface';
+import { Coordinates, Address, GeocodedCoordinates, GeocodeConfidence } from './interfaces/location.interface';
 
 type NominatimSearchResult = {
   lat?: string;
@@ -24,7 +24,31 @@ type NominatimReverseResult = {
   };
 };
 
+type MapboxFeature = {
+  center?: [number, number];
+  place_name?: string;
+  relevance?: number;
+};
+
+type OpenCageResult = {
+  formatted?: string;
+  confidence?: number;
+  geometry?: {
+    lat?: number;
+    lng?: number;
+  };
+};
+
 export class LocationService {
+  private readonly kigaliFallback: GeocodedCoordinates = {
+    lat: -1.9441,
+    lng: 30.0619,
+    provider: 'fallback',
+    formattedAddress: 'Kigali, Rwanda',
+    confidence: 'fallback',
+  };
+  private readonly geocodeCache = new Map<string, { expiresAt: number; value: GeocodedCoordinates }>();
+
   /**
    * Validates if the given coordinates are valid GPS coordinates
    * Latitude: -90 to +90
@@ -46,30 +70,35 @@ export class LocationService {
     return true;
   }
 
-  public async geocode(address: string): Promise<Coordinates> {
-    const fallback = { lat: -1.9441, lng: 30.0619 };
+  public async geocode(address: string): Promise<GeocodedCoordinates> {
     if (!address?.trim()) {
-      return fallback;
+      return this.kigaliFallback;
     }
 
-    try {
-      const params = new URLSearchParams({
-        q: address,
-        format: 'jsonv2',
-        limit: '1',
-      });
-      const results = await this.fetchJson<NominatimSearchResult[]>(`/search?${params.toString()}`);
-      const firstResult = results[0];
-      const lat = Number(firstResult?.lat);
-      const lng = Number(firstResult?.lon);
-      if (Number.isFinite(lat) && Number.isFinite(lng)) {
-        return { lat, lng };
+    const normalizedQuery = this.normalizeRwandaAddress(address);
+    const cacheKey = normalizedQuery.toLowerCase();
+    const cached = this.geocodeCache.get(cacheKey);
+    if (cached && cached.expiresAt > Date.now()) {
+      return cached.value;
+    }
+
+    const providers = this.getProviderOrder();
+    for (const provider of providers) {
+      try {
+        const result = await this.geocodeWithProvider(provider, normalizedQuery);
+        if (result && this.isRwandaCoordinate(result)) {
+          this.geocodeCache.set(cacheKey, {
+            value: result,
+            expiresAt: Date.now() + Number(process.env.GEOCODING_CACHE_TTL_MS || 24 * 60 * 60 * 1000),
+          });
+          return result;
+        }
+      } catch {
+        // Try the next provider. The final fallback below keeps checkout usable offline.
       }
-    } catch {
-      return fallback;
     }
 
-    return fallback;
+    return this.kigaliFallback;
   }
 
   public async reverseGeocode(coords: Coordinates): Promise<Address> {
@@ -83,11 +112,13 @@ export class LocationService {
         lon: String(coords.lng),
         format: 'jsonv2',
       });
-      const result = await this.fetchJson<NominatimReverseResult>(`/reverse?${params.toString()}`);
+      const baseUrl = process.env.NOMINATIM_BASE_URL || 'https://nominatim.openstreetmap.org';
+      const result = await this.fetchJson<NominatimReverseResult>(`${baseUrl}/reverse?${params.toString()}`);
       const city = result.address?.city || result.address?.town || result.address?.village || result.address?.county || result.address?.state || 'Kigali';
       return {
         address: result.display_name || 'Unknown Location',
         city,
+        provider: 'nominatim',
       };
     } catch {
       return { address: 'Unknown Location', city: 'Kigali' };
@@ -117,18 +148,124 @@ export class LocationService {
     return deg * (Math.PI/180);
   }
 
-  private async fetchJson<T>(path: string): Promise<T> {
-    const baseUrl = process.env.NOMINATIM_BASE_URL || 'https://nominatim.openstreetmap.org';
+  private normalizeRwandaAddress(address: string): string {
+    const trimmed = address.trim().replace(/\s+/g, ' ');
+    return /rwanda|kigali|rubavu|musanze|huye|nyagatare|nyarugenge|gasabo|kicukiro/i.test(trimmed)
+      ? trimmed
+      : `${trimmed}, Rwanda`;
+  }
+
+  private getProviderOrder(): Array<'mapbox' | 'opencage' | 'nominatim'> {
+    const configured = String(process.env.GEOCODER_PROVIDER || 'auto').toLowerCase();
+    if (configured === 'mapbox') return ['mapbox', 'opencage', 'nominatim'];
+    if (configured === 'opencage') return ['opencage', 'mapbox', 'nominatim'];
+    if (configured === 'nominatim') return ['nominatim'];
+
+    const providers: Array<'mapbox' | 'opencage' | 'nominatim'> = [];
+    if (process.env.MAPBOX_ACCESS_TOKEN) providers.push('mapbox');
+    if (process.env.OPENCAGE_API_KEY) providers.push('opencage');
+    providers.push('nominatim');
+    return providers;
+  }
+
+  private async geocodeWithProvider(provider: 'mapbox' | 'opencage' | 'nominatim', query: string): Promise<GeocodedCoordinates | null> {
+    if (provider === 'mapbox') return this.geocodeWithMapbox(query);
+    if (provider === 'opencage') return this.geocodeWithOpenCage(query);
+    return this.geocodeWithNominatim(query);
+  }
+
+  private async geocodeWithMapbox(query: string): Promise<GeocodedCoordinates | null> {
+    const token = process.env.MAPBOX_ACCESS_TOKEN;
+    if (!token) return null;
+    const params = new URLSearchParams({
+      access_token: token,
+      country: 'rw',
+      limit: '1',
+      proximity: '30.0619,-1.9441',
+      types: 'address,poi,place,locality,neighborhood',
+    });
+    const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(query)}.json?${params.toString()}`;
+    const response = await this.fetchJson<{ features?: MapboxFeature[] }>(url);
+    const feature = response.features?.[0];
+    const lng = Number(feature?.center?.[0]);
+    const lat = Number(feature?.center?.[1]);
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
+    return {
+      lat,
+      lng,
+      provider: 'mapbox',
+      formattedAddress: feature?.place_name,
+      confidence: this.confidenceFromScore(Number(feature?.relevance || 0) * 10),
+    };
+  }
+
+  private async geocodeWithOpenCage(query: string): Promise<GeocodedCoordinates | null> {
+    const key = process.env.OPENCAGE_API_KEY;
+    if (!key) return null;
+    const params = new URLSearchParams({
+      q: query,
+      key,
+      countrycode: 'rw',
+      limit: '1',
+      no_annotations: '1',
+    });
+    const response = await this.fetchJson<{ results?: OpenCageResult[] }>(`https://api.opencagedata.com/geocode/v1/json?${params.toString()}`);
+    const result = response.results?.[0];
+    const lat = Number(result?.geometry?.lat);
+    const lng = Number(result?.geometry?.lng);
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
+    return {
+      lat,
+      lng,
+      provider: 'opencage',
+      formattedAddress: result?.formatted,
+      confidence: this.confidenceFromScore(Number(result?.confidence || 0)),
+    };
+  }
+
+  private async geocodeWithNominatim(query: string): Promise<GeocodedCoordinates | null> {
+    const params = new URLSearchParams({
+      q: query,
+      format: 'jsonv2',
+      limit: '1',
+      countrycodes: 'rw',
+      addressdetails: '1',
+    });
+    const results = await this.fetchJson<NominatimSearchResult[]>(`${process.env.NOMINATIM_BASE_URL || 'https://nominatim.openstreetmap.org'}/search?${params.toString()}`);
+    const firstResult = results[0];
+    const lat = Number(firstResult?.lat);
+    const lng = Number(firstResult?.lon);
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
+    return {
+      lat,
+      lng,
+      provider: 'nominatim',
+      formattedAddress: firstResult?.display_name,
+      confidence: 'medium',
+    };
+  }
+
+  private isRwandaCoordinate(coords: Coordinates): boolean {
+    return coords.lat >= -2.95 && coords.lat <= -1.0 && coords.lng >= 28.7 && coords.lng <= 31.1;
+  }
+
+  private confidenceFromScore(score: number): GeocodeConfidence {
+    if (score >= 8) return 'high';
+    if (score >= 5) return 'medium';
+    return 'low';
+  }
+
+  private async fetchJson<T>(url: string): Promise<T> {
     const timeoutMs = Number(process.env.GEOCODING_TIMEOUT_MS || 3000);
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), timeoutMs);
 
     try {
-      const response = await fetch(`${baseUrl}${path}`, {
+      const response = await fetch(url, {
         signal: controller.signal,
         headers: {
           'Accept': 'application/json',
-          'User-Agent': process.env.GEOCODING_USER_AGENT || 'rwshop-location-service/1.0',
+          'User-Agent': process.env.GEOCODING_USER_AGENT || process.env.NOMINATIM_USER_AGENT || 'rwshop-location-service/1.0 contact:ops@rwshop.org',
         },
       });
 

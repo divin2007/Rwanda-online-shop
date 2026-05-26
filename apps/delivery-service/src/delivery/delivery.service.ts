@@ -135,6 +135,37 @@ export class DeliveryService {
     this.dispatchTimers.set(deliveryId, timer);
   }
 
+  private getDispatchConfig() {
+    const initialRadiusMeters = Number(process.env.RIDER_DISPATCH_INITIAL_RADIUS_METERS || 150);
+    const closeRangeStepMeters = Number(process.env.RIDER_DISPATCH_CLOSE_STEP_METERS || 50);
+    const farRangeStepMeters = Number(process.env.RIDER_DISPATCH_FAR_STEP_METERS || 500);
+    const closeRangeLimitMeters = Number(process.env.RIDER_DISPATCH_CLOSE_LIMIT_METERS || 1000);
+    const maxRadiusMeters = Number(process.env.RIDER_DISPATCH_MAX_RADIUS_METERS || 16000);
+    return {
+      initialRadiusMeters,
+      closeRangeStepMeters,
+      farRangeStepMeters,
+      closeRangeLimitMeters,
+      maxRadiusMeters,
+    };
+  }
+
+  private getNextDispatchRadius(currentRadiusMeters: number): number {
+    const config = this.getDispatchConfig();
+    const step = currentRadiusMeters < config.closeRangeLimitMeters
+      ? config.closeRangeStepMeters
+      : config.farRangeStepMeters;
+    return Math.min(currentRadiusMeters + step, config.maxRadiusMeters);
+  }
+
+  private calculateDispatchSearchSurcharge(radiusMeters: number): number {
+    if (radiusMeters < 1000) return 0;
+    if (radiusMeters < 8000) return 500;
+    if (radiusMeters <= 16000) return 800;
+    const extraBlocks = Math.ceil((radiusMeters - 16000) / 8000);
+    return 800 + (extraBlocks * 800);
+  }
+
   private async runAdaptiveBroadcast(deliveryId: string) {
     const delivery = await this.deliveryModel.findById(deliveryId);
     if (!delivery) {
@@ -161,12 +192,24 @@ export class DeliveryService {
       || 500
     );
 
-    const searchSurcharge = 0;
-    const deliveryFee = baseDeliveryFee;
+    const config = this.getDispatchConfig();
+    const currentRadiusMeters = Number(
+      delivery.dispatch?.nextRadiusMeters
+      || delivery.dispatch?.currentRadiusMeters
+      || config.initialRadiusMeters
+    );
+    const boundedRadiusMeters = Math.min(Math.max(currentRadiusMeters, config.initialRadiusMeters), config.maxRadiusMeters);
+    const nextRadiusMeters = this.getNextDispatchRadius(boundedRadiusMeters);
+    const searchSurcharge = this.calculateDispatchSearchSurcharge(boundedRadiusMeters);
+    const deliveryFee = baseDeliveryFee + searchSurcharge;
     const payload = delivery.toObject ? delivery.toObject() : delivery;
     const result = this.deliveryGateway.broadcastToActiveRiders(payload, coords.lat, coords.lng, {
       searchSurcharge,
       deliveryFee,
+      radiusMeters: boundedRadiusMeters,
+      nextRadiusMeters,
+      maxRadiusMeters: config.maxRadiusMeters,
+      strategy: 'PROGRESSIVE_RADIUS',
     });
 
     const existingNotified = new Set((delivery.dispatch?.notifiedRiderIds || []).map((id: any) => String(id)));
@@ -177,20 +220,24 @@ export class DeliveryService {
         'financials.baseDeliveryFee': baseDeliveryFee,
         'financials.deliveryFee': deliveryFee,
         'financials.searchSurcharge': searchSurcharge,
-        'dispatch.strategy': 'GLOBAL_ACTIVE_RIDERS',
-        'dispatch.initialRadiusMeters': null,
-        'dispatch.currentRadiusMeters': null,
-        'dispatch.nextRadiusMeters': null,
-        'dispatch.stepMeters': null,
-        'dispatch.maxRadiusMeters': null,
+        'dispatch.strategy': 'PROGRESSIVE_RADIUS',
+        'dispatch.initialRadiusMeters': config.initialRadiusMeters,
+        'dispatch.currentRadiusMeters': boundedRadiusMeters,
+        'dispatch.nextRadiusMeters': nextRadiusMeters,
+        'dispatch.stepMeters': boundedRadiusMeters < config.closeRangeLimitMeters ? config.closeRangeStepMeters : config.farRangeStepMeters,
+        'dispatch.maxRadiusMeters': config.maxRadiusMeters,
         'dispatch.lastBroadcastAt': new Date(),
       },
       $inc: { 'dispatch.broadcastCount': 1 },
       ...(newRiderIds.length ? { $addToSet: { 'dispatch.notifiedRiderIds': { $each: newRiderIds } } } : {}),
     });
 
-    if (searchSurcharge !== Number(delivery.financials?.searchSurcharge || 0)) {
-      this.syncOrderDeliveryFee(delivery.orderId, deliveryFee, searchSurcharge, 0).catch(() => {});
+    if (
+      searchSurcharge !== Number(delivery.financials?.searchSurcharge || 0)
+      || deliveryFee !== Number(delivery.financials?.deliveryFee || 0)
+      || boundedRadiusMeters !== Number(delivery.dispatch?.currentRadiusMeters || 0)
+    ) {
+      this.syncOrderDeliveryFee(delivery.orderId, deliveryFee, searchSurcharge, boundedRadiusMeters).catch(() => {});
     }
 
     for (const riderId of newRiderIds) {
@@ -199,7 +246,10 @@ export class DeliveryService {
         orderId: delivery.orderId,
         referenceId: delivery._id,
         referenceType: 'Delivery',
-        broadcastMode: 'GLOBAL_ACTIVE_RIDERS',
+        broadcastMode: 'PROGRESSIVE_RADIUS',
+        radiusMeters: boundedRadiusMeters,
+        nextRadiusMeters,
+        searchSurcharge,
         deliveryFee,
       });
     }
@@ -249,6 +299,7 @@ export class DeliveryService {
       || process.env.MIN_DELIVERY_FEE
       || 500
     );
+    const dispatchConfig = this.getDispatchConfig();
     const delivery = new this.deliveryModel({
       ...data,
       financials: {
@@ -258,12 +309,12 @@ export class DeliveryService {
         searchSurcharge: 0,
       },
       dispatch: {
-        strategy: 'GLOBAL_ACTIVE_RIDERS',
-        initialRadiusMeters: null,
+        strategy: 'PROGRESSIVE_RADIUS',
+        initialRadiusMeters: dispatchConfig.initialRadiusMeters,
         currentRadiusMeters: null,
-        nextRadiusMeters: null,
-        stepMeters: null,
-        maxRadiusMeters: null,
+        nextRadiusMeters: dispatchConfig.initialRadiusMeters,
+        stepMeters: dispatchConfig.closeRangeStepMeters,
+        maxRadiusMeters: dispatchConfig.maxRadiusMeters,
         broadcastCount: 0,
         notifiedRiderIds: [],
       },
@@ -273,7 +324,7 @@ export class DeliveryService {
 
     const saved = await delivery.save();
     
-    // Dispatch broadcasts to every fresh, connected rider until one accepts.
+    // Dispatch starts close to the pickup point, then expands until one rider accepts.
     try {
       this.scheduleAdaptiveBroadcast(String(saved._id), 0);
     } catch (e) {
@@ -285,11 +336,11 @@ export class DeliveryService {
 
   private async triggerNotification(userId: string, type: string, params: any) {
     try {
-      const url = `${process.env.NOTIFICATION_SERVICE_URL || 'http://localhost:3009/api/v1'}/notifications/in-app`;
+      const url = `${process.env.NOTIFICATION_SERVICE_URL || 'http://localhost:3009/api/v1'}/notifications/dispatch`;
       const axios = require('axios');
       const secret = process.env.INTERNAL_SERVICE_SECRET;
       const headers = secret ? { 'x-internal-service-key': secret } : {};
-      await axios.post(url, { userId, type, params }, { headers });
+      await axios.post(url, { userId, type, params, channels: ['IN_APP', 'SMS'] }, { headers });
     } catch (error: any) {
       console.error(`Failed to trigger notification: ${type}`, error.message);
     }
@@ -705,14 +756,15 @@ export class DeliveryService {
       throw new ConflictException('Manual rebroadcast is available after 5 minutes without rider acceptance');
     }
 
+    const config = this.getDispatchConfig();
     await this.deliveryModel.findByIdAndUpdate(id, {
       $set: {
-        'dispatch.strategy': 'GLOBAL_ACTIVE_RIDERS',
-        'dispatch.initialRadiusMeters': null,
+        'dispatch.strategy': 'PROGRESSIVE_RADIUS',
+        'dispatch.initialRadiusMeters': config.initialRadiusMeters,
         'dispatch.currentRadiusMeters': null,
-        'dispatch.nextRadiusMeters': null,
-        'dispatch.stepMeters': null,
-        'dispatch.maxRadiusMeters': null,
+        'dispatch.nextRadiusMeters': config.initialRadiusMeters,
+        'dispatch.stepMeters': config.closeRangeStepMeters,
+        'dispatch.maxRadiusMeters': config.maxRadiusMeters,
         'dispatch.manualRebroadcastAt': new Date(),
       },
       $inc: { 'dispatch.manualRebroadcastCount': 1 },

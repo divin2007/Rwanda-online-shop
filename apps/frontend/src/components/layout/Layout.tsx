@@ -103,6 +103,7 @@ const LayoutContent = ({ children }: LayoutProps) => {
     { label: 'Platform Analytics', icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>, href: '/admin?tab=analytics' },
     { label: 'Accounting', icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>, href: '/admin?tab=accounting' },
     { label: 'Live Operations', icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>, href: '/admin?tab=live-map' },
+    { label: 'Operations Center', icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/><path d="M14 9h5v5"/></svg>, href: '/admin?tab=operations' },
     { label: 'Approvals', icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><polyline points="17 11 19 13 23 9"/></svg>, href: '/admin?tab=approvals' },
     { label: 'Markets Directory', icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>, href: '/admin?tab=markets' },
     { label: 'Product Approvals', icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><polyline points="7.5 4.21 12 6.81 16.5 4.21"/><polyline points="7.5 19.79 7.5 14.6 3 12"/><polyline points="21 12 16.5 14.6 16.5 19.79"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>, href: '/admin?tab=products' },
@@ -143,7 +144,7 @@ const LayoutContent = ({ children }: LayoutProps) => {
     { label: 'Made in Rwanda', detail: 'Origin-tagged local goods', href: '/markets?search=Made%20in%20Rwanda' },
   ];
   const accountLinks = user?.role === 'ADMIN'
-    ? [{ label: 'Admin portal', href: '/admin?tab=analytics' }, { label: 'Live operations', href: '/admin?tab=live-map' }]
+    ? [{ label: 'Admin portal', href: '/admin?tab=analytics' }, { label: 'Live operations', href: '/admin?tab=live-map' }, { label: 'Operations center', href: '/admin?tab=operations' }]
     : user?.role === 'SELLER'
       ? [{ label: 'Seller dashboard', href: '/seller/dashboard' }, { label: 'Products', href: '/seller/products' }, { label: 'Video ads', href: '/seller/videos' }]
       : user?.role === 'RIDER'
@@ -278,7 +279,7 @@ const LayoutContent = ({ children }: LayoutProps) => {
                   <ChevronDown size={14} />
                 </button>
                 {locationOpen && (
-                  <div className="absolute right-0 top-11 w-80 overflow-hidden rounded-lg border border-[#ebdcd0] bg-white shadow-xl">
+                  <div className="absolute right-0 top-11 w-[calc(100vw-1.5rem)] max-w-80 overflow-hidden rounded-lg border border-[#ebdcd0] bg-white shadow-xl">
                     <div className="border-b border-[#f2e8e0] bg-[#fdfaf7] p-3">
                       <p className="text-[11px] font-black uppercase tracking-[0.14em] text-[#ff6b00]">Choose market area</p>
                       <p className="mt-1 text-xs font-semibold text-[#574e47]">Markets are filtered by service area and coordinates when available.</p>
@@ -361,7 +362,7 @@ const LayoutContent = ({ children }: LayoutProps) => {
                   <ChevronDown size={14} />
                 </button>
                 {accountOpen && (
-                  <div className="absolute right-0 top-11 w-60 overflow-hidden rounded-lg border border-[#ebdcd0] bg-white shadow-xl">
+                  <div className="absolute right-0 top-11 w-[calc(100vw-1.5rem)] max-w-60 overflow-hidden rounded-lg border border-[#ebdcd0] bg-white shadow-xl">
                     <div className="border-b border-[#f2e8e0] bg-[#fdfaf7] p-3">
                       <p className="truncate text-sm font-black text-[#1b1c1c]">{user.fullName || user.email}</p>
                       <p className="mt-1 text-[11px] font-black uppercase tracking-[0.12em] text-[#ff6b00]">{user.role?.toLowerCase()}</p>
@@ -525,7 +526,7 @@ const LayoutContent = ({ children }: LayoutProps) => {
         )}
 
         {/* Main Content */}
-        <main className="flex-grow flex flex-col relative overflow-hidden">
+        <main className="min-w-0 flex-grow flex flex-col relative overflow-x-hidden">
           {/* Search Bar for Markets Page */}
           {!isWorkstation && pathname === '/markets' && (
              <div className="h-12 bg-white border-b border-[#ebdcd0] flex items-center px-6 md:px-10">
@@ -544,14 +545,14 @@ const LayoutContent = ({ children }: LayoutProps) => {
                         placeholder={t('home_search_placeholder') || "Search markets & products..."} 
                         value={globalSearch}
                         onChange={(e) => setGlobalSearch(e.target.value)}
-                        className="bg-transparent border-none pl-5 text-sm font-semibold outline-none w-64"
+                      className="w-[min(16rem,52vw)] bg-transparent border-none pl-5 text-sm font-semibold outline-none"
                       />
                    </form>
                 </div>
              </div>
           )}
 
-          <div className={`${pathname === '/' ? 'w-full flex-grow animate-reveal' : `rmf-container py-8 flex-grow animate-reveal w-full max-w-[1920px] mx-auto ${isDashboard ? 'px-8 md:px-12' : ''}`}`}>
+          <div className={`${pathname === '/' ? 'w-full min-w-0 flex-grow animate-reveal' : `rmf-container py-6 md:py-8 flex-grow animate-reveal w-full max-w-[1920px] mx-auto ${isDashboard ? 'px-4 md:px-12' : ''}`}`}>
             {children}
           </div>
         </main>

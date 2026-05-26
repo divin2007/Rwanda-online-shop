@@ -46,7 +46,7 @@ export const deliverySchema = new Schema({
     totalAmount: { type: Number }
   },
   dispatch: {
-    strategy: { type: String, default: 'GLOBAL_ACTIVE_RIDERS' },
+    strategy: { type: String, default: 'PROGRESSIVE_RADIUS' },
     initialRadiusMeters: { type: Number, default: null },
     currentRadiusMeters: { type: Number, default: null },
     nextRadiusMeters: { type: Number, default: null },

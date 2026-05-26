@@ -406,6 +406,8 @@ export class SellerVideoService {
       placement: 'STORY',
       isActive: true,
       isArchived: false,
+      processingStatus: 'READY',
+      moderationStatus: 'APPROVED',
       deletedAt: null,
     };
 
@@ -534,19 +536,28 @@ export class SellerVideoService {
       thumbnailUrl: data?.thumbnailUrl ? this.validateUrl(data.thumbnailUrl, 'thumbnailUrl') : undefined,
       durationSeconds: data?.durationSeconds ? Math.min(Number(data.durationSeconds), 600) : undefined,
       tags: this.cleanTags(data?.tags),
+      processingStatus: 'READY',
+      moderationStatus: process.env.VIDEO_REQUIRE_MODERATION === 'true' && user.role !== UserRole.ADMIN ? 'PENDING' : 'APPROVED',
       isActive: data?.isActive === undefined ? true : data.isActive !== false,
       isArchived: false,
       auditTrail: [{ action: 'created', actorId: user.userId, reason: 'seller_video_created', at: new Date() }],
     };
 
     const saved = await this.sellerVideoModel.create(payload);
-    return this.findById(String(saved._id), false, user.userId);
+    return this.findById(String(saved._id), false, user.userId, true);
   }
 
   async findAll(query: any = {}, viewerId?: string) {
     await this.archiveExpiredStories().catch(err => console.error('Archive expired stories failed:', err));
 
+    const isAdminView = query.adminTrusted === true;
     const filter: any = { deletedAt: null, isActive: true };
+    if (!isAdminView) {
+      filter.processingStatus = 'READY';
+      filter.moderationStatus = 'APPROVED';
+    } else if (query.moderationStatus) {
+      filter.moderationStatus = String(query.moderationStatus).toUpperCase();
+    }
     if (query.marketId) filter.marketId = this.toObjectId(String(query.marketId), 'marketId');
     if (query.sellerId) filter.sellerId = this.toObjectId(String(query.sellerId), 'sellerId');
     if (query.productId) filter.productId = this.toObjectId(String(query.productId), 'productId');
@@ -614,18 +625,23 @@ export class SellerVideoService {
       .limit(limit)
       .populate('sellerId', 'stallName shopDetails rating totalOrders')
       .populate('marketId', 'name slug code location imageUrl')
-      .populate('productId', 'name price unit images category categoryLabel')
+      .populate('productId', 'name price unit images category categoryLabel categoryId')
       .lean()
       .exec();
 
     return videos.map(video => this.presentation(video, viewerId));
   }
 
-  async findById(id: string, incrementView = true, viewerId?: string) {
+  async findById(id: string, incrementView = true, viewerId?: string, includeUnmoderated = false) {
     const objectId = this.toObjectId(id, 'videoId');
+    const filter: any = { _id: objectId, deletedAt: null, isActive: true };
+    if (!includeUnmoderated) {
+      filter.processingStatus = 'READY';
+      filter.moderationStatus = 'APPROVED';
+    }
     const operation = incrementView
-      ? this.sellerVideoModel.findOneAndUpdate({ _id: objectId, deletedAt: null, isActive: true }, { $inc: { viewCount: 1 } }, { new: true })
-      : this.sellerVideoModel.findOne({ _id: objectId, deletedAt: null, isActive: true });
+      ? this.sellerVideoModel.findOneAndUpdate(filter, { $inc: { viewCount: 1 } }, { new: true })
+      : this.sellerVideoModel.findOne(filter);
     const video = await operation
       .populate('sellerId', 'stallName shopDetails rating totalOrders')
       .populate('marketId', 'name slug code location imageUrl')
@@ -671,7 +687,7 @@ export class SellerVideoService {
       $set: updates,
       $push: { auditTrail: { action: 'updated', actorId: user.userId, reason: 'seller_video_updated', at: new Date() } },
     });
-    return this.findById(id, false, user.userId);
+    return this.findById(id, false, user.userId, true);
   }
 
   async remove(user: AuthUser, id: string) {
@@ -694,20 +710,21 @@ export class SellerVideoService {
     const userObjectId = this.toObjectId(user.userId, 'userId');
     const videoObjectId = this.toObjectId(id, 'videoId');
     const pullBoth = { likeUserIds: userObjectId, dislikeUserIds: userObjectId };
-    await this.sellerVideoModel.updateOne({ _id: videoObjectId, deletedAt: null }, { $pull: pullBoth }).exec();
+    const publicFilter = { _id: videoObjectId, deletedAt: null, isActive: true, processingStatus: 'READY', moderationStatus: 'APPROVED' };
+    await this.sellerVideoModel.updateOne(publicFilter, { $pull: pullBoth }).exec();
     if (reaction !== 'none') {
       await this.sellerVideoModel.updateOne(
-        { _id: videoObjectId, deletedAt: null },
+        publicFilter,
         { $addToSet: reaction === 'like' ? { likeUserIds: userObjectId } : { dislikeUserIds: userObjectId } },
       ).exec();
     }
-    const updated = await this.sellerVideoModel.findOne({ _id: videoObjectId, deletedAt: null }).exec();
+    const updated = await this.sellerVideoModel.findOne(publicFilter).exec();
     if (!updated) throw new NotFoundException('Seller video not found');
     updated.likeCount = updated.likeUserIds.length;
     updated.dislikeCount = updated.dislikeUserIds.length;
     await updated.save();
     if (reaction === 'like') this.recordViewerSignal(user.userId, updated, 'video_like').catch(() => {});
-    return this.findById(id, false, user.userId);
+    return this.findById(id, false, user.userId, true);
   }
 
   async comment(user: AuthUser, id: string, data: any) {
@@ -717,7 +734,7 @@ export class SellerVideoService {
     const videoObjectId = this.toObjectId(id, 'videoId');
     const fullName = this.cleanText(data?.fullName || user.email || 'RMF user', 80);
     const updated = await this.sellerVideoModel.findOneAndUpdate(
-      { _id: videoObjectId, deletedAt: null },
+      { _id: videoObjectId, deletedAt: null, isActive: true, processingStatus: 'READY', moderationStatus: 'APPROVED' },
       {
         $push: {
           comments: {
@@ -733,6 +750,39 @@ export class SellerVideoService {
     ).lean().exec();
     if (!updated) throw new NotFoundException('Seller video not found');
     this.recordViewerSignal(user.userId, updated, 'video_comment').catch(() => {});
+    return this.presentation(updated, user.userId);
+  }
+
+  async moderate(user: AuthUser, id: string, data: any) {
+    if (user.role !== UserRole.ADMIN) {
+      throw new ForbiddenException('Only administrators can moderate seller videos');
+    }
+    const status = String(data?.moderationStatus || data?.status || '').toUpperCase();
+    if (!['PENDING', 'APPROVED', 'REJECTED', 'FLAGGED'].includes(status)) {
+      throw new BadRequestException('moderationStatus must be PENDING, APPROVED, REJECTED, or FLAGGED');
+    }
+    const videoObjectId = this.toObjectId(id, 'videoId');
+    const updated = await this.sellerVideoModel.findOneAndUpdate(
+      { _id: videoObjectId, deletedAt: null },
+      {
+        $set: {
+          moderationStatus: status,
+          moderationReason: this.cleanText(data?.reason, 500),
+          moderatedBy: user.userId,
+          moderatedAt: new Date(),
+          ...(status === 'APPROVED' ? { processingStatus: 'READY', isActive: true } : {}),
+          ...(status === 'REJECTED' ? { isActive: false } : {}),
+        },
+        $push: { auditTrail: { action: 'moderated', actorId: user.userId, reason: status, at: new Date() } },
+      },
+      { new: true },
+    )
+      .populate('sellerId', 'stallName shopDetails rating totalOrders')
+      .populate('marketId', 'name slug code location imageUrl')
+      .populate('productId', 'name price unit images category categoryLabel categoryId')
+      .lean()
+      .exec();
+    if (!updated) throw new NotFoundException('Seller video not found');
     return this.presentation(updated, user.userId);
   }
 }

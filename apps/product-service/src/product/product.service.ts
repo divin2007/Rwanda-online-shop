@@ -123,6 +123,54 @@ export class ProductService implements OnModuleInit {
     return attributes;
   }
 
+  private validateCategoryAttributes(category: CatalogCategory, attributes: Record<string, any>): string[] {
+    const errors: string[] = [];
+    for (const field of category.attributes) {
+      const rawValue = attributes[field.key];
+      const value = rawValue === undefined || rawValue === null ? '' : String(rawValue).trim();
+      if (field.required && value === '') {
+        errors.push(`${field.label} (${field.key}) is required for ${category.label}`);
+        continue;
+      }
+      if (value === '') continue;
+      if (field.type === 'select' && field.options?.length) {
+        const allowed = field.options.map(option => String(option).toLowerCase());
+        if (!allowed.includes(value.toLowerCase())) {
+          errors.push(`${field.label} must be one of: ${field.options.join(', ')}`);
+        }
+      }
+      if (field.type === 'number') {
+        const numberValue = Number(rawValue);
+        if (!Number.isFinite(numberValue)) {
+          errors.push(`${field.label} must be a number`);
+        } else {
+          if (field.min !== undefined && numberValue < field.min) errors.push(`${field.label} must be at least ${field.min}`);
+          if (field.max !== undefined && numberValue > field.max) errors.push(`${field.label} must be at most ${field.max}`);
+        }
+      }
+    }
+    return errors;
+  }
+
+  private applyBulkAttributeFallbacks(category: CatalogCategory, attributes: Record<string, any>): Record<string, any> {
+    if (process.env.BULK_IMPORT_ALLOW_ATTRIBUTE_FALLBACKS !== 'true') return attributes;
+    for (const field of category.attributes) {
+      if (!field.required) continue;
+      const currentVal = attributes[field.key];
+      if (currentVal !== undefined && currentVal !== null && currentVal !== '') continue;
+      if (field.type === 'select' && field.options?.length) {
+        attributes[field.key] = field.options.find(opt => ['other', 'mixed', 'a', 'new'].includes(opt.toLowerCase())) || field.options[0];
+      } else if (field.type === 'boolean') {
+        attributes[field.key] = true;
+      } else if (field.type === 'number') {
+        attributes[field.key] = field.min !== undefined ? field.min : 0;
+      } else {
+        attributes[field.key] = 'Generic';
+      }
+    }
+    return attributes;
+  }
+
   private async invalidateProductCaches(productId?: string) {
     if (productId) {
       await this.safeCacheDel(`product:${productId}`);
@@ -454,7 +502,28 @@ export class ProductService implements OnModuleInit {
         );
       })
       .find(Boolean);
-    return match || resolveCatalogCategory(value);
+    return this.inheritCategoryFields(match || resolveCatalogCategory(value), categories);
+  }
+
+  private inheritCategoryFields(category: CatalogCategory, categories: CatalogCategory[]): CatalogCategory {
+    let variantAxes = [...(category.variantAxes || [])];
+    let attributes = [...(category.attributes || [])];
+    const byId = new Map(categories.map(item => [item.id, item]));
+    let parentId = category.parentId || null;
+
+    while ((variantAxes.length === 0 || attributes.length === 0) && parentId) {
+      const parent = byId.get(parentId);
+      if (!parent) break;
+      if (variantAxes.length === 0 && parent.variantAxes?.length) {
+        variantAxes = parent.variantAxes;
+      }
+      if (attributes.length === 0 && parent.attributes?.length) {
+        attributes = parent.attributes;
+      }
+      parentId = parent.parentId || null;
+    }
+
+    return { ...category, variantAxes, attributes };
   }
 
   private catalogCategoryForProduct(product: any): CatalogCategory {
@@ -1994,25 +2063,10 @@ export class ProductService implements OnModuleInit {
 
           // Resolve category definition to identify required taxonomy fields
           const categoryObj = await this.resolveCatalogCategoryDynamic(categoryVal);
-          const attributes = this.parseAttributesFromRow(baseRow);
-
-          // Supply safe fallbacks for missing mandatory category fields
-          for (const field of categoryObj.attributes) {
-            if (field.required) {
-              const currentVal = attributes[field.key];
-              if (currentVal === undefined || currentVal === null || currentVal === '') {
-                if (field.type === 'select' && field.options?.length) {
-                  const fallbackOption = field.options.find(opt => ['other', 'mixed', 'a', 'new'].includes(opt.toLowerCase())) || field.options[0];
-                  attributes[field.key] = fallbackOption;
-                } else if (field.type === 'boolean') {
-                  attributes[field.key] = true;
-                } else if (field.type === 'number') {
-                  attributes[field.key] = field.min !== undefined ? field.min : 0;
-                } else {
-                  attributes[field.key] = 'Generic';
-                }
-              }
-            }
+          const attributes = this.applyBulkAttributeFallbacks(categoryObj, this.parseAttributesFromRow(baseRow));
+          const attributeErrors = this.validateCategoryAttributes(categoryObj, attributes);
+          if (attributeErrors.length > 0) {
+            throw new Error(`Catalog validation failed: ${attributeErrors.join('; ')}`);
           }
 
           // Parse variants if multiple rows are present or if a single row has variant options specified

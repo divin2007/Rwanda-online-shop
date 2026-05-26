@@ -74,6 +74,22 @@ export class SellerVideoController {
     return { success: true, data: videos };
   }
 
+  @UseGuards(JwtAuthGuard)
+  @Roles(UserRole.ADMIN)
+  @Get('admin/moderation')
+  async moderationQueue(@Query() query: any, @Request() req: any) {
+    const videos = await this.sellerVideoService.findAll({ ...(query || {}), adminTrusted: true }, req.user?.userId);
+    return { success: true, data: videos };
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Roles(UserRole.ADMIN)
+  @Patch(':id/moderation')
+  async moderate(@Request() req: any, @Param('id') id: string, @Body() body: any) {
+    const video = await this.sellerVideoService.moderate(req.user, id, body || {});
+    return { success: true, data: video };
+  }
+
   @Public()
   @Get(':id')
   async findById(@Param('id') id: string, @Request() req: any) {
