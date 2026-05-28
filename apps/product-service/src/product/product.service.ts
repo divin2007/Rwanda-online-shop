@@ -1566,14 +1566,26 @@ export class ProductService implements OnModuleInit {
 
   async getFacets(query: any): Promise<any> {
     const products = await this.findAll({ ...query, limit: query.limit || 1000 });
+    
+    // Group products by category ID and track prices in a single pass to optimize memory and CPU
+    const productsByCategory = new Map<string, any[]>();
     const categories = new Map<string, { id: string; label: string; count: number; fields: any[] }>();
     const priceRange = { min: Number.POSITIVE_INFINITY, max: 0 };
 
     for (const product of products) {
       const category = this.catalogCategoryForProduct(product);
+      
+      let group = productsByCategory.get(category.id);
+      if (!group) {
+        group = [];
+        productsByCategory.set(category.id, group);
+      }
+      group.push(product);
+
       const current = categories.get(category.id) || { id: category.id, label: category.label, count: 0, fields: [] };
       current.count += 1;
       categories.set(category.id, current);
+
       const price = Number(product.price || 0);
       if (price > 0) {
         priceRange.min = Math.min(priceRange.min, price);
@@ -1582,26 +1594,34 @@ export class ProductService implements OnModuleInit {
     }
 
     const categoryList = await this.getCatalogCategories();
-    const attributeFacets = categoryList.map(category => {
-      const fields = category.attributes.filter(field => field.filterable).map(field => {
-        const counts = new Map<string, number>();
-        for (const product of products) {
-          const productCategory = this.catalogCategoryForProduct(product);
-          if (productCategory.id !== category.id) continue;
-          const raw = product.attributes?.[field.key];
-          const values = Array.isArray(raw) ? raw : raw === undefined || raw === null || raw === '' ? [] : [raw];
-          values.forEach(value => {
-            const key = String(value);
-            counts.set(key, (counts.get(key) || 0) + 1);
+    // Only map categories that actually have products to prevent scanning all 150+ categories
+    const attributeFacets = categoryList
+      .filter(category => productsByCategory.has(category.id))
+      .map(category => {
+        const catProducts = productsByCategory.get(category.id) || [];
+        const fields = category.attributes
+          .filter(field => field.filterable)
+          .map(field => {
+            const counts = new Map<string, number>();
+            for (const product of catProducts) {
+              const raw = product.attributes?.[field.key];
+              const values = Array.isArray(raw) ? raw : raw === undefined || raw === null || raw === '' ? [] : [raw];
+              values.forEach(value => {
+                const key = String(value);
+                counts.set(key, (counts.get(key) || 0) + 1);
+              });
+            }
+            return {
+              ...field,
+              values: Array.from(counts.entries())
+                .map(([value, count]) => ({ value, count }))
+                .sort((a, b) => b.count - a.count)
+                .slice(0, 40),
+            };
           });
-        }
-        return {
-          ...field,
-          values: Array.from(counts.entries()).map(([value, count]) => ({ value, count })).sort((a, b) => b.count - a.count).slice(0, 40),
-        };
-      });
-      return { id: category.id, label: category.label, fields };
-    }).filter(category => category.fields.some(field => field.values.length > 0 || field.options?.length));
+        return { id: category.id, label: category.label, fields };
+      })
+      .filter(category => category.fields.some(field => field.values.length > 0 || field.options?.length));
 
     return {
       total: products.length,
