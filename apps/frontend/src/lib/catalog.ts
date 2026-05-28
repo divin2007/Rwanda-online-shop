@@ -2133,5 +2133,28 @@ const mergeRmfV3Catalog = (existing: CatalogCategory[]): CatalogCategory[] => {
 
 export const fallbackCatalogCategories: CatalogCategory[] = mergeRmfV3Catalog(legacyFallbackCatalogCategories);
 
-export const categoryFor = (categories: CatalogCategory[], categoryId?: string) =>
-  categories.find(category => category.id === categoryId) || categories[categories.length - 1] || fallbackCatalogCategories[fallbackCatalogCategories.length - 1];
+export const inheritCategoryFields = (category: CatalogCategory, categories: CatalogCategory[]): CatalogCategory => {
+  let variantAxes = [...(category.variantAxes || [])];
+  let attributes = [...(category.attributes || [])];
+  const byId = new Map(categories.map(item => [item.id, item]));
+  let parentId = category.parentId || null;
+
+  while ((variantAxes.length === 0 || attributes.length === 0) && parentId) {
+    const parent = byId.get(parentId);
+    if (!parent) break;
+    if (variantAxes.length === 0 && parent.variantAxes?.length) {
+      variantAxes = parent.variantAxes;
+    }
+    if (attributes.length === 0 && parent.attributes?.length) {
+      attributes = parent.attributes;
+    }
+    parentId = parent.parentId || null;
+  }
+
+  return { ...category, variantAxes, attributes };
+};
+
+export const categoryFor = (categories: CatalogCategory[], categoryId?: string): CatalogCategory => {
+  const match = categories.find(category => category.id === categoryId) || categories[categories.length - 1] || fallbackCatalogCategories[fallbackCatalogCategories.length - 1];
+  return inheritCategoryFields(match, categories);
+};

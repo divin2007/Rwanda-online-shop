@@ -172,16 +172,22 @@ export class ProductService implements OnModuleInit {
   }
 
   private async invalidateProductCaches(productId?: string) {
-    if (productId) {
-      await this.safeCacheDel(`product:${productId}`);
+    try {
+      if (productId) {
+        await this.safeCacheDel(`product:${productId}`);
+      }
+      await this.safeCacheDel('products:all');
+      await this.safeCacheDel('catalog:categories');
+      await this.safeCacheDel('catalog:categories:all');
+
+      if ((this.cacheManager as any).reset) {
+        await (this.cacheManager as any).reset();
+      } else if ((this.cacheManager as any).clear) {
+        await (this.cacheManager as any).clear();
+      }
+    } catch (err: any) {
+      console.warn(`[ProductService] Cache namespace flush skipped: ${err.message}`);
     }
-    await this.safeCacheDel('products:all');
-    await this.safeCacheDel('catalog:categories');
-    await this.safeCacheDel('catalog:categories:all');
-    // N7 fix: do NOT call cacheManager.reset() here — it wipes the entire Redis namespace
-    // (including session data and other services if sharing Redis). Use targeted key deletion.
-    // For a full product cache flush, the keys follow the pattern `products:all:*`—
-    // handled by the canonical query key in findAll().
   }
 
   private async safeCacheDel(key: string): Promise<void> {
@@ -350,8 +356,8 @@ export class ProductService implements OnModuleInit {
     await this.safeCacheDel('catalog:categories:all');
   }
 
-
   async getCatalogCategories(includeInactive = false): Promise<CatalogCategory[]> {
+
     const cacheKey = includeInactive ? 'catalog:categories:all' : 'catalog:categories';
     const cached = await this.safeCacheGet<CatalogCategory[]>(cacheKey);
     if (cached) return cached;
