@@ -1,4 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { getGoogleCloudStorageConfig, uploadToGoogleCloudStorage } from '@rmf/shared-utils';
 import * as crypto from 'crypto';
 import { existsSync, mkdirSync, writeFileSync } from 'fs';
 import { join } from 'path';
@@ -8,6 +9,17 @@ export class StorageService {
   private readonly logger = new Logger(StorageService.name);
 
   async uploadFile(fileBuffer: Buffer, fileName: string, mimeType: string, folder: string): Promise<string> {
+    const key = `${folder}/${fileName}`;
+    const googleCloudStorage = getGoogleCloudStorageConfig();
+    if (googleCloudStorage) {
+      try {
+        this.logger.log(`Uploading file ${fileName} to Google Cloud Storage bucket ${googleCloudStorage.bucket}...`);
+        return await uploadToGoogleCloudStorage(fileBuffer, key, mimeType, googleCloudStorage);
+      } catch (error: any) {
+        this.logger.error(`Google Cloud Storage upload failed: ${error.message}. Trying the next storage backend.`);
+      }
+    }
+
     const s3Endpoint = process.env.S3_ENDPOINT;
     const s3Bucket = process.env.S3_BUCKET;
     const s3AccessKey = process.env.S3_ACCESS_KEY;
@@ -35,7 +47,6 @@ export class StorageService {
     this.logger.log(`Uploading file ${fileName} to S3 bucket ${s3Bucket}...`);
     
     try {
-      const key = `${folder}/${fileName}`;
       const url = await this.uploadToS3(fileBuffer, key, mimeType, {
         endpoint: s3Endpoint,
         bucket: s3Bucket,
