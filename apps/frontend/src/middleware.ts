@@ -110,6 +110,13 @@ export function middleware(req: NextRequest) {
       url.pathname === route || url.pathname.startsWith(route + '/')
     );
     if (isPlatformRoute) {
+      const isPrefetch = req.headers.get('purpose') === 'prefetch' || 
+                         req.headers.has('x-middleware-prefetch') ||
+                         req.headers.has('RSC') || 
+                         url.searchParams.has('_rsc');
+      if (isPrefetch) {
+        return NextResponse.next();
+      }
       const apexHost = apexHostFor(cleanHostname, hostname);
       return NextResponse.redirect(new URL(url.pathname + url.search, `${protocolFor(apexHost)}://${apexHost}`));
     }
@@ -124,6 +131,13 @@ export function middleware(req: NextRequest) {
     );
 
     if (isPlatformRoute) {
+      const isPrefetch = req.headers.get('purpose') === 'prefetch' || 
+                         req.headers.has('x-middleware-prefetch') ||
+                         req.headers.has('RSC') || 
+                         url.searchParams.has('_rsc');
+      if (isPrefetch) {
+        return NextResponse.next();
+      }
       // Platform routes work the same on all domains — no rewriting
       const apexHost = apexHostFor(cleanHostname, hostname);
       return NextResponse.redirect(new URL(url.pathname + url.search, `${protocolFor(apexHost)}://${apexHost}`));
