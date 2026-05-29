@@ -22,6 +22,7 @@ const PLATFORM_ROUTES = [
   '/wishlist',
   '/privacy',
   '/terms',
+  '/videos',
   '/manifest.json',
   '/robots.txt',
   '/sitemap.xml',
