@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, BadRequestException, Inject, OnModuleInit } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, Inject, OnModuleInit, Logger } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
@@ -9,6 +9,7 @@ import { CatalogCategory, CatalogField, catalogCategories, resolveCatalogCategor
 
 @Injectable()
 export class ProductService implements OnModuleInit {
+  private readonly logger = new Logger(ProductService.name);
   constructor(
     @InjectModel('Product') private productModel: Model<any>,
     @InjectModel('SellerProfile') private sellerModel: Model<any>,
@@ -290,28 +291,50 @@ export class ProductService implements OnModuleInit {
   }
 
   private async seedCatalogCategoriesIfNeeded(): Promise<void> {
+    const activeDefaultCategoryIds = catalogCategories.map(category => this.normalizeCategoryId(category.id));
+    
+    // Prune bloated category audit trails once on startup to recover database speed
+    try {
+      const bloatedCount = await this.taxonomyModel.countDocuments({
+        'auditTrail.10': { $exists: true }
+      }).exec();
+      if (bloatedCount > 0) {
+        this.logger.log(`[TaxonomySeeder] Found ${bloatedCount} bloated category documents. Pruning audit trails...`);
+        const allCategories = await this.taxonomyModel.find({ 'auditTrail.10': { $exists: true } }).exec();
+        for (const cat of allCategories) {
+          if (Array.isArray(cat.auditTrail) && cat.auditTrail.length > 5) {
+            cat.auditTrail = cat.auditTrail.slice(-3); // Keep only the latest 3 entries
+            await cat.save();
+          }
+        }
+        this.logger.log(`[TaxonomySeeder] Bloated audit trail pruning complete.`);
+      }
+    } catch (pruneErr: any) {
+      this.logger.warn(`[TaxonomySeeder] Failed to prune bloated category audit trails: ${pruneErr.message}`);
+    }
+
     const existingRows = await this.taxonomyModel
-      .find({ id: { $in: catalogCategories.map(category => this.normalizeCategoryId(category.id)) }, deletedAt: null })
-      .select('id version auditTrail')
+      .find({ id: { $in: activeDefaultCategoryIds }, deletedAt: null })
+      .select('id version')
       .lean()
       .exec();
-    const existingById = new Map(existingRows.map((row: any) => [row.id, row]));
+    const existingIds = new Set(existingRows.map((row: any) => row.id));
     const operations = [];
 
     for (const category of catalogCategories) {
       const id = this.normalizeCategoryId(category.id);
-      const existing = existingById.get(id);
-      const sanitized = this.sanitizeCatalogCategory(category, existing);
+      if (existingIds.has(id)) {
+        continue; // Already seeded, bypass write completely!
+      }
+      const sanitized = this.sanitizeCatalogCategory(category);
 
       const payload = {
         ...sanitized,
         synonyms: sanitized.synonyms?.length ? sanitized.synonyms : sanitized.aliases,
         searchBoost: sanitized.searchBoost || 1,
         isActive: true,
-        version: existing ? Number(existing.version || 1) + 1 : 1,
-        auditTrail: existing
-          ? (Array.isArray(existing.auditTrail) ? existing.auditTrail : []).concat({ action: 'synchronized', reason: 'default_catalog_bootstrap', at: new Date() })
-          : [{ action: 'seeded', reason: 'default_catalog_bootstrap', at: new Date() }],
+        version: 1,
+        auditTrail: [{ action: 'seeded', reason: 'default_catalog_bootstrap', at: new Date() }],
       };
 
       operations.push({
@@ -323,37 +346,35 @@ export class ProductService implements OnModuleInit {
       });
     }
 
-    if (operations.length) {
+    if (operations.length > 0) {
+      this.logger.log(`[TaxonomySeeder] Seeding ${operations.length} missing default categories...`);
       await this.taxonomyModel.bulkWrite(operations, { ordered: false });
-    }
 
-    const activeDefaultCategoryIds = catalogCategories.map(category => this.normalizeCategoryId(category.id));
-    await this.taxonomyModel.updateMany(
-      {
-        deletedAt: null,
-        isActive: { $ne: false },
-        $or: [
-          { id: /^shopify_/ },
-          {
-            id: { $nin: activeDefaultCategoryIds },
-            auditTrail: { $elemMatch: { reason: 'default_catalog_bootstrap' } },
-            createdBy: null,
-          },
-        ],
-      },
-      {
-        $set: { isActive: false },
-        $push: {
-          auditTrail: {
-            action: 'deactivated',
-            reason: 'rmf_v3_catalog_replaced_shopify_taxonomy',
-            at: new Date(),
-          },
+      await this.taxonomyModel.updateMany(
+        {
+          deletedAt: null,
+          isActive: { $ne: false },
+          $or: [
+            { id: /^shopify_/ },
+            {
+              id: { $nin: activeDefaultCategoryIds },
+              auditTrail: { $elemMatch: { reason: 'default_catalog_bootstrap' } },
+              createdBy: null,
+            },
+          ],
         },
-      }
-    );
-    await this.safeCacheDel('catalog:categories');
-    await this.safeCacheDel('catalog:categories:all');
+        {
+          $set: { isActive: false },
+          $push: {
+            auditTrail: {
+              action: 'deactivated',
+              reason: 'rmf_v3_catalog_replaced_shopify_taxonomy',
+              at: new Date(),
+            },
+          },
+        }
+      );
+    }
   }
 
   async getCatalogCategories(includeInactive = false): Promise<CatalogCategory[]> {
