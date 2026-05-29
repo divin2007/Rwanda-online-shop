@@ -274,6 +274,8 @@ services:
         value: "2000000"
       - key: DELIVERY_FEE_PER_5KM
         value: "500"
+      - key: AUTO_CONFIRM_PAYMENTS
+        value: "false"
 
   - type: web
     name: rmf-wallet-service
@@ -385,6 +387,10 @@ services:
         sync: false
       - key: SMTP_PASS
         sync: false
+      - key: SMTP_FROM
+        value: '"Rwanda Marketplace" <noreply@rwshop.org>'
+      - key: SMTP_SECURE
+        value: "false"
 
   - type: web
     name: rmf-review-service

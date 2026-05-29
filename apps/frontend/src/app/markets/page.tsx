@@ -138,7 +138,7 @@ const getProductQueryPath = (searchQuery: string, productCategory: string, attri
 };
 
 const getFacetQueryPath = (searchQuery: string) => {
-  const params = new URLSearchParams({ limit: '1000', isActive: 'true' });
+  const params = new URLSearchParams({ limit: '200', isActive: 'true' });
   const trimmedSearch = searchQuery.trim();
   if (isMadeInRwandaSearch(trimmedSearch)) params.set('isMadeInRwanda', 'true');
   else if (trimmedSearch) params.set('search', trimmedSearch);

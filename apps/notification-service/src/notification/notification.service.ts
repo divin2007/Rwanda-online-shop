@@ -35,18 +35,32 @@ export class NotificationService {
 
   private initTransporter() {
     const isDev = process.env.NODE_ENV !== 'production';
-    if (isDev || process.env.SMTP_HOST) {
+    const smtpHost = process.env.SMTP_HOST || (isDev ? 'localhost' : '');
+    const smtpPort = Number(process.env.SMTP_PORT) || (isDev ? 1025 : 587);
+    const hasRealSmtp = Boolean(smtpHost && smtpHost !== 'localhost' && process.env.SMTP_USER);
+
+    if (isDev || smtpHost) {
+      // For production SMTP (e.g. AWS SES on port 587): use STARTTLS, NOT raw TLS.
+      // secure=false + requireTLS=true ensures STARTTLS handshake on port 587.
+      // ignoreTLS must be false for real SMTP providers; only true for local MailDev.
+      const useStartTls = hasRealSmtp && smtpPort === 587;
+      const secure = process.env.SMTP_SECURE === 'true' || (hasRealSmtp && smtpPort === 465);
+      const ignoreTLS = hasRealSmtp ? false : (process.env.SMTP_IGNORE_TLS !== 'false');
+
       this.transporter = nodemailer.createTransport({
-        host: process.env.SMTP_HOST || 'localhost',
-        port: Number(process.env.SMTP_PORT) || 1025,
-        secure: process.env.SMTP_SECURE === 'true',
-        ignoreTLS: process.env.SMTP_IGNORE_TLS !== 'false',
+        host: smtpHost,
+        port: smtpPort,
+        secure,
+        ignoreTLS,
+        requireTLS: useStartTls,
         auth: process.env.SMTP_USER ? {
           user: process.env.SMTP_USER,
           pass: process.env.SMTP_PASS,
         } : undefined,
       });
-      this.logger.log(`Nodemailer initialized for ${process.env.SMTP_HOST || 'local MailDev'}`);
+      this.logger.log(`Nodemailer initialized for ${smtpHost}:${smtpPort} (secure=${secure}, requireTLS=${useStartTls}, ignoreTLS=${ignoreTLS})`);
+    } else {
+      this.logger.warn('SMTP is not configured. Email notifications will not be sent.');
     }
   }
 
@@ -383,8 +397,9 @@ export class NotificationService {
       if (this.transporter) {
         // C4 fix: use human-readable subject, never expose internal event type strings
         const subject = this.emailSubjects[type] || 'Rwanda Marketplace notification';
+        const fromAddress = process.env.SMTP_FROM || '"Rwanda Marketplace" <noreply@rwshop.org>';
         await this.transporter.sendMail({
-          from: '"Rwanda Marketplace" <noreply@rwshop.org>',
+          from: fromAddress,
           to: targetEmail,
           subject,
           text: content,

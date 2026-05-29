@@ -497,7 +497,9 @@ export class OrderService implements OnModuleInit, OnModuleDestroy {
         return updated;
       }
 
-      const shouldAutoConfirmPayments = process.env.AUTO_CONFIRM_PAYMENTS === 'true';
+      // CRITICAL: Auto-confirm must NEVER activate in production
+      const isNotProduction = process.env.NODE_ENV !== 'production';
+      const shouldAutoConfirmPayments = isNotProduction && process.env.AUTO_CONFIRM_PAYMENTS === 'true';
 
       // THEN initiate payment (For standard orders)
       const paymentResult = await this.paymentService.requestPaymentPrompt(saved);
@@ -1510,7 +1512,9 @@ export class OrderService implements OnModuleInit, OnModuleDestroy {
       throw new BadRequestException('Payment can only be started after the quote is accepted and the order is placed');
     }
 
-    const shouldAutoConfirmPayments = process.env.AUTO_CONFIRM_PAYMENTS === 'true';
+    // CRITICAL: Auto-confirm must NEVER activate in production
+    const isNotProduction = process.env.NODE_ENV !== 'production';
+    const shouldAutoConfirmPayments = isNotProduction && process.env.AUTO_CONFIRM_PAYMENTS === 'true';
 
     (order as any)._paypackRetryNonce = uuidv4();
     const paymentResult = await this.paymentService.requestPaymentPrompt(order);

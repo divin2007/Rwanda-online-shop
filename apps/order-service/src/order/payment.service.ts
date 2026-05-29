@@ -70,9 +70,14 @@ export class PaymentService {
   };
 
   async requestPaymentPrompt(order: any): Promise<{ success: boolean; transactionId?: string; error?: string }> {
-    const shouldAutoConfirm =
+    // CRITICAL: Auto-confirm must NEVER activate in production.
+    // The .env file may have AUTO_CONFIRM_PAYMENTS=true for local dev,
+    // but this must be gated behind NODE_ENV !== 'production'.
+    const isNotProduction = process.env.NODE_ENV !== 'production';
+    const shouldAutoConfirm = isNotProduction && (
       process.env.AUTO_CONFIRM_PAYMENTS === 'true' ||
-      (process.env.NODE_ENV !== 'production' && process.env.PAYPACK_WEBHOOK_MODE === 'development' && process.env.PAYPACK_AUTO_CONFIRM === 'true');
+      (process.env.PAYPACK_WEBHOOK_MODE === 'development' && process.env.PAYPACK_AUTO_CONFIRM === 'true')
+    );
 
     if (shouldAutoConfirm) {
       this.logger.log(`[SANDBOX] Dev mode intercepted. Bypassing real payment gateway for order ${order.orderNumber}.`);
@@ -105,7 +110,9 @@ export class PaymentService {
   }
 
   async getPaymentStatus(referenceId: string, method?: string): Promise<{ status: string; transactionId?: string }> {
-    const shouldAutoConfirmPayments = process.env.AUTO_CONFIRM_PAYMENTS === 'true';
+    // CRITICAL: Auto-confirm must NEVER activate in production.
+    const isNotProduction = process.env.NODE_ENV !== 'production';
+    const shouldAutoConfirmPayments = isNotProduction && process.env.AUTO_CONFIRM_PAYMENTS === 'true';
     if (shouldAutoConfirmPayments || referenceId?.startsWith('DEV-') || referenceId?.startsWith('SANDBOX-')) {
       return { status: 'SUCCESSFUL', transactionId: 'DEV-TX-' + referenceId };
     }
@@ -247,6 +254,7 @@ export class PaymentService {
         {
           amount,
           number: phone,
+          environment: this.paypackConfig.webhookMode,
         },
         {
           headers: {
@@ -355,6 +363,7 @@ export class PaymentService {
         {
           amount,
           number: phone,
+          environment: this.paypackConfig.webhookMode,
         },
         {
           headers: {

@@ -129,9 +129,9 @@ export default function MarketPage({ params }: { params: Promise<{ slug: string 
     setLoading(true);
     try {
       const [prodRes, promRes, facetRes, videoRes] = await Promise.allSettled([
-        productApi.get(`/products/recommendations/for-me?marketId=${market._id}&isActive=true&isApproved=true&limit=1000`),
+        productApi.get(`/products/recommendations/for-me?marketId=${market._id}&isActive=true&isApproved=true&limit=100`),
         productApi.get(`/products?marketId=${market._id}&isActive=true&isApproved=true&hasPromotion=true&limit=8`),
-        productApi.get(`/products/catalog/facets?marketId=${market._id}&isActive=true&isApproved=true&limit=1000`),
+        productApi.get(`/products/catalog/facets?marketId=${market._id}&isActive=true&isApproved=true&limit=200`),
         productApi.get(`/seller-videos?marketId=${market._id}&limit=5`),
       ]);
 
