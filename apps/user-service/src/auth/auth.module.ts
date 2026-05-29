@@ -22,7 +22,7 @@ if (process.env.NODE_ENV === 'production' && !process.env.JWT_SECRET) {
     MongooseModule.forFeature([{ name: 'User', schema: userSchema }]),
     JwtModule.register({
       secret: jwtSecret,
-      signOptions: { expiresIn: '15m' },
+      signOptions: { expiresIn: '2h' },
     }),
   ],
   providers: [AuthService, JwtStrategy, GoogleStrategy],

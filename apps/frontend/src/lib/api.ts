@@ -42,8 +42,17 @@ const createClient = (baseURL: string) => {
     async (error) => {
       const { config, response } = error;
       
-      // Handle 401 Unauthorized
-      if (response?.status === 401 && !config._retry) {
+      // Handle 401 Unauthorized OR expired token errors buried in 400/403 responses
+      const errorMessage = response?.data?.message || response?.data?.error || '';
+      const isTokenExpired =
+        response?.status === 401 ||
+        ([400, 403].includes(response?.status) &&
+          typeof errorMessage === 'string' &&
+          (errorMessage.toLowerCase().includes('token is expired') ||
+            errorMessage.toLowerCase().includes('jwt expired') ||
+            errorMessage.toLowerCase().includes('token expired')));
+
+      if (isTokenExpired && !config._retry) {
         config._retry = true;
         try {
           const accessToken = await refreshAccessToken();
