@@ -68,11 +68,16 @@ export const productSchema = new Schema({
 }, { timestamps: true });
 
 productSchema.index({ sellerId: 1, deletedAt: 1 });
+productSchema.index({ sellerId: 1, isActive: 1, isApproved: 1, deletedAt: 1 });
 productSchema.index({ marketId: 1, deletedAt: 1 });
+productSchema.index({ marketId: 1, isActive: 1, isApproved: 1, deletedAt: 1 });
 productSchema.index({ isActive: 1, isApproved: 1, deletedAt: 1 });
 productSchema.index({ category: 1, deletedAt: 1 });
 productSchema.index({ categoryId: 1, deletedAt: 1 });
+productSchema.index({ categoryId: 1, isActive: 1, isApproved: 1, deletedAt: 1 });
 productSchema.index({ productType: 1, deletedAt: 1 });
+productSchema.index({ productType: 1, isActive: 1, isApproved: 1, deletedAt: 1 });
+productSchema.index({ isMadeInRwanda: 1, isActive: 1, isApproved: 1, deletedAt: 1 });
 productSchema.index({ 'attributes.$**': 1 });
 productSchema.index({ 'variants.sku': 1 }, { sparse: true });
 productSchema.index({ createdAt: -1 });

@@ -1508,6 +1508,7 @@ export class ProductService implements OnModuleInit {
 
     const dbQuery = this.productModel
       .find(filter)
+      .select('-auditTrail')
       .populate('sellerId', 'stallName shopDetails rating totalOrders userId')
       .populate('marketId', 'name slug code location imageUrl')
       .lean();

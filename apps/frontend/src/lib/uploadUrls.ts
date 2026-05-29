@@ -37,7 +37,10 @@ export function resolveUploadUrl(url?: string | null, service: UploadService = '
 
   try {
     const parsed = new URL(url);
-    if (parsed.hostname === 'localhost' && parsed.port === '3000' && parsed.pathname.startsWith('/uploads/')) {
+    if (
+      (parsed.hostname === 'localhost' || parsed.hostname === '127.0.0.1') &&
+      parsed.pathname.startsWith('/uploads/')
+    ) {
       return `${serviceBaseUrls[service]}${parsed.pathname}`;
     }
   } catch {
