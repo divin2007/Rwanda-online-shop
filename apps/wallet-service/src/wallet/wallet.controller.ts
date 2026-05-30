@@ -6,27 +6,21 @@ import {
   Param,
   Request,
   Query,
-  SetMetadata,
   UseGuards,
   ForbiddenException,
   UnauthorizedException,
+  BadRequestException,
 } from '@nestjs/common';
 import { WalletService } from './wallet.service';
 import { Roles, Public, JwtAuthGuard } from '@rmf/auth';
 import { UserRole } from '@rmf/shared-types';
 
-/**
- * Verify internal microservice calls via shared secret header.
- * Wallet money movement is disabled; these routes are legacy surfaces
- * that return read-only history or fail old callers explicitly.
- */
 function verifyInternalSecret(req: any): void {
   const secret = process.env.INTERNAL_SERVICE_SECRET;
   if (!secret) {
-    throw new UnauthorizedException('INTERNAL_SERVICE_SECRET must be configured for internal wallet-service access');
+    throw new UnauthorizedException('INTERNAL_SERVICE_SECRET must be configured');
   }
-  const provided = req.headers?.['x-internal-service-key'];
-  if (provided !== secret) {
+  if (req.headers?.['x-internal-service-key'] !== secret) {
     throw new UnauthorizedException('Invalid internal service key');
   }
 }
@@ -35,17 +29,7 @@ function verifyInternalSecret(req: any): void {
 export class WalletController {
   constructor(private readonly walletService: WalletService) {}
 
-  // FIX [WALLET-CREATE]: Was @Public() — anyone could create wallets for arbitrary userIds.
-  // Now gated by internal service secret (called by user-service on registration).
-  @Public()
-  @Post('user/:userId')
-  async create(@Param('userId') userId: string, @Request() req: any) {
-    verifyInternalSecret(req);
-    const wallet = await this.walletService.createWallet(userId);
-    return { success: true, data: wallet };
-  }
-
-  // FIX [WALLET-ME]: Removed queryUserId fallback — IDOR bypass.
+  // ─── GET /wallets/me/balance ───────────────────────────────────────────────
   @UseGuards(JwtAuthGuard)
   @Get('me/balance')
   async getMyBalance(@Request() req: any) {
@@ -55,6 +39,7 @@ export class WalletController {
     return { success: true, data: wallet };
   }
 
+  // ─── GET /wallets/me ──────────────────────────────────────────────────────
   @UseGuards(JwtAuthGuard)
   @Get('me')
   async getMyWallet(@Request() req: any) {
@@ -64,67 +49,105 @@ export class WalletController {
     return { success: true, data: wallet };
   }
 
-  // FIX [WALLET-TX-HISTORY]: Removed queryUserId fallback — IDOR bypass.
+  // ─── GET /wallets/me/transactions ─────────────────────────────────────────
   @UseGuards(JwtAuthGuard)
   @Get('me/transactions')
-  async getMyTransactions(@Request() req: any) {
+  async getMyTransactions(
+    @Request() req: any,
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+  ) {
     const userId = req.user?.userId;
     if (!userId) return { success: true, data: [] };
-    const transactions = await this.walletService.getTransactions(userId);
-    return { success: true, data: transactions };
+    const result = await this.walletService.getTransactions(
+      userId,
+      Number(page) || 1,
+      Number(limit) || 20,
+    );
+    return { success: true, data: result };
   }
 
+  // ─── POST /wallets/withdraw ────────────────────────────────────────────────
+  // Only SELLER and RIDER can withdraw. Minimum 500 RWF.
   @UseGuards(JwtAuthGuard)
-  @Get('user/:userId/balance')
+  @Post('withdraw')
+  async withdraw(
+    @Request() req: any,
+    @Body() body: { amount: number; momo_number: string },
+  ) {
+    const userId = req.user?.userId;
+    const role   = req.user?.role;
+
+    if (!userId) throw new UnauthorizedException('Authentication required');
+    if (!['SELLER', 'RIDER'].includes(String(role || '').toUpperCase())) {
+      throw new ForbiddenException('Only sellers and riders can make withdrawals');
+    }
+    if (!body.amount || !body.momo_number) {
+      throw new BadRequestException('amount and momo_number are required');
+    }
+
+    const result = await this.walletService.requestWithdrawal(
+      userId,
+      role,
+      body.amount,
+      body.momo_number,
+    );
+    return { success: true, data: result };
+  }
+
+  // ─── INTERNAL: POST /wallets/internal/credit ──────────────────────────────
+  // Called by order-service after delivery confirmation to credit wallets.
+  @Public()
+  @Post('internal/credit')
+  async internalCredit(@Body() data: any, @Request() req: any) {
+    verifyInternalSecret(req);
+    await this.walletService.creditWallet({
+      userId:      data.userId,
+      role:        data.role,
+      amount:      data.amount,
+      orderId:     data.orderId,
+      orderNumber: data.orderNumber,
+      description: data.description,
+    });
+    return { success: true };
+  }
+
+  // ─── ADMIN: GET /wallets/user/:userId/balance ──────────────────────────────
+  @UseGuards(JwtAuthGuard)
   @Roles(UserRole.ADMIN)
+  @Get('user/:userId/balance')
   async getBalance(@Param('userId') userId: string) {
     const wallet = await this.walletService.getBalance(userId);
     return { success: true, data: wallet };
   }
 
-  // FIX [WALLET-DEPOSIT]: Was unauthenticated — anyone could deposit to any account.
-  // Now requires auth + ownership check (only deposit to your own wallet).
+  // ─── ADMIN: GET /wallets/payouts/all ──────────────────────────────────────
   @UseGuards(JwtAuthGuard)
-  @Post(':userId/deposit')
-  async deposit(
-    @Param('userId') userId: string,
-    @Body() data: { amount: number; method?: string; phone?: string },
+  @Roles(UserRole.ADMIN)
+  @Get('payouts/all')
+  async getAllPayoutRequests() {
+    const payouts = await this.walletService.getAllPayoutRequests();
+    return { success: true, data: payouts };
+  }
+
+  // ─── LEGACY: POST /wallets/user/:userId/payout ────────────────────────────
+  @UseGuards(JwtAuthGuard)
+  @Post('user/:userId/payout')
+  async requestPayoutLegacy(
     @Request() req: any,
+    @Param('userId') userId: string,
+    @Body() data: { amount: number; method?: string; recipientPhone?: string; momoNumber?: string },
   ) {
     if (req.user?.userId !== userId && req.user?.role !== UserRole.ADMIN) {
-      throw new ForbiddenException('You can only deposit to your own wallet');
+      throw new ForbiddenException('You can only request payouts from your own wallet');
     }
-    const wallet = await this.walletService.deposit(userId, Number(data.amount), data.method || 'momo', data.phone);
-    return { success: true, data: wallet };
+    const phone = data.recipientPhone || data.momoNumber;
+    if (!phone) throw new BadRequestException('Recipient phone is required');
+    const result = await this.walletService.requestPayout(userId, data.amount, data.method || 'momo', phone);
+    return { success: true, data: result };
   }
 
-  // FIX [WALLET-PAYOUT-LEGACY]: Was unauthenticated — anyone could request payouts
-  // from any user's wallet. Now requires auth + ownership verification.
-  @UseGuards(JwtAuthGuard)
-  @Post('payout-request')
-  async requestPayoutLegacy(
-    @Body() data: { amount: number; method?: string; recipientPhone?: string; momoNumber?: string },
-    @Request() req: any,
-  ) {
-    const userId = req.user?.userId;
-    if (!userId) throw new UnauthorizedException('Authentication required');
-
-    const recipientPhone = data.recipientPhone || data.momoNumber;
-    if (!recipientPhone) {
-      return { success: false, message: 'Recipient phone is required' };
-    }
-
-    const request = await this.walletService.requestPayout(
-      userId,
-      Number(data.amount),
-      data.method || 'momo',
-      recipientPhone,
-    );
-    return { success: true, data: request };
-  }
-
-  // FIX [WALLET-TX]: Was isPublic — anyone could process arbitrary financial transactions.
-  // Now gated by internal service secret (called by order-service).
+  // ─── INTERNAL: POST /wallets/transaction (legacy order-service calls) ──────
   @Public()
   @Post('transaction')
   async processTransaction(@Body() data: any, @Request() req: any) {
@@ -133,49 +156,12 @@ export class WalletController {
     return result;
   }
 
-  @UseGuards(JwtAuthGuard)
-  @Post('insurance/deduct-weekly')
-  @Roles(UserRole.ADMIN)
-  async deductInsurance() {
-    const result = await this.walletService.deductWeeklyInsurance();
-    return result;
-  }
-
-  // FIX [WALLET-PAYOUT-2]: Added actual ownership enforcement.
-  @UseGuards(JwtAuthGuard)
-  @Post('user/:userId/payout')
-  async requestPayout(
-    @Request() req: any,
-    @Param('userId') userId: string,
-    @Body() data: { amount: number; method: string; recipientPhone: string },
-  ) {
-    if (req.user?.userId !== userId && req.user?.role !== UserRole.ADMIN) {
-      throw new ForbiddenException('You can only request payouts from your own wallet');
-    }
-    const request = await this.walletService.requestPayout(userId, data.amount, data.method, data.recipientPhone);
-    return { success: true, data: request };
-  }
-
-  @Post('payout/:payoutId/complete')
-  @Roles(UserRole.ADMIN)
-  async completePayout(@Param('payoutId') payoutId: string) {
-    const result = await this.walletService.completePayout(payoutId);
-    return { success: true, data: result };
-  }
-
-  @Post('payout/:payoutId/fail')
-  @Roles(UserRole.ADMIN)
-  async failPayout(@Param('payoutId') payoutId: string, @Body() data: { reason: string }) {
-    const result = await this.walletService.failPayout(payoutId, data.reason || 'Admin rejected payout');
-    return { success: true, data: result };
-  }
-
-  // FIX [WALLET-PAYOUTS-LIST]: Was @Public() — exposed all payout requests (amounts, phones)
-  // to the entire internet. Now ADMIN only.
-  @Roles(UserRole.ADMIN)
-  @Get('payouts/all')
-  async getAllPayoutRequests() {
-    const payouts = await this.walletService.getAllPayoutRequests();
-    return { success: true, data: payouts };
+  // ─── INTERNAL: POST /wallets/user/:userId (create wallet on registration) ──
+  @Public()
+  @Post('user/:userId')
+  async create(@Param('userId') userId: string, @Request() req: any) {
+    verifyInternalSecret(req);
+    const wallet = await this.walletService.createWallet(userId);
+    return { success: true, data: wallet };
   }
 }

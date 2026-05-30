@@ -987,18 +987,20 @@ export class OrderService implements OnModuleInit, OnModuleDestroy {
     return payout;
   }
 
-  // Real money movement is Paypack-only. This method records internal accounting
-  // after cashout, but never credits RMF-managed wallet balances.
+  // Real money stays in PayPack merchant account.
+  // This method credits seller/rider internal wallet balances in the DB.
+  // Actual cashout only happens when the seller/rider taps "Withdraw" in the app.
   private async triggerPayoutFlow(order: any, payFor: 'seller' | 'rider' | 'both' = 'both') {
     try {
       const latest = await this.orderModel.findById(order._id).exec();
-      if (!latest) throw new NotFoundException('Order not found for payout');
+      if (!latest) throw new NotFoundException('Order not found for wallet credit');
       order = latest;
+
       if (order.payment?.status !== PaymentStatus.PAID) {
-        throw new Error(`Cannot release escrow for unpaid order ${order.orderNumber}`);
+        throw new Error(`Cannot credit wallets for unpaid order ${order.orderNumber}`);
       }
       if (order.refund?.status === 'refunded' || order.settlement?.status === 'refunded') {
-        this.logger.warn(`Skipping payout for refunded order ${order.orderNumber}`);
+        this.logger.warn(`Skipping wallet credit for refunded order ${order.orderNumber}`);
         return;
       }
       if (order.dispute?.isDisputed && !order.dispute?.resolvedAt) {
@@ -1006,104 +1008,89 @@ export class OrderService implements OnModuleInit, OnModuleDestroy {
           'settlement.status': 'release_pending',
           'settlement.payoutBlockedReason': 'Active buyer dispute',
         });
-        throw new Error(`Cannot release escrow for disputed order ${order.orderNumber}`);
+        throw new Error(`Cannot credit wallets for disputed order ${order.orderNumber}`);
       }
       if (order.settlement?.status === 'settled') {
-        this.logger.log(`Skipping duplicate payout for order ${order.orderNumber}; settlement is already settled.`);
+        this.logger.log(`Skipping duplicate wallet credit for order ${order.orderNumber}`);
         return;
       }
 
       const shouldPaySeller = payFor === 'seller' || payFor === 'both';
-      const shouldPayRider = payFor === 'rider' || payFor === 'both';
-      const subtotal = Number(order.financials?.subtotal || 0);
-      const deliveryFee = Number(order.financials?.deliveryFee || 0);
-      const platformCommission = Math.round(Number(order.financials?.platformCommission ?? Math.max(subtotal * 0.015, 100)));
-      const sellerPayout = Math.max(0, Math.round(Number(order.financials?.sellerPayout ?? (subtotal - platformCommission))));
-      const riderPayout = Math.max(0, Math.round(Number(order.financials?.riderPayout ?? (deliveryFee * 0.9))));
+      const shouldPayRider  = payFor === 'rider'  || payFor === 'both';
 
-      if (shouldPaySeller) {
+      const subtotal            = Number(order.financials?.subtotal || 0);
+      const deliveryFee         = Number(order.financials?.deliveryFee || 0);
+      const platformCommission  = Math.round(Number(order.financials?.platformCommission ?? Math.max(subtotal * 0.015, 100)));
+      const sellerCredit        = Math.max(0, Math.round(Number(order.financials?.sellerPayout ?? (subtotal - platformCommission))));
+      const riderCredit         = Math.max(0, Math.round(Number(order.financials?.riderPayout  ?? (deliveryFee * 0.9))));
+
+      const walletServiceUrl = process.env.WALLET_SERVICE_URL || 'http://localhost:3007/api/v1';
+      const secret = process.env.INTERNAL_SERVICE_SECRET;
+      const headers = secret ? { 'x-internal-service-key': secret } : {};
+
+      // ── Credit seller wallet ──
+      if (shouldPaySeller && sellerCredit > 0) {
         const sellerTarget = await this.getSellerSettlementTarget(order);
-        if (!sellerTarget.userId || !sellerTarget.phone) {
+        if (!sellerTarget.userId) {
           await this.updateSettlementState(order._id, {
             'settlement.sellerStatus': 'failed',
-            'settlement.status': 'failed',
-            'settlement.lastError': 'Seller phone number is missing for Paypack settlement',
+            'settlement.lastError': 'Seller userId missing for wallet credit',
           });
-          throw new Error(`Cannot process seller payout for order ${order._id}: seller Paypack phone missing`);
+          throw new Error(`Cannot credit seller wallet for order ${order._id}: seller userId missing`);
         }
 
-        await this.paypackCashoutAndRecord({
-          order,
-          userId: sellerTarget.userId,
-          phone: sellerTarget.phone,
-          amount: sellerPayout,
-          account: 'seller_paypack_payout',
-          purpose: 'seller_payout',
-          description: `Paypack seller payout for order ${order.orderNumber}`,
-          stateRefPath: 'settlement.sellerPayoutRef',
-          stateStatusPath: 'settlement.sellerStatus',
-          stateDatePath: 'settlement.sellerSettledAt',
+        await axios.post(`${walletServiceUrl}/wallets/internal/credit`, {
+          userId:      sellerTarget.userId,
+          role:        'SELLER',
+          amount:      sellerCredit,
+          orderId:     String(order._id),
+          orderNumber: order.orderNumber,
+          description: `Earnings from order ${order.orderNumber}`,
+        }, { headers });
+
+        await this.updateSettlementState(order._id, {
+          'settlement.sellerStatus': 'credited',
         });
+        this.logger.log(`[Wallet] Seller wallet credited ${sellerCredit} RWF for order ${order.orderNumber}`);
       }
 
-      if (shouldPaySeller && platformCommission > 0) {
-        const platformPhone = this.getPlatformSettlementPhone();
-        if (!platformPhone) {
-          await this.updateSettlementState(order._id, {
-            'settlement.platformStatus': 'failed',
-            'settlement.status': 'failed',
-            'settlement.lastError': 'PAYPACK_PLATFORM_PHONE or RMF_PLATFORM_MOMO_NUMBER is missing',
-          });
-          throw new Error('Platform Paypack settlement phone is not configured');
-        }
-
-        await this.paypackCashoutAndRecord({
-          order,
-          phone: platformPhone,
-          amount: platformCommission,
-          account: 'rmf_platform_commission_paypack_cashout',
-          purpose: 'platform_commission',
-          description: `Paypack platform commission settlement for order ${order.orderNumber}`,
-          stateRefPath: 'settlement.platformCommissionRef',
-          stateStatusPath: 'settlement.platformStatus',
-          stateDatePath: 'settlement.platformSettledAt',
-        });
-      }
-
-      if (shouldPayRider) {
+      // ── Credit rider wallet ──
+      if (shouldPayRider && riderCredit > 0) {
         const riderTarget = await this.getRiderSettlementTarget(order);
-        if (!riderTarget.userId || !riderTarget.phone) {
+        if (!riderTarget.userId) {
           await this.updateSettlementState(order._id, {
             'settlement.riderStatus': 'pending_rider_assignment',
             'settlement.status': shouldPaySeller ? 'partial' : 'pending',
           });
-          this.logger.warn(`Rider payout for order ${order._id} is pending until a rider and phone are assigned.`);
+          this.logger.warn(`Rider wallet credit pending until rider is assigned to order ${order._id}`);
           return;
         }
 
-        await this.paypackCashoutAndRecord({
-          order,
-          userId: riderTarget.userId,
-          phone: riderTarget.phone,
-          amount: riderPayout,
-          account: 'rider_paypack_payout',
-          purpose: 'rider_payout',
-          description: `Paypack rider payout for order ${order.orderNumber}`,
-          stateRefPath: 'settlement.riderPayoutRef',
-          stateStatusPath: 'settlement.riderStatus',
-          stateDatePath: 'settlement.riderSettledAt',
+        await axios.post(`${walletServiceUrl}/wallets/internal/credit`, {
+          userId:      riderTarget.userId,
+          role:        'RIDER',
+          amount:      riderCredit,
+          orderId:     String(order._id),
+          orderNumber: order.orderNumber,
+          description: `Delivery earnings from order ${order.orderNumber}`,
+        }, { headers });
+
+        await this.updateSettlementState(order._id, {
+          'settlement.riderStatus': 'credited',
         });
+        this.logger.log(`[Wallet] Rider wallet credited ${riderCredit} RWF for order ${order.orderNumber}`);
       }
 
+      // ── Mark settlement complete ──
       await this.updateSettlementState(order._id, {
         'settlement.status': 'settled',
         'settlement.releaseTriggeredAt': order.settlement?.releaseTriggeredAt || new Date(),
         'settlement.payoutBlockedReason': null,
         'settlement.lastError': null,
       });
-      this.logger.log(`Paypack payout (${payFor}) processed for order ${order.orderNumber}`);
-    } catch (err) {
-      this.logger.error(`Payout flow error: ${err.message}`);
+      this.logger.log(`[Wallet] Wallet credits (${payFor}) completed for order ${order.orderNumber}`);
+    } catch (err: any) {
+      this.logger.error(`Wallet credit flow error: ${err.message}`);
       throw err;
     }
   }
@@ -1119,7 +1106,7 @@ export class OrderService implements OnModuleInit, OnModuleDestroy {
 
     this.validateTransition(order.payment.status, status, PAYMENT_TRANSITIONS);
 
-    // F004: Payment replay check — ensure this transactionRef hasn't been used for another paid order
+    // F004: Payment replay check
     if (status === PaymentStatus.PAID && transactionRef) {
       const isReplay = await this.fraudDetection.checkPaymentReplay(transactionRef, orderNumber);
       if (isReplay) {
