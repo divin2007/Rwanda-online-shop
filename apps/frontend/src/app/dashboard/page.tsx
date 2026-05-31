@@ -43,7 +43,7 @@ export default function DashboardPage() {
 
   const orders = ordersData || [];
   const wallet = walletData || { balance: 0 };
-  const transactions = transactionsData?.slice(0, 3) || [];
+  const transactions = (Array.isArray(transactionsData) ? transactionsData : transactionsData?.transactions)?.slice(0, 3) || [];
   const recommended = recommendedData || [];
 
   if (isLoading || !user || !isBuyer) {

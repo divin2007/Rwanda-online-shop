@@ -30,7 +30,7 @@ export default function SellerEarningsPage() {
   const [sortBy, setSortBy] = useState<'date-desc' | 'date-asc' | 'amount-desc' | 'amount-asc'>('date-desc');
 
   // Filter & Sort Selector Logic
-  const filteredLedger = (ledger || []).filter((tx: any) => {
+  const filteredLedger = ((Array.isArray(ledger) ? ledger : ledger?.transactions) || []).filter((tx: any) => {
     // 1. Text Search (ID, Description, Account)
     const txId = `#PAY-${tx._id.substring(0,8).toUpperCase()}`;
     const desc = (tx.description || '').toLowerCase();
@@ -88,10 +88,10 @@ export default function SellerEarningsPage() {
     }
     return 0;
   });
-  const paypackSettledTotal = (ledger || [])
+  const paypackSettledTotal = ((Array.isArray(ledger) ? ledger : ledger?.transactions) || [])
     .filter((tx: any) => tx.account === 'seller_paypack_payout' && tx.status === 'posted')
     .reduce((sum: number, tx: any) => sum + Number(tx.amount || 0), 0);
-  const paypackPendingTotal = (ledger || [])
+  const paypackPendingTotal = ((Array.isArray(ledger) ? ledger : ledger?.transactions) || [])
     .filter((tx: any) => tx.account === 'seller_paypack_payout' && tx.status !== 'posted')
     .reduce((sum: number, tx: any) => sum + Number(tx.amount || 0), 0);
 
@@ -219,7 +219,7 @@ export default function SellerEarningsPage() {
                <div className="border-b border-[#e0e0e0] pb-6 flex flex-col md:flex-row justify-between items-start md:items-end gap-6">
                  <h3 className="text-[12px] font-black uppercase tracking-[0.4em] text-[#1b1c1c]">Synchronization Log</h3>
                  <span className="text-[9px] font-black uppercase tracking-widest text-[#ff6b00] bg-[#ff6b00]/5 border border-[#ff6b00]/10 px-3 py-1 rounded-full">
-                   {filteredLedger.length} / {ledger?.length || 0} Ledger Movements
+                   {filteredLedger.length} / {(Array.isArray(ledger) ? ledger : ledger?.transactions)?.length || 0} Ledger Movements
                  </span>
                </div>
 

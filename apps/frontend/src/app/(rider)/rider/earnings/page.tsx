@@ -100,13 +100,14 @@ export default function RiderEarningsPage() {
   };
 
   // Stats derived from ledger
-  const completedDeliveries = ledger?.filter((tx: any) => tx.type === 'credit')?.length || 0;
-  const thisMonthEarnings = ledger?.filter((tx: any) => {
+  const ledgerTransactions = (Array.isArray(ledger) ? ledger : ledger?.transactions) || [];
+  const completedDeliveries = ledgerTransactions.filter((tx: any) => tx.type === 'credit').length || 0;
+  const thisMonthEarnings = ledgerTransactions.filter((tx: any) => {
     const txDate = new Date(tx.createdAt);
     const now = new Date();
     return txDate.getMonth() === now.getMonth() && txDate.getFullYear() === now.getFullYear() && tx.type === 'credit';
   }).reduce((sum: number, tx: any) => sum + tx.amount, 0) || 0;
-  const paypackSettledTotal = ledger?.filter((tx: any) => (
+  const paypackSettledTotal = ledgerTransactions.filter((tx: any) => (
     tx.account === 'rider_paypack_payout' && tx.status === 'posted'
   )).reduce((sum: number, tx: any) => sum + Number(tx.amount || 0), 0) || 0;
 
@@ -272,7 +273,7 @@ export default function RiderEarningsPage() {
           <Card noPadding>
             <div className="p-6 border-b border-border flex justify-between items-center">
               <h3 className="font-bold text-text-primary">Transaction History</h3>
-              <span className="text-xs text-text-muted">{ledger?.length || 0} records</span>
+              <span className="text-xs text-text-muted">{ledgerTransactions.length} records</span>
             </div>
             <div className="overflow-x-auto">
               <table className="w-full text-left">
@@ -286,7 +287,7 @@ export default function RiderEarningsPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border">
-                  {!ledger || ledger.length === 0 ? (
+                  {ledgerTransactions.length === 0 ? (
                     <tr><td colSpan={5} className="p-12 text-center text-text-secondary">
                       <div className="flex flex-col items-center gap-2">
                         <Bike size={48} className="text-primary animate-pulse" />
@@ -294,7 +295,7 @@ export default function RiderEarningsPage() {
                       </div>
                     </td></tr>
                   ) : (
-                    ledger.map((tx: any) => (
+                    ledgerTransactions.map((tx: any) => (
                       <tr key={tx._id} className="hover:bg-background-surface/50">
                         <td className="p-4 text-sm text-text-secondary">{new Date(tx.createdAt).toLocaleDateString('en-RW', { day: 'numeric', month: 'short', year: 'numeric' })}</td>
                         <td className="p-4 text-sm font-medium">{tx.description}</td>

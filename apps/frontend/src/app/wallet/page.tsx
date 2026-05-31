@@ -10,7 +10,8 @@ import Link from 'next/link';
 export default function WalletPage() {
   const { user } = useAuth();
   const { data: wallet, loading } = useApi(walletApi, 'get', `/wallets/me?userId=${user?.id}`);
-  const { data: transactions } = useApi(walletApi, 'get', `/wallets/me/transactions?userId=${user?.id}`);
+  const { data: transactionsData } = useApi(walletApi, 'get', `/wallets/me/transactions?userId=${user?.id}`);
+  const transactions = (Array.isArray(transactionsData) ? transactionsData : transactionsData?.transactions) || [];
 
   return (
     <Layout>
