@@ -74,6 +74,12 @@ services:
         sync: false
       - key: S3_PUBLIC_URL_PREFIX
         sync: false
+      - key: GEOCODER_PROVIDER
+        value: "auto"
+      - key: MAPBOX_ACCESS_TOKEN
+        sync: false
+      - key: OPENCAGE_API_KEY
+        sync: false
 
   - type: web
     name: rmf-product-service
@@ -160,6 +166,12 @@ services:
         value: "https://rmf-notification-service.onrender.com/api/v1"
       - key: SELLER_SERVICE_PUBLIC_URL
         value: "https://rmf-seller-service.onrender.com"
+      - key: GEOCODER_PROVIDER
+        value: "auto"
+      - key: MAPBOX_ACCESS_TOKEN
+        sync: false
+      - key: OPENCAGE_API_KEY
+        sync: false
 
   - type: web
     name: rmf-rider-service
@@ -197,6 +209,12 @@ services:
         value: "https://rmf-notification-service.onrender.com/api/v1"
       - key: RIDER_SERVICE_PUBLIC_URL
         value: "https://rmf-rider-service.onrender.com"
+      - key: GEOCODER_PROVIDER
+        value: "auto"
+      - key: MAPBOX_ACCESS_TOKEN
+        sync: false
+      - key: OPENCAGE_API_KEY
+        sync: false
 
   - type: web
     name: rmf-order-service
@@ -276,6 +294,10 @@ services:
         value: "500"
       - key: AUTO_CONFIRM_PAYMENTS
         value: "false"
+      - key: GEOCODER_PROVIDER
+        value: "auto"
+      - key: OPENCAGE_API_KEY
+        sync: false
 
   - type: web
     name: rmf-wallet-service
@@ -346,6 +368,12 @@ services:
         value: "https://rmf-order-service.onrender.com/api/v1"
       - key: NOTIFICATION_SERVICE_URL
         value: "https://rmf-notification-service.onrender.com/api/v1"
+      - key: GEOCODER_PROVIDER
+        value: "auto"
+      - key: MAPBOX_ACCESS_TOKEN
+        sync: false
+      - key: OPENCAGE_API_KEY
+        sync: false
 
   - type: web
     name: rmf-notification-service
@@ -380,17 +408,17 @@ services:
       - key: SENDGRID_API_KEY
         sync: false
       - key: SMTP_HOST
-        sync: false
+        value: "email-smtp.eu-north-1.amazonaws.com"
       - key: SMTP_PORT
-        sync: false
+        value: "587"
+      - key: SMTP_SECURE
+        value: "false"
+      - key: SMTP_FROM
+        value: '"Rwanda Marketplace" <noreply@rwshop.org>'
       - key: SMTP_USER
         sync: false
       - key: SMTP_PASS
         sync: false
-      - key: SMTP_FROM
-        value: '"Rwanda Marketplace" <noreply@rwshop.org>'
-      - key: SMTP_SECURE
-        value: "false"
 
   - type: web
     name: rmf-review-service
@@ -443,6 +471,17 @@ services:
           envVarKey: JWT_SECRET
       - key: CORS_ORIGIN
         value: "https://www.rwshop.org,https://rwshop.org,https://rmf-frontend.onrender.com"
+      - key: INTERNAL_SERVICE_SECRET
+        fromService:
+          type: web
+          name: rmf-user-service
+          envVarKey: INTERNAL_SERVICE_SECRET
+      - key: GEOCODER_PROVIDER
+        value: "auto"
+      - key: MAPBOX_ACCESS_TOKEN
+        sync: false
+      - key: OPENCAGE_API_KEY
+        sync: false
 
   - type: web
     name: rmf-frontend
