@@ -5,6 +5,7 @@ import {
   ForbiddenException,
   Get,
   Head,
+  Logger,
   Param,
   Patch,
   Post,
@@ -18,7 +19,7 @@ import {
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { Public, JwtAuthGuard } from '@rmf/auth';
-import { DisputeResolution, OrderStatus, PaymentStatus, UserRole } from '@rmf/shared-types';
+import { DisputeResolution, DisputeType, OrderStatus, PaymentStatus, UserRole } from '@rmf/shared-types';
 import axios from 'axios';
 import * as crypto from 'crypto';
 import { existsSync, mkdirSync, writeFileSync } from 'fs';
@@ -74,6 +75,8 @@ function verifyInternalService(req: any): string {
 @UseGuards(JwtAuthGuard)
 @Controller('orders')
 export class OrderController {
+  private readonly logger = new Logger(OrderController.name);
+
   constructor(
     private readonly orderService: OrderService,
     private readonly paymentService: PaymentService,
@@ -197,10 +200,12 @@ export class OrderController {
     return { success: true, data: orders };
   }
 
-  @Public()
-  @Get('payment/paypack/readiness')
-  paypackReadiness() {
-    return { success: true, data: this.paymentService.getPaypackReadiness() };
+  @Get('payment/mtn/readiness')
+  mtnReadiness(@Req() req: any) {
+    if (!this.isAdmin(req)) {
+      throw new ForbiddenException('Admin access required');
+    }
+    return { success: true, data: this.paymentService.getMtnReadiness() };
   }
 
   @Get(':id')
@@ -233,24 +238,31 @@ export class OrderController {
   }
 
   @Public()
-  @Head('payment/paypack/callback')
-  paypackWebhookHealthcheck() {
+  @Head('payment/mtn/callback')
+  mtnWebhookHealthcheck() {
     return;
   }
 
+  // MTN MoMo posts callbacks without auth headers. There is no HMAC; we verify by
+  // confirming the referenceId maps to a known order before mutating any state.
+  // Always respond 200 so MTN does not retry indefinitely.
   @Public()
-  @Post('payment/paypack/callback')
-  async paypackPaymentCallback(@Body() body: any, @Req() req: any) {
-    const isValid = this.paymentService.verifyPaypackWebhook(body, req.headers || {}, req.rawBody);
-    if (!isValid) {
-      throw new UnauthorizedException('Invalid Paypack webhook signature');
-    }
-
+  @Post('payment/mtn/callback')
+  async mtnPaymentCallback(@Body() body: any) {
     let event;
     try {
-      event = this.paymentService.parsePaypackWebhook(body);
+      event = this.paymentService.parseMtnCallback(body);
     } catch (error: any) {
-      throw new BadRequestException(error.message || 'Invalid Paypack webhook payload');
+      this.logger.warn(`[MTN callback] Unparseable payload: ${error?.message || 'unknown'}`);
+      return { success: false, error: 'Invalid MTN callback payload' };
+    }
+
+    this.logger.log(`[MTN callback] referenceId=${event.transactionRef} status=${event.rawStatus || event.status}`);
+
+    const order = await this.orderService.findOrderByPaymentReference(event.transactionRef, event.orderNumber);
+    if (!order) {
+      this.logger.warn(`[MTN callback] No order found for referenceId=${event.transactionRef}`);
+      return { success: false, error: 'Unknown reference' };
     }
 
     const status = event.status === 'SUCCESSFUL'
@@ -259,13 +271,17 @@ export class OrderController {
         ? PaymentStatus.FAILED
         : PaymentStatus.PENDING;
 
-    const order = await this.orderService.processPaymentCallbackByReference(
-      status,
-      event.transactionRef,
-      event.orderNumber,
-    );
+    try {
+      await this.orderService.processPaymentCallbackByReference(
+        status,
+        event.transactionRef,
+        event.orderNumber,
+      );
+    } catch (error: any) {
+      this.logger.error(`[MTN callback] Processing failed for ${event.transactionRef}: ${error?.message}`);
+    }
 
-    return { success: true, data: order };
+    return { success: true };
   }
 
   private isValidWebhook(req: any, body: any): boolean {
@@ -334,28 +350,43 @@ export class OrderController {
   }
 
   @Post(':id/dispute')
-  async raiseDispute(@Param('id') id: string, @Body() body: { reason: string; evidenceUrls?: string[] }, @Req() req: any) {
+  async raiseDispute(@Param('id') id: string, @Body() body: { reason: string; evidenceUrls?: string[]; type?: string }, @Req() req: any) {
     if (String(req.user.role).toUpperCase() !== UserRole.BUYER && !this.isAdmin(req)) {
       throw new ForbiddenException('Only buyer accounts can raise disputes');
     }
 
     const order = await this.orderService.getOrderById(id);
     this.assertBuyer(order, req, 'Only the buyer can raise a dispute');
-    const updated = await this.orderService.raiseDispute(id, body.reason, Array.isArray(body.evidenceUrls) ? body.evidenceUrls : []);
+    const disputeType = Object.values(DisputeType).includes(String(body.type) as DisputeType)
+      ? (String(body.type) as DisputeType)
+      : DisputeType.GENERAL;
+    const updated = await this.orderService.raiseDispute(
+      id,
+      body.reason,
+      Array.isArray(body.evidenceUrls) ? body.evidenceUrls : [],
+      disputeType,
+    );
     return { success: true, data: updated };
   }
 
   @Post(':id/dispute/resolve')
-  async resolveDispute(@Param('id') id: string, @Body() body: { resolution: DisputeResolution | string }, @Req() req: any) {
+  async resolveDispute(
+    @Param('id') id: string,
+    @Body() body: { resolution: DisputeResolution | string; refundPercentage?: number },
+    @Req() req: any,
+  ) {
     if (!this.isAdmin(req)) {
       throw new ForbiddenException('Only an ADMIN can resolve disputes');
     }
     const resolutionMap: Record<string, DisputeResolution> = {
       REFUND: DisputeResolution.REFUND,
       refund: DisputeResolution.REFUND,
+      PARTIAL_REFUND: DisputeResolution.PARTIAL_REFUND,
+      partial_refund: DisputeResolution.PARTIAL_REFUND,
+      PARTIAL: DisputeResolution.PARTIAL_REFUND,
+      partial: DisputeResolution.PARTIAL_REFUND,
       REDELIVER: DisputeResolution.REDELIVER,
       redeliver: DisputeResolution.REDELIVER,
-      PARTIAL: DisputeResolution.REDELIVER,
       NO_REFUND: DisputeResolution.REJECT,
       REJECT: DisputeResolution.REJECT,
       reject: DisputeResolution.REJECT,
@@ -364,7 +395,7 @@ export class OrderController {
     if (!resolution) {
       throw new BadRequestException('Invalid dispute resolution');
     }
-    const order = await this.orderService.resolveDispute(id, resolution);
+    const order = await this.orderService.resolveDispute(id, resolution, body.refundPercentage);
     return { success: true, data: order };
   }
 

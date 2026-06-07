@@ -219,6 +219,127 @@ export class MarketService implements OnModuleInit {
     return results;
   }
 
+  // Max number of premium markets that may be labelled "Sponsored" on a single search page.
+  // Hard cap per Rwanda Law n°011/2026 buyer-trust rule (see CLAUDE.md). Configurable later.
+  static readonly MAX_SPONSORED_SLOTS_PER_PAGE = 3;
+
+  // Premium tier → boost contribution (0..1) folded into rankScore at 15% weight.
+  private premiumBoost(tier?: string): number {
+    switch (tier) {
+      case 'basic': return 0.33;
+      case 'standard': return 0.66;
+      case 'spotlight': return 1.0;
+      default: return 0;
+    }
+  }
+
+  private haversineKm(lat1: number, lon1: number, lat2: number, lon2: number): number {
+    const R = 6371;
+    const dLat = ((lat2 - lat1) * Math.PI) / 180;
+    const dLon = ((lon2 - lon1) * Math.PI) / 180;
+    const a =
+      Math.sin(dLat / 2) ** 2 +
+      Math.cos((lat1 * Math.PI) / 180) * Math.cos((lat2 * Math.PI) / 180) * Math.sin(dLon / 2) ** 2;
+    return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  }
+
+  /**
+   * Public market search with blended ranking:
+   *   rankScore = textRelevance*0.40 + reviewScore*0.25 + proximityScore*0.20 + premiumBoost*0.15
+   * Premium markets must still clear a relevance threshold (cannot buy into unrelated queries).
+   * At most MAX_SPONSORED_SLOTS_PER_PAGE results are flagged isSponsored.
+   */
+  async searchMarkets(params: {
+    q?: string;
+    lat?: number;
+    lng?: number;
+    sort?: string;
+    type?: string;
+    limit?: number;
+    skip?: number;
+  }): Promise<any[]> {
+    const q = String(params.q || '').trim();
+    const hasGeo = Number.isFinite(params.lat) && Number.isFinite(params.lng);
+    const sort = ['relevance', 'distance', 'rating', 'newest', 'price_asc', 'price_desc'].includes(String(params.sort))
+      ? String(params.sort)
+      : 'relevance';
+    const limit = Math.min(Math.max(Number(params.limit) || 30, 1), 100);
+    const skip = Math.max(Number(params.skip) || 0, 0);
+
+    const match: any = { deletedAt: null, isActive: true };
+    if (params.type && Object.values(MarketType).includes(params.type as MarketType)) {
+      match.type = params.type;
+    }
+
+    // Pull a candidate set. Use $text when a query is present so we get a relevance score.
+    let textScoreById = new Map<string, number>();
+    let candidates: any[];
+    if (q) {
+      const rows = await this.marketModel
+        .find({ ...match, $text: { $search: q } }, { score: { $meta: 'textScore' } })
+        .sort({ score: { $meta: 'textScore' } })
+        .limit(200)
+        .lean()
+        .exec();
+      const maxScore = rows.reduce((m: number, r: any) => Math.max(m, Number(r.score || 0)), 0) || 1;
+      for (const r of rows) textScoreById.set(String(r._id), Number(r.score || 0) / maxScore);
+      candidates = rows;
+    } else {
+      candidates = await this.marketModel.find(match).limit(200).lean().exec();
+    }
+
+    const RELEVANCE_THRESHOLD = 0.1;
+    const scored = candidates.map((m: any) => {
+      const textRelevance = q ? (textScoreById.get(String(m._id)) || 0) : 1; // no query => relevance neutral
+      const reviewScore = Math.max(0, Math.min(1, Number(m.rating || 0) / 5));
+      let proximityScore = 0;
+      let distanceKm: number | undefined;
+      const coords = m.location?.coordinates;
+      if (hasGeo && Array.isArray(coords) && coords.length === 2) {
+        // GeoJSON order is [lng, lat].
+        distanceKm = this.haversineKm(params.lat as number, params.lng as number, coords[1], coords[0]);
+        proximityScore = 1 / (1 + distanceKm);
+      }
+      const boost = this.premiumBoost(m.premiumTier);
+      const rankScore =
+        textRelevance * 0.4 + reviewScore * 0.25 + proximityScore * 0.2 + boost * 0.15;
+      return { ...m, textRelevance, reviewScore, proximityScore, distanceKm, rankScore, _premiumBoost: boost };
+    });
+
+    // Buyer-trust rule: a premium market that does not clear the relevance threshold for the
+    // query cannot appear at all (it cannot buy its way into unrelated categories).
+    const filtered = q ? scored.filter((m: any) => m.textRelevance > RELEVANCE_THRESHOLD) : scored;
+
+    let ordered: any[];
+    switch (sort) {
+      case 'distance':
+        ordered = filtered.sort((a, b) => (a.distanceKm ?? Infinity) - (b.distanceKm ?? Infinity));
+        break;
+      case 'rating':
+        ordered = filtered.sort((a, b) => Number(b.rating || 0) - Number(a.rating || 0));
+        break;
+      case 'newest':
+        ordered = filtered.sort(
+          (a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime(),
+        );
+        break;
+      default:
+        ordered = filtered.sort((a, b) => b.rankScore - a.rankScore);
+    }
+
+    // Label up to MAX_SPONSORED_SLOTS_PER_PAGE premium markets as Sponsored, in rank order.
+    let sponsoredLabelled = 0;
+    const withFlags = ordered.map((m: any) => {
+      const eligible = m._premiumBoost > 0 && (!m.premiumUntil || new Date(m.premiumUntil) > new Date());
+      const isSponsored = eligible && sponsoredLabelled < MarketService.MAX_SPONSORED_SLOTS_PER_PAGE;
+      if (isSponsored) sponsoredLabelled += 1;
+      const { _premiumBoost, ...rest } = m;
+      return { ...rest, isSponsored };
+    });
+
+    return withFlags.slice(skip, skip + limit);
+  }
+
   async findById(id: string): Promise<any> {
     if (!Types.ObjectId.isValid(id)) {
       try {

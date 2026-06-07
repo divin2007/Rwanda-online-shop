@@ -186,6 +186,52 @@ export class DeliveryGateway implements OnGatewayConnection, OnGatewayDisconnect
     this.server.emit('delivery:assigned', delivery);
   }
 
+  // ── Rider Errands (Feature 4) socket events ──────────────────────────────
+  @SubscribeMessage('join:errand')
+  handleJoinErrandRoom(@ConnectedSocket() client: Socket, @MessageBody() errandId: string) {
+    client.join(`errand:${errandId}`);
+    return { success: true, room: `errand:${errandId}` };
+  }
+
+  @SubscribeMessage('join:buyer')
+  handleJoinBuyerRoom(@ConnectedSocket() client: Socket, @MessageBody() buyerId: string) {
+    const user = (client as any).user;
+    if (!user || (user.userId !== buyerId && user.sub !== buyerId && user.role !== 'ADMIN')) {
+      return { success: false, error: 'Unauthorized' };
+    }
+    client.join(`buyer:${buyerId}`);
+    return { success: true, room: `buyer:${buyerId}` };
+  }
+
+  /**
+   * Broadcast a new open errand to active riders.
+   * When allowedRiderIds is provided (Phase 3 person-pickup), only those rider userIds receive
+   * the event — used to restrict person-pickup errands to premium riders.
+   */
+  broadcastErrand(errand: any, allowedRiderIds?: string[]) {
+    // Reuse the active-rider map: only riders with a recent location get the event.
+    const maxLocationAgeMs = Number(process.env.RIDER_LOCATION_MAX_AGE_MS || 120000);
+    const allowed = allowedRiderIds ? new Set(allowedRiderIds.map(String)) : null;
+    for (const [riderId, data] of this.activeRiders.entries()) {
+      if (Date.now() - Number(data.updatedAt || 0) > maxLocationAgeMs) continue;
+      if (allowed && !allowed.has(String(riderId))) continue;
+      this.server.to(data.socketId).emit('errand:new', errand);
+    }
+  }
+
+  emitErrandAccepted(buyerId: string, errand: any) {
+    this.server.to(`buyer:${buyerId}`).emit('errand:accepted', errand);
+  }
+
+  emitErrandLocation(errandId: string, coords: { lat: number; lng: number }) {
+    this.server.to(`errand:${errandId}`).emit('errand:location', { ...coords, recordedAt: new Date() });
+  }
+
+  emitErrandCompleted(errandId: string, buyerId: string, errand: any) {
+    this.server.to(`errand:${errandId}`).emit('errand:completed', errand);
+    this.server.to(`buyer:${buyerId}`).emit('errand:completed', errand);
+  }
+
   // Calculate distance between two coordinates in meters
   private getDistanceMeters(lat1: number, lon1: number, lat2: number, lon2: number): number {
     const R = 6371e3; // Earth radius in meters
@@ -213,22 +259,39 @@ export class DeliveryGateway implements OnGatewayConnection, OnGatewayDisconnect
       nextRadiusMeters?: number | null;
       maxRadiusMeters?: number | null;
       strategy?: string;
+      prioritizeProximity?: boolean;
+      excludedRiderIds?: string[];
     } = {}
   ): { notifiedCount: number; riderIds: string[]; candidateCount: number } {
     const maxLocationAgeMs = Number(process.env.RIDER_LOCATION_MAX_AGE_MS || 120000);
+    // Riders who self-cancelled this delivery must not be re-offered it (cooling-off).
+    const excluded = new Set((options.excludedRiderIds || []).map((id) => String(id)));
     let notifiedCount = 0;
     let candidateCount = 0;
     const riderIds: string[] = [];
     const radiusMeters = Number.isFinite(Number(options.radiusMeters)) ? Number(options.radiusMeters) : null;
     const strategy = options.strategy || (radiusMeters ? 'PROGRESSIVE_RADIUS' : 'GLOBAL_ACTIVE_RIDERS');
     this.logger.log(`Starting rider broadcast for delivery ${deliveryReq.orderNumber}. Strategy: ${strategy}. Radius: ${radiusMeters || 'global'}m. Active riders: ${this.activeRiders.size}`);
-    
-    for (const [riderId, data] of this.activeRiders.entries()) {
+
+    // Build the candidate list first so perishable (priority) dispatch can emit to the
+    // closest riders first. For non-priority dispatch the order is irrelevant.
+    let candidates = Array.from(this.activeRiders.entries())
+      .filter(([riderId]) => !excluded.has(String(riderId)))
+      .filter(([, data]) => Number.isFinite(data.lat) && Number.isFinite(data.lng))
+      .filter(([, data]) => Date.now() - Number(data.updatedAt || 0) <= maxLocationAgeMs)
+      .map(([riderId, data]) => ({
+        riderId,
+        data,
+        distanceMeters: this.getDistanceMeters(marketLat, marketLng, data.lat, data.lng),
+      }))
+      .filter((c) => radiusMeters === null || c.distanceMeters <= radiusMeters);
+
+    if (options.prioritizeProximity) {
+      candidates = candidates.sort((a, b) => a.distanceMeters - b.distanceMeters);
+    }
+
+    for (const { riderId, data, distanceMeters } of candidates) {
       try {
-        if (!Number.isFinite(data.lat) || !Number.isFinite(data.lng)) continue;
-        if (Date.now() - Number(data.updatedAt || 0) > maxLocationAgeMs) continue;
-        const distanceMeters = this.getDistanceMeters(marketLat, marketLng, data.lat, data.lng);
-        if (radiusMeters !== null && distanceMeters > radiusMeters) continue;
         candidateCount++;
         this.server.to(data.socketId).emit('delivery:assigned', {
           ...deliveryReq,

@@ -48,6 +48,8 @@ export default function ProductsPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
+  // Seller certification tier filter (Feature 11): 'all' | 'BRONZE' | 'SILVER' | 'GOLD'
+  const [tierFilter, setTierFilter] = useState<'all' | 'BRONZE' | 'SILVER' | 'GOLD'>('all');
   
   const sentinelRef = useRef<HTMLDivElement>(null);
   const loadingRef = useRef(false);
@@ -97,10 +99,11 @@ export default function ProductsPage() {
       isActive: 'true',
     });
 
-    if (debouncedSearchQuery.trim()) {
+    const hasQuery = Boolean(debouncedSearchQuery.trim());
+    if (hasQuery) {
       params.set('search', debouncedSearchQuery.trim());
     }
-    
+
     if (selectedCategory !== 'all') {
       if (selectedCategory === 'Made in Rwanda') {
         params.set('isMadeInRwanda', 'true');
@@ -110,7 +113,23 @@ export default function ProductsPage() {
     }
 
     try {
-      const res = await productApi.get(`/products/recommendations/for-me?${params.toString()}`);
+      // When the buyer has typed a query, use the dedicated $text search endpoint
+      // (server-ranked). For browse mode keep personalized recommendations.
+      let endpoint: string;
+      if (hasQuery) {
+        const searchParams = new URLSearchParams({
+          q: debouncedSearchQuery.trim(),
+          limit: '24',
+          skip: String(currentSkip),
+        });
+        if (selectedCategory !== 'all' && selectedCategory !== 'Made in Rwanda') {
+          searchParams.set('category', selectedCategory);
+        }
+        endpoint = `/products/search?${searchParams.toString()}`;
+      } else {
+        endpoint = `/products/recommendations/for-me?${params.toString()}`;
+      }
+      const res = await productApi.get(endpoint);
       const fetched = res.data?.data || res.data || [];
       
       setProducts((prev) => {
@@ -176,7 +195,7 @@ export default function ProductsPage() {
   return (
     <Layout>
       <div className="min-h-screen bg-[#fdfaf7] text-text-primary selection:bg-primary selection:text-white">
-        <div className="mx-auto max-w-[1440px] px-4 py-6 md:px-8 md:py-10">
+        <div className="w-full px-gutter py-lg md:px-xl md:py-xl">
           
           <section className="animate-reveal relative mb-8 overflow-hidden rounded-lg border border-[#e2bfb0] bg-[#1b1c1c] p-8 md:p-12">
             <div className="absolute inset-0 bg-black/20" />
@@ -255,6 +274,31 @@ export default function ProductsPage() {
             </div>
           </section>
 
+          {/* Seller tier filter chips (Feature 11) */}
+          <section className="mb-6 flex flex-wrap gap-2">
+            {([
+              { value: 'all', label: 'All Sellers' },
+              { value: 'BRONZE', label: 'Bronze+' },
+              { value: 'SILVER', label: 'Silver+' },
+              { value: 'GOLD', label: 'Gold' },
+            ] as const).map((chip) => {
+              const active = tierFilter === chip.value;
+              return (
+                <button
+                  key={chip.value}
+                  onClick={() => setTierFilter(chip.value)}
+                  className={`inline-flex items-center rounded-full border px-3 py-1.5 font-mono text-[10px] font-bold uppercase tracking-wider transition-colors ${
+                    active
+                      ? 'border-primary bg-primary text-white'
+                      : 'border-[#e2bfb0] bg-white text-text-secondary hover:border-primary hover:text-primary'
+                  }`}
+                >
+                  {chip.label}
+                </button>
+              );
+            })}
+          </section>
+
           {/* Dynamic recommendation alert details */}
           {user && selectedCategory === 'all' && !debouncedSearchQuery && (
             <div className="animate-reveal [animation-delay:200ms] mb-6 flex items-center gap-3 rounded-lg border border-[#e2bfb0] bg-[#ffedd5]/35 p-4 text-[#7c3a00]">
@@ -267,9 +311,19 @@ export default function ProductsPage() {
 
           {/* Product Grid Catalog */}
           <section className="animate-reveal [animation-delay:250ms]">
-            {products.length > 0 ? (
+            {(() => {
+              const tierRank: Record<string, number> = { BRONZE: 1, SILVER: 2, GOLD: 3 };
+              const minRank = tierFilter === 'all' ? 0 : tierRank[tierFilter];
+              const visibleProducts = tierFilter === 'all'
+                ? products
+                : products.filter((p: any) => {
+                    const seller = typeof p.sellerId === 'object' ? p.sellerId : null;
+                    const tier = seller?.certificationTier || 'BRONZE';
+                    return (tierRank[tier] || 1) >= minRank;
+                  });
+              return visibleProducts.length > 0 ? (
               <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-                {products.map((product) => (
+                {visibleProducts.map((product: any) => (
                   <ProductCard key={product._id} product={product} />
                 ))}
               </div>
@@ -290,7 +344,8 @@ export default function ProductsPage() {
                   View All Products
                 </button>
               </div>
-            ) : null}
+            ) : null;
+            })()}
 
             {/* Shimmering Skeleton Loader for next page */}
             {loading && (

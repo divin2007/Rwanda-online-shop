@@ -174,6 +174,23 @@ export class ProductController {
     return { success: true, data: result };
   }
 
+  // Public blended product search (text + rating + recency + capped seller premium boost).
+  // Declared before @Get(':id') so it is not captured by the param route.
+  @Public()
+  @Get('search')
+  async search(@Query() query: any) {
+    const products = await this.productService.searchProducts({
+      q: query.q,
+      marketId: query.marketId,
+      sort: query.sort,
+      condition: query.condition,
+      category: query.category,
+      limit: query.limit ? Number(query.limit) : undefined,
+      skip: query.skip ? Number(query.skip) : undefined,
+    });
+    return { success: true, data: products };
+  }
+
   // Public read — individual product pages are public
   @Public()
   @Get(':id')

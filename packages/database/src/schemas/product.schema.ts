@@ -52,8 +52,22 @@ export const productSchema = new Schema({
   }],
   isApproved: { type: Boolean, default: true },
   isActive: { type: Boolean, default: true },
+  // isMadeInRwanda doubles as the export-eligibility flag (no separate exportReady on Product).
   isMadeInRwanda: { type: Boolean, default: false },
   isNegotiable: { type: Boolean, default: false },
+  // Product condition grading (Phase 3) for second-hand / refurbished transparency.
+  // null = unspecified (treated as new for legacy products).
+  condition: { type: String, enum: ['new', 'grade_a', 'grade_b', 'grade_c', 'refurbished'], default: null },
+  qualityNotes: { type: String, maxlength: 500 },
+  // Cold-chain / perishable.
+  perishable: { type: Boolean, default: false },
+  maxDeliveryMinutes: { type: Number },
+  // Export facilitation.
+  exportMinQty: { type: Number },
+  // Group buying.
+  groupBuyEligible: { type: Boolean, default: false },
+  groupBuyMinQty: { type: Number },
+  groupBuyDiscountPercent: { type: Number },
   rating: { type: Number, default: 0 },
   totalOrders: { type: Number, default: 0 },
   deletedAt: { type: Date, default: null },
@@ -81,5 +95,12 @@ productSchema.index({ isMadeInRwanda: 1, isActive: 1, isApproved: 1, deletedAt: 
 productSchema.index({ 'attributes.$**': 1 });
 productSchema.index({ 'variants.sku': 1 }, { sparse: true });
 productSchema.index({ createdAt: -1 });
+// Condition filtering (Phase 3).
+productSchema.index({ condition: 1 });
+// Full-text search ranking. Used by GET /products/search.
+productSchema.index(
+  { name: 'text', description: 'text', category: 'text' },
+  { weights: { name: 10, category: 5, description: 1 }, default_language: 'english', name: 'product_text_search' },
+);
 
 export const Product = mongoose.models.Product || model('Product', productSchema);

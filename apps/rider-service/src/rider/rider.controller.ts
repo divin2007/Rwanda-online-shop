@@ -79,6 +79,28 @@ export class RiderController {
     return { success: true, data: rider };
   }
 
+  // Phase 3: rider self-upgrade to premium plan (30 days). Billing is a future feature.
+  @UseGuards(JwtAuthGuard)
+  @Roles(UserRole.RIDER)
+  @Patch('me/plan')
+  async upgradeMyPlan(@Request() req: any, @Body() body: { plan?: string }) {
+    if (body?.plan && body.plan !== 'premium') {
+      throw new BadRequestException('Riders can only self-upgrade to the premium plan');
+    }
+    const rider = await this.riderService.upgradeMyPlan(req.user.userId);
+    return { success: true, data: rider };
+  }
+
+  // Verified Freshness (Feature 12): rider confirms a seller's stall is open during a delivery.
+  // Path: /api/v1/riders/stall-confirmation/:sellerId
+  @UseGuards(JwtAuthGuard)
+  @Roles(UserRole.RIDER)
+  @Post('stall-confirmation/:sellerId')
+  async confirmStallOpen(@Request() req: any, @Param('sellerId') sellerId: string) {
+    const result = await this.riderService.confirmStallOpen(req.user.userId, sellerId);
+    return { success: true, data: result };
+  }
+
   @UseGuards(JwtAuthGuard)
   @Roles(UserRole.RIDER)
   @Post('settings/change-request')
@@ -157,6 +179,15 @@ export class RiderController {
       isApproved === 'true' || isApproved === 'false' ? isApproved === 'true' : undefined,
     );
     return { success: true, data: riders };
+  }
+
+  // Phase 3: admin sets/revokes any rider's plan.
+  @UseGuards(JwtAuthGuard)
+  @Roles(UserRole.ADMIN)
+  @Patch(':id/plan')
+  async adminSetPlan(@Param('id') id: string, @Body() body: { plan: 'standard' | 'premium'; durationDays?: number }) {
+    const rider = await this.riderService.adminSetPlan(id, body?.plan, body?.durationDays);
+    return { success: true, data: rider };
   }
 
   // FIX [RIDER-APPROVE]: Was unauthenticated — anyone could approve rider applications.

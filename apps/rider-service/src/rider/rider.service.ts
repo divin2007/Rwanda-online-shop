@@ -11,9 +11,53 @@ export class RiderService {
   constructor(
     @InjectModel('RiderProfile') private riderModel: Model<any>,
     @InjectModel('Delivery') private deliveryModel: Model<any>,
-    @InjectModel('ProfileChangeRequest') private changeRequestModel: Model<any>
+    @InjectModel('ProfileChangeRequest') private changeRequestModel: Model<any>,
+    @InjectModel('SellerProfile') private sellerModel: Model<any>
   ) {
     this.locationService = new LocationService();
+  }
+
+  /**
+   * Verified Freshness (Feature 12): a rider confirms a seller's stall is open during
+   * a delivery. Records the rider profile id on the seller's freshness check-in and
+   * notifies the seller.
+   */
+  async confirmStallOpen(riderUserId: string, sellerId: string): Promise<any> {
+    if (!riderUserId) throw new BadRequestException('Authentication required');
+    if (!sellerId || !require('mongoose').Types.ObjectId.isValid(sellerId)) {
+      throw new BadRequestException('Invalid seller id');
+    }
+
+    const riderProfile = await this.riderModel.findOne({ userId: riderUserId }).select('_id').lean().exec();
+    if (!riderProfile) throw new NotFoundException('Rider profile not found');
+
+    const seller = await this.sellerModel.findOneAndUpdate(
+      { _id: sellerId, deletedAt: null },
+      { $set: { 'freshnessCheckin.confirmedByRiderId': riderProfile._id } },
+      { new: true },
+    );
+    if (!seller) throw new NotFoundException('Seller profile not found');
+
+    // Notify the seller that a rider confirmed their stall is open (non-blocking).
+    this.notifySellerStallConfirmed(String(seller.userId)).catch(() => {});
+
+    return { confirmed: true };
+  }
+
+  private async notifySellerStallConfirmed(sellerUserId: string): Promise<void> {
+    try {
+      const axios = require('axios');
+      const url = `${process.env.NOTIFICATION_SERVICE_URL || 'http://localhost:3009/api/v1'}/notifications/dispatch`;
+      const secret = process.env.INTERNAL_SERVICE_SECRET;
+      const headers = secret ? { 'x-internal-service-key': secret } : {};
+      await axios.post(
+        url,
+        { userId: sellerUserId, type: 'freshness.rider_confirmed', params: {}, channels: ['IN_APP'] },
+        { headers },
+      );
+    } catch (err: any) {
+      this.logger.warn(`Failed to notify seller of stall confirmation: ${err?.message}`);
+    }
   }
 
   private cleanString(value: any, max = 500): string | undefined {
@@ -193,6 +237,62 @@ export class RiderService {
     await request.save();
     this.triggerNotification(request.userId, request.reviewNotes || 'Your rider settings update needs changes before approval.');
     return request;
+  }
+
+  /**
+   * Phase 3: rider self-upgrades to the premium plan (30 days). Billing for the subscription
+   * is a future feature — this endpoint only flips the plan flag. Idempotent: re-upgrading
+   * while already premium extends from the later of now/current expiry, and never stacks
+   * a second 30-day window onto a brand-new request.
+   */
+  async upgradeMyPlan(userId: string): Promise<any> {
+    const rider = await this.riderModel.findOne({ userId, deletedAt: null }).exec();
+    if (!rider) throw new NotFoundException('Rider profile not found');
+    if (!rider.isApproved) {
+      throw new BadRequestException('Only approved riders can upgrade to the premium plan');
+    }
+
+    const THIRTY_DAYS = 30 * 24 * 60 * 60 * 1000;
+    const base = rider.plan === 'premium' && rider.premiumUntil && new Date(rider.premiumUntil) > new Date()
+      ? new Date(rider.premiumUntil).getTime()
+      : Date.now();
+    const premiumUntil = new Date(base + THIRTY_DAYS);
+
+    const updated = await this.riderModel.findOneAndUpdate(
+      { userId, deletedAt: null },
+      { $set: { plan: 'premium', premiumUntil } },
+      { new: true },
+    ).exec();
+    this.triggerNotification(userId, 'Your rider Premium plan is active. You can now accept person-pickup requests and get priority dispatch.');
+    return updated;
+  }
+
+  /**
+   * Phase 3: admin sets or revokes any rider's plan. durationDays defaults to 30 when upgrading.
+   * Setting plan to 'standard' clears premiumUntil.
+   */
+  async adminSetPlan(riderId: string, plan: 'standard' | 'premium', durationDays?: number): Promise<any> {
+    if (!['standard', 'premium'].includes(plan)) {
+      throw new BadRequestException('plan must be either standard or premium');
+    }
+    const set: any = { plan };
+    if (plan === 'premium') {
+      const days = Number.isFinite(Number(durationDays)) && Number(durationDays) > 0 ? Math.floor(Number(durationDays)) : 30;
+      set.premiumUntil = new Date(Date.now() + days * 24 * 60 * 60 * 1000);
+    } else {
+      set.premiumUntil = null;
+    }
+    const updated = await this.riderModel.findOneAndUpdate(
+      { _id: riderId, deletedAt: null },
+      { $set: set },
+      { new: true },
+    ).exec();
+    if (!updated) throw new NotFoundException('Rider profile not found');
+    this.triggerNotification(
+      updated.userId,
+      plan === 'premium' ? 'An administrator activated your Premium rider plan.' : 'Your rider plan was changed to Standard.',
+    );
+    return updated;
   }
 
   async updateLocation(userId: string, location: Coordinates): Promise<any> {
