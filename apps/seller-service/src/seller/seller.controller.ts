@@ -3,6 +3,7 @@ import {
   Get,
   Post,
   Put,
+  Patch,
   Body,
   Param,
   Request,
@@ -18,7 +19,7 @@ import { randomUUID } from 'crypto';
 import { existsSync, mkdirSync, writeFileSync } from 'fs';
 import { join } from 'path';
 import { SellerService } from './seller.service';
-import { Roles, JwtAuthGuard } from '@rmf/auth';
+import { Roles, JwtAuthGuard, Public } from '@rmf/auth';
 import { UserRole } from '@rmf/shared-types';
 
 @Controller('sellers')
@@ -32,15 +33,52 @@ export class SellerController {
     'image/webp': '.webp',
   };
 
-  // Public read — admin and internal services need to list sellers
+  // Public, PII-safe seller discovery (logged-out visitors browse food/dining sellers).
+  @Public()
+  @Get('discover')
+  async discover(@Query('businessType') businessType?: string) {
+    const filter: any = {};
+    if (businessType) {
+      const types = businessType.split(',').map((t) => t.trim().toUpperCase()).filter(Boolean);
+      if (types.length === 1) filter.businessType = types[0];
+      else if (types.length > 1) filter.businessType = { $in: types };
+    }
+    const sellers = await this.sellerService.findPublic(filter);
+    return { success: true, data: sellers };
+  }
+
+  // Authenticated read — admin and internal services need the full seller list.
   @Get()
-  async findAll(@Query('isApproved') isApproved?: string) {
+  async findAll(
+    @Query('isApproved') isApproved?: string,
+    @Query('businessType') businessType?: string,
+  ) {
     const filter: any = {};
     if (isApproved !== undefined) {
       filter.isApproved = isApproved === 'true';
     }
+    if (businessType) {
+      const types = businessType
+        .split(',')
+        .map((t) => t.trim().toUpperCase())
+        .filter(Boolean);
+      if (types.length === 1) filter.businessType = types[0];
+      else if (types.length > 1) filter.businessType = { $in: types };
+    }
     const sellers = await this.sellerService.findAll(filter);
     return { success: true, data: sellers };
+  }
+
+  // Update businessType for the authenticated seller (enum-validated server-side).
+  @UseGuards(JwtAuthGuard)
+  @Patch('me/business-type')
+  async updateBusinessType(@Request() req: any, @Body() body: { businessType?: string }) {
+    const userId = req.user?.userId;
+    if (!userId) {
+      throw new BadRequestException('Authentication required');
+    }
+    const seller = await this.sellerService.updateBusinessType(userId, body?.businessType || '');
+    return { success: true, data: seller };
   }
 
   @UseGuards(JwtAuthGuard)
@@ -167,5 +205,48 @@ export class SellerController {
   async getQrCode(@Param('stallId') stallId: string) {
     const qrUrl = await this.sellerService.generateQrCode(stallId);
     return { success: true, data: { qrUrl } };
+  }
+
+  // ── Seller Certification Tiers (Feature 11) ──────────────────────────────
+  // Authenticated seller's own tier + progress. Path: /api/v1/sellers/me/tier
+  @UseGuards(JwtAuthGuard)
+  @Roles(UserRole.SELLER)
+  @Get('me/tier')
+  async getMyTier(@Request() req: any) {
+    const data = await this.sellerService.getMyTier(req.user.userId);
+    return { success: true, data };
+  }
+
+  // Public tier snapshot. Path: /api/v1/sellers/:id/tier
+  @Public()
+  @Get(':id/tier')
+  async getSellerTier(@Param('id') id: string) {
+    const data = await this.sellerService.getPublicTier(id);
+    return { success: true, data };
+  }
+
+  // ── Affiliate application review (Feature 3, seller side) ────────────────
+  @UseGuards(JwtAuthGuard)
+  @Roles(UserRole.SELLER)
+  @Get('affiliates/applications')
+  async listAffiliateApplications(@Request() req: any, @Query('status') status?: string) {
+    const data = await this.sellerService.listAffiliateApplications(req.user.userId, status || 'pending');
+    return { success: true, data };
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Roles(UserRole.SELLER)
+  @Patch('affiliates/applications/:id/approve')
+  async approveAffiliateApplication(@Request() req: any, @Param('id') id: string, @Body() body?: { commissionRate?: number }) {
+    const data = await this.sellerService.approveAffiliateApplication(req.user.userId, id, body?.commissionRate);
+    return { success: true, data };
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Roles(UserRole.SELLER)
+  @Patch('affiliates/applications/:id/reject')
+  async rejectAffiliateApplication(@Request() req: any, @Param('id') id: string, @Body() body?: { reviewNote?: string }) {
+    const data = await this.sellerService.rejectAffiliateApplication(req.user.userId, id, body?.reviewNote);
+    return { success: true, data };
   }
 }

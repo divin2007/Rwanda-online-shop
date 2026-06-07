@@ -14,11 +14,19 @@ export const sellerVideoSchema = new Schema({
   marketId: { type: Schema.Types.ObjectId, ref: 'Market', required: true, index: true },
   productId: { type: Schema.Types.ObjectId, ref: 'Product', index: true },
   variantSku: { type: String, default: null },
-  placement: { type: String, enum: ['PRODUCT_AD', 'SHOP_AD', 'STORY'], default: 'PRODUCT_AD', index: true },
+  placement: { type: String, enum: ['PRODUCT_AD', 'SHOP_AD', 'STORY', 'LIVE'], default: 'PRODUCT_AD', index: true },
   categoryId: { type: String, default: null, index: true },
   title: { type: String, required: true, trim: true, maxlength: 100 },
   caption: { type: String, trim: true, maxlength: 800 },
-  videoUrl: { type: String, required: true, trim: true },
+  // videoUrl is required for recorded videos, but LIVE sessions have no ingest URL yet
+  // (placeholder infra — see LIVE_STREAM_PROVIDER). Required only for non-LIVE placements.
+  videoUrl: {
+    type: String,
+    trim: true,
+    required: function (this: { placement?: string; isLive?: boolean }) {
+      return this.placement !== 'LIVE' && !this.isLive;
+    }
+  },
   thumbnailUrl: { type: String, trim: true },
   durationSeconds: { type: Number, min: 0, max: 600 },
   tags: [{ type: String, trim: true, lowercase: true, maxlength: 40 }],
@@ -29,6 +37,13 @@ export const sellerVideoSchema = new Schema({
   moderatedAt: { type: Date },
   isActive: { type: Boolean, default: true, index: true },
   isArchived: { type: Boolean, default: false, index: true },
+  // Live selling (Feature 2). For LIVE placement videos backed by a LiveSession.
+  isLive: { type: Boolean, default: false },
+  liveSessionId: { type: Schema.Types.ObjectId, ref: 'LiveSession' },
+  liveStartedAt: { type: Date },
+  liveEndedAt: { type: Date },
+  liveViewerCount: { type: Number, default: 0 },
+  peakViewerCount: { type: Number, default: 0 },
   viewCount: { type: Number, default: 0, min: 0 },
   likeUserIds: [{ type: Schema.Types.ObjectId, ref: 'User' }],
   dislikeUserIds: [{ type: Schema.Types.ObjectId, ref: 'User' }],

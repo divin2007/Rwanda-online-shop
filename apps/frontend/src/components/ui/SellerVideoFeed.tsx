@@ -138,7 +138,7 @@ export function SellerVideoFeed({
   };
 
   return (
-    <section className={compact ? 'space-y-4' : 'mx-auto max-w-[1440px] px-4 py-8 md:px-8'}>
+    <section className={compact ? 'space-y-4' : 'w-full px-gutter py-lg md:px-xl'}>
       <div className="mb-5 flex items-end justify-between gap-4">
         <div>
           <p className="flex items-center gap-2 text-[11px] font-black uppercase tracking-[0.22em] text-[#ff6b00]">

@@ -9,8 +9,7 @@ import { walletApi, riderApi, orderApi } from '@/lib/api';
 import { ReceiptView, type ReceiptOrder } from '@/components/ui/ReceiptView';
 import { useLanguage } from '@/context/LanguageContext';
 import toast from 'react-hot-toast';
-import Link from 'next/link';
-import { Wallet, DollarSign, Map, FileText, Bike } from 'lucide-react';
+import { Wallet, FileText, Bike } from 'lucide-react';
 
 export default function RiderEarningsPage() {
   const { user } = useAuth();
@@ -50,7 +49,7 @@ export default function RiderEarningsPage() {
   };
 
   const handleViewReceipt = async (tx: any) => {
-    if (tx.account === 'rider_paypack_payout' || tx.account === 'rider_paypack_payout_failed') {
+    if (tx.account === 'rider_wallet_credit' || tx.account === 'rider_wallet_credit_failed') {
       const mockReceipt: ReceiptOrder = {
         _id: tx.transactionId,
         orderNumber: `PAY-${tx.transactionId.substring(0,8).toUpperCase()}`,
@@ -67,7 +66,7 @@ export default function RiderEarningsPage() {
         products: [
           {
             productId: 'withdrawal',
-            name: 'Paypack Rider Settlement',
+            name: 'MTN MoMo Rider Settlement',
             unitPrice: tx.amount,
             quantity: 1
           }
@@ -96,7 +95,7 @@ export default function RiderEarningsPage() {
 
   const handlePayoutRequest = async (e: React.FormEvent) => {
     e.preventDefault();
-    toast('Manual wallet payouts are disabled. Rider payouts are sent automatically through Paypack when deliveries settle.');
+    toast('Manual wallet payouts are disabled. Rider payouts are sent automatically via MTN MoMo when deliveries settle.');
   };
 
   // Stats derived from ledger
@@ -107,9 +106,12 @@ export default function RiderEarningsPage() {
     const now = new Date();
     return txDate.getMonth() === now.getMonth() && txDate.getFullYear() === now.getFullYear() && tx.type === 'credit';
   }).reduce((sum: number, tx: any) => sum + tx.amount, 0) || 0;
-  const paypackSettledTotal = ledgerTransactions.filter((tx: any) => (
-    tx.account === 'rider_paypack_payout' && tx.status === 'posted'
+  const settledTotal = ledgerTransactions.filter((tx: any) => (
+    tx.account === 'rider_wallet_credit' && tx.status === 'posted'
   )).reduce((sum: number, tx: any) => sum + Number(tx.amount || 0), 0) || 0;
+  const availableBalance = Number(wallet?.availableBalance ?? wallet?.balance ?? settledTotal ?? 0);
+  const pendingBalance = Number(wallet?.pendingBalance ?? 0);
+  const totalEarned = Number(wallet?.totalEarned ?? settledTotal ?? availableBalance);
 
   return (
     <Layout>
@@ -133,7 +135,7 @@ export default function RiderEarningsPage() {
                   {t('rider_request_payout')}
                 </h2>
                 <p className="mt-2 max-w-2xl text-sm font-semibold text-text-secondary">
-                  Funds will be sent to your MTN or Airtel MoMo account within 24 hours.
+                  Funds will be sent to your MTN MoMo account within 24 hours.
                 </p>
               </div>
               <button onClick={() => setIsPayoutModalOpen(false)} className="rmf-modal-close" aria-label="Close payout request">&times;</button>
@@ -143,7 +145,7 @@ export default function RiderEarningsPage() {
               <div className="rmf-modal-body grid gap-6 lg:grid-cols-[0.85fr_1.15fr]">
                 <div className="rounded-lg border border-primary/20 bg-primary/5 p-6">
                   <p className="text-xs font-black uppercase tracking-wider text-text-secondary">Available to withdraw</p>
-                  <p className="mt-3 text-4xl font-bold text-primary">{(wallet?.balance || 0).toLocaleString()} RWF</p>
+                  <p className="mt-3 text-4xl font-bold text-primary">{availableBalance.toLocaleString()} RWF</p>
                   <p className="mt-4 text-sm font-semibold leading-6 text-text-secondary">
                     Minimum payout is 1,000 RWF. Confirm the phone number carefully before sending the request.
                   </p>
@@ -156,7 +158,7 @@ export default function RiderEarningsPage() {
                       type="number"
                       required
                       min="1000"
-                      max={wallet?.balance || 0}
+                      max={availableBalance}
                       className="rmf-input w-full text-lg font-bold"
                       placeholder="e.g. 5000"
                       value={payoutAmount}
@@ -174,7 +176,7 @@ export default function RiderEarningsPage() {
                       value={payoutPhone}
                       onChange={e => setPayoutPhone(e.target.value)}
                     />
-                    <p className="text-xs text-text-muted mt-1">Accepts MTN & Airtel Rwanda numbers</p>
+                    <p className="text-xs text-text-muted mt-1">Accepts MTN Rwanda numbers</p>
                   </div>
                 </div>
               </div>
@@ -189,32 +191,7 @@ export default function RiderEarningsPage() {
         </div>
       )}
 
-      <div className="flex flex-col md:flex-row min-h-screen bg-background-main">
-        {/* Sidebar */}
-        <aside className="w-full md:w-64 bg-background-card border-r border-border p-6 hidden md:block">
-          <div className="mb-8">
-            <div className="w-14 h-14 rounded-full bg-primary/10 flex items-center justify-center text-2xl font-bold text-primary mb-3">
-              {profile?.fullName ? profile.fullName[0] : <Bike size={24} className="text-primary" />}
-            </div>
-            <h2 className="font-heading font-bold text-xl">{profile?.fullName || 'Rider'}</h2>
-            <p className="text-sm text-text-secondary">{profile?.plateNumber || 'No Vehicle'}</p>
-            <div className="mt-2 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-status-success/10 text-status-success text-xs font-bold">
-              <span className="w-1.5 h-1.5 rounded-full bg-status-success animate-pulse"></span>
-              Active
-            </div>
-          </div>
-          <nav className="space-y-2">
-            <Link href="/rider/dashboard" className="flex items-center gap-2 px-4 py-2 text-text-secondary hover:bg-background-surface hover:text-text-primary font-medium rounded-lg">
-              <Map size={16} /> Live Tasks
-            </Link>
-            <Link href="/rider/earnings" className="flex items-center gap-2 px-4 py-2 bg-primary/10 text-primary font-bold rounded-lg">
-              <DollarSign size={16} /> {t('rider_earnings')}
-            </Link>
-          </nav>
-        </aside>
-
-        {/* Main Content */}
-        <main className="flex-1 p-4 md:p-8">
+      <main className="min-h-screen bg-background-main p-4 md:p-8">
           <div className="flex justify-between items-center mb-8">
             <h1 className="text-2xl font-heading font-bold text-text-primary">{t('rider_earnings')}</h1>
             <Button
@@ -229,14 +206,14 @@ export default function RiderEarningsPage() {
           {/* Stats Cards */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
             <Card className="bg-gradient-to-br from-primary to-primary/80 text-white">
-              <p className="text-white/70 text-xs uppercase tracking-wider mb-1">Paid by Paypack</p>
-              <h2 className="text-3xl font-bold">{paypackSettledTotal.toLocaleString()}</h2>
+              <p className="text-white/70 text-xs uppercase tracking-wider mb-1">Paid via MTN MoMo</p>
+              <h2 className="text-3xl font-bold">{availableBalance.toLocaleString()}</h2>
               <p className="text-white/70 text-sm mt-1">RWF settled</p>
             </Card>
             <Card>
               <p className="text-text-secondary text-xs uppercase tracking-wider mb-1">Total Career</p>
-              <h2 className="text-3xl font-bold text-text-primary">{paypackSettledTotal.toLocaleString()}</h2>
-              <p className="text-text-muted text-sm mt-1">RWF settled</p>
+              <h2 className="text-3xl font-bold text-text-primary">{totalEarned.toLocaleString()}</h2>
+              <p className="text-text-muted text-sm mt-1">{pendingBalance.toLocaleString()} RWF pending</p>
             </Card>
             <Card>
               <p className="text-text-secondary text-xs uppercase tracking-wider mb-1">This Month</p>
@@ -251,7 +228,7 @@ export default function RiderEarningsPage() {
           </div>
 
           {/* Payout prompt if balance is sufficient */}
-          {wallet?.balance >= 1000 && (
+          {availableBalance >= 1000 && (
             <div className="mb-6 p-4 bg-status-success/5 border border-status-success/20 rounded-2xl flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <Wallet size={24} className="text-status-success shrink-0" />
@@ -317,8 +294,7 @@ export default function RiderEarningsPage() {
               </table>
             </div>
           </Card>
-        </main>
-      </div>
+      </main>
     </Layout>
   );
 }

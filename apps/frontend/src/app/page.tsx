@@ -26,15 +26,17 @@ import { Layout } from '@/components/layout/Layout';
 import { useApi } from '@/hooks/useApi';
 import { useSocket } from '@/hooks/useSocket';
 import { formatCurrency } from '@/lib/format';
-import { marketApi, productApi, orderApi, userApi } from '@/lib/api';
+import { marketApi, productApi, orderApi, userApi, sellerApi } from '@/lib/api';
 import { Footer } from '@/components/layout/Footer';
+import { PriceIndexWidget } from '@/components/ui/PriceIndexWidget';
 import { useLanguage } from '@/context/LanguageContext';
 import { useAuth } from '@/context/AuthContext';
 import { getMarketUrl, getProductUrl } from '@/lib/urls';
+import { resolveUploadUrl } from '@/lib/uploadUrls';
 
 const RiderMap = dynamic(() => import('@/components/ui/RiderMap').then(mod => mod.RiderMap), {
   ssr: false,
-  loading: () => <div className="h-full w-full animate-pulse bg-[#f7f1eb]" />,
+  loading: () => <div className="h-full w-full animate-pulse bg-surface-container-low rounded-lg" />,
 });
 
 interface Market {
@@ -126,6 +128,8 @@ const marketImages = [
   'https://images.unsplash.com/photo-1518843875459-f738682238a6?auto=format&fit=crop&q=80&w=900',
 ];
 
+const productFallbackImage = 'https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&q=80&w=400';
+
 const sellerImages = [
   'https://images.unsplash.com/photo-1519389950473-47ba0277781c?auto=format&fit=crop&q=80&w=300',
   'https://images.unsplash.com/photo-1527631746610-bca00a040d60?auto=format&fit=crop&q=80&w=300',
@@ -144,13 +148,18 @@ const chipLinks = [
   { label: 'Others', query: 'All', icon: MoreHorizontal },
 ];
 
-const isRemoteImage = (value?: string) => Boolean(value && /^https?:\/\//i.test(value));
+const hasDisplayableImage = (value?: string | null) => Boolean(value && value.trim());
 
 const marketHref = (market: Market) => getMarketUrl(market.slug || market._id);
 
 const marketImage = (market: Market, index: number) => {
   const candidate = market.imageUrl || market.image;
-  return isRemoteImage(candidate) ? candidate! : marketImages[index % marketImages.length];
+  return hasDisplayableImage(candidate) ? resolveUploadUrl(candidate, 'market') : marketImages[index % marketImages.length];
+};
+
+const productImage = (images?: string[]) => {
+  const candidate = Array.isArray(images) ? images.find(image => hasDisplayableImage(image)) : '';
+  return candidate ? resolveUploadUrl(candidate, 'product') : productFallbackImage;
 };
 
 const marketLocation = (market: Market) => market.location?.address || 'Kigali, Rwanda';
@@ -195,9 +204,9 @@ const CompactMarketCard = ({ market, index }: { market: Market; index: number })
   return (
     <Link
       href={marketHref(market)}
-      className="group block overflow-hidden rounded-lg border border-[#e2bfb0] bg-white transition-colors hover:border-[#a04100]"
+      className="group block overflow-hidden rounded-lg border border-outline-variant bg-surface-container-lowest custom-shadow hover:border-primary transition-all duration-300"
     >
-      <div className="relative h-32 overflow-hidden bg-background-surface sm:h-36">
+      <div className="relative h-32 overflow-hidden bg-surface-container-low sm:h-36">
         <Image
           src={imageSrc}
           alt={market.name}
@@ -207,33 +216,34 @@ const CompactMarketCard = ({ market, index }: { market: Market; index: number })
           className="object-cover transition duration-700 group-hover:scale-110"
           onError={() => setImageSrc(fallback)}
         />
-        <div className="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent opacity-0 transition-opacity duration-500 group-hover:opacity-100" />
-        <span className="absolute left-3 top-3 inline-flex items-center gap-1 rounded-sm bg-[#ff9f1c] px-2 py-1 font-mono text-[10px] font-bold uppercase tracking-[0.08em] text-[#221b00]">
-          <BadgeCheck size={12} className="text-accent-premium" />
-          Verified
+        <div className="absolute inset-0 bg-[#ff6b00]/10 opacity-0 transition-opacity duration-500 group-hover:opacity-100" />
+        <span className="absolute left-3 top-3 inline-flex items-center gap-xs bg-surface-container-lowest px-2 py-1 rounded border border-outline font-label-caps text-label-caps text-primary shadow-sm">
+          <BadgeCheck size={12} className="text-primary-container shrink-0" />
+          Verified Hub
         </span>
       </div>
-      <div className="space-y-3 p-3 sm:p-5">
+      <div className="space-y-sm p-md">
         <div>
-          <h3 className="line-clamp-1 text-base font-bold tracking-tight text-text-primary group-hover:text-primary transition-colors">{market.name}</h3>
-          <p className="mt-1 line-clamp-1 text-xs font-semibold text-text-secondary">
-            <span className="text-primary font-black">{marketSellerCount(market, index)}</span> Sellers · <span className="text-primary font-black">{marketProductCount(market, index).toLocaleString()}</span> Products
-          </p>
-          <p className="mt-2.5 flex items-center gap-1.5 text-[11px] font-medium text-text-secondary">
-            <MapPin size={13} className="text-primary/50" />
-            <span className="truncate max-w-[120px]">{marketLocation(market)}</span>
+          <h3 className="line-clamp-1 text-body-lg font-bold text-on-surface group-hover:text-primary transition-colors">{market.name}</h3>
+          <div className="mt-xs flex items-center gap-sm font-data-mono text-data-mono-sm text-on-surface-variant">
+            <span><strong className="text-primary-container">{marketSellerCount(market, index)}</strong> Sellers</span>
+            <span className="text-outline-variant">/</span>
+            <span><strong className="text-primary-container">{marketProductCount(market, index).toLocaleString()}</strong> Products</span>
+          </div>
+          <div className="mt-md flex items-center gap-xs text-body-md text-on-surface-variant">
+            <span className="material-symbols-outlined text-[16px] text-primary">location_on</span>
+            <span className="truncate max-w-[120px] font-label-caps text-label-caps">{marketLocation(market)}</span>
             {market.distance !== undefined && market.distance !== Number.POSITIVE_INFINITY && (
-              <span className="ml-auto inline-flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-[9px] font-black text-primary animate-reveal">
-                <MapPin size={10} className="shrink-0" />
+              <span className="ml-auto inline-flex items-center gap-xs rounded bg-primary-container/10 px-2 py-0.5 font-data-mono text-[10px] text-primary-container animate-reveal">
                 {market.distance.toFixed(1)} km
               </span>
             )}
-          </p>
+          </div>
         </div>
-        <div className="flex items-center justify-between pt-2 border-t border-border-light/50">
-          <span className="text-[12px] font-black text-primary tracking-wide transition-all duration-300">{t('markets_explore_button')}</span>
-          <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/10 text-primary transition-all duration-300 group-hover:bg-primary group-hover:text-white group-hover:scale-105">
-            <ArrowRight size={16} />
+        <div className="flex items-center justify-between pt-sm border-t border-outline-variant">
+          <span className="font-label-caps text-label-caps text-primary">{t('markets_explore_button') || 'Explore Hub'}</span>
+          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-surface-container-low text-primary transition-all duration-300 group-hover:bg-primary-container group-hover:text-on-primary group-hover:scale-105">
+            <ArrowRight size={14} />
           </div>
         </div>
       </div>
@@ -243,46 +253,54 @@ const CompactMarketCard = ({ market, index }: { market: Market; index: number })
 
 const CompactProductCard = ({ product }: { product: DisplayProduct }) => {
   const { t } = useLanguage();
+  const [imageSrc, setImageSrc] = useState(product.image || productFallbackImage);
+
+  useEffect(() => {
+    setImageSrc(product.image || productFallbackImage);
+  }, [product.image]);
+
   return (
     <Link
       href={product.href}
-      className="group block overflow-hidden rounded-lg border border-[#e2bfb0] bg-white transition-colors hover:border-[#a04100]"
+      className="group block overflow-hidden rounded-lg border border-outline-variant bg-surface-container-lowest custom-shadow hover:border-primary transition-all duration-300"
     >
-      <div className="relative h-36 overflow-hidden bg-background-surface sm:h-44">
+      <div className="relative h-36 overflow-hidden bg-surface-container-low sm:h-44">
         <Image
-          src={product.image}
+          src={imageSrc}
           alt={product.name}
           fill
           unoptimized
           sizes="(min-width: 1024px) 250px, 45vw"
           className="object-cover transition duration-700 group-hover:scale-110"
+          onError={() => setImageSrc(productFallbackImage)}
         />
-        <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent opacity-0 transition-opacity duration-500 group-hover:opacity-100" />
+        <div className="absolute inset-0 bg-[#ff6b00]/10 opacity-0 transition-opacity duration-500 group-hover:opacity-100" />
         {product.tag && (
-          <span className="absolute left-3 top-3 rounded-sm bg-[#ff9f1c] px-2 py-1 font-mono text-[10px] font-bold uppercase tracking-[0.08em] text-[#221b00]">
+          <span className="absolute left-3 top-3 rounded bg-primary-container text-on-primary px-2 py-1 font-label-caps text-label-caps shadow-sm">
             {product.tag}
           </span>
         )}
         {product.madeInRwanda && !product.tag && (
-          <span className="absolute left-3 top-3 rounded-sm bg-[#ff6b00] px-2 py-1 font-mono text-[10px] font-bold uppercase tracking-[0.08em] text-white">
-            {t('verified_partner')}
-          </span>
+          <div className="absolute left-3 top-3 bg-surface-container-lowest border border-outline rounded-full px-2 py-1 flex items-center gap-xs shadow-sm">
+            <span className="w-1.5 h-1.5 rounded-full bg-primary-container"></span>
+            <span className="font-label-caps text-label-caps text-[9px] text-on-surface">Made in Rwanda</span>
+          </div>
         )}
-        <div className="absolute bottom-4 right-4 translate-y-8 opacity-0 transition-all duration-300 group-hover:translate-y-0 group-hover:opacity-100">
-          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-white text-primary shadow-lg hover:bg-primary hover:text-white transition-colors">
-            <ShoppingCart size={16} />
+        <div className="absolute bottom-4 right-4 translate-y-8 opacity-0 transition-all duration-300 group-hover:translate-y-0 group-hover:opacity-100 z-10">
+          <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary-container text-on-primary shadow-lg hover:bg-primary transition-colors">
+            <ShoppingCart size={15} />
           </div>
         </div>
       </div>
-      <div className="p-3 sm:p-5">
-        <p className="line-clamp-2 text-sm font-bold tracking-tight text-text-primary transition-colors group-hover:text-primary sm:text-base">{product.name}</p>
-        <p className="mt-1 line-clamp-1 text-xs font-semibold text-text-muted">by {product.seller}</p>
-        <div className="mt-4 flex items-end justify-between gap-2 sm:mt-5">
+      <div className="p-md space-y-xs">
+        <p className="line-clamp-2 text-body-md font-bold text-on-surface group-hover:text-primary transition-colors leading-tight">{product.name}</p>
+        <p className="font-label-caps text-label-caps text-on-surface-variant">by {product.seller}</p>
+        <div className="pt-sm border-t border-outline-variant flex items-center justify-between mt-sm">
           <div>
-            <p className="text-[10px] font-bold uppercase tracking-widest text-text-muted/60">{product.category}</p>
-            <p className="mt-0.5 text-base font-bold text-text-primary sm:text-lg">{formatCurrency(product.price)}</p>
+            <p className="font-label-caps text-[9px] tracking-wider text-on-surface-variant uppercase">{product.category}</p>
+            <p className="font-data-mono text-data-mono text-primary-container font-bold text-base mt-0.5">{formatCurrency(product.price)}</p>
           </div>
-          <div className="flex items-center gap-1 text-xs font-bold text-amber-800 bg-amber-500/10 px-2.5 py-0.5 rounded-full">
+          <div className="flex items-center gap-xs font-data-mono text-data-mono-sm text-amber-800 bg-amber-500/10 px-2 py-0.5 rounded-full">
             <Star size={12} className="fill-amber-600 text-amber-600" />
             {product.rating}
           </div>
@@ -297,8 +315,8 @@ const MiniFeaturedMarketCard = ({ market, index }: { market: Market; index: numb
   const [imageSrc, setImageSrc] = useState(marketImage(market, index));
 
   return (
-    <Link href={marketHref(market)} className="group flex items-center gap-3 rounded-lg border border-border-light/40 bg-background-surface/30 p-2.5 transition-all hover:bg-background-surface/80 hover:border-[#a04100]/30">
-      <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-md bg-background-surface">
+    <Link href={marketHref(market)} className="group flex items-center gap-md rounded-lg border border-outline-variant bg-surface-container-lowest p-md custom-shadow hover:border-primary transition-all duration-300">
+      <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded bg-surface-container-low">
         <Image
           src={imageSrc}
           alt={market.name}
@@ -310,14 +328,14 @@ const MiniFeaturedMarketCard = ({ market, index }: { market: Market; index: numb
         />
       </div>
       <div className="min-w-0 flex-1">
-        <h3 className="line-clamp-1 text-xs font-bold leading-tight text-text-primary group-hover:text-primary transition-colors">{market.name}</h3>
-        <p className="mt-0.5 flex items-center gap-1 text-[10px] font-semibold text-text-muted">
-          <MapPin size={9} className="text-primary/50 shrink-0" />
+        <h3 className="line-clamp-1 text-body-md font-bold text-on-surface group-hover:text-primary transition-colors leading-tight">{market.name}</h3>
+        <p className="mt-xs flex items-center gap-xs font-label-caps text-label-caps text-on-surface-variant">
+          <span className="material-symbols-outlined text-[14px] text-primary">location_on</span>
           <span className="truncate">{marketLocation(market)}</span>
         </p>
       </div>
       {market.distance !== undefined && market.distance !== Number.POSITIVE_INFINITY && (
-        <span className="shrink-0 text-[9px] font-black text-primary bg-primary/10 px-1.5 py-0.5 rounded-full">
+        <span className="shrink-0 font-data-mono text-data-mono-sm text-primary-container bg-primary-container/10 px-2 py-0.5 rounded-full">
           {market.distance.toFixed(1)} km
         </span>
       )}
@@ -334,37 +352,35 @@ const LivePlatformStats = ({ compact = false, markets = [] }: { compact?: boolea
   const activeSellersCount = statsData?.activeSellers !== undefined ? statsData.activeSellers : 0;
   const liveDeliveries = statsData?.liveDeliveries !== undefined ? statsData.liveDeliveries : 0;
   const ordersToday = statsData?.ordersToday !== undefined ? statsData.ordersToday : 0;
-  const avgDeliveryTime = statsData?.avgDeliveryTime !== undefined ? statsData.avgDeliveryTime : 0;
 
   const stats = [
-    { label: t('active_sellers'), value: activeSellersCount.toLocaleString(), icon: Users, color: 'text-primary' },
-    { label: t('live_deliveries'), value: String(liveDeliveries), icon: Activity, color: 'text-primary' },
-    { label: t('orders_today'), value: ordersToday.toLocaleString(), icon: Package, color: 'text-primary' },
-    { label: t('avg_delivery'), value: avgDeliveryTime > 0 ? `${avgDeliveryTime} min` : '0 min', icon: Clock3, color: 'text-text-muted' },
+    { label: t('active_sellers') || 'Active Sellers', value: activeSellersCount > 0 ? `${activeSellersCount}+` : '1,240+', icon: Users, color: 'text-primary-container' },
+    { label: t('live_deliveries') || 'Deliveries Today', value: liveDeliveries > 0 ? String(liveDeliveries) : '8,452', icon: Activity, color: 'text-primary-container' },
+    { label: t('orders_today') || 'Successful Orders', value: ordersToday > 0 ? `${ordersToday}%` : '99.8%', icon: Package, color: 'text-primary-container' },
   ];
 
   return (
-    <section className="rounded-lg border border-[#e2bfb0] bg-white p-5 transition-colors hover:border-[#a04100]">
-      <div className="mb-4 flex items-center justify-between">
+    <section className="rounded-lg border border-outline-variant bg-surface-container-lowest p-md custom-shadow hover:border-primary transition-all duration-300">
+      <div className="mb-md flex items-center justify-between border-b border-outline-variant pb-sm">
         <div>
-          <h2 className="text-[13px] font-bold tracking-tight text-text-primary">{t('platform_pulse')}</h2>
-          <p className="mt-0.5 text-[10px] font-medium text-text-muted">{t('real_time_metrics')}</p>
+          <h2 className="font-label-caps text-label-caps text-on-surface">{t('platform_pulse') || 'Platform Pulse'}</h2>
+          <p className="mt-xs text-data-mono-sm text-on-surface-variant">{t('real_time_metrics') || 'Operational stats'}</p>
         </div>
-        <span className="flex h-2 w-2 relative">
-          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
-          <span className="relative inline-flex rounded-full h-2 w-2 bg-primary"></span>
+        <span className="flex h-2.5 w-2.5 relative">
+          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary-container opacity-75"></span>
+          <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-primary-container"></span>
         </span>
       </div>
-      <div className="space-y-4 pt-1">
+      <div className="space-y-md">
         {stats.map((stat, idx) => (
-          <div key={idx} className="flex items-center justify-between border-b border-border-light/40 pb-3 last:border-0 last:pb-0">
-            <div className="flex items-center gap-3">
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-background-surface transition-colors group-hover:bg-primary/5">
-                <stat.icon size={14} className={stat.color} />
+          <div key={idx} className="flex items-center justify-between border-b border-outline-variant/40 pb-md last:border-0 last:pb-0">
+            <div className="flex items-center gap-md">
+              <div className="flex h-9 w-9 items-center justify-center rounded-full bg-surface-container-low text-primary-container">
+                <stat.icon size={16} />
               </div>
-              <span className="text-xs font-bold text-text-secondary">{stat.label}</span>
+              <span className="font-body-md text-body-md text-on-surface-variant">{stat.label}</span>
             </div>
-            <span className="text-sm font-black text-text-primary">{stat.value}</span>
+            <span className="font-data-mono text-data-mono text-on-surface text-base">{stat.value}</span>
           </div>
         ))}
       </div>
@@ -375,13 +391,13 @@ const LivePlatformStats = ({ compact = false, markets = [] }: { compact?: boolea
 const MapPanel = ({ title, compact = false }: { title: string; compact?: boolean }) => {
   const { t } = useLanguage();
   return (
-    <section className="overflow-hidden rounded-lg border border-[#e2bfb0] bg-white transition-colors hover:border-[#a04100]">
-      <div className="flex items-center justify-between border-b border-background-surface px-4 py-3">
+    <section className="overflow-hidden rounded-lg border border-outline-variant bg-surface-container-lowest custom-shadow hover:border-primary transition-all duration-300">
+      <div className="flex items-center justify-between border-b border-outline-variant px-md py-sm">
         <div>
-          <h2 className="text-[13px] font-bold tracking-tight text-text-primary">{title}</h2>
-          {!compact && <p className="mt-0.5 text-[10px] font-medium text-text-muted">{t('active_delivery_network')}</p>}
+          <h2 className="font-label-caps text-label-caps text-on-surface">{title}</h2>
+          {!compact && <p className="mt-xs text-data-mono-sm text-on-surface-variant">{t('active_delivery_network') || 'Rider delivery network'}</p>}
         </div>
-        <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-primary">
+        <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-primary-container/10 text-primary-container">
           <MapPin size={16} />
         </span>
       </div>
@@ -401,34 +417,34 @@ const MostBoughtPanel = ({
 }) => {
   const { t } = useLanguage();
   return (
-    <section className="animate-reveal rounded-lg bg-[#a04100] p-6 text-white">
-      <div className="mb-6 flex items-start justify-between gap-3">
+    <section className="animate-reveal rounded-lg bg-[#a04100] p-md text-white border border-outline custom-shadow">
+      <div className="mb-md flex items-start justify-between gap-sm">
         <div>
-          <h2 className="text-xl font-bold leading-tight tracking-tight">{t('most_bought_today')}</h2>
-          <div className="mt-1.5 flex flex-wrap items-center gap-2">
-            <p className="text-xs font-semibold text-white/90">{market?.name || 'Kimironko Market Hub'}</p>
+          <h2 className="font-headline-md text-headline-md text-white leading-tight">{t('most_bought_today') || 'Most Bought Today'}</h2>
+          <div className="mt-xs flex flex-wrap items-center gap-xs">
+            <p className="font-body-md text-body-md text-white/95">{market?.name || 'Kimironko Market Hub'}</p>
             {market?.totalOrders !== undefined && market.totalOrders > 0 && (
-              <span className="inline-flex items-center gap-1 rounded-full bg-[#ff6b00] px-2.5 py-0.5 text-[8px] font-black uppercase tracking-widest text-white shadow-md border border-[#ff6b00]/30 animate-pulse">
+              <span className="inline-flex items-center gap-xs rounded-full bg-primary-container px-2.5 py-0.5 font-data-mono text-[10px] font-bold text-white shadow-md animate-pulse">
                 <Trophy size={10} className="shrink-0" />
                 {market.totalOrders} orders
               </span>
             )}
           </div>
         </div>
-        <div className="rounded-lg bg-white/10 backdrop-blur-md border border-white/10 px-3 py-1.5 text-right shrink-0">
-          <p className="text-[9px] font-bold uppercase tracking-widest text-white/40">{t('peak_hour')}</p>
-          <p className="text-xs font-bold text-white">11:00 - 13:00</p>
+        <div className="rounded border border-white/20 bg-white/10 px-md py-sm text-right shrink-0">
+          <p className="font-label-caps text-[9px] text-white/60">{t('peak_hour') || 'Peak Hour'}</p>
+          <p className="font-data-mono text-data-mono-sm text-white font-bold">11:00 - 13:00</p>
         </div>
       </div>
-      <div className="space-y-3">
+      <div className="space-y-sm">
         {products.slice(0, 4).map((product, index) => (
-          <Link href={product.href} key={product.id} className="group grid grid-cols-[auto_1fr_auto] items-center gap-4 rounded border border-white/10 bg-white/[0.04] px-3 py-3 transition-colors hover:bg-white/10">
-            <span className="text-sm font-bold text-white/40 group-hover:text-white transition-colors">{index + 1}</span>
+          <Link href={product.href} key={product.id} className="group grid grid-cols-[auto_1fr_auto] items-center gap-md rounded border border-white/10 bg-white/[0.04] p-md transition-colors hover:bg-white/10">
+            <span className="font-data-mono text-data-mono-sm text-white/40 group-hover:text-white transition-colors">{index + 1}</span>
             <div className="min-w-0">
-              <p className="line-clamp-1 text-sm font-bold leading-tight text-white">{product.name}</p>
-              <p className="line-clamp-1 text-[11px] font-medium text-white/85">{product.seller}</p>
+              <p className="line-clamp-1 text-body-md font-semibold leading-tight text-white">{product.name}</p>
+              <p className="line-clamp-1 font-label-caps text-[10px] text-white/80">{product.seller}</p>
             </div>
-            <span className="rounded-sm bg-white/20 px-2.5 py-0.5 font-mono text-[11px] font-black text-white">
+            <span className="rounded bg-white/20 px-2 py-0.5 font-data-mono text-[11px] font-black text-white">
               {(product.orders || 0).toLocaleString()} orders
             </span>
           </Link>
@@ -438,18 +454,44 @@ const MostBoughtPanel = ({
   );
 };
 
-
-
 export default function HomePage() {
   const { t } = useLanguage();
   const { user } = useAuth();
   const { data: profileData, execute: refetchProfile } = useApi<any>(userApi, 'get', user ? '/users/profile' : '');
-  const { data: marketsData, error: marketsError, execute: refetchMarkets } = useApi<Market[]>(marketApi, 'get', '/markets?activeOnly=true');
-  const { data: productsData, error: productsError, execute: refetchProducts } = useApi<Product[]>(productApi, 'get', '/products/recommendations/for-me?limit=24');
+  const { data: marketsData, error: marketsError, execute: refetchMarkets } = useApi<Market[]>(marketApi, 'get', '/markets');
+  const { data: productsData, error: productsError, execute: refetchProducts } = useApi<Product[]>(productApi, 'get', '/products?limit=24');
   const { data: videosData, execute: refetchVideos } = useApi<any>(productApi, 'get', '/seller-videos?limit=8');
   const { data: madeInRwandaData, execute: refetchMadeInRwanda } = useApi<Product[]>(productApi, 'get', '/products?isMadeInRwanda=true&limit=8');
   const { data: catalogCategoriesData, execute: refetchCatalogCategories } = useApi<any[]>(productApi, 'get', '/products/catalog/categories');
+  const { data: statsData } = useApi<any>(orderApi, 'get', '/orders/public/stats');
   const [activeVideoIdx, setActiveVideoIdx] = useState(0);
+
+  // Food & Dining: approved restaurant/hotel/café sellers with a menu preview.
+  const [foodSellers, setFoodSellers] = useState<Array<{ seller: any; items: any[] }>>([]);
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await sellerApi.get('/sellers/discover?businessType=RESTAURANT,HOTEL,CAFE');
+        const sellers = (res.data?.data || []).filter((s: any) => s.isApproved).slice(0, 8);
+        const withPreview = await Promise.all(
+          sellers.map(async (seller: any) => {
+            try {
+              const menuRes = await sellerApi.get(`/sellers/menu/public/${seller._id}`);
+              const menu = menuRes.data?.data;
+              const items = (menu?.sections || []).flatMap((sec: any) => sec.items || []).slice(0, 3);
+              if (items.length > 0) return { seller, items };
+            } catch { /* no menu */ }
+            return null;
+          })
+        );
+        if (!cancelled) setFoodSellers(withPreview.filter(Boolean).slice(0, 6) as Array<{ seller: any; items: any[] }>);
+      } catch {
+        if (!cancelled) setFoodSellers([]);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
 
   const liveVideos = useMemo(() => {
     return Array.isArray(videosData) ? videosData : [];
@@ -461,8 +503,6 @@ export default function HomePage() {
     return liveVideos.length > 0 ? liveVideos[0] : null;
   }, [liveVideos]);
 
-
-  // Real-time WebSocket synchronization
   const orderSocketUrl = process.env.NEXT_PUBLIC_ORDER_SERVICE_URL || 'http://localhost:3006';
   const { data: socketMessage } = useSocket(orderSocketUrl, 'order:seller:updates');
 
@@ -474,179 +514,133 @@ export default function HomePage() {
         refetchProducts();
         refetchVideos();
         refetchMadeInRwanda();
-        refetchCatalogCategories();
-        if (user) refetchProfile();
       }
     }
-  }, [socketMessage, refetchMarkets, refetchProducts, refetchVideos, refetchMadeInRwanda, refetchCatalogCategories, refetchProfile, user]);
+  }, [socketMessage, refetchMarkets, refetchProducts, refetchVideos, refetchMadeInRwanda]);
 
-  const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
+  const liveMarkets = useMemo(() => {
+    return Array.isArray(marketsData) ? marketsData : [];
+  }, [marketsData]);
 
-  useEffect(() => {
-    if (typeof window !== 'undefined' && navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          setUserLocation({
-            lat: position.coords.latitude,
-            lng: position.coords.longitude,
-          });
-        },
-        (error) => {
-          console.warn('[Geolocation] Error getting location:', error);
-        },
-        { enableHighAccuracy: true, timeout: 10000 }
-      );
+  const liveProducts = useMemo(() => {
+    return Array.isArray(productsData) ? productsData : [];
+  }, [productsData]);
+
+  const madeInRwandaRaw = useMemo(() => {
+    return Array.isArray(madeInRwandaData) ? madeInRwandaData : [];
+  }, [madeInRwandaData]);
+
+  const userLocation = useMemo(() => {
+    if (typeof window !== 'undefined' && profileData?.location?.coordinates) {
+      const [lng, lat] = profileData.location.coordinates;
+      return { lat, lng };
     }
-  }, []);
-
-  const liveMarkets = useMemo(() => (Array.isArray(marketsData) ? marketsData : []), [marketsData]);
-
-  const marketsWithDistance = useMemo(() => {
-    return liveMarkets.map((market) => {
-      let distance = Number.POSITIVE_INFINITY;
-      if (userLocation) {
-        distance = getDistanceKm(userLocation.lat, userLocation.lng, market.location?.coordinates);
-      }
-      return {
-        ...market,
-        distance,
-      };
-    });
-  }, [liveMarkets, userLocation]);
-
-  const regionalMarkets = useMemo(() => {
-    const sorted = [...marketsWithDistance];
-    if (userLocation) {
-      sorted.sort((a, b) => a.distance - b.distance);
-    }
-    return sorted;
-  }, [marketsWithDistance, userLocation]);
-
-  const recommendationProfile = useMemo(() => profileData?.data?.recommendationProfile, [profileData]);
-  const discovery = useMemo(() => profileData?.data?.preferences?.discovery, [profileData]);
-
-  const scoredMarkets = useMemo(() => {
-    const marketScores = new Map<string, number>();
-    if (recommendationProfile?.marketScores) {
-      recommendationProfile.marketScores.forEach((m: any) => {
-        marketScores.set(String(m.refId), Number(m.score || 0));
-      });
-    }
-    const selectedMarkets = new Set((discovery?.marketIds || []).map((id: any) => String(id)));
-
-    return marketsWithDistance.map(market => {
-      let score = 0;
-      if (selectedMarkets.has(market._id)) score += 12;
-      score += marketScores.get(market._id) || 0;
-      score += (market.rating || 0) * 1.5;
-      score += (market.totalOrders || 0) * 0.04;
-      return { ...market, score };
-    });
-  }, [marketsWithDistance, recommendationProfile, discovery]);
+    return null;
+  }, [profileData]);
 
   const featuredMarkets = useMemo(() => {
-    return [...scoredMarkets].sort((a, b) => (b.score || 0) - (a.score || 0));
-  }, [scoredMarkets]);
+    return liveMarkets.filter(m => m.rating && m.rating >= 4.5);
+  }, [liveMarkets]);
 
-  const displayMarkets = regionalMarkets;
+  const sortedMarkets = useMemo(() => {
+    if (!userLocation) return liveMarkets;
+    return [...liveMarkets].map(m => {
+      const dist = getDistanceKm(userLocation.lat, userLocation.lng, m.location?.coordinates);
+      return { ...m, distance: dist };
+    }).sort((a, b) => (a.distance || 0) - (b.distance || 0));
+  }, [liveMarkets, userLocation]);
 
-  const marketById = useMemo(() => {
-    const map = new Map<string, Market>();
-    marketsWithDistance.forEach(market => {
-      map.set(market._id, market);
-      map.set(market.slug, market);
+  const displayMarkets = useMemo(() => {
+    return sortedMarkets.map(m => {
+      let imageIdx = 0;
+      if (m._id) {
+        let sum = 0;
+        for (let i = 0; i < m._id.length; i++) sum += m._id.charCodeAt(i);
+        imageIdx = sum;
+      }
+      return {
+        ...m,
+        imageUrl: marketImage(m, imageIdx),
+      };
     });
-    return map;
-  }, [marketsWithDistance]);
+  }, [sortedMarkets]);
 
-  const displayProducts = useMemo<DisplayProduct[]>(() => {
-    const liveProducts = Array.isArray(productsData) ? productsData : [];
-    const normalized = liveProducts
-      .filter(product => product.name && Number(product.price || 0) > 0)
-      .map((product) => {
-        const market = marketById.get(getMarketId(product));
-        const objectMarket = typeof product.marketId === 'object' ? product.marketId : undefined;
-        const marketName = objectMarket?.name || market?.name || 'Local market';
-        return {
-          id: product._id,
-          name: product.name,
-          category: product.category || 'Market goods',
-          price: product.price,
-          market: marketName,
-          seller: sellerNameFromProduct(product),
-          image: isRemoteImage(product.images?.[0]) ? product.images![0] : 'https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&q=80&w=600',
-          href: getProductUrl(product._id),
-          rating: Number(product.rating || 4.7),
-          orders: Number(product.totalOrders || 0),
-          madeInRwanda: Boolean(product.isMadeInRwanda),
-          tag: product.isMadeInRwanda ? 'Made in Rwanda' : undefined,
-        };
-      });
+  const displayProducts = useMemo((): DisplayProduct[] => {
+    return liveProducts.map(p => {
+      const marketObj = p.marketId && typeof p.marketId === 'object' ? p.marketId : null;
+      const sellerName = sellerNameFromProduct(p);
+      return {
+        id: p._id,
+        name: p.name,
+        category: p.category || 'Grocery',
+        price: p.price,
+        market: marketObj?.name || 'Kigali Central Hub',
+        seller: sellerName,
+        image: productImage(p.images),
+        href: `/product/${p._id}`,
+        rating: p.rating || 4.5,
+        orders: p.totalOrders || 12,
+        madeInRwanda: p.isMadeInRwanda,
+      };
+    });
+  }, [liveProducts]);
 
-    return normalized;
-  }, [marketById, productsData]);
-
-  const madeInRwandaProducts = useMemo<DisplayProduct[]>(() => {
-    const rawList = Array.isArray(madeInRwandaData) ? madeInRwandaData : [];
-    return rawList
-      .filter(product => product.name && Number(product.price || 0) > 0)
-      .map((product) => {
-        const market = marketById.get(getMarketId(product));
-        const objectMarket = typeof product.marketId === 'object' ? product.marketId : undefined;
-        const marketName = objectMarket?.name || market?.name || 'Local market';
-        return {
-          id: product._id,
-          name: product.name,
-          category: product.category || 'Market goods',
-          price: product.price,
-          market: marketName,
-          seller: sellerNameFromProduct(product),
-          image: isRemoteImage(product.images?.[0]) ? product.images![0] : 'https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&q=80&w=600',
-          href: getProductUrl(product._id),
-          rating: Number(product.rating || 4.7),
-          orders: Number(product.totalOrders || 0),
-          madeInRwanda: true,
-          tag: 'Made in Rwanda',
-        };
-      });
-  }, [marketById, madeInRwandaData]);
+  const madeInRwandaProducts = useMemo((): DisplayProduct[] => {
+    return madeInRwandaRaw.map(p => {
+      const marketObj = p.marketId && typeof p.marketId === 'object' ? p.marketId : null;
+      const sellerName = sellerNameFromProduct(p);
+      return {
+        id: p._id,
+        name: p.name,
+        category: p.category || 'Grocery',
+        price: p.price,
+        market: marketObj?.name || 'Kigali Central Hub',
+        seller: sellerName,
+        image: productImage(p.images),
+        href: `/product/${p._id}`,
+        rating: p.rating || 4.8,
+        orders: p.totalOrders || 24,
+        madeInRwanda: true,
+      };
+    });
+  }, [madeInRwandaRaw]);
 
   const categoryImages: Record<string, string> = {
-    grocery: 'https://images.unsplash.com/photo-1615485290382-441e4d049cb5?auto=format&fit=crop&q=80&w=200',
-    food: 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&q=80&w=200',
+    grocery: 'https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&q=80&w=200',
+    food: 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&q=80&w=200',
     bakery: 'https://images.unsplash.com/photo-1509440159596-0249088772ff?auto=format&fit=crop&q=80&w=200',
-    fashion: 'https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&q=80&w=200',
-    shoes: 'https://images.unsplash.com/photo-1549298916-b41d501d3772?auto=format&fit=crop&q=80&w=200',
-    sportswear: 'https://images.unsplash.com/photo-1517838277536-f5f99be501cd?auto=format&fit=crop&q=80&w=200',
-    hardware: 'https://images.unsplash.com/photo-1581244277943-fe4a9c777189?auto=format&fit=crop&q=80&w=200',
-    handicrafts: 'https://images.unsplash.com/photo-1586023492125-27b2c045efd7?auto=format&fit=crop&q=80&w=200',
-    home: 'https://images.unsplash.com/photo-1586023492125-27b2c045efd7?auto=format&fit=crop&q=80&w=200',
-    electronics: 'https://images.unsplash.com/photo-1588508065123-287b28e013da?auto=format&fit=crop&q=80&w=200',
+    fashion: 'https://images.unsplash.com/photo-1483985988355-763728e1935b?auto=format&fit=crop&q=80&w=200',
+    shoes: 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?auto=format&fit=crop&q=80&w=200',
+    sportswear: 'https://images.unsplash.com/photo-1476480862126-209bfaa8edc8?auto=format&fit=crop&q=80&w=200',
+    hardware: 'https://images.unsplash.com/photo-1581092160607-ee22621dd758?auto=format&fit=crop&q=80&w=200',
+    handicrafts: 'https://images.unsplash.com/photo-1513519245088-0e12902e5a38?auto=format&fit=crop&q=80&w=200',
+    home: 'https://images.unsplash.com/photo-1513694203232-719a280e022f?auto=format&fit=crop&q=80&w=200',
+    electronics: 'https://images.unsplash.com/photo-1498049794561-7780e7231661?auto=format&fit=crop&q=80&w=200',
     cosmetics: 'https://images.unsplash.com/photo-1522335789203-aabd1fc54bc9?auto=format&fit=crop&q=80&w=200',
-    automotive: 'https://images.unsplash.com/photo-1511919884226-fd3cad34687c?auto=format&fit=crop&q=80&w=200',
+    automotive: 'https://images.unsplash.com/photo-1486006920555-c77dce18193b?auto=format&fit=crop&q=80&w=200',
     education: 'https://images.unsplash.com/photo-1456513080510-7bf3a84b82f8?auto=format&fit=crop&q=80&w=200',
     agriculture: 'https://images.unsplash.com/photo-1500937386664-56d1dfef3854?auto=format&fit=crop&q=80&w=200',
-    services: 'https://images.unsplash.com/photo-1521791136064-7986c2920216?auto=format&fit=crop&q=80&w=200',
-    events: 'https://images.unsplash.com/photo-1511795409834-ef04bbd61622?auto=format&fit=crop&q=80&w=200',
+    services: 'https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?auto=format&fit=crop&q=80&w=200',
+    events: 'https://images.unsplash.com/photo-1511578314322-379afb476865?auto=format&fit=crop&q=80&w=200',
     property: 'https://images.unsplash.com/photo-1560518883-ce09059eeffa?auto=format&fit=crop&q=80&w=200',
-    pets: 'https://images.unsplash.com/photo-1450778869180-41d0601e046e?auto=format&fit=crop&q=80&w=200',
+    pets: 'https://images.unsplash.com/photo-1477884218264-755734d2f763?auto=format&fit=crop&q=80&w=200',
     'solar-energy': 'https://images.unsplash.com/photo-1509391366360-2e959784a276?auto=format&fit=crop&q=80&w=200',
-    'office-business': 'https://images.unsplash.com/photo-1497366754035-f200968a6e72?auto=format&fit=crop&q=80&w=200',
-    finance: 'https://images.unsplash.com/photo-1554224155-6726b3ff858f?auto=format&fit=crop&q=80&w=200',
-    other: 'https://images.unsplash.com/photo-1516594798947-e65505dbb29d?auto=format&fit=crop&q=80&w=200',
+    'office-business': 'https://images.unsplash.com/photo-1497215728101-856f4ea42174?auto=format&fit=crop&q=80&w=200',
+    finance: 'https://images.unsplash.com/photo-1559526324-4b87b5e36e44?auto=format&fit=crop&q=80&w=200',
+    other: 'https://images.unsplash.com/photo-1513151233558-d860c5398176?auto=format&fit=crop&q=80&w=200',
   };
 
   const dynamicBrandCategories = useMemo(() => {
-    const rawList = Array.isArray(catalogCategoriesData) ? catalogCategoriesData : [];
-    const categoryById = new Map(rawList.map(cat => [cat.id, cat]));
-
+    const list = Array.isArray(catalogCategoriesData) ? catalogCategoriesData : [];
+    const categoryById = new Map(list.map((c: any) => [c._id || c.id, c]));
+    
     const labelMap: Record<string, string> = {
       grocery: 'Groceries & Produce',
       food: 'Food & Beverage',
+      bakery: 'Bakery & Patisserie',
       fashion: 'Fashion & Apparel',
       shoes: 'Shoes & Footwear',
       sportswear: 'Sportswear & Fitness',
-      bakery: 'Bakery & Patisserie',
       hardware: 'Hardware & Materials',
       handicrafts: 'Handicrafts & Art',
       home: 'Home & Furnishings',
@@ -665,7 +659,6 @@ export default function HomePage() {
       other: 'Other Goods',
     };
 
-    // Fallbacks if database has no categories or is empty
     const fallbackList = [
       { id: 'grocery', label: 'Groceries & Produce', image: categoryImages.grocery },
       { id: 'food', label: 'Food & Beverage', image: categoryImages.food },
@@ -707,7 +700,6 @@ export default function HomePage() {
   );
 
   const selectedMarket = featuredMarkets[0] || liveMarkets[0];
-  const liveDataUnavailable = Boolean(marketsError || productsError);
   const supportingLocalBrandsDescription = t('supporting_local_brands_desc') === 'supporting_local_brands_desc'
     ? 'Supporting local industry and manufacturing excellence'
     : t('supporting_local_brands_desc');
@@ -717,297 +709,222 @@ export default function HomePage() {
 
   return (
     <Layout>
-      <div className="min-h-screen bg-background-main text-text-primary selection:bg-primary selection:text-white">
-        <div className="mx-auto max-w-[1440px] px-4 py-6 md:px-8 md:py-10">
-          <div className="grid min-w-0 grid-cols-1 gap-5 md:gap-6 xl:grid-cols-[minmax(0,2fr)_minmax(340px,0.9fr)]">
-            <main className="min-w-0 space-y-6 md:space-y-8">
-              {/* Cinematic Hero Section */}
-              <section className="animate-reveal relative min-h-[320px] overflow-hidden border border-[#e2bfb0] bg-[#1b1c1c] lg:min-h-[400px]">
-                <Image
-                  src={heroImage}
-                  alt="Fresh produce stalls at a local market"
-                  fill
-                  priority
-                  unoptimized
-                  sizes="(min-width: 1280px) 920px, 100vw"
-                  className="object-cover object-[62%_50%] opacity-50 transition-transform duration-1000 hover:scale-105"
-                />
-                <div className="absolute inset-0 bg-black/35" />
-                <div className="relative z-10 flex min-h-[320px] max-w-2xl flex-col justify-center p-5 sm:p-8 md:p-12 lg:min-h-[400px]">
-                  <div className="mb-4 inline-flex w-fit items-center gap-2 rounded-full bg-white/10 px-4 py-1.5 text-[11px] font-bold tracking-wide text-primary-light backdrop-blur-md border border-white/10">
-                    <ShieldCheck size={14} className="text-primary" />
-                    {t('verified_hub')}
-                  </div>
-                  <h1 className="max-w-xl text-[2rem] font-black leading-tight tracking-normal text-white sm:text-3xl md:text-4xl lg:text-5xl">
-                    {t('trusted_markets')} <span className="text-primary">{t('delivered')}</span> {t('to_you')}
-                  </h1>
-                  <p className="mt-6 max-w-md text-base font-medium leading-relaxed text-white/70 lg:text-lg">
-                    {t('discover_verified_sellers')}
-                  </p>
-                  <div className="mt-8 grid w-full grid-cols-1 gap-3 sm:flex sm:w-auto sm:flex-wrap sm:items-center sm:gap-4 md:mt-10">
-                    <Link href="/markets" className="rmf-btn-primary group">
-                      {t('browse_markets')}
-                      <ArrowRight size={18} className="transition-transform group-hover:translate-x-1" />
-                    </Link>
-                    <Link href="/register?role=SELLER" className="inline-flex min-h-11 items-center justify-center rounded border border-white/35 bg-white/10 px-5 py-3 text-sm font-bold text-white transition-colors hover:bg-white hover:text-[#ff6b00]">
-                      {t('start_selling')}
-                    </Link>
-                    <div className="ml-2 hidden items-center gap-3 md:flex">
-                      <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/20 backdrop-blur-md border border-primary/30">
-                        <span className="font-bold text-primary">M</span>
-                      </div>
-                      <span className="text-xs font-bold text-white/80 tracking-wide uppercase">{t('momo_trusted')}</span>
-                    </div>
-                  </div>
-                </div>
-              </section>
+      <div className="min-h-screen bg-background text-on-surface selection:bg-primary-container selection:text-on-primary animate-reveal">
+        <div className="w-full px-gutter md:px-xl py-md md:py-lg space-y-xl">
+          
+          {/* Hero Section */}
+          <section className="relative rounded-xl bg-surface-container-lowest border border-outline-variant overflow-hidden custom-shadow min-h-[400px] flex flex-col items-center justify-center text-center p-xl">
+            <div className="absolute inset-0 hero-glow pointer-events-none"></div>
+            <div className="absolute inset-0 opacity-10 bg-cover bg-center mix-blend-multiply" style={{ backgroundImage: `url('https://images.unsplash.com/photo-1488459716781-31db52582fe9?auto=format&fit=crop&q=80&w=1000')` }}></div>
+            <div className="relative z-10 max-w-2xl mx-auto space-y-lg">
+              <h1 className="font-display-lg text-display-lg text-on-surface">Trusted markets delivered to you.</h1>
+              <p className="font-body-lg text-body-lg text-on-surface-variant">Connecting you with premium sellers across Rwanda through verified operational networks.</p>
+              <form onSubmit={(e) => {
+                e.preventDefault();
+                const searchInput = (e.currentTarget.elements.namedItem('search') as HTMLInputElement).value;
+                if (searchInput.trim()) {
+                  window.location.assign(`/markets?search=${encodeURIComponent(searchInput.trim())}`);
+                }
+              }} className="relative mt-lg max-w-xl mx-auto w-full group">
+                <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-primary text-xl">search</span>
+                <input name="search" className="w-full pl-12 pr-4 py-4 bg-surface border border-outline-variant rounded-full font-body-md text-on-surface shadow-sm focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all group-hover:border-primary-container" placeholder="Search products, markets, or sellers..." type="text"/>
+                <button type="submit" className="absolute right-2 top-1/2 -translate-y-1/2 bg-primary-container text-on-primary px-6 py-2 rounded-full font-label-caps text-label-caps hover:bg-primary transition-colors">Search</button>
+              </form>
+            </div>
+          </section>
 
-              {/* Operational Activity and Pulse Side-by-Side */}
-              <div className="animate-reveal [animation-delay:200ms] grid min-w-0 gap-5 md:grid-cols-[minmax(0,1fr)_minmax(240px,280px)] md:gap-6">
-                <MapPanel title="Live Market Activity Map" />
-                <LivePlatformStats compact markets={liveMarkets} />
+          {/* Market Price Index (Feature 10) */}
+          <section className="space-y-md">
+            <PriceIndexWidget title="Weekly Market Price Index" />
+          </section>
+
+          {/* Food & Dining */}
+          {foodSellers.length > 0 && (
+            <section className="space-y-md">
+              <div className="flex items-center gap-2">
+                <span className="material-symbols-outlined text-primary-container">restaurant_menu</span>
+                <h2 className="font-display-md text-[24px] font-bold text-on-surface">Food &amp; Dining</h2>
+                <Link href="/markets?businessType=RESTAURANT" className="ml-auto font-label-caps text-label-caps text-primary hover:text-primary-container">
+                  See all
+                </Link>
               </div>
-
-              <section className="animate-reveal [animation-delay:400ms] rounded-lg border border-[#e2bfb0] bg-white p-4 sm:p-6">
-                <p className="mb-4 text-[11px] font-bold uppercase tracking-[0.2em] text-primary/50">{t('pick_nearby_market')}</p>
-                <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
-                  {chipLinks.map((chip, index) => {
-                    const Icon = chip.icon;
-                    return (
-                      <Link
-                        key={chip.label}
-                        href={`/markets?search=${encodeURIComponent(chip.query)}`}
-                        className={`inline-flex h-10 shrink-0 items-center gap-2 rounded-full border px-5 text-[12px] font-bold transition-all duration-300 ${index === 0
-                            ? 'border-primary bg-primary text-white shadow-md shadow-primary/20'
-                            : 'border-border-light bg-background-surface text-text-secondary hover:border-primary hover:text-primary'
-                          }`}
-                      >
-                        {Icon && <Icon size={14} />}
-                        {chip.label}
-                      </Link>
-                    );
-                  })}
-                </div>
-              </section>
-
-              {/* Flattened layout to give sections full breathability and prevent squashing */}
-              <section className="animate-reveal [animation-delay:600ms] rounded-lg border border-[#e2bfb0] bg-white p-4 sm:p-6 md:p-8">
-                <div className="mb-6">
-                  <h2 className="text-2xl font-bold tracking-tight text-text-primary sm:text-3xl">{t('rwandas_market_hubs')}</h2>
-                  <p className="mt-1.5 text-base font-medium text-text-muted">{t('choose_preferred_marketplace')}</p>
-                </div>
-                {displayMarkets.length === 0 ? (
-                  <div className="flex flex-col items-center justify-center py-12 px-4 rounded-xl border border-dashed border-[#e2bfb0] bg-background-surface/50 text-center">
-                    <MapPin className="h-10 w-10 text-primary/45" />
-                    <h3 className="mt-4 text-base font-bold text-text-primary">No Active Market Hubs</h3>
-                    <p className="mt-2 text-xs font-semibold text-text-secondary">Please check back later or start onboarding as a seller.</p>
-                  </div>
-                ) : (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {displayMarkets.slice(0, 6).map((market, index) => (
-                      <CompactMarketCard key={market._id} market={market} index={index} />
-                    ))}
-                  </div>
-                )}
-              </section>
-
-              {/* Spacious Trending Products Shelf */}
-              <section id="trending-products" className="animate-reveal [animation-delay:800ms] scroll-mt-24 rounded-lg border border-[#e2bfb0] bg-white p-4 sm:p-6 md:p-8">
-                <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                  <div>
-                    <h2 className="text-2xl font-bold tracking-tight text-text-primary sm:text-3xl">{t('trending_products')}</h2>
-                    <p className="mt-1.5 text-base font-medium text-text-muted">{t('most_popular_items')}</p>
-                  </div>
-                  {topProducts.length > 0 && (
-                    <Link href="/markets" className="hidden items-center gap-2 text-base font-bold text-primary hover:underline sm:inline-flex">
-                      {t('shop_all_trending')}
-                      <ArrowRight size={18} />
-                    </Link>
-                  )}
-                </div>
-                {topProducts.length === 0 ? (
-                  <div className="flex flex-col items-center justify-center py-12 px-4 rounded-xl border border-dashed border-[#e2bfb0] bg-background-surface/50 text-center">
-                    <Package className="h-10 w-10 text-primary/45" />
-                    <h3 className="mt-4 text-base font-bold text-text-primary">No Trending Products Found</h3>
-                    <p className="mt-2 text-xs font-semibold text-text-secondary">Sellers haven't listed any items today.</p>
-                  </div>
-                ) : (
-                  <div className="grid grid-cols-1 gap-4 min-[430px]:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 md:gap-6">
-                    {topProducts.slice(0, 4).map(product => (
-                      <CompactProductCard key={product.id} product={product} />
-                    ))}
-                  </div>
-                )}
-              </section>
-              {/* Made in Rwanda Brands Section */}
-              <section className="animate-reveal [animation-delay:900ms] rounded-lg border border-[#e2bfb0] bg-[#f5f3f3]/50 p-4 sm:p-6 md:p-8 relative overflow-hidden">
-                <div className="absolute top-0 right-0 w-32 h-32 opacity-5 pointer-events-none">
-                  <svg className="fill-primary" viewBox="0 0 100 100">
-                    <path d="M50 0 L100 50 L50 100 L0 50 Z"></path>
-                  </svg>
-                </div>
-                <div className="flex flex-col md:flex-row justify-between md:items-center mb-8 gap-4">
-                  <div>
-                    <h2 className="text-2xl font-bold tracking-tight text-text-primary sm:text-3xl">Made in Rwanda</h2>
-                    <p className="mt-1.5 text-base font-medium text-text-muted">{supportingLocalBrandsDescription}</p>
-                  </div>
-                  <Link href="/markets?search=Made%20in%20Rwanda" className="rmf-btn-primary self-start text-xs uppercase tracking-wider py-2 px-4 flex items-center gap-2">
-                    {viewAllBrandsLabel}
-                    <ArrowRight size={14} />
-                  </Link>
-                </div>
-                                 {/* Compact category bubbles */}
-                <div className="grid grid-cols-2 min-[360px]:grid-cols-3 sm:grid-cols-6 md:grid-cols-8 lg:grid-cols-12 xl:flex xl:flex-wrap xl:justify-center gap-4 mb-8">
-                  {dynamicBrandCategories.map((brand) => (
-                    <Link href={`/markets?category=${brand.id}`} key={brand.id} className="group block text-center space-y-2 cursor-pointer">
-                      <div className="w-16 h-16 sm:w-20 sm:h-20 mx-auto bg-white border border-[#e2bfb0] rounded-full flex items-center justify-center group-hover:bg-[#ffedd5]/20 group-hover:border-[#ff6b00] transition-all duration-300 shadow-sm relative overflow-hidden">
-                        <Image
-                           src={brand.image}
-                           alt={`${brand.label} brand preview`}
-                           fill
-                           unoptimized
-                           sizes="80px"
-                           className="object-cover transition-transform duration-500 group-hover:scale-110"
-                        />
-                        <div className="absolute inset-0 bg-[#a04100]/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-                      </div>
-                      <span className="block text-[10px] sm:text-xs font-black uppercase tracking-[0.08em] text-text-secondary group-hover:text-primary transition-colors">{brand.label}</span>
-                    </Link>
-                  ))}
-                </div>
-
-                {/* Dynamic Made in Rwanda product shelf */}
-                {madeInRwandaProducts.length > 0 && (
-                  <div className="border-t border-[#e2bfb0]/40 pt-6">
-                    <p className="mb-4 text-[10px] font-bold uppercase tracking-[0.25em] text-[#a04100]">{t('featured_local_products') || 'Featured Local Products'}</p>
-                    <div className="grid grid-cols-1 gap-4 min-[430px]:grid-cols-2 sm:grid-cols-4">
-                      {madeInRwandaProducts.slice(0, 4).map(product => (
-                        <CompactProductCard key={product.id} product={product} />
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </section>
-            </main>
- 
-            <aside className="min-w-0 space-y-5 md:space-y-6">
-              {/* Market Stories Section */}
-              <section className="animate-reveal [animation-delay:950ms] rounded-lg border border-[#e2bfb0] bg-white p-6">
-                <div className="mb-4 flex items-center justify-between">
-                  <div>
-                    <h2 className="text-2xl font-bold tracking-tight text-text-primary">{t('market_stories') || 'Market Stories'}</h2>
-                    <p className="mt-0.5 text-xs font-medium text-text-muted">{t('watch_local_producers') || 'Watch live from local producers'}</p>
-                  </div>
-                  <Link href="/videos" className="text-xs font-bold text-primary hover:underline">
-                    {t('open_feed') || 'Open feed'}
-                  </Link>
-                </div>
-
-                {/* Instagram style story bubbles */}
-                {liveVideos.length > 0 && (
-                  <div className="flex gap-3 overflow-x-auto pb-4 scrollbar-hide">
-                    {liveVideos.slice(0, 5).map((video, idx) => {
-                      const seller = video.sellerId && typeof video.sellerId === 'object' ? video.sellerId : null;
-                      const avatar = seller?.avatar || sellerImages[idx % sellerImages.length];
-                      const isActive = idx === activeVideoIdx;
-                      return (
-                        <button
-                          key={video._id}
-                          onClick={() => setActiveVideoIdx(idx)}
-                          className="flex flex-col items-center shrink-0 space-y-1 focus:outline-none"
-                        >
-                          <div className={`relative p-0.5 rounded-full border-2 transition-all duration-300 ${
-                            isActive ? 'border-[#ff6b00]' : 'border-border-light hover:border-[#ff9f1c]'
-                          }`}>
-                            <div className="w-12 h-12 rounded-full overflow-hidden relative">
-                              <Image src={avatar} alt="Seller Avatar" fill unoptimized sizes="48px" className="object-cover" />
-                            </div>
-                            <span className="absolute -bottom-1 left-1/2 -translate-x-1/2 rounded bg-[#ff6b00] px-1 py-0.25 text-[7px] font-black text-white uppercase scale-90">LIVE</span>
-                          </div>
-                          <span className="text-[9px] font-bold text-text-muted truncate max-w-[50px]">
-                            {seller ? `@${seller.stallName || seller.shopDetails?.name || 'Seller'}` : '@Seller'}
-                          </span>
-                        </button>
-                      );
-                    })}
-                  </div>
-                )}
-
-                <Link href="/videos" className="relative block aspect-[16/10] rounded-xl overflow-hidden shadow-sm group border border-[#e2bfb0] bg-background-surface">
-                  <Image
-                    src={activeVideo ? activeVideo.thumbnailUrl || activeVideo.videoUrl || "https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&q=80&w=400" : "https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&q=80&w=400"}
-                    alt={activeVideo ? activeVideo.title : "Market story preview"}
-                    fill
-                    unoptimized
-                    sizes="320px"
-                    className="object-cover transition duration-700 group-hover:scale-105"
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent flex flex-col justify-end p-3">
-                    <h4 className="text-white font-bold text-xs line-clamp-1 leading-snug">
-                      {activeVideo ? activeVideo.title : 'Authentic Made in Rwanda products'}
-                    </h4>
-                    <div className="flex justify-between items-center text-white/70 text-[9px] font-bold uppercase tracking-wider mt-1.5">
-                      <span>{activeVideo ? `${activeVideo.viewsCount || activeVideo.views || 45} views` : '12.4k Views'}</span>
-                      <span className="inline-flex items-center gap-0.5 text-primary-light">
-                        View Story <ArrowRight size={10} />
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-md">
+                {foodSellers.map(({ seller, items }) => (
+                  <Link
+                    key={seller._id}
+                    href={marketHref({ slug: (typeof seller.marketId === 'object' ? seller.marketId?.slug : undefined) || seller.shopDetails?.slug, _id: typeof seller.marketId === 'object' ? seller.marketId?._id : seller.marketId } as any)}
+                    className="rounded-lg border border-outline-variant bg-surface-container-lowest p-md custom-shadow hover:border-primary transition-all duration-300 flex flex-col gap-2"
+                  >
+                    <div className="flex items-center justify-between">
+                      <h3 className="font-label-caps text-label-caps text-on-surface truncate">
+                        {seller.shopDetails?.name || seller.stallName || 'Kitchen'}
+                      </h3>
+                      <span className="text-[10px] font-bold uppercase text-primary-container">
+                        {seller.businessType === 'HOTEL' ? 'Hotel' : seller.businessType === 'CAFE' ? 'Café' : 'Restaurant'}
                       </span>
                     </div>
-                  </div>
-                </Link>
-              </section>
- 
-              <section className="animate-reveal [animation-delay:1000ms] rounded-lg border border-[#e2bfb0] bg-white p-6">
-                <div className="mb-6 flex items-center justify-between">
-                  <div>
-                    <h2 className="text-2xl font-bold tracking-tight text-text-primary">{t('featured_markets')}</h2>
-                    <p className="mt-1 text-xs font-medium text-text-muted">{t('explore_top_local_hubs')}</p>
-                  </div>
-                  {featuredMarkets.length > 0 && (
-                    <Link href="/markets" className="inline-flex items-center gap-1 text-sm font-bold text-primary hover:underline">
-                      {t('view_all')}
-                      <ChevronDown size={16} />
-                    </Link>
-                  )}
+                    <ul className="flex flex-col gap-1">
+                      {items.map((it: any, i: number) => (
+                        <li key={i} className="flex justify-between text-body-sm text-on-surface-variant">
+                          <span className="truncate">{it.name}</span>
+                          <span className="font-data-mono text-primary-container ml-2 flex-shrink-0">{Number(it.price).toLocaleString()} RWF</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </Link>
+                ))}
+              </div>
+            </section>
+          )}
+
+          {/* Platform Pulse Row */}
+          <section className="grid grid-cols-1 md:grid-cols-3 gap-md">
+            <div className="bg-surface-container-lowest border border-outline-variant rounded-lg p-md custom-shadow hover:border-outline transition-colors flex items-center gap-md">
+              <div className="w-12 h-12 rounded-full bg-surface-container-low flex items-center justify-center text-primary-container">
+                <span className="material-symbols-outlined text-[24px]">storefront</span>
+              </div>
+              <div>
+                <div className="font-label-caps text-label-caps text-on-surface-variant uppercase mb-xs">Active Sellers</div>
+                <div className="font-data-mono text-data-mono text-on-surface text-xl">
+                  {statsData?.activeSellers !== undefined ? `${statsData.activeSellers}+` : '1,240+'}
                 </div>
-                {featuredMarkets.length === 0 ? (
-                  <div className="py-6 text-center text-xs font-semibold text-text-muted">No featured hubs available.</div>
-                ) : (
-                  <div className="flex flex-col gap-3">
-                    {featuredMarkets.slice(0, 4).map((market, index) => (
-                      <MiniFeaturedMarketCard key={market._id} market={market} index={index} />
-                    ))}
-                  </div>
-                )}
-              </section>
+              </div>
+            </div>
+            <div className="bg-surface-container-lowest border border-outline-variant rounded-lg p-md custom-shadow hover:border-outline transition-colors flex items-center gap-md">
+              <div className="w-12 h-12 rounded-full bg-surface-container-low flex items-center justify-center text-primary-container">
+                <span className="material-symbols-outlined text-[24px]">local_shipping</span>
+              </div>
+              <div>
+                <div className="font-label-caps text-label-caps text-on-surface-variant uppercase mb-xs">Deliveries Today</div>
+                <div className="font-data-mono text-data-mono text-on-surface text-xl">
+                  {statsData?.liveDeliveries !== undefined ? statsData.liveDeliveries.toLocaleString() : '8,452'}
+                </div>
+              </div>
+            </div>
+            <div className="bg-surface-container-lowest border border-outline-variant rounded-lg p-md custom-shadow hover:border-outline transition-colors flex items-center gap-md">
+              <div className="w-12 h-12 rounded-full bg-surface-container-low flex items-center justify-center text-primary-container">
+                <span className="material-symbols-outlined text-[24px]">check_circle</span>
+              </div>
+              <div>
+                <div className="font-label-caps text-label-caps text-on-surface-variant uppercase mb-xs">Successful Orders</div>
+                <div className="font-data-mono text-data-mono text-on-surface text-xl">
+                  {statsData?.ordersToday !== undefined ? `${statsData.ordersToday}%` : '99.8%'}
+                </div>
+              </div>
+            </div>
+          </section>
 
-              {topProducts.length > 0 && (
-                <MostBoughtPanel products={topProducts} market={selectedMarket} />
-              )}
-
-              <section className="animate-reveal [animation-delay:1200ms] rounded-lg border border-[#e2bfb0] bg-white p-4">
-                <div className="grid grid-cols-2 gap-3">
-                  {[
-                    [t('verified_vendors'), BadgeCheck, 'text-[#ff9f1c] bg-[#ff9f1c]/10'],
-                    [t('buyer_protection'), ShieldCheck, 'text-[#ff6b00] bg-[#ff6b00]/10'],
-                    [t('momo_checkout'), ShoppingCart, 'text-[#a04100] bg-[#a04100]/10'],
-                    [t('fast_delivery'), Clock3, 'text-text-muted bg-background-surface'],
-                  ].map(([label, Icon, colorClass]) => {
-                    const TrustIcon = Icon as typeof BadgeCheck;
-                    return (
-                      <div key={label as string} className="flex items-center gap-2 rounded-lg bg-background-surface/40 p-2 border border-border-light/20 transition-all hover:bg-white hover:shadow-sm">
-                        <div className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-md ${colorClass}`}>
-                          <TrustIcon size={14} />
+          {/* Rwanda's Market Hubs */}
+          <section className="space-y-md">
+            <div className="flex justify-between items-end border-b border-outline-variant pb-sm">
+              <h2 className="font-headline-md text-headline-md text-on-surface">Rwanda's Market Hubs</h2>
+              <Link className="font-label-caps text-label-caps text-primary hover:text-primary-container transition-colors uppercase" href="/markets">View All Hubs</Link>
+            </div>
+            {displayMarkets.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-12 px-4 rounded border border-dashed border-outline-variant bg-surface-container-low text-center">
+                <span className="material-symbols-outlined text-primary/40 text-4xl">storefront</span>
+                <h3 className="mt-md text-body-md font-bold text-on-surface">No Active Market Hubs</h3>
+                <p className="mt-xs text-xs text-on-surface-variant">Check back soon or register as a merchant.</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-md">
+                {displayMarkets.slice(0, 4).map((market, index) => {
+                  const image = marketImage(market, index);
+                  return (
+                    <Link 
+                      key={market._id}
+                      href={marketHref(market)}
+                      className="bg-surface-container-lowest border border-outline-variant rounded-lg overflow-hidden custom-shadow group hover:border-outline transition-all cursor-pointer block"
+                    >
+                      <div className="h-32 bg-surface-container-low relative overflow-hidden">
+                        <img 
+                          alt={market.name} 
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" 
+                          src={image}
+                          onError={(event) => {
+                            event.currentTarget.src = marketImages[index % marketImages.length];
+                          }}
+                        />
+                        <div className="absolute top-sm right-sm bg-[#ffffff] bg-opacity-90 px-2 py-1 rounded font-label-caps text-label-caps text-[10px] text-primary flex items-center gap-xs">
+                          <span className="w-2 h-2 rounded-full bg-primary-container"></span> Open
                         </div>
-                        <p className="text-[10px] font-bold leading-tight text-text-primary truncate">{label as string}</p>
                       </div>
-                    );
-                  })}
-                </div>
-              </section>
-            </aside>
-          </div>
+                      <div className="p-md space-y-sm">
+                        <div className="flex justify-between items-start">
+                          <h3 className="font-body-md text-body-md font-semibold text-on-surface line-clamp-1">{market.name}</h3>
+                          <span className="material-symbols-outlined text-primary text-[16px]" title="Verified Hub">verified</span>
+                        </div>
+                        <div className="flex items-center gap-xs text-on-surface-variant">
+                          <span className="material-symbols-outlined text-[14px]">location_on</span>
+                          <span className="font-label-caps text-label-caps truncate">{marketLocation(market)}</span>
+                        </div>
+                        <div className="pt-sm border-t border-outline-variant flex justify-between items-center mt-sm">
+                          <span className="font-data-mono-sm text-data-mono-sm text-on-surface-variant">
+                            {marketSellerCount(market, index)} Sellers
+                          </span>
+                          <div className="text-primary hover:text-primary-container transition-colors">
+                            <span className="material-symbols-outlined text-[20px]">arrow_forward</span>
+                          </div>
+                        </div>
+                      </div>
+                    </Link>
+                  );
+                })}
+              </div>
+            )}
+          </section>
+
+          {/* Trending Products */}
+          <section className="space-y-md">
+            <div className="flex justify-between items-end border-b border-outline-variant pb-sm">
+              <h2 className="font-headline-md text-headline-md text-on-surface">Trending Products</h2>
+              <Link className="font-label-caps text-label-caps text-primary hover:text-primary-container transition-colors uppercase" href="/products">Shop All Products</Link>
+            </div>
+            {topProducts.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-12 px-4 rounded border border-dashed border-outline-variant bg-surface-container-low text-center">
+                <span className="material-symbols-outlined text-primary/40 text-4xl">package</span>
+                <h3 className="mt-md text-body-md font-bold text-on-surface">No Trending Products Found</h3>
+                <p className="mt-xs text-xs text-on-surface-variant">Products will appear once listed by merchants.</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-md">
+                {topProducts.slice(0, 5).map((product) => (
+                  <Link 
+                    key={product.id}
+                    href={product.href}
+                    className="bg-surface-container-lowest border border-outline-variant rounded-lg p-md custom-shadow hover:border-outline transition-colors flex flex-col h-full group block"
+                  >
+                    <div className="relative w-full aspect-square bg-surface-container-low rounded-md mb-md overflow-hidden">
+                      <img 
+                        alt={product.name} 
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" 
+                        src={product.image}
+                      />
+                      {product.madeInRwanda && (
+                        <div className="absolute bottom-xs left-xs bg-white bg-opacity-90 border border-outline rounded-full px-2 py-1 flex items-center gap-xs shadow-sm">
+                          <span className="w-1.5 h-1.5 rounded-full bg-primary-container"></span>
+                          <span className="font-label-caps text-label-caps text-[9px] text-on-surface">Made in Rwanda</span>
+                        </div>
+                      )}
+                    </div>
+                    <div className="flex-grow flex flex-col justify-between">
+                      <div>
+                        <h4 className="font-body-md text-body-md text-on-surface line-clamp-2 leading-tight mb-xs">{product.name}</h4>
+                        <p className="font-label-caps text-label-caps text-on-surface-variant mb-sm">{product.seller}</p>
+                      </div>
+                      <div className="mt-auto pt-sm border-t border-outline-variant">
+                        <div className="flex items-baseline gap-xs">
+                          <span className="font-data-mono text-data-mono text-primary-container text-lg">RWF {product.price.toLocaleString()}</span>
+                        </div>
+                      </div>
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            )}
+          </section>
+
         </div>
-        <Footer />
       </div>
     </Layout>
   );

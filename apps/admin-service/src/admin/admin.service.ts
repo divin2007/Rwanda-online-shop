@@ -15,8 +15,87 @@ export class AdminService {
     @InjectModel('SupportTicket') private supportTicketModel: Model<any>,
     @InjectModel('SellerVideo') private sellerVideoModel: Model<any>,
     @InjectModel('NotificationLog') private notificationLogModel: Model<any>,
-    @InjectModel('LedgerEntry') private ledgerModel: Model<any>
+    @InjectModel('LedgerEntry') private ledgerModel: Model<any>,
+    @InjectModel('User') private userModel: Model<any>,
+    @InjectModel('ExportInquiry') private exportInquiryModel: Model<any>,
+    @InjectModel('B2BAccount') private b2bAccountModel: Model<any>
   ) {}
+
+  // ── B2B account verification (Feature 7) ─────────────────────────────────
+  async listB2bAccounts(isVerified?: string): Promise<any[]> {
+    const q: any = { deletedAt: null };
+    if (isVerified === 'true') q.isVerified = true;
+    else if (isVerified === 'false') q.isVerified = false;
+    return this.b2bAccountModel.find(q).sort({ createdAt: -1 }).lean().exec();
+  }
+
+  async verifyB2bAccount(id: string, creditLimit?: number, verifiedBy?: string): Promise<any> {
+    if (!mongoose.Types.ObjectId.isValid(id)) throw new NotFoundException('Invalid account id');
+    const update: any = { isVerified: true, verifiedAt: new Date() };
+    if (creditLimit !== undefined) {
+      const limit = Number(creditLimit);
+      update.creditLimit = Number.isFinite(limit) && limit >= 0
+        ? Math.round(limit)
+        : Number(process.env.B2B_CREDIT_DEFAULT_LIMIT || 500000);
+    } else {
+      update.creditLimit = Number(process.env.B2B_CREDIT_DEFAULT_LIMIT || 500000);
+    }
+    if (verifiedBy && mongoose.Types.ObjectId.isValid(verifiedBy)) update.verifiedBy = verifiedBy;
+    const account = await this.b2bAccountModel.findByIdAndUpdate(id, { $set: update }, { new: true }).lean().exec();
+    if (!account) throw new NotFoundException('B2B account not found');
+    return account;
+  }
+
+  // ── Export Facilitation admin management (Feature 9) ─────────────────────
+  async listExportBuyers(): Promise<any> {
+    // Verified export buyers + unverified users who have submitted inquiries.
+    const verified = await this.userModel
+      .find({ isExportBuyer: true, deletedAt: null })
+      .select('_id fullName email phone isExportBuyer exportBuyerVerifiedAt')
+      .lean()
+      .exec();
+
+    const inquirerIds = await this.exportInquiryModel.distinct('exportBuyerUserId');
+    const unverified = await this.userModel
+      .find({ _id: { $in: inquirerIds }, isExportBuyer: { $ne: true }, deletedAt: null })
+      .select('_id fullName email phone isExportBuyer')
+      .lean()
+      .exec();
+
+    return { verified, unverified };
+  }
+
+  async verifyExportBuyer(userId: string): Promise<any> {
+    if (!mongoose.Types.ObjectId.isValid(userId)) {
+      throw new NotFoundException('Invalid user id');
+    }
+    const user = await this.userModel.findByIdAndUpdate(
+      userId,
+      { $set: { isExportBuyer: true, exportBuyerVerifiedAt: new Date() } },
+      { new: true },
+    ).select('_id fullName isExportBuyer exportBuyerVerifiedAt').lean().exec();
+    if (!user) throw new NotFoundException('User not found');
+    return user;
+  }
+
+  async listExportInquiries(status?: string): Promise<any[]> {
+    const q: any = {};
+    if (status) q.status = status;
+    return this.exportInquiryModel.find(q).sort({ createdAt: -1 }).lean().exec();
+  }
+
+  async updateExportInquiry(id: string, body: { status?: string; adminNotes?: string; handledBy?: string }): Promise<any> {
+    if (!mongoose.Types.ObjectId.isValid(id)) throw new NotFoundException('Invalid inquiry id');
+    const update: any = {};
+    if (body.status && ['pending', 'in_review', 'fulfilled', 'rejected'].includes(body.status)) {
+      update.status = body.status;
+    }
+    if (body.adminNotes !== undefined) update.adminNotes = String(body.adminNotes).slice(0, 2000);
+    if (body.handledBy && mongoose.Types.ObjectId.isValid(body.handledBy)) update.handledBy = body.handledBy;
+    const inquiry = await this.exportInquiryModel.findByIdAndUpdate(id, { $set: update }, { new: true }).lean().exec();
+    if (!inquiry) throw new NotFoundException('Inquiry not found');
+    return inquiry;
+  }
 
   private async resolveSellerProfile(sellerId: string): Promise<any | null> {
     if (!sellerId || !mongoose.Types.ObjectId.isValid(sellerId)) {
@@ -192,9 +271,17 @@ export class AdminService {
         failedLedgerEntries: recentLedgerFailures,
       },
       readiness: {
-        paypackCashinConfigured: Boolean(process.env.PAYPACK_CLIENT_ID && process.env.PAYPACK_CLIENT_SECRET),
-        paypackWebhookConfigured: Boolean(process.env.PAYPACK_WEBHOOK_SECRET),
-        paypackSettlementConfigured: Boolean(process.env.PAYPACK_PLATFORM_PHONE || process.env.RMF_PLATFORM_MOMO_NUMBER || process.env.PLATFORM_MOMO_NUMBER),
+        mtnCollectionConfigured: Boolean(
+          process.env.MTN_MOMO_COLLECTION_API_KEY &&
+          process.env.MTN_MOMO_COLLECTION_USER_ID &&
+          process.env.MTN_MOMO_COLLECTION_API_SECRET,
+        ),
+        mtnDisbursementConfigured: Boolean(
+          process.env.MTN_MOMO_DISBURSEMENT_API_KEY &&
+          process.env.MTN_MOMO_DISBURSEMENT_USER_ID &&
+          process.env.MTN_MOMO_DISBURSEMENT_API_SECRET,
+        ),
+        mtnCallbackConfigured: Boolean(process.env.MTN_MOMO_CALLBACK_URL),
         smsConfigured: Boolean(process.env.SMS_WEBHOOK_URL),
         whatsappConfigured: Boolean(process.env.WHATSAPP_WEBHOOK_URL),
         smtpConfigured: Boolean(process.env.SMTP_HOST),

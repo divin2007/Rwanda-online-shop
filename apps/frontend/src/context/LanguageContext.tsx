@@ -266,7 +266,7 @@ const translations = {
     how_it_works_title: 'How It Works',
     how_it_works_subtitle: 'Simple, fast, and reliable — from your local market to your door.',
     step_1_title: '1. Place Your Order',
-    step_1_desc: 'Browse products, add to cart, and pay with MTN MoMo or Airtel Money.',
+    step_1_desc: 'Browse products, add to cart, and pay with MTN MoMo.',
     step_2_title: '2. Seller Prepares',
     step_2_desc: 'Your verified seller gets the notification and prepares your order.',
     step_3_title: '3. Fast Delivery',

@@ -1666,7 +1666,7 @@ export class ProductService implements OnModuleInit {
     const rows = await this.productModel
       .find(match, { score: { $meta: 'textScore' } })
       .select('-auditTrail')
-      .populate('sellerId', 'stallName shopDetails rating totalOrders userId marketId')
+      .populate('sellerId', 'stallName shopDetails rating totalOrders userId marketId premiumTier premiumUntil spotlightScore isPremium')
       .populate('marketId', 'name slug code location imageUrl spotlightScore premiumTier')
       .sort({ score: { $meta: 'textScore' } })
       .limit(200)
@@ -1683,11 +1683,24 @@ export class ProductService implements OnModuleInit {
       const ratingScore = Math.max(0, Math.min(1, sellerRating / 5));
       const ageMs = now - new Date(p.createdAt || now).getTime();
       const recencyScore = ageMs <= SEVEN_DAYS ? 1 : Math.max(0, 1 - (ageMs - SEVEN_DAYS) / (90 * 24 * 60 * 60 * 1000));
-      // Seller's market spotlightScore (0..100) contributes at most 0.10.
-      const premiumBoostFromSeller = Math.min(0.1, (Number(p.marketId?.spotlightScore || 0) / 100) * 0.1);
+      const sellerPremiumActive = Boolean(
+        p.sellerId?.isPremium &&
+        p.sellerId?.premiumTier !== 'none' &&
+        (!p.sellerId?.premiumUntil || new Date(p.sellerId.premiumUntil) > new Date())
+      );
+      const marketPremiumActive = Boolean(
+        p.marketId?.premiumTier &&
+        p.marketId?.premiumTier !== 'none'
+      );
+      // Seller and market spotlight scores (0..100) contribute at most 0.10.
+      const premiumScore = Math.max(
+        sellerPremiumActive ? Number(p.sellerId?.spotlightScore || 0) : 0,
+        marketPremiumActive ? Number(p.marketId?.spotlightScore || 0) : 0,
+      );
+      const premiumBoostFromSeller = Math.min(0.1, (premiumScore / 100) * 0.1);
       const rankScore =
         textRelevance * 0.5 + ratingScore * 0.3 + recencyScore * 0.1 + premiumBoostFromSeller;
-      return { ...this.withCatalogMetadata(p), rankScore };
+      return { ...this.withCatalogMetadata(p), rankScore, isSponsored: premiumBoostFromSeller > 0 };
     });
 
     let ordered: any[];
@@ -1707,7 +1720,10 @@ export class ProductService implements OnModuleInit {
         ordered = scored.sort((a, b) => Number(b.rating || 0) - Number(a.rating || 0));
         break;
       default:
-        ordered = scored.sort((a, b) => b.rankScore - a.rankScore);
+        ordered = scored.sort((a, b) => {
+          if (a.isSponsored !== b.isSponsored) return a.isSponsored ? -1 : 1;
+          return b.rankScore - a.rankScore;
+        });
     }
 
     const enriched = await this.enrichWithPromotions(ordered);

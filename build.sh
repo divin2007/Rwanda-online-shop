@@ -33,6 +33,6 @@ npm run build --workspace @rmf/auth
 
 # Build the specific service AND all its internal workspace dependencies.
 echo "Running turbo build for $SERVICE (with dependencies)..."
-npx turbo run build --filter=$SERVICE...
+npx turbo run build --filter=./apps/$SERVICE...
 
 echo "--- BUILD COMPLETE: $SERVICE ---"

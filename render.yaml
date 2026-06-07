@@ -16,8 +16,14 @@ services:
         sync: false
       - key: JWT_SECRET
         generateValue: true
+      - key: JWT_REFRESH_SECRET
+        sync: false
       - key: INTERNAL_SERVICE_SECRET
         generateValue: true
+      - key: ADMIN_EMAIL
+        sync: false
+      - key: DISABLE_MOCK_AUTH
+        value: "true"
       - key: CORS_ORIGIN
         value: "https://www.rwshop.org,https://rwshop.org,https://rmf-frontend.onrender.com"
       - key: FRONTEND_URL
@@ -58,6 +64,8 @@ services:
           envVarKey: JWT_SECRET
       - key: CORS_ORIGIN
         value: "https://www.rwshop.org,https://rwshop.org,https://rmf-frontend.onrender.com"
+      - key: DISABLE_MOCK_AUTH
+        value: "true"
       - key: MARKET_SERVICE_PUBLIC_URL
         value: "https://rmf-market-service.onrender.com"
       - key: PRODUCT_SERVICE_PUBLIC_URL
@@ -113,6 +121,8 @@ services:
           envVarKey: INTERNAL_SERVICE_SECRET
       - key: CORS_ORIGIN
         value: "https://www.rwshop.org,https://rwshop.org,https://rmf-frontend.onrender.com"
+      - key: DISABLE_MOCK_AUTH
+        value: "true"
       - key: PRODUCT_SERVICE_PUBLIC_URL
         value: "https://rmf-product-service.onrender.com"
       - key: MARKET_SERVICE_PUBLIC_URL
@@ -160,12 +170,24 @@ services:
           envVarKey: INTERNAL_SERVICE_SECRET
       - key: CORS_ORIGIN
         value: "https://www.rwshop.org,https://rwshop.org,https://rmf-frontend.onrender.com"
+      - key: DISABLE_MOCK_AUTH
+        value: "true"
       - key: USER_SERVICE_URL
         value: "https://rmf-user-service.onrender.com/api/v1"
       - key: NOTIFICATION_SERVICE_URL
         value: "https://rmf-notification-service.onrender.com/api/v1"
       - key: SELLER_SERVICE_PUBLIC_URL
         value: "https://rmf-seller-service.onrender.com"
+      - key: LIVE_STREAM_PROVIDER
+        value: "none"
+      - key: CLOUDFLARE_STREAM_TOKEN
+        sync: false
+      - key: CLOUDFLARE_ACCOUNT_ID
+        sync: false
+      - key: MUX_TOKEN_ID
+        sync: false
+      - key: MUX_TOKEN_SECRET
+        sync: false
       - key: GEOCODER_PROVIDER
         value: "auto"
       - key: MAPBOX_ACCESS_TOKEN
@@ -203,6 +225,8 @@ services:
           envVarKey: INTERNAL_SERVICE_SECRET
       - key: CORS_ORIGIN
         value: "https://www.rwshop.org,https://rwshop.org,https://rmf-frontend.onrender.com"
+      - key: DISABLE_MOCK_AUTH
+        value: "true"
       - key: USER_SERVICE_URL
         value: "https://rmf-user-service.onrender.com/api/v1"
       - key: NOTIFICATION_SERVICE_URL
@@ -258,42 +282,44 @@ services:
         value: "https://rmf-market-service.onrender.com/api/v1"
       - key: NOTIFICATION_SERVICE_URL
         value: "https://rmf-notification-service.onrender.com/api/v1"
-      - key: PAYPACK_CLIENT_ID
+      - key: MTN_MOMO_COLLECTION_API_KEY
         sync: false
-      - key: PAYPACK_CLIENT_SECRET
+      - key: MTN_MOMO_COLLECTION_USER_ID
         sync: false
-      - key: PAYPACK_BASE_URL
-        value: "https://payments.paypack.rw/api"
-      - key: PAYPACK_WEBHOOK_MODE
-        value: production
-      - key: PAYPACK_WEBHOOK_SECRET
+      - key: MTN_MOMO_COLLECTION_API_SECRET
         sync: false
-      - key: PAYPACK_AUTO_CONFIRM
-        value: "false"
-      - key: PAYPACK_PLATFORM_PHONE
+      - key: MTN_MOMO_DISBURSEMENT_API_KEY
         sync: false
-      - key: ALLOW_LEGACY_PAYMENT_GATEWAYS
-        value: "false"
-      - key: MTN_MOMO_API_KEY
+      - key: MTN_MOMO_DISBURSEMENT_USER_ID
         sync: false
-      - key: MTN_MOMO_USER_ID
-        sync: false
-      - key: MTN_MOMO_API_SECRET
+      - key: MTN_MOMO_DISBURSEMENT_API_SECRET
         sync: false
       - key: MTN_MOMO_TARGET_ENV
         value: mtnrwanda
-      - key: AIRTEL_MONEY_API_KEY
+      - key: MTN_MOMO_BASE_URL
+        value: "https://proxy.momoapi.mtn.com"
+      - key: MTN_MOMO_CALLBACK_URL
+        value: "https://rmf-order-service.onrender.com/api/v1/orders/payment/mtn/callback"
+      - key: MTN_MOMO_CURRENCY
+        value: RWF
+      - key: ADMIN_USER_ID
         sync: false
-      - key: AIRTEL_MONEY_SECRET
-        sync: false
-      - key: AIRTEL_MONEY_TARGET_ENV
-        value: production
+      - key: DISABLE_MOCK_AUTH
+        value: "true"
       - key: FRAUD_HIGH_VALUE_THRESHOLD
         value: "2000000"
       - key: DELIVERY_FEE_PER_5KM
         value: "500"
       - key: AUTO_CONFIRM_PAYMENTS
         value: "false"
+      - key: B2B_CREDIT_DEFAULT_LIMIT
+        value: "500000"
+      - key: AFFILIATE_MAX_COMMISSION_RATE
+        value: "15"
+      - key: FRONTEND_PUBLIC_URL
+        value: "https://www.rwshop.org"
+      - key: INVOICE_GCS_BUCKET
+        sync: false
       - key: GEOCODER_PROVIDER
         value: "auto"
       - key: OPENCAGE_API_KEY
@@ -329,6 +355,22 @@ services:
           envVarKey: INTERNAL_SERVICE_SECRET
       - key: CORS_ORIGIN
         value: "https://www.rwshop.org,https://rwshop.org,https://rmf-frontend.onrender.com"
+      - key: MTN_MOMO_DISBURSEMENT_API_KEY
+        sync: false
+      - key: MTN_MOMO_DISBURSEMENT_USER_ID
+        sync: false
+      - key: MTN_MOMO_DISBURSEMENT_API_SECRET
+        sync: false
+      - key: MTN_MOMO_TARGET_ENV
+        value: mtnrwanda
+      - key: MTN_MOMO_BASE_URL
+        value: "https://proxy.momoapi.mtn.com"
+      - key: MTN_MOMO_CURRENCY
+        value: RWF
+      - key: ESCROW_RELEASE_DELAY_HOURS
+        value: "24"
+      - key: DISABLE_MOCK_AUTH
+        value: "true"
 
   - type: web
     name: rmf-delivery-service
@@ -362,6 +404,8 @@ services:
         value: "https://www.rwshop.org,https://rwshop.org,https://rmf-frontend.onrender.com"
       - key: ALLOWED_ORIGINS
         value: "https://www.rwshop.org,https://rwshop.org,https://rmf-frontend.onrender.com"
+      - key: DISABLE_MOCK_AUTH
+        value: "true"
       - key: DELIVERY_SERVICE_PUBLIC_URL
         value: "https://rmf-delivery-service.onrender.com"
       - key: ORDER_SERVICE_URL
@@ -405,6 +449,8 @@ services:
           envVarKey: INTERNAL_SERVICE_SECRET
       - key: CORS_ORIGIN
         value: "https://www.rwshop.org,https://rwshop.org,https://rmf-frontend.onrender.com"
+      - key: DISABLE_MOCK_AUTH
+        value: "true"
       - key: SENDGRID_API_KEY
         sync: false
       - key: SMTP_HOST
@@ -445,6 +491,8 @@ services:
           envVarKey: JWT_SECRET
       - key: CORS_ORIGIN
         value: "https://www.rwshop.org,https://rwshop.org,https://rmf-frontend.onrender.com"
+      - key: DISABLE_MOCK_AUTH
+        value: "true"
 
   - type: web
     name: rmf-admin-service
@@ -476,6 +524,14 @@ services:
           type: web
           name: rmf-user-service
           envVarKey: INTERNAL_SERVICE_SECRET
+      - key: DISABLE_MOCK_AUTH
+        value: "true"
+      - key: PRICE_INDEX_COMPUTE_ENABLED
+        value: "true"
+      - key: SELLER_TIER_COMPUTE_ENABLED
+        value: "true"
+      - key: NOTIFICATION_SERVICE_URL
+        value: "https://rmf-notification-service.onrender.com/api/v1"
       - key: GEOCODER_PROVIDER
         value: "auto"
       - key: MAPBOX_ACCESS_TOKEN
@@ -522,3 +578,11 @@ services:
         value: "https://rmf-admin-service.onrender.com"
       - key: NEXT_PUBLIC_API_MAX_RETRIES
         value: "3"
+      - key: NEXT_PUBLIC_LIVE_STREAM_PROVIDER
+        value: "none"
+      - key: NEXT_PUBLIC_AFFILIATE_ENABLED
+        value: "true"
+      - key: NEXT_PUBLIC_B2B_ENABLED
+        value: "true"
+      - key: NEXT_PUBLIC_EXPORT_ENABLED
+        value: "true"

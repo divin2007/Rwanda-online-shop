@@ -32,6 +32,7 @@ const navByRole: Record<OperationalRole, OperationalNavItem[]> = {
     { label: 'Dashboard', icon: 'dashboard', href: '/dashboard', section: 'dashboard' },
     { label: 'Markets', icon: 'storefront', href: '/markets', section: 'markets' },
     { label: 'Products', icon: 'inventory_2', href: '/products', section: 'products' },
+    { label: 'Riders', icon: 'two_wheeler', href: '/riders', section: 'riders' },
     { label: 'Orders', icon: 'shopping_cart', href: '/orders', section: 'orders' },
     { label: 'Disputes', icon: 'gavel', href: '/disputes', section: 'disputes' },
     { label: 'Messages', icon: 'chat', href: '/messages', section: 'messages' },

@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import { JetBrains_Mono, Work_Sans } from "next/font/google";
 import { Suspense } from "react";
 import "./globals.css";
 import { CartProvider } from "@/components/cart/CartContext";
@@ -8,18 +7,6 @@ import { LanguageProvider } from "@/context/LanguageContext";
 import { WishlistProvider } from "@/context/WishlistContext";
 import { TacticalToaster } from "@/components/ui/TacticalToaster";
 import { NavigationProgressBar } from "@/components/ui/NavigationProgressBar";
-
-const workSans = Work_Sans({
-  subsets: ["latin"],
-  variable: "--font-work-sans",
-  display: "swap",
-});
-
-const jetBrainsMono = JetBrains_Mono({
-  subsets: ["latin"],
-  variable: "--font-jetbrains-mono",
-  display: "swap",
-});
 
 export const metadata: Metadata = {
   title: "RMF | Rwanda Market Facilitator",
@@ -42,12 +29,16 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={`${workSans.variable} ${jetBrainsMono.variable}`}>
+    <html lang="en">
       <head>
         <link rel="apple-touch-icon" href="/icon-192.png" />
         <meta name="mobile-web-app-capable" content="yes" />
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />
+        <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Work+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+        <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=swap" rel="stylesheet" />
       </head>
-      <body className="antialiased font-sans bg-background-main text-text-primary">
+      <body className="antialiased bg-surface text-on-surface min-h-screen flex flex-col font-sans">
         <LanguageProvider>
           <AuthProvider>
             <CartProvider>

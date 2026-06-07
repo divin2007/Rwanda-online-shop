@@ -3,428 +3,396 @@ import axios from 'axios';
 import * as crypto from 'crypto';
 import { v4 as uuidv4 } from 'uuid';
 
-type PaymentProviderMethod = 'MTN_MOMO' | 'AIRTEL_MONEY' | 'TIGO_CASH';
-
-export interface ParsedPaypackWebhook {
+export interface ParsedMtnCallback {
   orderNumber?: string;
   transactionRef: string;
   status: 'SUCCESSFUL' | 'FAILED' | 'PENDING';
-  provider?: string;
+  financialTransactionId?: string;
   rawStatus?: string;
 }
 
-export interface PaypackCashoutRequest {
+export interface MtnDisbursementRequest {
   amount: number;
   phone: string;
   idempotencyKey: string;
   purpose: 'seller_payout' | 'rider_payout' | 'platform_commission' | 'buyer_refund';
 }
 
-export interface PaypackRefundRequest {
+export interface MtnRefundRequest {
   amount: number;
   phone: string;
   idempotencyKey: string;
   originalTransactionRef?: string;
 }
 
-export interface PaypackReadiness {
+export interface MtnReadiness {
   baseUrl: string;
-  webhookMode: string;
-  cashinConfigured: boolean;
-  webhookConfigured: boolean;
-  settlementConfigured: boolean;
+  targetEnv: string;
+  collectionConfigured: boolean;
+  disbursementConfigured: boolean;
+  callbackConfigured: boolean;
   productionSafe: boolean;
   missing: string[];
-  webhookPath: string;
+  callbackPath: string;
+}
+
+/**
+ * Normalize a Rwandan mobile money number to MTN MoMo MSISDN format (2507XXXXXXXX, 12 digits).
+ * Accepts 07XXXXXXXX, 2507XXXXXXXX, +2507XXXXXXXX, 7XXXXXXXX.
+ */
+export function normalizeMomoPhone(phone?: string): string {
+  const digits = String(phone || '').replace(/\D/g, '');
+  if (digits.startsWith('2507') && digits.length === 12) return digits;
+  if (digits.startsWith('07') && digits.length === 10) return '250' + digits.slice(1);
+  if (digits.startsWith('7') && digits.length === 9) return '250' + digits;
+  throw new Error('Invalid Rwanda phone number');
 }
 
 @Injectable()
 export class PaymentService {
   private readonly logger = new Logger(PaymentService.name);
 
-  private paypackAccessToken?: { token: string; expiresAt: number };
-
-  private readonly paypackConfig = {
-    clientId: process.env.PAYPACK_CLIENT_ID,
-    clientSecret: process.env.PAYPACK_CLIENT_SECRET,
-    baseUrl: process.env.PAYPACK_BASE_URL || 'https://payments.paypack.rw/api',
-    webhookMode: process.env.PAYPACK_WEBHOOK_MODE || (process.env.NODE_ENV === 'production' ? 'production' : 'development'),
+  private readonly collectionConfig = {
+    apiKey: process.env.MTN_MOMO_COLLECTION_API_KEY,
+    userId: process.env.MTN_MOMO_COLLECTION_USER_ID,
+    apiSecret: process.env.MTN_MOMO_COLLECTION_API_SECRET,
   };
 
-  private readonly momoConfig = {
-    apiKey: process.env.MTN_MOMO_API_KEY,
-    userId: process.env.MTN_MOMO_USER_ID,
-    apiSecret: process.env.MTN_MOMO_API_SECRET,
-    baseUrl: process.env.MTN_MOMO_TARGET_ENV === 'sandbox'
+  private readonly disbursementConfig = {
+    apiKey: process.env.MTN_MOMO_DISBURSEMENT_API_KEY,
+    userId: process.env.MTN_MOMO_DISBURSEMENT_USER_ID,
+    apiSecret: process.env.MTN_MOMO_DISBURSEMENT_API_SECRET,
+  };
+
+  private collectionToken?: { token: string; expiresAt: number };
+  private disbursementToken?: { token: string; expiresAt: number };
+
+  private get baseUrl(): string {
+    if (process.env.MTN_MOMO_BASE_URL) return process.env.MTN_MOMO_BASE_URL;
+    return process.env.MTN_MOMO_TARGET_ENV === 'sandbox'
       ? 'https://sandbox.momodeveloper.mtn.com'
-      : 'https://proxy.momoapi.mtn.com',
-    targetEnv: process.env.MTN_MOMO_TARGET_ENV || 'mtnrwanda'
-  };
+      : 'https://proxy.momoapi.mtn.com';
+  }
 
-  private readonly airtelConfig = {
-    apiKey: process.env.AIRTEL_MONEY_API_KEY,
-    secret: process.env.AIRTEL_MONEY_SECRET,
-    baseUrl: process.env.AIRTEL_MONEY_TARGET_ENV === 'sandbox'
-      ? 'https://openapiuat.airtel.africa'
-      : 'https://openapi.airtel.africa',
-  };
+  private get targetEnv(): string {
+    return process.env.MTN_MOMO_TARGET_ENV || 'mtnrwanda';
+  }
+
+  private get currency(): string {
+    return process.env.MTN_MOMO_CURRENCY || 'RWF';
+  }
+
+  // ── Public entry points (caller-facing names preserved) ──────────────────
 
   async requestPaymentPrompt(order: any): Promise<{ success: boolean; transactionId?: string; error?: string }> {
-    // CRITICAL: Auto-confirm must NEVER activate in production.
-    // The .env file may have AUTO_CONFIRM_PAYMENTS=true for local dev,
-    // but this must be gated behind NODE_ENV !== 'production'.
+    // Auto-confirm dev bypass. NEVER active in production.
     const isNotProduction = process.env.NODE_ENV !== 'production';
     const shouldAutoConfirm = isNotProduction && (
       process.env.AUTO_CONFIRM_PAYMENTS === 'true' ||
-      (process.env.PAYPACK_WEBHOOK_MODE === 'development' && process.env.PAYPACK_AUTO_CONFIRM === 'true')
+      process.env.MTN_MOMO_TARGET_ENV === 'sandbox'
     );
 
     if (shouldAutoConfirm) {
-      this.logger.log(`[SANDBOX] Dev mode intercepted. Bypassing real payment gateway for order ${order.orderNumber}.`);
+      this.logger.log(`[SANDBOX] MTN MoMo dev mode intercepted. Bypassing real gateway for order ${order.orderNumber}.`);
       return { success: true, transactionId: 'DEV-AUTO-REF-' + Date.now() };
     }
 
-    const method = (order.payment?.method || 'MTN_MOMO') as PaymentProviderMethod;
-
-    if (this.isPaypackConfigured()) {
-      return this.requestPaypackPayment(order, method);
-    }
-
-    if (process.env.NODE_ENV === 'production' || process.env.ALLOW_LEGACY_PAYMENT_GATEWAYS !== 'true') {
-      this.logger.error('Paypack credentials are missing and legacy gateways are disabled.');
-      return {
-        success: false,
-        error: 'Payment gateway is not configured. Please set PAYPACK_CLIENT_ID and PAYPACK_CLIENT_SECRET.'
-      };
-    }
-
-    this.logger.warn(`Paypack is not configured. Falling back to legacy ${method} gateway in non-production mode.`);
-    switch (method) {
-      case 'AIRTEL_MONEY':
-      case 'TIGO_CASH':
-        return this.requestAirtelPayment(order);
-      case 'MTN_MOMO':
-      default:
-        return this.requestMtnPayment(order);
-    }
+    return this.requestMtnCollectionPayment(order);
   }
 
-  async getPaymentStatus(referenceId: string, method?: string): Promise<{ status: string; transactionId?: string }> {
-    // CRITICAL: Auto-confirm must NEVER activate in production.
+  async getPaymentStatus(referenceId: string, _method?: string): Promise<{ status: string; transactionId?: string }> {
     const isNotProduction = process.env.NODE_ENV !== 'production';
     const shouldAutoConfirmPayments = isNotProduction && process.env.AUTO_CONFIRM_PAYMENTS === 'true';
     if (shouldAutoConfirmPayments || referenceId?.startsWith('DEV-') || referenceId?.startsWith('SANDBOX-')) {
       return { status: 'SUCCESSFUL', transactionId: 'DEV-TX-' + referenceId };
     }
 
-    if (this.isPaypackReference(referenceId) || this.isPaypackConfigured()) {
-      return this.getPaypackPaymentStatus(referenceId);
-    }
-
-    switch (method) {
-      case 'AIRTEL_MONEY':
-      case 'TIGO_CASH':
-        return this.getAirtelPaymentStatus(referenceId);
-      case 'MTN_MOMO':
-      default:
-        return this.getMtnPaymentStatus(referenceId);
-    }
-  }
-
-  getPaypackReadiness(): PaypackReadiness {
-    const missing: string[] = [];
-    const clientId = process.env.PAYPACK_CLIENT_ID;
-    const clientSecret = process.env.PAYPACK_CLIENT_SECRET;
-    const webhookSecret = process.env.PAYPACK_WEBHOOK_SECRET || process.env.PAYPACK_WEBHOOK_SIGN_KEY;
-    const platformPhone = process.env.PAYPACK_PLATFORM_PHONE || process.env.RMF_PLATFORM_MOMO_NUMBER || process.env.PLATFORM_MOMO_NUMBER;
-
-    if (!clientId) missing.push('PAYPACK_CLIENT_ID');
-    if (!clientSecret) missing.push('PAYPACK_CLIENT_SECRET');
-    if (!webhookSecret) missing.push('PAYPACK_WEBHOOK_SECRET');
-    if (!platformPhone) missing.push('PAYPACK_PLATFORM_PHONE');
-
-    const cashinConfigured = Boolean(clientId && clientSecret);
-    const webhookConfigured = Boolean(webhookSecret);
-    const settlementConfigured = Boolean(platformPhone);
-
-    return {
-      baseUrl: this.paypackConfig.baseUrl,
-      webhookMode: this.paypackConfig.webhookMode,
-      cashinConfigured,
-      webhookConfigured,
-      settlementConfigured,
-      productionSafe: process.env.NODE_ENV !== 'production' || (cashinConfigured && webhookConfigured && settlementConfigured),
-      missing,
-      webhookPath: '/api/v1/orders/payment/paypack/callback',
-    };
-  }
-
-  verifyPaypackWebhook(body: any, headers: Record<string, any>, rawBody?: Buffer | string): boolean {
-    const signature = String(
-      headers?.['x-paypack-signature'] ||
-      headers?.['X-Paypack-Signature'] ||
-      headers?.['x-paypack-webhook-signature'] ||
-      headers?.['x-webhook-signature'] ||
-      headers?.['x-signature'] ||
-      body?.signature ||
-      ''
-    ).replace(/^sha256=/i, '').trim();
-    const secret = process.env.PAYPACK_WEBHOOK_SECRET || process.env.PAYPACK_WEBHOOK_SIGN_KEY;
-
-    if (!secret) {
-      if (process.env.NODE_ENV === 'production') {
-        this.logger.error('Missing PAYPACK_WEBHOOK_SECRET in production.');
-        return false;
-      }
-      this.logger.warn('PAYPACK_WEBHOOK_SECRET is not set. Accepting Paypack webhook only because this is not production.');
-      return true;
-    }
-
-    if (!signature) {
-      return false;
-    }
-
-    const bodyWithoutSignature = this.omitSignature(body);
-    const candidates = [
-      rawBody ? (Buffer.isBuffer(rawBody) ? rawBody : Buffer.from(rawBody)) : undefined,
-      Buffer.from(JSON.stringify(body)),
-      Buffer.from(this.stableStringify(body)),
-      Buffer.from(JSON.stringify(bodyWithoutSignature)),
-      Buffer.from(this.stableStringify(bodyWithoutSignature)),
-    ].filter(Boolean) as Buffer[];
-
-    return candidates.some(candidate => this.verifyHmacSha256(candidate, signature, secret));
-  }
-
-  parsePaypackWebhook(body: any): ParsedPaypackWebhook {
-    const data = body?.data || body?.transaction || body || {};
-    const ref = data?.ref || data?.reference || data?.transactionRef || data?.transaction_ref || body?.ref;
-    if (!ref) {
-      throw new Error('Paypack webhook is missing transaction reference');
-    }
-
-    const rawStatus = String(data?.status || body?.status || '').trim();
-    const orderNumber = data?.order_id || data?.orderNumber || data?.order_number || body?.orderNumber;
-
-    return {
-      orderNumber: orderNumber ? String(orderNumber) : undefined,
-      transactionRef: this.toPaypackReference(String(ref)),
-      status: this.normalizeGatewayStatus(rawStatus),
-      provider: data?.provider,
-      rawStatus,
-    };
-  }
-
-  isPaypackReference(referenceId?: string): boolean {
-    return Boolean(referenceId && referenceId.startsWith('PAYPACK:'));
-  }
-
-  async requestPaypackCashout(request: PaypackCashoutRequest): Promise<{ success: boolean; transactionId?: string; error?: string }> {
-    if (!this.isPaypackConfigured()) {
-      this.logger.error('Cannot create Paypack cashout because Paypack is not configured.');
-      return {
-        success: false,
-        error: 'Paypack is not configured. Set PAYPACK_CLIENT_ID and PAYPACK_CLIENT_SECRET.'
-      };
-    }
-
-    const amount = Math.round(Number(request.amount || 0));
-    const phone = this.normalizeRwandaPhoneForPaypack(request.phone);
-
-    if (!amount || amount <= 0) {
-      return { success: false, error: 'Cashout amount must be greater than zero' };
-    }
-
-    if (!/^07\d{8}$/.test(phone)) {
-      return { success: false, error: 'Use a valid Rwanda mobile money number, for example 078xxxxxxx.' };
-    }
-
-    const idempotencyKey = crypto
-      .createHash('sha256')
-      .update(String(request.idempotencyKey || uuidv4()))
-      .digest('hex')
-      .slice(0, 32);
-
-    this.logger.log(`Initiating Paypack cashout (${request.purpose}) for ${phone} - Amount: ${amount} RWF`);
-
     try {
-      const token = await this.getPaypackAccessToken();
-      const response = await axios.post(
-        `${this.paypackConfig.baseUrl}/transactions/cashout`,
-        {
-          amount,
-          number: phone,
-          environment: this.paypackConfig.webhookMode,
-        },
+      const token = await this.getCollectionToken();
+      const response = await axios.get(
+        `${this.baseUrl}/collection/v1_0/requesttopay/${referenceId}`,
         {
           headers: {
-            Accept: 'application/json',
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${token}`,
-            'Idempotency-Key': idempotencyKey,
-            'X-Webhook-Mode': this.paypackConfig.webhookMode,
-          },
-          timeout: 20000,
-        }
-      );
-
-      const ref = response.data?.ref || response.data?.data?.ref || response.data?.reference;
-      if (!ref) {
-        throw new Error('Paypack did not return a cashout reference');
-      }
-
-      this.logger.log(`Paypack cashout prompt sent successfully. Ref: ${ref}`);
-      return { success: true, transactionId: this.toPaypackReference(String(ref)) };
-    } catch (error: any) {
-      this.logger.error('Paypack cashout failed', error.response?.data || error.message);
-      return {
-        success: false,
-        error: error.response?.data?.message || error.response?.data?.error || 'Paypack cashout failed'
-      };
-    }
-  }
-
-  async requestPaypackRefund(request: PaypackRefundRequest): Promise<{ success: boolean; transactionId?: string; error?: string }> {
-    return this.requestPaypackCashout({
-      amount: request.amount,
-      phone: request.phone,
-      idempotencyKey: request.originalTransactionRef
-        ? `${request.idempotencyKey}:${this.stripPaypackPrefix(request.originalTransactionRef)}`
-        : request.idempotencyKey,
-      purpose: 'buyer_refund',
-    });
-  }
-
-  private isPaypackConfigured(): boolean {
-    return Boolean(this.paypackConfig.clientId && this.paypackConfig.clientSecret);
-  }
-
-  private async getPaypackAccessToken(): Promise<string> {
-    if (this.paypackAccessToken && this.paypackAccessToken.expiresAt > Date.now()) {
-      return this.paypackAccessToken.token;
-    }
-
-    try {
-      const response = await axios.post(
-        `${this.paypackConfig.baseUrl}/auth/agents/authorize`,
-        {
-          client_id: this.paypackConfig.clientId,
-          client_secret: this.paypackConfig.clientSecret,
-        },
-        {
-          headers: {
-            Accept: 'application/json',
-            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`,
+            'X-Target-Environment': this.targetEnv,
+            'Ocp-Apim-Subscription-Key': this.collectionConfig.apiKey,
           },
           timeout: 15000,
-        }
+        },
       );
 
-      const token = response.data?.access || response.data?.access_token || response.data?.token;
-      if (!token) {
-        throw new Error('Paypack response did not include an access token');
-      }
+      return {
+        status: this.normalizeGatewayStatus(response.data?.status),
+        transactionId: response.data?.financialTransactionId,
+      };
+    } catch (error: any) {
+      this.logger.error(`Failed to check MTN MoMo status for ${referenceId}`, error.response?.data || error.message);
+      return { status: 'ERROR' };
+    }
+  }
 
-      const expiresSeconds = Number(response.data?.expires) || 15 * 60;
-      this.paypackAccessToken = {
+  // ── Collections (buyer payment) ──────────────────────────────────────────
+
+  private async getCollectionToken(): Promise<string> {
+    if (this.collectionToken && this.collectionToken.expiresAt > Date.now()) {
+      return this.collectionToken.token;
+    }
+    const auth = Buffer
+      .from(`${this.collectionConfig.userId}:${this.collectionConfig.apiSecret}`)
+      .toString('base64');
+
+    try {
+      const response = await axios.post(
+        `${this.baseUrl}/collection/token/`,
+        {},
+        {
+          headers: {
+            'Authorization': `Basic ${auth}`,
+            'Ocp-Apim-Subscription-Key': this.collectionConfig.apiKey,
+          },
+          timeout: 15000,
+        },
+      );
+
+      const token = response.data?.access_token;
+      if (!token) throw new Error('MTN Collections response did not include an access token');
+      const expiresSeconds = Number(response.data?.expires_in) || 3600;
+      this.collectionToken = {
         token,
         expiresAt: Date.now() + Math.max(expiresSeconds - 60, 60) * 1000,
       };
-
       return token;
     } catch (error: any) {
-      this.logger.error('Failed to get Paypack access token', error.response?.data || error.message);
-      throw new Error('Paypack authentication failed');
+      this.logger.error('Failed to get MTN Collections access token', error.response?.data || error.message);
+      throw new Error('MTN MoMo collection authentication failed');
     }
   }
 
-  private async requestPaypackPayment(
-    order: any,
-    method: PaymentProviderMethod,
-  ): Promise<{ success: boolean; transactionId?: string; error?: string }> {
+  private async requestMtnCollectionPayment(order: any): Promise<{ success: boolean; transactionId?: string; error?: string }> {
     const amount = Math.round(Number(order.financials?.totalAmount || 0));
-    const phone = this.normalizeRwandaPhoneForPaypack(order.buyer?.phone);
-
     if (!amount || amount <= 0) {
       return { success: false, error: 'Order amount must be greater than zero' };
     }
 
-    if (!/^07\d{8}$/.test(phone)) {
+    let partyId: string;
+    try {
+      partyId = normalizeMomoPhone(order.buyer?.phone);
+    } catch {
       return { success: false, error: 'Use a valid Rwanda mobile money number, for example 078xxxxxxx.' };
     }
 
-    const idempotencyKey = this.paypackIdempotencyKey(order, method);
-    this.logger.log(`Initiating Paypack cashin (${method}) for ${phone} - Amount: ${amount} RWF`);
+    const referenceId = uuidv4();
+    this.logger.log(`Initiating MTN MoMo prompt for ${partyId} - Amount: ${amount} RWF`);
 
     try {
-      const token = await this.getPaypackAccessToken();
-      const response = await axios.post(
-        `${this.paypackConfig.baseUrl}/transactions/cashin`,
+      const token = await this.getCollectionToken();
+      const headers: Record<string, string> = {
+        'Authorization': `Bearer ${token}`,
+        'X-Reference-Id': referenceId,
+        'X-Target-Environment': this.targetEnv,
+        'Content-Type': 'application/json',
+        'Ocp-Apim-Subscription-Key': this.collectionConfig.apiKey as string,
+      };
+      if (process.env.MTN_MOMO_CALLBACK_URL) {
+        headers['X-Callback-Url'] = process.env.MTN_MOMO_CALLBACK_URL;
+      }
+
+      await axios.post(
+        `${this.baseUrl}/collection/v1_0/requesttopay`,
         {
-          amount,
-          number: phone,
-          environment: this.paypackConfig.webhookMode,
+          amount: amount.toString(),
+          currency: this.currency,
+          externalId: order.orderNumber,
+          payer: { partyIdType: 'MSISDN', partyId },
+          payerMessage: `Payment for Order ${order.orderNumber}`,
+          payeeNote: 'Rwanda Marketplace',
+        },
+        { headers, timeout: 20000 },
+      );
+
+      this.logger.log(`MTN MoMo Request to Pay sent successfully. Ref: ${referenceId}`);
+      return { success: true, transactionId: referenceId };
+    } catch (error: any) {
+      this.logger.error('MTN MoMo Request to Pay failed', error.response?.data || error.message);
+      return {
+        success: false,
+        error: error.response?.data?.message || 'MTN MoMo payment initiation failed',
+      };
+    }
+  }
+
+  // ── Disbursements (payouts / refunds) ────────────────────────────────────
+
+  private async getDisbursementToken(): Promise<string> {
+    if (this.disbursementToken && this.disbursementToken.expiresAt > Date.now()) {
+      return this.disbursementToken.token;
+    }
+    const auth = Buffer
+      .from(`${this.disbursementConfig.userId}:${this.disbursementConfig.apiSecret}`)
+      .toString('base64');
+
+    try {
+      const response = await axios.post(
+        `${this.baseUrl}/disbursement/token/`,
+        {},
+        {
+          headers: {
+            'Authorization': `Basic ${auth}`,
+            'Ocp-Apim-Subscription-Key': this.disbursementConfig.apiKey,
+          },
+          timeout: 15000,
+        },
+      );
+
+      const token = response.data?.access_token;
+      if (!token) throw new Error('MTN Disbursement response did not include an access token');
+      const expiresSeconds = Number(response.data?.expires_in) || 3600;
+      this.disbursementToken = {
+        token,
+        expiresAt: Date.now() + Math.max(expiresSeconds - 60, 60) * 1000,
+      };
+      return token;
+    } catch (error: any) {
+      this.logger.error('Failed to get MTN Disbursement access token', error.response?.data || error.message);
+      throw new Error('MTN MoMo disbursement authentication failed');
+    }
+  }
+
+  async requestMtnDisbursement(amount: number, phone: string, idempotencyKey: string): Promise<{ success: boolean; transactionId?: string; error?: string }> {
+    const value = Math.round(Number(amount || 0));
+    if (!value || value <= 0) {
+      return { success: false, error: 'Disbursement amount must be greater than zero' };
+    }
+
+    let partyId: string;
+    try {
+      partyId = normalizeMomoPhone(phone);
+    } catch {
+      return { success: false, error: 'Use a valid Rwanda mobile money number, for example 078xxxxxxx.' };
+    }
+
+    // X-Reference-Id IS the transaction ref. Derive deterministically from the
+    // idempotency key so a retry with the same key reuses the same MTN reference.
+    const referenceId = this.deterministicUuid(idempotencyKey);
+    this.logger.log(`Initiating MTN MoMo disbursement for ${partyId} - Amount: ${value} RWF (ref ${referenceId})`);
+
+    try {
+      const token = await this.getDisbursementToken();
+      await axios.post(
+        `${this.baseUrl}/disbursement/v1_0/transfer`,
+        {
+          amount: value.toString(),
+          currency: this.currency,
+          externalId: idempotencyKey,
+          payee: { partyIdType: 'MSISDN', partyId },
+          payerMessage: 'Withdrawal from RMF wallet',
+          payeeNote: 'Rwanda Marketplace payout',
         },
         {
           headers: {
-            Accept: 'application/json',
+            'Authorization': `Bearer ${token}`,
+            'X-Reference-Id': referenceId,
+            'X-Target-Environment': this.targetEnv,
             'Content-Type': 'application/json',
-            Authorization: `Bearer ${token}`,
-            'Idempotency-Key': idempotencyKey,
-            'X-Webhook-Mode': this.paypackConfig.webhookMode,
+            'Ocp-Apim-Subscription-Key': this.disbursementConfig.apiKey as string,
           },
           timeout: 20000,
-        }
+        },
       );
 
-      const ref = response.data?.ref || response.data?.data?.ref || response.data?.reference;
-      if (!ref) {
-        throw new Error('Paypack did not return a transaction reference');
-      }
-
-      this.logger.log(`Paypack cashin prompt sent successfully. Ref: ${ref}`);
-      return { success: true, transactionId: this.toPaypackReference(String(ref)) };
+      this.logger.log(`MTN MoMo transfer accepted. Ref: ${referenceId}`);
+      return { success: true, transactionId: referenceId };
     } catch (error: any) {
-      this.logger.error('Paypack cashin failed', error.response?.data || error.message);
+      this.logger.error('MTN MoMo disbursement failed', error.response?.data || error.message);
       return {
         success: false,
-        error: error.response?.data?.message || error.response?.data?.error || 'Paypack payment initiation failed'
+        error: error.response?.data?.message || error.response?.data?.error || 'MTN MoMo disbursement failed',
       };
     }
   }
 
-  private async getPaypackPaymentStatus(referenceId: string): Promise<{ status: string; transactionId?: string }> {
-    if (!this.isPaypackConfigured()) {
-      this.logger.error('Cannot check Paypack status because Paypack is not configured.');
-      return { status: 'ERROR' };
-    }
-
-    const paypackRef = this.stripPaypackPrefix(referenceId);
+  /** Poll a disbursement transfer by its reference id. */
+  async getDisbursementStatus(referenceId: string): Promise<{ status: string; financialTransactionId?: string }> {
     try {
-      const token = await this.getPaypackAccessToken();
+      const token = await this.getDisbursementToken();
       const response = await axios.get(
-        `${this.paypackConfig.baseUrl}/transactions/find/${paypackRef}`,
+        `${this.baseUrl}/disbursement/v1_0/transfer/${referenceId}`,
         {
           headers: {
-            Accept: 'application/json',
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${token}`,
+            'Authorization': `Bearer ${token}`,
+            'X-Target-Environment': this.targetEnv,
+            'Ocp-Apim-Subscription-Key': this.disbursementConfig.apiKey,
           },
           timeout: 15000,
-        }
+        },
       );
-
-      const transaction = response.data?.data || response.data;
-      const status = this.normalizeGatewayStatus(transaction?.status);
       return {
-        status,
-        transactionId: this.toPaypackReference(transaction?.ref || paypackRef),
+        status: this.normalizeGatewayStatus(response.data?.status),
+        financialTransactionId: response.data?.financialTransactionId,
       };
     } catch (error: any) {
-      this.logger.error(`Failed to check Paypack status for ${paypackRef}`, error.response?.data || error.message);
+      this.logger.error(`Failed to check MTN disbursement status for ${referenceId}`, error.response?.data || error.message);
       return { status: 'ERROR' };
     }
   }
+
+  async requestMtnRefund(request: MtnRefundRequest): Promise<{ success: boolean; transactionId?: string; error?: string }> {
+    const idempotencyKey = request.originalTransactionRef
+      ? `${request.idempotencyKey}:${request.originalTransactionRef}`
+      : request.idempotencyKey;
+    return this.requestMtnDisbursement(request.amount, request.phone, idempotencyKey);
+  }
+
+  // ── Callback parsing & readiness ─────────────────────────────────────────
+
+  parseMtnCallback(body: any): ParsedMtnCallback {
+    const data = body?.data || body || {};
+    const ref = data?.referenceId || data?.reference_id || body?.referenceId || body?.reference_id;
+    if (!ref) {
+      throw new Error('MTN callback is missing referenceId');
+    }
+    const rawStatus = String(data?.status || body?.status || '').trim();
+    const externalId = data?.externalId || body?.externalId;
+
+    return {
+      orderNumber: externalId ? String(externalId) : undefined,
+      transactionRef: String(ref),
+      status: this.normalizeGatewayStatus(rawStatus),
+      financialTransactionId: data?.financialTransactionId || body?.financialTransactionId,
+      rawStatus,
+    };
+  }
+
+  getMtnReadiness(): MtnReadiness {
+    const missing: string[] = [];
+    if (!this.collectionConfig.apiKey) missing.push('MTN_MOMO_COLLECTION_API_KEY');
+    if (!this.collectionConfig.userId) missing.push('MTN_MOMO_COLLECTION_USER_ID');
+    if (!this.collectionConfig.apiSecret) missing.push('MTN_MOMO_COLLECTION_API_SECRET');
+    if (!this.disbursementConfig.apiKey) missing.push('MTN_MOMO_DISBURSEMENT_API_KEY');
+    if (!this.disbursementConfig.userId) missing.push('MTN_MOMO_DISBURSEMENT_USER_ID');
+    if (!this.disbursementConfig.apiSecret) missing.push('MTN_MOMO_DISBURSEMENT_API_SECRET');
+
+    const collectionConfigured = Boolean(
+      this.collectionConfig.apiKey && this.collectionConfig.userId && this.collectionConfig.apiSecret,
+    );
+    const disbursementConfigured = Boolean(
+      this.disbursementConfig.apiKey && this.disbursementConfig.userId && this.disbursementConfig.apiSecret,
+    );
+    const callbackConfigured = Boolean(process.env.MTN_MOMO_CALLBACK_URL);
+
+    return {
+      baseUrl: this.baseUrl,
+      targetEnv: this.targetEnv,
+      collectionConfigured,
+      disbursementConfigured,
+      callbackConfigured,
+      productionSafe: process.env.NODE_ENV !== 'production' || (collectionConfigured && disbursementConfigured),
+      missing,
+      callbackPath: '/api/v1/orders/payment/mtn/callback',
+    };
+  }
+
+  // ── Helpers ──────────────────────────────────────────────────────────────
 
   private normalizeGatewayStatus(status: any): 'SUCCESSFUL' | 'FAILED' | 'PENDING' {
     const value = String(status || '').trim().toLowerCase();
@@ -437,262 +405,15 @@ export class PaymentService {
     return 'PENDING';
   }
 
-  private normalizeRwandaPhoneForPaypack(phone?: string): string {
-    const digits = String(phone || '').replace(/\D/g, '');
-    if (digits.startsWith('2507') && digits.length === 12) return `0${digits.slice(3)}`;
-    if (digits.startsWith('07') && digits.length === 10) return digits;
-    if (digits.startsWith('7') && digits.length === 9) return `0${digits}`;
-    return digits;
-  }
-
-  private paypackIdempotencyKey(order: any, method: string): string {
-    const attempts = Array.isArray(order.paymentAttempts) ? order.paymentAttempts.length : 0;
-    const retryNonce = order._paypackRetryNonce || '';
-    const raw = `${order.orderNumber || order._id || uuidv4()}:${method}:cashin:${attempts + 1}:${retryNonce}`;
-    return crypto.createHash('sha256').update(raw).digest('hex').slice(0, 32);
-  }
-
-  private toPaypackReference(referenceId: string): string {
-    const clean = this.stripPaypackPrefix(referenceId);
-    return `PAYPACK:${clean}`;
-  }
-
-  private stripPaypackPrefix(referenceId: string): string {
-    return String(referenceId || '').replace(/^PAYPACK:/, '');
-  }
-
-  private omitSignature(body: any): any {
-    if (!body || typeof body !== 'object' || Array.isArray(body)) return body;
-    const clone: Record<string, any> = {};
-    for (const [key, value] of Object.entries(body)) {
-      if (!['signature', 'x-paypack-signature'].includes(key.toLowerCase())) {
-        clone[key] = value;
-      }
-    }
-    return clone;
-  }
-
-  private stableStringify(value: any): string {
-    if (value === null || typeof value !== 'object') return JSON.stringify(value);
-    if (Array.isArray(value)) return `[${value.map(item => this.stableStringify(item)).join(',')}]`;
-    return `{${Object.keys(value).sort().map(key => `${JSON.stringify(key)}:${this.stableStringify(value[key])}`).join(',')}}`;
-  }
-
-  private verifyHmacSha256(payload: Buffer, signature: string, secret: string): boolean {
-    const normalizedSignature = String(signature || '').trim();
-    const computedHex = crypto.createHmac('sha256', secret).update(payload).digest('hex');
-    const computedBase64 = crypto.createHmac('sha256', secret).update(payload).digest('base64');
-
-    try {
-      if (/^[a-f0-9]{64}$/i.test(normalizedSignature)) {
-        const signatureBuffer = Buffer.from(normalizedSignature, 'hex');
-        const computedBuffer = Buffer.from(computedHex, 'hex');
-        return signatureBuffer.length === computedBuffer.length && crypto.timingSafeEqual(signatureBuffer, computedBuffer);
-      }
-
-      const signatureBuffer = Buffer.from(normalizedSignature, 'base64');
-      const computedBuffer = Buffer.from(computedBase64, 'base64');
-      return signatureBuffer.length === computedBuffer.length && crypto.timingSafeEqual(signatureBuffer, computedBuffer);
-    } catch {
-      return false;
-    }
-  }
-
-  // Legacy MTN MoMo fallback. Disabled in production unless ALLOW_LEGACY_PAYMENT_GATEWAYS=true.
-  private async getMtnAccessToken(): Promise<string> {
-    const auth = Buffer.from(`${this.momoConfig.userId}:${this.momoConfig.apiSecret}`).toString('base64');
-
-    try {
-      const response = await axios.post(
-        `${this.momoConfig.baseUrl}/collection/token/`,
-        {},
-        {
-          headers: {
-            'Authorization': `Basic ${auth}`,
-            'Ocp-Apim-Subscription-Key': this.momoConfig.apiKey
-          }
-        }
-      );
-      return response.data.access_token;
-    } catch (error: any) {
-      this.logger.error('Failed to get MoMo access token', error.response?.data || error.message);
-      throw new Error('Payment gateway authentication failed');
-    }
-  }
-
-  private async requestMtnPayment(order: any): Promise<{ success: boolean; transactionId?: string; error?: string }> {
-    const { totalAmount } = order.financials;
-    const { phone } = order.buyer;
-    const referenceId = uuidv4();
-
-    this.logger.log(`Initiating MTN MoMo prompt for ${phone} - Amount: ${totalAmount} RWF`);
-
-    try {
-      const token = await this.getMtnAccessToken();
-
-      const payload = {
-        amount: totalAmount.toString(),
-        currency: 'RWF',
-        externalId: order.orderNumber,
-        payer: {
-          partyIdType: 'MSISDN',
-          partyId: phone.replace(/^\+?0*250|^0/, '250').replace(/^(?!250)/, '250')
-        },
-        payerMessage: `Payment for Order ${order.orderNumber}`,
-        payeeNote: 'Rwanda Marketplace'
-      };
-
-      await axios.post(
-        `${this.momoConfig.baseUrl}/collection/v1_0/requesttopay`,
-        payload,
-        {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'X-Reference-Id': referenceId,
-            'X-Target-Environment': this.momoConfig.targetEnv,
-            'Content-Type': 'application/json',
-            'Ocp-Apim-Subscription-Key': this.momoConfig.apiKey
-          }
-        }
-      );
-
-      this.logger.log(`MoMo Request to Pay sent successfully. Ref: ${referenceId}`);
-      return { success: true, transactionId: referenceId };
-    } catch (error: any) {
-      this.logger.error('MoMo Request to Pay Failed', error.response?.data || error.message);
-      return { success: false, error: error.response?.data?.message || 'MTN MoMo payment initiation failed' };
-    }
-  }
-
-  private async getMtnPaymentStatus(referenceId: string): Promise<{ status: string; transactionId?: string }> {
-    try {
-      const token = await this.getMtnAccessToken();
-      const response = await axios.get(
-        `${this.momoConfig.baseUrl}/collection/v1_0/requesttopay/${referenceId}`,
-        {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'X-Target-Environment': this.momoConfig.targetEnv,
-            'Ocp-Apim-Subscription-Key': this.momoConfig.apiKey
-          }
-        }
-      );
-
-      return {
-        status: response.data.status,
-        transactionId: response.data.financialTransactionId
-      };
-    } catch (error: any) {
-      this.logger.error(`Failed to check MoMo status for ${referenceId}`, error.response?.data || error.message);
-      return { status: 'ERROR' };
-    }
-  }
-
-  // Legacy Airtel Money fallback. Tigo Cash is routed through Paypack in normal operation.
-  private async getAirtelAccessToken(): Promise<string> {
-    try {
-      const response = await axios.post(
-        `${this.airtelConfig.baseUrl}/auth/oauth2/token`,
-        {
-          client_id: this.airtelConfig.apiKey,
-          client_secret: this.airtelConfig.secret,
-          grant_type: 'client_credentials'
-        },
-        {
-          headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
-        }
-      );
-      return response.data.access_token;
-    } catch (error: any) {
-      this.logger.error('Failed to get Airtel Money access token', error.response?.data || error.message);
-      throw new Error('Airtel Money authentication failed');
-    }
-  }
-
-  private async requestAirtelPayment(order: any): Promise<{ success: boolean; transactionId?: string; error?: string }> {
-    const { totalAmount } = order.financials;
-    const { phone } = order.buyer;
-    const referenceId = uuidv4();
-
-    this.logger.log(`Initiating Airtel Money prompt for ${phone} - Amount: ${totalAmount} RWF`);
-
-    try {
-      const token = await this.getAirtelAccessToken();
-      const formattedPhone = phone.replace(/^\+?0*250|^0/, '250').replace(/^(?!250)/, '250');
-
-      const payload = {
-        reference: referenceId,
-        subscriber: {
-          country: 'RWA',
-          currency: 'RWF',
-          msisdn: formattedPhone
-        },
-        transaction: {
-          amount: totalAmount,
-          country: 'RWA',
-          currency: 'RWF',
-          id: referenceId
-        }
-      };
-
-      await axios.post(
-        `${this.airtelConfig.baseUrl}/merchant/v1/payments/`,
-        payload,
-        {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'X-Country': 'RWA',
-            'X-Currency': 'RWF',
-            'Content-Type': 'application/json'
-          }
-        }
-      );
-
-      this.logger.log(`Airtel Money payment request sent successfully. Ref: ${referenceId}`);
-      return { success: true, transactionId: referenceId };
-    } catch (error: any) {
-      this.logger.error('Airtel Money payment request failed', error.response?.data || error.message);
-      return { success: false, error: error.response?.data?.message || 'Airtel Money payment initiation failed' };
-    }
-  }
-
-  private async getAirtelPaymentStatus(referenceId: string): Promise<{ status: string; transactionId?: string }> {
-    try {
-      const token = await this.getAirtelAccessToken();
-      const response = await axios.get(
-        `${this.airtelConfig.baseUrl}/merchant/v1/payments/${referenceId}`,
-        {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'X-Country': 'RWA',
-            'X-Currency': 'RWF',
-          }
-        }
-      );
-
-      const airtelStatus = response.data.status?.code || response.data.status;
-      let normalizedStatus: string;
-      switch (airtelStatus) {
-        case 'TS':
-          normalizedStatus = 'SUCCESSFUL';
-          break;
-        case 'TF':
-          normalizedStatus = 'FAILED';
-          break;
-        case 'TIP':
-          normalizedStatus = 'PENDING';
-          break;
-        default:
-          normalizedStatus = 'PENDING';
-      }
-
-      return {
-        status: normalizedStatus,
-        transactionId: response.data.transaction?.id || referenceId
-      };
-    } catch (error: any) {
-      this.logger.error(`Failed to check Airtel Money status for ${referenceId}`, error.response?.data || error.message);
-      return { status: 'ERROR' };
-    }
+  /** Stable UUIDv4-shaped value derived from a key, so retries reuse the same X-Reference-Id. */
+  private deterministicUuid(key: string): string {
+    const hash = crypto.createHash('sha256').update(String(key)).digest('hex');
+    return [
+      hash.slice(0, 8),
+      hash.slice(8, 12),
+      '4' + hash.slice(13, 16),
+      ((parseInt(hash.slice(16, 17), 16) & 0x3) | 0x8).toString(16) + hash.slice(17, 20),
+      hash.slice(20, 32),
+    ].join('-');
   }
 }

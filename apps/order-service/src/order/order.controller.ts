@@ -286,7 +286,6 @@ export class OrderController {
 
   private isValidWebhook(req: any, body: any): boolean {
     const mtnSignature = req.headers['x-mtn-signature'];
-    const airtelSignature = req.headers['x-airtel-signature'];
     const internalSecret = req.headers['x-internal-secret'] || req.headers['x-internal-service-key'];
 
     const expectedInternalSecret = process.env.INTERNAL_SERVICE_SECRET;
@@ -296,9 +295,9 @@ export class OrderController {
       return true;
     }
 
-    const signature = mtnSignature || airtelSignature;
+    const signature = mtnSignature;
     if (!signature) {
-      throw new UnauthorizedException('Missing signature headers (X-MTN-Signature or X-Airtel-Signature)');
+      throw new UnauthorizedException('Missing signature header (X-MTN-Signature)');
     }
 
     const rawBody = JSON.stringify(body);
@@ -316,19 +315,13 @@ export class OrderController {
       this.verifyHmacSignature(sortedRawBody, signature, webhookSecret);
 
     const mtnSecret = process.env.MTN_MOMO_WEBHOOK_SECRET;
-    const airtelSecret = process.env.AIRTEL_MONEY_WEBHOOK_SECRET;
 
     const isMtnSpecificValid =
       mtnSecret &&
       (this.verifyHmacSignature(rawBody, signature, mtnSecret) ||
         this.verifyHmacSignature(sortedRawBody, signature, mtnSecret));
 
-    const isAirtelSpecificValid =
-      airtelSecret &&
-      (this.verifyHmacSignature(rawBody, signature, airtelSecret) ||
-        this.verifyHmacSignature(sortedRawBody, signature, airtelSecret));
-
-    if (isMtnValid || isMtnSpecificValid || isAirtelSpecificValid) {
+    if (isMtnValid || isMtnSpecificValid) {
       return true;
     }
 

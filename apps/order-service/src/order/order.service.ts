@@ -521,6 +521,10 @@ export class OrderService implements OnModuleInit, OnModuleDestroy {
 
       const orderNumber = `ORD-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
       const status = isQuoteRequest ? OrderStatus.AWAITING_QUOTE : (orderData.schedule ? OrderStatus.SCHEDULED : OrderStatus.PLACED);
+      if (orderData.payment?.method && orderData.payment.method !== 'MTN_MOMO') {
+        throw new BadRequestException('Only MTN MoMo is supported for order payments');
+      }
+      orderData.payment = { ...(orderData.payment || {}), method: 'MTN_MOMO' };
       // Snapshot menu items (priced from the Menu collection) and product items
       // (priced from the Product collection) independently so mixed/menu-only/
       // product-only carts all resolve to authoritative server-side prices.

@@ -79,15 +79,18 @@ const createClient = (baseURL: string) => {
         }
       }
 
-      // Handle Connection Refused / Network Errors with Exponential Backoff
-      // We retry even on non-GET requests if it's a pure network error (no response)
-      // because it means the request never reached the server (safe to retry)
+      // Handle transient read failures with exponential backoff.
+      // Never retry writes from the browser client: the server may have received
+      // the mutation even when the response was lost, which can duplicate orders,
+      // payouts, messages, or status transitions.
       const isNetworkError = !response;
+      const method = String(config.method || 'get').toUpperCase();
+      const isRetryableMethod = ['GET', 'HEAD', 'OPTIONS'].includes(method);
       const retryCount = config._retryCount || 0;
       const configuredRetries = Number(process.env.NEXT_PUBLIC_API_MAX_RETRIES);
       const maxRetries = Number.isFinite(configuredRetries) ? configuredRetries : 2;
 
-      if (isNetworkError && retryCount < maxRetries) {
+      if (isNetworkError && isRetryableMethod && retryCount < maxRetries) {
         config._retryCount = retryCount + 1;
         // Exponential backoff: 500ms, 1s, 2s, 4s, 8s...
         const delay = Math.pow(2, retryCount) * 500; 

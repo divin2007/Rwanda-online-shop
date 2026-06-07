@@ -32,6 +32,9 @@ export const userSchema = new Schema({
   referralCode: { type: String, unique: true, sparse: true },
   referredBy: { type: String }, // Stores the code of the user who referred them
   referralEarnings: { type: Number, default: 0 },
+  // Export facilitation — verified export buyers may see seller contact info on inquiries.
+  isExportBuyer: { type: Boolean, default: false },
+  exportBuyerVerifiedAt: { type: Date },
   devices: [{ 
     token: String, 
     platform: String, 

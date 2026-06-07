@@ -88,12 +88,16 @@ export default function SellerEarningsPage() {
     }
     return 0;
   });
-  const paypackSettledTotal = ((Array.isArray(ledger) ? ledger : ledger?.transactions) || [])
-    .filter((tx: any) => tx.account === 'seller_paypack_payout' && tx.status === 'posted')
+  const settledTotal = ((Array.isArray(ledger) ? ledger : ledger?.transactions) || [])
+    .filter((tx: any) => tx.account === 'seller_wallet_credit' && tx.status === 'posted')
     .reduce((sum: number, tx: any) => sum + Number(tx.amount || 0), 0);
-  const paypackPendingTotal = ((Array.isArray(ledger) ? ledger : ledger?.transactions) || [])
-    .filter((tx: any) => tx.account === 'seller_paypack_payout' && tx.status !== 'posted')
+  const pendingTotal = ((Array.isArray(ledger) ? ledger : ledger?.transactions) || [])
+    .filter((tx: any) => tx.account === 'seller_wallet_credit' && tx.status !== 'posted')
     .reduce((sum: number, tx: any) => sum + Number(tx.amount || 0), 0);
+  const availableBalance = Number(wallet?.availableBalance ?? wallet?.balance ?? settledTotal ?? 0);
+  const pendingBalance = Number(wallet?.pendingBalance ?? pendingTotal ?? 0);
+  const totalEarned = Number(wallet?.totalEarned ?? settledTotal ?? availableBalance);
+  const totalWithdrawn = Number(wallet?.totalWithdrawn ?? 0);
 
   const hasFetched = useRef(false);
   useEffect(() => {
@@ -107,7 +111,7 @@ export default function SellerEarningsPage() {
 
   const requestPayout = async (e: React.FormEvent) => {
     e.preventDefault();
-    toast('Manual wallet payouts are disabled. Seller payouts are sent automatically through Paypack when orders settle.');
+    toast('Manual wallet payouts are disabled. Seller payouts are sent automatically via MTN MoMo when orders settle.');
   };
 
   const fetchAndOpenReceipt = async (transactionId: string) => {
@@ -127,7 +131,7 @@ export default function SellerEarningsPage() {
   };
 
   const handleViewReceipt = async (tx: any) => {
-    if (tx.account === 'seller_paypack_payout' || tx.account === 'seller_paypack_payout_failed') {
+    if (tx.account === 'seller_wallet_credit' || tx.account === 'seller_wallet_credit_failed') {
       const mockReceipt: ReceiptOrder = {
         _id: tx.transactionId,
         orderNumber: `PAY-${tx.transactionId.substring(0,8).toUpperCase()}`,
@@ -144,7 +148,7 @@ export default function SellerEarningsPage() {
         products: [
           {
             productId: 'withdrawal',
-            name: 'Paypack Seller Settlement',
+            name: 'MTN MoMo Seller Settlement',
             unitPrice: tx.amount,
             quantity: 1
           }
@@ -173,42 +177,50 @@ export default function SellerEarningsPage() {
 
   return (
     <Layout>
-      <div className="max-w-7xl mx-auto space-y-16 animate-reveal">
+      <div className="w-full p-6 md:p-8 space-y-16 animate-reveal">
         {selectedReceipt && (
           <ReceiptView order={selectedReceipt} role="seller" onClose={() => setSelectedReceipt(null)} />
         )}
         
         {/* Institutional Header */}
-        <div className="border-b-2 border-[#e0e0e0] pb-10 flex justify-between items-end">
+        <div className="border-b border-outline-variant pb-10 flex justify-between items-end">
           <div>
-            <p className="text-[10px] font-black text-[#ff6b00] uppercase tracking-[0.5em] mb-4">Financial Core</p>
-            <h1 className="text-5xl font-sans text-[#1b1c1c] tracking-normal">Earnings & Payouts</h1>
+            <p className="text-[10px] font-black text-primary uppercase tracking-[0.5em] mb-4">Financial Core</p>
+            <h1 className="text-5xl font-sans text-on-surface tracking-normal">Earnings & Payouts</h1>
           </div>
           <div className="text-right">
-             <p className="text-[10px] font-black text-[#1b1c1c] uppercase tracking-widest">Stall ID: {profile?.stallId || '---'}</p>
-             <p className="text-[8px] font-bold text-[#414844] uppercase tracking-widest opacity-40 mt-1">Ledger Sync Active</p>
+             <p className="text-[10px] font-black text-on-surface uppercase tracking-widest">Stall ID: {profile?.stallId || '---'}</p>
+             <p className="text-[8px] font-bold text-on-surface-variant uppercase tracking-widest opacity-40 mt-1">Ledger Sync Active</p>
           </div>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-16">
           {/* Main Wallet Card */}
           <div className="lg:col-span-2 space-y-16">
-            <div className="bg-[#e05300] text-white p-16 relative overflow-hidden group shadow-2xl border border-[#e0e0e0] rounded-lg">
-               <div className="absolute top-0 right-0 w-64 h-64 bg-[#ffd700]/5 rounded-full -mr-32 -mt-32 group-hover:scale-110 transition-transform duration-1000"></div>
+            <div className="bg-primary text-white p-16 relative overflow-hidden group shadow-2xl border border-outline-variant rounded-xl">
+               <div className="absolute inset-0 hero-glow opacity-30 pointer-events-none"></div>
+               <div className="absolute top-0 right-0 w-64 h-64 bg-white/5 rounded-full -mr-32 -mt-32 group-hover:scale-110 transition-transform duration-1000"></div>
                <div className="relative z-10">
-                  <p className="text-[11px] font-black uppercase tracking-[0.4em] text-[#ff6b00] mb-6">Paypack Settled</p>
-                  <h2 className="text-8xl font-sans tracking-normal mb-16 text-white drop-shadow-2xl">
-                    {walletLoading ? '---' : paypackSettledTotal.toLocaleString()} <span className="text-3xl not-italic opacity-40 ml-4">RWF</span>
+                  <p className="text-[11px] font-black uppercase tracking-[0.4em] text-white/70 mb-6">MTN MoMo Settled</p>
+                  <h2 className="text-6xl md:text-7xl font-sans tracking-normal mb-16 text-white drop-shadow-2xl">
+                    {walletLoading ? '---' : availableBalance.toLocaleString()} <span className="text-3xl not-italic opacity-40 ml-4">RWF</span>
                   </h2>
-                  <div className="flex gap-12 pt-12 border-t border-white/5">
+                  <div className="grid gap-8 pt-12 border-t border-white/5 sm:grid-cols-4">
                      <div>
-                        <p className="text-[9px] font-bold uppercase tracking-widest opacity-40 mb-2">Total Settled</p>
-                        <p className="text-2xl font-sans text-white/90">{paypackSettledTotal.toLocaleString()} <span className="text-[10px] not-italic opacity-40">RWF</span></p>
+                        <p className="text-[9px] font-bold uppercase tracking-widest opacity-40 mb-2">Available</p>
+                        <p className="text-2xl font-sans text-white/90">{availableBalance.toLocaleString()} <span className="text-[10px] not-italic opacity-40">RWF</span></p>
                      </div>
-                     <div className="w-px h-12 bg-white/10 mt-2"></div>
                      <div>
                         <p className="text-[9px] font-bold uppercase tracking-widest opacity-40 mb-2">Pending Escrow</p>
-                        <p className="text-2xl font-sans text-white/40">{paypackPendingTotal.toLocaleString()} <span className="text-[10px] not-italic opacity-40">RWF</span></p>
+                        <p className="text-2xl font-sans text-white/40">{pendingBalance.toLocaleString()} <span className="text-[10px] not-italic opacity-40">RWF</span></p>
+                     </div>
+                     <div>
+                        <p className="text-[9px] font-bold uppercase tracking-widest opacity-40 mb-2">Total Earned</p>
+                        <p className="text-2xl font-sans text-white/70">{totalEarned.toLocaleString()} <span className="text-[10px] not-italic opacity-40">RWF</span></p>
+                     </div>
+                     <div>
+                        <p className="text-[9px] font-bold uppercase tracking-widest opacity-40 mb-2">Withdrawn</p>
+                        <p className="text-2xl font-sans text-white/40">{totalWithdrawn.toLocaleString()} <span className="text-[10px] not-italic opacity-40">RWF</span></p>
                      </div>
                   </div>
                </div>
@@ -371,7 +383,7 @@ export default function SellerEarningsPage() {
           {/* Payout Action Sidebar */}
           <div className="space-y-12">
             <div className="bg-white border border-[#e0e0e0] rounded-lg p-10 shadow-2xl">
-              <h3 className="text-[11px] font-black uppercase tracking-[0.4em] text-[#1b1c1c] mb-12">Paypack Settlement</h3>
+              <h3 className="text-[11px] font-black uppercase tracking-[0.4em] text-[#1b1c1c] mb-12">MTN MoMo Settlement</h3>
               <form onSubmit={requestPayout} className="space-y-8">
                 <div className="space-y-4">
                   <label className="text-[9px] font-black text-[#414844] uppercase tracking-widest opacity-60">Liquidation Amount (RWF)</label>
@@ -407,7 +419,7 @@ export default function SellerEarningsPage() {
                    </div>
                 </div>
                 <p className="text-center text-[10px] font-bold uppercase tracking-widest text-[#414844]/60">
-                  Manual wallet payouts are disabled. Paypack sends seller payouts automatically.
+                  Manual wallet payouts are disabled. MTN MoMo sends seller payouts automatically.
                 </p>
                 <button 
                   type="submit" 

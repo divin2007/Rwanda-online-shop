@@ -80,9 +80,9 @@ async function bootstrap() {
           return callback(null, true);
         }
       }
-      // Bulletproof fallback: log a warning but allow to prevent CORS blockages
-      console.warn(`[CORS] Request from non-whitelisted origin: ${origin}. Allowing for maximum reliability.`);
-      callback(null, true);
+      // Reject any origin that is not explicitly whitelisted above.
+      console.warn(`[CORS] Blocked request from non-whitelisted origin: ${origin}.`);
+      callback(new Error('Not allowed by CORS'));
     },
     credentials: true,
   });

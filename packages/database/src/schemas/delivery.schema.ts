@@ -13,6 +13,7 @@ export const deliverySchema = new Schema({
   },
   pickup: {
     marketId: { type: Schema.Types.ObjectId, ref: 'Market', required: true },
+    marketName: { type: String },
     stallId: { type: String, required: true },
     coordinates: {
       lat: { type: Number, required: true },
@@ -33,6 +34,23 @@ export const deliverySchema = new Schema({
     },
     deliveredAt: Date
   },
+  // Multi-stop deliveries (group buy / bulk). Kept alongside the singular dropoff
+  // for backward compatibility — standard single-drop deliveries still use dropoff.
+  dropoffs: [{
+    address: { type: String },
+    coordinates: {
+      lat: { type: Number },
+      lng: { type: Number }
+    },
+    buyerId: { type: Schema.Types.ObjectId, ref: 'User' },
+    deliveredAt: { type: Date },
+    status: { type: String, enum: ['pending', 'delivered', 'failed'], default: 'pending' }
+  }],
+  // Cold-chain / perishable handling.
+  isPerishable: { type: Boolean, default: false },
+  maxDeliveryMinutes: { type: Number },
+  perishableAlertSentAt: { type: Date },
+  deliveryType: { type: String, enum: ['standard', 'group_buy', 'bulk', 'errand'], default: 'standard' },
   route: {
     distanceKm: { type: Number },
     estimatedMinutes: { type: Number },
@@ -45,6 +63,11 @@ export const deliverySchema = new Schema({
     searchSurcharge: { type: Number, default: 0 },
     totalAmount: { type: Number }
   },
+  // Snapshot of what the rider is expected to earn for this delivery (deliveryFee × split).
+  riderEarnings: { type: Number },
+  // Rider self-cancellation audit (Phase 2). Set when an assigned rider drops the job.
+  riderCancelledAt: { type: Date },
+  riderCancelReason: { type: String },
   dispatch: {
     strategy: { type: String, default: 'PROGRESSIVE_RADIUS' },
     initialRadiusMeters: { type: Number, default: null },
@@ -55,6 +78,8 @@ export const deliverySchema = new Schema({
     broadcastCount: { type: Number, default: 0 },
     manualRebroadcastCount: { type: Number, default: 0 },
     notifiedRiderIds: [{ type: Schema.Types.ObjectId, ref: 'User' }],
+    // Riders who self-cancelled this delivery — excluded from re-dispatch (cooling-off).
+    excludedRiderIds: [{ type: Schema.Types.ObjectId, ref: 'User' }],
     lastBroadcastAt: Date,
     manualRebroadcastAt: Date,
     acceptedAt: Date

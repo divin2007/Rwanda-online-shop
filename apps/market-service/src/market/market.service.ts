@@ -324,7 +324,12 @@ export class MarketService implements OnModuleInit {
         );
         break;
       default:
-        ordered = filtered.sort((a, b) => b.rankScore - a.rankScore);
+        ordered = filtered.sort((a, b) => {
+          const aSpotlight = a._premiumBoost >= 1 && (!a.premiumUntil || new Date(a.premiumUntil) > new Date());
+          const bSpotlight = b._premiumBoost >= 1 && (!b.premiumUntil || new Date(b.premiumUntil) > new Date());
+          if (aSpotlight !== bSpotlight) return aSpotlight ? -1 : 1;
+          return b.rankScore - a.rankScore;
+        });
     }
 
     // Label up to MAX_SPONSORED_SLOTS_PER_PAGE premium markets as Sponsored, in rank order.

@@ -1,11 +1,74 @@
-import { Controller, Get, Query, Param, Patch, Body, Req, UseGuards, ForbiddenException } from '@nestjs/common';
+import { Controller, Get, Query, Param, Patch, Body, Req, Post, UseGuards, ForbiddenException } from '@nestjs/common';
 import { AdminService } from './admin.service';
+import { TierCalculationService } from './tier-calculation.service';
 import { Roles, JwtAuthGuard } from '@rmf/auth';
 import { UserRole } from '@rmf/shared-types';
 
 @Controller()
 export class AdminController {
-  constructor(private readonly adminService: AdminService) {}
+  constructor(
+    private readonly adminService: AdminService,
+    private readonly tierCalculationService: TierCalculationService,
+  ) {}
+
+  // Seller Certification Tiers (Feature 11) — manual recompute trigger.
+  @UseGuards(JwtAuthGuard)
+  @Roles(UserRole.ADMIN)
+  @Get('admin/tiers/recalculate')
+  async recalculateTiers() {
+    const result = await this.tierCalculationService.recalculateAllTiers();
+    return { success: true, data: result };
+  }
+
+  // ── Export Facilitation admin management (Feature 9) ─────────────────────
+  @UseGuards(JwtAuthGuard)
+  @Roles(UserRole.ADMIN)
+  @Get('admin/export/buyers')
+  async listExportBuyers() {
+    const data = await this.adminService.listExportBuyers();
+    return { success: true, data };
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Roles(UserRole.ADMIN)
+  @Patch('admin/export/buyers/:userId/verify')
+  async verifyExportBuyer(@Param('userId') userId: string) {
+    const data = await this.adminService.verifyExportBuyer(userId);
+    return { success: true, data };
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Roles(UserRole.ADMIN)
+  @Get('admin/export/inquiries')
+  async listExportInquiries(@Query('status') status?: string) {
+    const data = await this.adminService.listExportInquiries(status);
+    return { success: true, data };
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Roles(UserRole.ADMIN)
+  @Patch('admin/export/inquiries/:id')
+  async updateExportInquiry(@Param('id') id: string, @Body() body: any) {
+    const data = await this.adminService.updateExportInquiry(id, body);
+    return { success: true, data };
+  }
+
+  // ── B2B account verification (Feature 7) ─────────────────────────────────
+  @UseGuards(JwtAuthGuard)
+  @Roles(UserRole.ADMIN)
+  @Get('admin/b2b/accounts')
+  async listB2bAccounts(@Query('isVerified') isVerified?: string) {
+    const data = await this.adminService.listB2bAccounts(isVerified);
+    return { success: true, data };
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Roles(UserRole.ADMIN)
+  @Patch('admin/b2b/accounts/:id/verify')
+  async verifyB2bAccount(@Param('id') id: string, @Req() req: any, @Body() body: { creditLimit?: number }) {
+    const data = await this.adminService.verifyB2bAccount(id, body?.creditLimit, req.user?.userId);
+    return { success: true, data };
+  }
 
   // FIX [ADMIN-SUMMARY]: Was unauthenticated — platform financial summary was public.
   // Now requires ADMIN role.

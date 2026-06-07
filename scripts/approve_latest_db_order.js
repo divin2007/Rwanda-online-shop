@@ -53,14 +53,22 @@ async function approveLatestOrder() {
     console.log(`- Payment Status: ${currentStatus}`);
     console.log(`- Created At: ${order.get('createdAt')}`);
 
-    // Trigger mock callback
-    console.log(`\n\x1b[34m[Simulate] Triggering Mock Webhook for ${orderNumber}...\x1b[0m`);
+    const paymentReference = order.get('payment.transactionRef') || order.get('payment.referenceId') || order.get('transactionRef');
+    if (!paymentReference) {
+      console.log('\x1b[33mOrder has no MTN MoMo payment reference yet. Start payment before simulating a callback.\x1b[0m');
+      mongoose.disconnect();
+      return;
+    }
+
+    // Trigger mock MTN MoMo callback
+    console.log(`\n\x1b[34m[Simulate] Triggering Mock MTN MoMo Callback for ${orderNumber}...\x1b[0m`);
     const response = await axios.post(
-      `${serviceUrl}/orders/payment/callback`,
+      `${serviceUrl}/orders/payment/mtn/callback`,
       {
-        orderNumber: orderNumber,
-        status: 'PAID',
-        transactionRef: `MOCK-PAYPACK-REF-${Date.now()}`
+        referenceId: paymentReference,
+        externalId: orderNumber,
+        status: 'SUCCESSFUL',
+        financialTransactionId: `MOCK-MTN-MOMO-REF-${Date.now()}`
       },
       {
         headers: {
@@ -70,11 +78,11 @@ async function approveLatestOrder() {
       }
     );
 
-    console.log('\x1b[32m✔ Mock Webhook Delivered Successfully!\x1b[0m');
+    console.log('\x1b[32mMock MTN MoMo Callback Delivered Successfully!\x1b[0m');
     console.log('Response:', JSON.stringify(response.data, null, 2));
 
   } catch (error) {
-    console.error('\x1b[31m✖ Error during database query or webhook simulation:\x1b[0m');
+    console.error('\x1b[31mError during database query or MTN MoMo callback simulation:\x1b[0m');
     if (error.response) {
       console.error(`Status: ${error.response.status}`);
       console.error('Data:', JSON.stringify(error.response.data, null, 2));

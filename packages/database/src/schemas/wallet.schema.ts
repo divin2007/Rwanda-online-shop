@@ -2,7 +2,7 @@ import { Schema, model } from 'mongoose';
 
 export const walletSchema = new Schema({
   userId:           { type: Schema.Types.ObjectId, ref: 'User', required: true, unique: true },
-  role:             { type: String, enum: ['SELLER', 'RIDER'], required: true },
+  role:             { type: String, enum: ['SELLER', 'RIDER', 'BUYER', 'INFLUENCER'], required: true },
   currency:         { type: String, default: 'RWF' },
   // availableBalance: funds credited after delivery, ready for withdrawal
   availableBalance: { type: Number, required: true, default: 0 },

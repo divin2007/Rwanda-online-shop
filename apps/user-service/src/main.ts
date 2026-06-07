@@ -82,7 +82,8 @@ async function bootstrap() {
     transform: true,
   }));
 
-  app.setGlobalPrefix('api/v1');
+  // Exclude the public referral short-link from the api/v1 prefix so it is a clean /r/:slug.
+  app.setGlobalPrefix('api/v1', { exclude: ['r/:slug'] });
   const port = (process.env.PORT && process.env.PORT !== '3000') ? process.env.PORT : 3001;
   await app.listen(port, '0.0.0.0');
   console.log(`User Service is running on port ${port}`);

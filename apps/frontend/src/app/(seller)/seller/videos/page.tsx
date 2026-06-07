@@ -105,7 +105,7 @@ export default function SellerVideosPage() {
 
   return (
     <Layout>
-      <div className="mx-auto max-w-[1440px] space-y-8 px-4 py-8 md:px-8">
+      <div className="w-full space-y-8 px-gutter py-lg md:px-xl">
         <section className="rounded-3xl bg-[#1b1c1c] p-8 text-white shadow-2xl md:p-10">
           <p className="flex items-center gap-2 text-[11px] font-black uppercase tracking-[0.24em] text-[#ff6b00]">
             <Video size={16} /> Seller video ads

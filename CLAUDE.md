@@ -117,17 +117,25 @@ Whenever you add a new schema, export it from `packages/database/src/index.ts`. 
 
 ### Payment — MTN MoMo
 
+Full configuration reference: **`PAYMENT_GATEWAY.md`** at the repo root.
+
 Two separate credential sets:
 - **Collections** (`MTN_MOMO_COLLECTION_*`) — charges the buyer. `payment.service.ts` in `order-service`.
 - **Disbursements** (`MTN_MOMO_DISBURSEMENT_*`) — pays out seller/rider. Used in both `order-service` (refunds) and `wallet-service` (withdrawals).
+
+`order-service` needs both sets; `wallet-service` needs only disbursements.
+
+Environment switching: `MTN_MOMO_TARGET_ENV=sandbox` + `MTN_MOMO_BASE_URL=https://sandbox.momodeveloper.mtn.com` for local dev; `MTN_MOMO_TARGET_ENV=mtnrwanda` for production. The `X-Target-Environment` header is derived from this var on every call.
 
 The MTN MoMo `X-Reference-Id` header is a UUID set by the **caller**, not returned in the 202 response. This UUID is stored as `order.payment.transactionRef` and used for polling (`GET /collection/v1_0/requesttopay/{referenceId}`).
 
 Phone numbers are normalized to 12-digit MSISDN format (`2507XXXXXXXX`) by `normalizeMomoPhone()` in `payment.service.ts` — all MoMo calls go through this helper.
 
-Set `AUTO_CONFIRM_PAYMENTS=true` in `.env` to skip real API calls during local development.
+Set `AUTO_CONFIRM_PAYMENTS=true` in `.env` to skip real MoMo API calls during local development (requires `NODE_ENV !== 'production'`).
 
-Sandbox test phone numbers: `+46733123450` (SUCCESSFUL), `+46733123451` (FAILED).
+Sandbox test phone numbers: `+46733123450` (SUCCESSFUL), `+46733123451` (FAILED). Sandbox provisioning: `scripts/setup-momo-sandbox.js`.
+
+Admin readiness check: `GET /api/v1/orders/payment/mtn/readiness` (admin-only) — reports which credentials are present and whether the callback URL is configured.
 
 ### Commission & Fee Math
 
@@ -148,6 +156,10 @@ The backend in `order-service` **always recalculates and validates** subtotal, c
 `SCHEDULED` is a parallel entry point: `SCHEDULED → PLACED → CONFIRMED → ...`
 
 State transitions are enforced via the `ORDER_TRANSITIONS` map in `order.service.ts`. `StateConflictError` is thrown on invalid transitions. There is also a `PAYMENT_TRANSITIONS` map for `PaymentStatus` (`PENDING → PAID/FAILED; PAID → REFUNDED`).
+
+**Fraud detection:** `FraudDetectionService` runs synchronously during order creation (rules F001–F007). `shouldBlock: true` rejects the order with `BadRequestException`; `shouldBlock: false` (including F999 system errors) flags for review but lets the order through (fail-open). F002 checks that the buyer's delivery address is ≤50 km from the selected market's coordinates.
+
+**Buyer protection:** `BuyerProtectionService.executeInstantRefund()` handles MoMo disbursement refunds. It deduplicates by querying `LedgerEntry` for an existing `account: 'buyer_mtn_refund'` entry before initiating any MoMo call — safe to call multiple times.
 
 Escrow is held in the payment provider until 24 hours after delivery (`ESCROW_RELEASE_DELAY_HOURS`). On release, seller and rider wallets are credited internally via `wallet-service`. The `escrowReleaseTimers` Map in `order.service.ts` is in-process; `onModuleInit` re-hydrates pending timers on startup.
 

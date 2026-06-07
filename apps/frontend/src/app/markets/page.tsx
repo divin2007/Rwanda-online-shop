@@ -121,11 +121,25 @@ const getProductMarketId = (product: Product) => {
   return typeof product.marketId === 'object' ? product.marketId._id || '' : product.marketId;
 };
 
-const getProductQueryPath = (searchQuery: string, productCategory: string, attributeFilters: Record<string, string>, priceRange: { min: string; max: string }) => {
+const productSortToQuery: Record<string, string> = {
+  relevance: '-totalOrders',
+  rating: '-rating',
+  newest: '-createdAt',
+  price_asc: 'price',
+  price_desc: '-price',
+};
+
+const getProductQueryPath = (
+  searchQuery: string,
+  productCategory: string,
+  attributeFilters: Record<string, string>,
+  priceRange: { min: string; max: string },
+  sortMode: string,
+) => {
   const params = new URLSearchParams({
     limit: '24',
     isActive: 'true',
-    sortBy: '-totalOrders',
+    sortBy: productSortToQuery[sortMode] || productSortToQuery.relevance,
   });
   const trimmedSearch = searchQuery.trim();
 
@@ -196,6 +210,7 @@ function MarketsContent() {
   const [selectedCategory, setSelectedCategory] = useState('ALL');
   const [selectedProductCategory, setSelectedProductCategory] = useState('all');
   const [attributeFilters, setAttributeFilters] = useState<Record<string, string>>({});
+  const [sortMode, setSortMode] = useState('relevance');
   
   const searchParams = useSearchParams();
   const search = searchParams.get('search');
@@ -206,7 +221,10 @@ function MarketsContent() {
   const requestedLat = Number(searchParams.get('lat'));
   const requestedLng = Number(searchParams.get('lng'));
   const hasCoordinateSearch = Number.isFinite(requestedLat) && Number.isFinite(requestedLng);
-  const productQueryPath = useMemo(() => getProductQueryPath(searchQuery, selectedProductCategory, attributeFilters, priceRange), [attributeFilters, searchQuery, selectedProductCategory, priceRange]);
+  const productQueryPath = useMemo(
+    () => getProductQueryPath(searchQuery, selectedProductCategory, attributeFilters, priceRange, sortMode),
+    [attributeFilters, searchQuery, selectedProductCategory, priceRange, sortMode],
+  );
   const facetQueryPath = useMemo(() => getFacetQueryPath(searchQuery), [searchQuery]);
   
   const { user } = useAuth();
@@ -217,13 +235,13 @@ function MarketsContent() {
   const marketSearchPath = useMemo(() => {
     const q = searchQuery.trim();
     if (!q) return '';
-    const params = new URLSearchParams({ q });
+    const params = new URLSearchParams({ q, sort: sortMode });
     if (hasCoordinateSearch) {
       params.set('lat', String(requestedLat));
       params.set('lng', String(requestedLng));
     }
     return `/markets/search?${params.toString()}`;
-  }, [searchQuery, hasCoordinateSearch, requestedLat, requestedLng]);
+  }, [searchQuery, sortMode, hasCoordinateSearch, requestedLat, requestedLng]);
   const { data: searchedMarketsData } = useApi<Market[]>(marketApi, 'get', marketSearchPath);
   const { data: productsData, loading: productsLoading, error: productsError, execute: refetchProducts } = useApi<Product[]>(productApi, 'get', productQueryPath);
   const { data: facetsData, execute: refetchFacets } = useApi<any>(productApi, 'get', facetQueryPath);
@@ -442,11 +460,15 @@ function MarketsContent() {
       results = results.filter((m: Market) => foodMarketIds.has(String(m._id)));
     }
 
-    if (hasCoordinateSearch) {
+    if (sortMode === 'distance' && hasCoordinateSearch) {
       results = [...results].sort((a, b) => (
         getDistanceKm(requestedLat, requestedLng, a.location?.coordinates)
         - getDistanceKm(requestedLat, requestedLng, b.location?.coordinates)
       ));
+    } else if (sortMode === 'rating') {
+      results = [...results].sort((a, b) => Number(b.rating || 0) - Number(a.rating || 0));
+    } else if (sortMode === 'newest') {
+      results = [...results].sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
     } else {
       results = [...results].sort((a, b) => (
         (scoredMarketsMap.get(b._id) || 0) - (scoredMarketsMap.get(a._id) || 0)
@@ -454,7 +476,7 @@ function MarketsContent() {
     }
 
     return results;
-  }, [allMarkets, hasCoordinateSearch, productMarketIds, requestedLat, requestedLng, searchQuery, selectedCategory, hasProductFiltersActive, scoredMarketsMap, businessType, foodMarketIds]);
+  }, [allMarkets, hasCoordinateSearch, productMarketIds, requestedLat, requestedLng, searchQuery, selectedCategory, hasProductFiltersActive, scoredMarketsMap, businessType, foodMarketIds, sortMode]);
 
   const liveDataUnavailable = Boolean(error);
   // When the buyer has typed a query, prefer the server-ranked search results (which carry
@@ -702,6 +724,19 @@ function MarketsContent() {
                 <option value="ALL">All Types</option>
                 <option value="PUBLIC">Wholesale</option>
                 <option value="INDIVIDUAL">Retail</option>
+              </select>
+              <select
+                value={sortMode}
+                onChange={e => setSortMode(e.target.value)}
+                className="bg-surface border border-outline-variant rounded font-label-caps text-label-caps py-1 px-3 focus:border-primary-container focus:ring-1 focus:ring-primary-container/20 text-on-surface"
+                aria-label="Sort market and product results"
+              >
+                <option value="relevance">Best Match</option>
+                <option value="distance">Nearest</option>
+                <option value="rating">Top Rated</option>
+                <option value="newest">Newest</option>
+                <option value="price_asc">Lowest Price</option>
+                <option value="price_desc">Highest Price</option>
               </select>
             </div>
           </div>

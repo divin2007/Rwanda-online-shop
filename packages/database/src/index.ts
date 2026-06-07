@@ -21,6 +21,23 @@ export * from './schemas/review.schema';
 export * from './schemas/rider-rejection.schema';
 export * from './schemas/contract.schema';
 export * from './schemas/support-ticket.schema';
+export * from './schemas/menu.schema';
+
+// ── Platform expansion schemas (12-feature mission) ──────────────────
+export * from './schemas/group-buy.schema';
+export * from './schemas/live-session.schema';
+export * from './schemas/affiliate-profile.schema';
+export * from './schemas/referral-link.schema';
+export * from './schemas/affiliate-application.schema';
+export * from './schemas/errand.schema';
+export * from './schemas/b2b-account.schema';
+export * from './schemas/bulk-delivery-request.schema';
+export * from './schemas/recurring-order-template.schema';
+export * from './schemas/invoice.schema';
+export * from './schemas/catering-brief.schema';
+export * from './schemas/catering-bid.schema';
+export * from './schemas/export-inquiry.schema';
+export * from './schemas/price-index.schema';
 
 
 // Connection manager

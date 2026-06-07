@@ -1,11 +1,10 @@
 import React from 'react';
-import { Layout } from '@/components/layout/Layout';
 import { CheckoutContent } from './CheckoutContent';
 
 export default function CheckoutPage() {
   return (
-    <Layout>
+    <main className="min-h-screen bg-background text-on-surface">
       <CheckoutContent />
-    </Layout>
+    </main>
   );
 }
