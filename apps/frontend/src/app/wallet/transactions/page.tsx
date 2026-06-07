@@ -32,17 +32,19 @@ export default function WalletTransactionsPage() {
     }
   }, [isLoading, user, router]);
 
-  const { data: transactions, loading } = useApi<Transaction[]>(
+  // GET /wallets/me/transactions returns { success, data: { transactions, total, page, limit } }.
+  // userId is derived from the JWT, so no query param is needed.
+  const { data: txData, loading } = useApi<{ transactions?: Transaction[] }>(
     walletApi,
     'get',
-    user?.id ? `/wallets/me/transactions?userId=${user.id}` : '',
+    user?.id ? '/wallets/me/transactions' : '',
   );
 
   const [typeFilter, setTypeFilter] = useState<TypeFilter>('all');
   const [fromDate, setFromDate] = useState('');
   const [toDate, setToDate] = useState('');
 
-  const list = useMemo(() => (Array.isArray(transactions) ? transactions : []), [transactions]);
+  const list = useMemo(() => (Array.isArray(txData?.transactions) ? txData!.transactions : []), [txData]);
 
   const filtered = useMemo(() => {
     return list.filter(tx => {

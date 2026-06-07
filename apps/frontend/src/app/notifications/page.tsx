@@ -49,7 +49,8 @@ export default function NotificationsPage() {
         setNotifications(logs.filter(log => log.channel === 'IN_APP'));
       }
       if (countRes.data?.success) {
-        setUnreadCount(Number(countRes.data.data?.count ?? countRes.data.data ?? 0));
+        // GET /notifications/unread-count returns { success, count } — count is at the root.
+        setUnreadCount(Number(countRes.data?.count ?? 0));
       }
     } catch {
       toast.error('Could not load notifications');
@@ -68,7 +69,8 @@ export default function NotificationsPage() {
     setNotifications(curr => curr.map(n => (n._id === id ? { ...n, isRead: true } : n)));
     setUnreadCount(c => Math.max(0, c - 1));
     try {
-      await notificationApi.put(`/notifications/read/${id}`, { userId: user?.id });
+      // userId is derived from the JWT server-side; no body needed.
+      await notificationApi.put(`/notifications/read/${id}`);
     } catch {
       setNotifications(prev);
       setUnreadCount(c => c + 1);
@@ -84,7 +86,7 @@ export default function NotificationsPage() {
     setNotifications(curr => curr.map(n => ({ ...n, isRead: true })));
     setUnreadCount(0);
     try {
-      await notificationApi.put('/notifications/read-all', { userId: user?.id });
+      await notificationApi.put('/notifications/read-all');
       toast.success('All notifications marked as read');
     } catch {
       setNotifications(prev);
