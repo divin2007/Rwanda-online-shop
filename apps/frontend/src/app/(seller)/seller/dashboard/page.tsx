@@ -322,6 +322,7 @@ export default function SellerDashboardPage() {
             {/* Quick links */}
             <div className="overflow-hidden rounded-lg bg-white border border-[#e0e0e0] divide-y divide-[#f0eded]">
               {[
+                { icon: <ShoppingBag size={16} className="text-[#ff6b00]" />, label: 'Inventory & Stock', href: '/seller/inventory' },
                 { icon: <Tag size={16} className="text-[#ff6b00]" />, label: 'Promotions & Discounts', href: '/seller/promotions' },
                 { icon: <Coins size={16} className="text-[#ff6b00]" />, label: 'Earnings & Withdrawals', href: '/seller/earnings' },
                 { icon: <Star size={16} className="text-[#ff6b00]" />, label: 'Customer Reviews', href: '/seller/reviews' },

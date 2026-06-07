@@ -133,6 +133,29 @@ export default function RiderDashboardPage() {
     }
   };
 
+  // Availability (online/offline) toggle with optimistic UI + rollback.
+  const [isActive, setIsActive] = useState<boolean | null>(null);
+  const [statusSaving, setStatusSaving] = useState(false);
+  const availability = isActive === null ? Boolean(profile?.isActive) : isActive;
+
+  const toggleAvailability = async () => {
+    const next = !availability;
+    setIsActive(next);
+    setStatusSaving(true);
+    try {
+      await riderApi.patch('/riders/me/status', {
+        isActive: next,
+        ...(coords ? { location: coords } : {}),
+      });
+      toast.success(next ? 'You are now online' : 'You are now offline');
+    } catch (e: any) {
+      setIsActive(!next); // rollback
+      toast.error(e?.response?.data?.message || 'Could not update availability');
+    } finally {
+      setStatusSaving(false);
+    }
+  };
+
   if (profileLoading) {
     return <Layout><div className="p-20 text-center font-sans text-2xl animate-pulse text-[#1b1c1c]">Loading your dashboard...</div></Layout>;
   }
@@ -171,9 +194,24 @@ export default function RiderDashboardPage() {
             <p className="text-[10px] font-black text-[#ff6b00] uppercase tracking-[0.22em] mb-4">Rider Dashboard</p>
             <h1 className="text-3xl font-sans tracking-normal text-[#1b1c1c] leading-none">My Dashboard</h1>
           </div>
-          <div className="flex items-center gap-4 bg-white border border-[#e0e0e0] rounded-lg px-6 py-3 shadow-sm">
-             <div className="w-2 h-2 bg-[#ffedd5] rounded-full animate-pulse"></div>
-             <p className="text-[10px] font-black uppercase tracking-widest text-[#1b1c1c]">Rider: {user?.fullName}</p>
+          <div className="flex items-center gap-4 rounded-lg border border-[#e0e0e0] bg-white px-6 py-3 shadow-sm">
+            <div>
+              <p className="text-[9px] font-black uppercase tracking-widest text-[#414844]/60">Availability</p>
+              <p className={`text-[11px] font-black uppercase tracking-widest ${availability ? 'text-green-600' : 'text-[#7b3f3f]'}`}>
+                {availability ? 'Online · accepting jobs' : 'Offline'}
+              </p>
+            </div>
+            <button
+              type="button"
+              role="switch"
+              aria-checked={availability}
+              aria-label="Toggle availability"
+              onClick={toggleAvailability}
+              disabled={statusSaving}
+              className={`relative h-7 w-14 shrink-0 rounded-full transition disabled:opacity-60 ${availability ? 'bg-green-500' : 'bg-[#d2bca8]'}`}
+            >
+              <span className={`absolute top-1 h-5 w-5 rounded-full bg-white shadow transition-all ${availability ? 'left-8' : 'left-1'}`} />
+            </button>
           </div>
         </div>
 

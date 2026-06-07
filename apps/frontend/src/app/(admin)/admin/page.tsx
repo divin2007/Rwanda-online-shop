@@ -1690,6 +1690,7 @@ function AdminDashboardContent() {
                                  <p className="text-xl font-sans text-[#ff6b00]">{m.totalSellers || 0}</p>
                                  <p className="text-[8px] font-black text-[#414844] uppercase tracking-widest mt-1">Sellers</p>
                                </div>
+                               <Link href={`/admin/markets/${m._id}/penalties`} className="px-4 py-2 border border-[#d9b8ad] text-[9px] font-black uppercase tracking-widest text-[#7b3f3f] hover:border-[#7b3f3f] hover:bg-[#fff5f3]">Penalties</Link>
                                <button className="px-4 py-2 border border-[#e0e0e0] text-[9px] font-black uppercase tracking-widest text-[#1b1c1c] hover:border-[#ff6b00]" onClick={() => setEditingMarket({
                                  ...m,
                                  lat: m.location?.coordinates?.[1],

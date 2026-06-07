@@ -43,8 +43,11 @@ export default function WalletPage() {
           </section>
 
           <section className="rounded-lg border border-[#e0e0e0] bg-white shadow-sm">
-            <div className="border-b border-[#e0e0e0] p-6">
+            <div className="flex items-center justify-between gap-4 border-b border-[#e0e0e0] p-6">
               <p className="text-[10px] font-black uppercase tracking-[0.35em] text-[#1b1c1c]">Accounting history</p>
+              <Link href="/wallet/transactions" className="text-[10px] font-black uppercase tracking-widest text-[#ff6b00] hover:text-[#e05300]">
+                View all & filter -&gt;
+              </Link>
             </div>
             <div className="divide-y divide-[#e0e0e0]">
               {transactions && transactions.length > 0 ? transactions.map((tx: any) => (

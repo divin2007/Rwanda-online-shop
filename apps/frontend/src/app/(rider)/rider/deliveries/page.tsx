@@ -7,6 +7,7 @@ import { useApi } from '@/hooks/useApi';
 import { deliveryApi, riderApi } from '@/lib/api';
 import { Search, Bike, Store, MapPin } from 'lucide-react';
 import Link from 'next/link';
+import { ProofOfDelivery } from '@/components/ui/ProofOfDelivery';
 
 const RIDER_DELIVERIES_REFRESH_MS = 10000;
 
@@ -85,7 +86,7 @@ export default function RiderDeliveriesPage() {
             <p className="mt-2 max-w-xl text-sm font-semibold leading-6 text-white/65">Track pickups, handovers, earnings, and proof steps from one place.</p>
           </div>
           
-          <div className="flex gap-3">
+          <div className="flex flex-wrap items-center gap-3">
             <div className="rounded-md border border-white/10 bg-white/5 px-4 py-3 text-right [&>p:last-child]:!text-white">
               <p className="mb-1 text-[9px] font-black uppercase tracking-widest text-white/45">Plate No.</p>
               <p className="text-xl font-sans text-[#1b1c1c] tracking-normal">{profile?.plateNumber || '—'}</p>
@@ -94,6 +95,9 @@ export default function RiderDeliveriesPage() {
               <p className="mb-1 text-[9px] font-black uppercase tracking-widest text-white/45">Rating</p>
               <p className="text-xl font-sans tracking-normal text-[#ffedd5]">{stats.rating > 0 ? stats.rating.toFixed(1) : 'New'}</p>
             </div>
+            <Link href="/rider/history" className="rounded-md bg-[#ffedd5] px-5 py-3 text-[10px] font-black uppercase tracking-widest text-[#e05300] transition hover:bg-white">
+              Full history →
+            </Link>
           </div>
         </div>
 
@@ -235,6 +239,17 @@ export default function RiderDeliveriesPage() {
                     </div>
                   </div>
                 </div>
+
+                {/* Proof-of-delivery steps for active deliveries */}
+                {filter === 'active' && delivery.status !== 'delivered' && delivery.status !== 'failed' && (
+                  <div className="border-t border-[#e0e0e0] p-5">
+                    <ProofOfDelivery
+                      deliveryId={delivery._id}
+                      status={delivery.status}
+                      onUpdated={fetchDeliveries}
+                    />
+                  </div>
+                )}
               </div>
             ))}
           </div>

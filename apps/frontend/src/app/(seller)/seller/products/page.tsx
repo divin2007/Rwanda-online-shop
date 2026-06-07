@@ -1,6 +1,7 @@
 'use client';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { Archive, Edit3, PackagePlus, Search, X, FileSpreadsheet, UploadCloud, Download, CheckCircle2, AlertCircle } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { Layout } from '@/components/layout/Layout';
@@ -221,7 +222,7 @@ export default function SellerProductsPage() {
   };
 
   const openEdit = (product: Product) => {
-    router.push(`/seller/products/new?id=${product._id}`);
+    router.push(`/seller/products/${product._id}/edit`);
   };
 
   const handleArchive = async (product: Product) => {
@@ -255,18 +256,25 @@ export default function SellerProductsPage() {
             </div>
           </div>
           <div className="flex flex-wrap gap-3">
+            <Link
+              href="/seller/bulk-upload"
+              className="inline-flex items-center gap-3 rounded-md border border-[#e05300] bg-white px-6 py-3 text-[10px] font-black uppercase tracking-[0.22em] text-[#e05300] shadow-sm transition hover:bg-[#fcf9f8]"
+            >
+              <FileSpreadsheet size={16} />
+              Bulk Upload
+            </Link>
             {profile?.capabilities?.bulk && (
               <button
                 type="button"
                 onClick={() => setShowBulkUpload(!showBulkUpload)}
                 className={`inline-flex items-center gap-3 rounded-md border px-6 py-3 text-[10px] font-black uppercase tracking-[0.22em] shadow-sm transition ${
-                  showBulkUpload 
+                  showBulkUpload
                     ? 'border-[#ff6b00] bg-[#ff6b00] text-white'
                     : 'border-[#e05300] bg-white text-[#e05300] hover:bg-[#fcf9f8]'
                 }`}
               >
                 <FileSpreadsheet size={16} />
-                {showBulkUpload ? 'Close Bulk Import' : 'Bulk Import'}
+                {showBulkUpload ? 'Close Bulk Import' : 'Quick Import'}
               </button>
             )}
             <button
