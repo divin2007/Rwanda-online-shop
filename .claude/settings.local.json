@@ -33,7 +33,20 @@
       "Bash(curl -s http://localhost:3006/api/v1/orders/health)",
       "Bash(curl -s http://localhost:3006/api/v1/health)",
       "Bash(curl *)",
-      "Bash(npx nest *])"
+      "Bash(npx nest *])",
+      "WebSearch",
+      "WebFetch(domain:owasp.org)",
+      "Bash(npx eslint *)",
+      "Bash(git *)",
+      "Skill(run)",
+      "Bash(grep *)",
+      "PowerShell(Start-Process -FilePath \"npm\" -ArgumentList \"run\",\"dev\" -WorkingDirectory \"C:\\\\Users\\\\Mahoro T. Divin\\\\Downloads\\\\jules_session_14902756046933173609 \\(1\\)\\\\apps\\\\frontend\" -RedirectStandardOutput \"$env:TEMP\\\\rmf-frontend-out.log\" -RedirectStandardError \"$env:TEMP\\\\rmf-frontend-err.log\" -NoNewWindow)",
+      "PowerShell($job = Start-Job -ScriptBlock { Set-Location \"C:\\\\Users\\\\Mahoro T. Divin\\\\Downloads\\\\jules_session_14902756046933173609 \\(1\\)\\\\apps\\\\frontend\"; npm run dev 2>&1 } ; Write-Host \"Job started: $\\($job.Id\\)\")",
+      "Read(//mnt/c/Users/Mahoro T. Divin/Downloads/jules_session_14902756046933173609 \\(1\\)/apps/**)",
+      "Bash(npm run *)",
+      "Bash(echo \"PID=$!\")",
+      "Bash(npm --version)",
+      "Bash(Remove-Item *)"
     ]
   }
 }

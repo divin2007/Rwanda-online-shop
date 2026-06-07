@@ -77,8 +77,14 @@ export default function RootLayout() {
                 <Stack.Screen name="seller/onboarding" options={{ title: 'Seller onboarding' }} />
                 <Stack.Screen name="seller/products" options={{ title: 'Inventory' }} />
                 <Stack.Screen name="seller/promotions" options={{ title: 'Promotions' }} />
+                <Stack.Screen name="seller/orders/index" options={{ title: 'Seller orders' }} />
                 <Stack.Screen name="seller/orders/[orderId]" options={{ title: 'Seller order' }} />
+                <Stack.Screen name="seller/analytics" options={{ title: 'Analytics' }} />
+                <Stack.Screen name="seller/earnings" options={{ title: 'Earnings & Wallet' }} />
+                <Stack.Screen name="seller/reviews" options={{ title: 'Reviews' }} />
+                <Stack.Screen name="seller/qr" options={{ title: 'My Stall QR' }} />
                 <Stack.Screen name="rider/deliveries" options={{ title: 'Deliveries' }} />
+                <Stack.Screen name="rider/earnings" options={{ title: 'Rider Earnings' }} />
                 <Stack.Screen name="settings" options={{ title: 'Settings' }} />
                 <Stack.Screen name="preferences" options={{ title: 'Recommendations' }} />
                 <Stack.Screen name="wallet" options={{ title: 'Wallet' }} />

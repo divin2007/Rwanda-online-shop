@@ -34,6 +34,7 @@ export const CheckoutContent = () => {
   const [isCalculatingFee, setIsCalculatingFee] = useState(false);
   const [isPlacingOrder, setIsPlacingOrder] = useState(false);
   const [isWaitingPayment, setIsWaitingPayment] = useState(false);
+  const [waitElapsed, setWaitElapsed] = useState(0);
   const [orderId, setOrderId] = useState<string | null>(null);
   const [marketCoords, setMarketCoords] = useState<{lat: number, lng: number} | null>(null);
   const { data: statusUpdate } = useSocket(
@@ -85,6 +86,29 @@ export const CheckoutContent = () => {
       }
     }
   }, [statusUpdate, orderId, router, items.length]);
+
+  // Count up elapsed seconds while waiting for the mobile money prompt to be approved.
+  // Purely presentational — payment success is decided only by the backend/socket event above.
+  useEffect(() => {
+    if (!isWaitingPayment) {
+      setWaitElapsed(0);
+      return;
+    }
+    const interval = setInterval(() => setWaitElapsed((s) => s + 1), 1000);
+    return () => clearInterval(interval);
+  }, [isWaitingPayment]);
+
+  // Derived checkout progress for the step indicator: Cart → Delivery → Payment → Confirm.
+  // Step 1 (Cart) is complete once there are items; 2 (Delivery) once a pin is set;
+  // 3 (Payment) once a valid-looking phone is entered; 4 (Confirm) while awaiting approval.
+  const paymentReady = /^07\d{8}$/.test(normalizeRwandaPhone(phone));
+  const currentStep = isWaitingPayment ? 4 : paymentReady ? 3 : coords ? 2 : 1;
+  const steps = [
+    { id: 1, label: 'Cart' },
+    { id: 2, label: 'Delivery' },
+    { id: 3, label: 'Payment' },
+    { id: 4, label: 'Confirm' },
+  ];
 
   const handleCheckout = async () => {
     if (items.length === 0) return toast.error('Your cart is empty.');
@@ -233,9 +257,75 @@ export const CheckoutContent = () => {
         <h1 className="text-4xl md:text-5xl font-bold text-text-primary tracking-tight">Checkout</h1>
       </div>
 
+      {/* ── Step Indicator: Cart → Delivery → Payment → Confirm (mobile-visible) ── */}
+      <nav aria-label="Checkout progress" className="-mt-8">
+        <ol className="flex items-center justify-between gap-1 sm:gap-3">
+          {steps.map((step, idx) => {
+            const isDone = step.id < currentStep;
+            const isCurrent = step.id === currentStep;
+            return (
+              <React.Fragment key={step.id}>
+                <li className="flex items-center gap-2 min-w-0" aria-current={isCurrent ? 'step' : undefined}>
+                  <span
+                    className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-bold transition-colors ${
+                      isCurrent
+                        ? 'bg-primary text-white'
+                        : isDone
+                          ? 'bg-primary/10 text-primary'
+                          : 'bg-background-surface text-text-muted'
+                    }`}
+                  >
+                    {isDone ? '✓' : step.id}
+                  </span>
+                  <span
+                    className={`text-[11px] font-bold uppercase tracking-widest truncate ${
+                      isCurrent ? 'text-text-primary' : 'text-text-muted'
+                    } ${isCurrent ? '' : 'hidden sm:inline'}`}
+                  >
+                    {step.label}
+                  </span>
+                </li>
+                {idx < steps.length - 1 && (
+                  <li aria-hidden className={`h-px flex-1 ${step.id < currentStep ? 'bg-primary/40' : 'bg-border-light'}`} />
+                )}
+              </React.Fragment>
+            );
+          })}
+        </ol>
+      </nav>
+
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-16 xl:gap-24 items-start">
         <div className="lg:col-span-8 space-y-20">
-          
+
+          {/* ── Mobile fee/total summary: keeps delivery fee visible BEFORE the payment step on small screens ── */}
+          <div className="lg:hidden bg-white border border-border-light rounded-2xl p-5 shadow-sm space-y-3 !mt-0">
+            <div className="flex justify-between items-center">
+              <span className="text-[11px] font-bold uppercase tracking-widest text-text-muted">Subtotal</span>
+              <span className="text-sm font-bold text-text-primary">{subtotal.toLocaleString()} RWF</span>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="text-[11px] font-bold uppercase tracking-widest text-text-muted">Delivery Fee</span>
+              {isCalculatingFee ? (
+                <span className="flex items-center gap-2 text-xs font-bold text-text-muted">
+                  <span className="w-3.5 h-3.5 border-2 border-border-light border-t-primary rounded-full animate-spin" />
+                  Calculating
+                </span>
+              ) : coords ? (
+                <span className="text-sm font-bold text-text-primary">{deliveryFee.toLocaleString()} RWF</span>
+              ) : (
+                <span className="text-[11px] font-bold text-primary">Set location to see fee</span>
+              )}
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="text-[11px] font-bold uppercase tracking-widest text-text-muted">Service Fee</span>
+              <span className="text-sm font-bold text-text-primary">{gatewayFee.toLocaleString()} RWF</span>
+            </div>
+            <div className="flex justify-between items-center pt-3 border-t border-border-light">
+              <span className="text-xs font-bold uppercase tracking-widest text-text-primary">Total</span>
+              <span className="text-lg font-bold text-text-primary">{(total || 0).toLocaleString()} RWF</span>
+            </div>
+          </div>
+
           {/* ── Delivery Location ── */}
           <section className="space-y-8">
             <div className="flex items-center justify-between border-b border-border-light pb-6">
@@ -416,8 +506,8 @@ export const CheckoutContent = () => {
                 {isCalculatingFee ? (
                   <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                 ) : (
-                  <span className="text-lg font-bold tracking-tight text-white">
-                    {coords ? `${deliveryFee.toLocaleString()} RWF` : '—'}
+                  <span className={`font-bold tracking-tight text-white ${coords ? 'text-lg' : 'text-[11px] uppercase tracking-widest text-accent-premium'}`}>
+                    {coords ? `${deliveryFee.toLocaleString()} RWF` : 'Set location to see fee'}
                   </span>
                 )}
               </div>
@@ -463,6 +553,42 @@ export const CheckoutContent = () => {
           </div>
         </div>
       </div>
+
+      {/* ── Mobile Money Processing Wait-State (presentational only; success comes from socket status) ── */}
+      {isWaitingPayment && (
+        <div
+          className="fixed inset-0 z-[1000] flex items-center justify-center bg-text-primary/70 p-4"
+          role="alertdialog"
+          aria-modal="true"
+          aria-label="Processing your payment"
+        >
+          <div className="w-full max-w-md bg-white rounded-2xl shadow-lg border border-border-light p-8 text-center space-y-6">
+            <div className="mx-auto w-16 h-16 rounded-full border-4 border-border-light border-t-primary animate-spin" aria-hidden />
+            <div className="space-y-2">
+              <h2 className="text-xl font-bold text-text-primary tracking-tight">Check your phone</h2>
+              <p className="text-sm text-text-muted leading-relaxed">
+                We sent a payment prompt to <span className="font-bold text-text-primary">{normalizeRwandaPhone(phone)}</span>.
+                Enter your mobile money PIN on your phone to approve and confirm your order.
+              </p>
+            </div>
+
+            <div className="bg-background-surface rounded-xl py-4 px-5 space-y-1">
+              <p className="text-[11px] font-bold uppercase tracking-widest text-text-muted">Usually takes 15–30 seconds</p>
+              <p className="text-2xl font-bold text-text-primary tabular-nums">
+                {Math.floor(waitElapsed / 60)}:{(waitElapsed % 60).toString().padStart(2, '0')}
+              </p>
+            </div>
+
+            <p className="text-xs text-text-muted leading-relaxed">
+              {waitElapsed < 45
+                ? 'Keep this page open — your order confirms automatically once you approve the prompt.'
+                : "Haven't received a prompt? Make sure your number is correct and has enough balance. Do not close this page; if it doesn't arrive, dial your mobile money menu or contact support."}
+            </p>
+
+            <p className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Do not refresh or close this page</p>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
