@@ -7,6 +7,7 @@ import toast from 'react-hot-toast';
 import { useAuth } from '@/context/AuthContext';
 import { useLanguage } from '@/context/LanguageContext';
 import { userApi } from '@/lib/api';
+import { getSafeRedirect } from '@/lib/safeRedirect';
 
 type ApiError = { response?: { data?: { error?: string; message?: string } } };
 
@@ -30,7 +31,7 @@ export default function LoginPage() {
     if (typeof window !== 'undefined') {
       const params = new URLSearchParams(window.location.search);
       const redirectUrl = params.get('redirect');
-      if (redirectUrl) return redirectUrl;
+      if (redirectUrl) return getSafeRedirect(redirectUrl, '/dashboard');
     }
     if (role === 'SELLER') return '/seller/dashboard';
     if (role === 'RIDER') return '/rider/dashboard';
@@ -49,7 +50,7 @@ export default function LoginPage() {
       const params = new URLSearchParams(window.location.search);
       const redirectUrl = params.get('redirect');
       if (redirectUrl) {
-        router.replace(redirectUrl);
+        router.replace(getSafeRedirect(redirectUrl, routeForRole(user.role)));
       } else {
         router.replace(routeForRole(user.role));
       }

@@ -12,6 +12,7 @@ import { marketApi, productApi, userApi } from '@/lib/api';
 import { useLanguage } from '@/context/LanguageContext';
 import { useAuth } from '@/context/AuthContext';
 import { MapPin, PackageCheck, Search, ShieldCheck, SlidersHorizontal, Sparkles, WifiOff, Clock, TrendingUp, Star, BadgePercent } from 'lucide-react';
+import { logger } from '@/lib/logger';
 
 const RiderMap = dynamic(() => import('@/components/ui/RiderMap').then(mod => mod.RiderMap), {
   ssr: false,
@@ -213,7 +214,7 @@ function MarketsContent() {
 
   useEffect(() => {
     if (socketMessage) {
-      console.log('[WebSocket] Order update received on Markets Page:', socketMessage);
+      logger.debug('[WebSocket] Order update received on Markets Page:', socketMessage);
       if (socketMessage.type === 'STATUS_UPDATE' && (socketMessage.status === 'delivered' || socketMessage.status === 'confirmed')) {
         fetchMarkets();
         refetchProducts();

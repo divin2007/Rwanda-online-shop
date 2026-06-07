@@ -46,7 +46,19 @@
       "Bash(npm run *)",
       "Bash(echo \"PID=$!\")",
       "Bash(npm --version)",
-      "Bash(Remove-Item *)"
+      "Bash(Remove-Item *)",
+      "Bash(npm audit *)",
+      "Bash(npm ls *)",
+      "Bash(echo \"frontend-5.0.5-exit:$?\")",
+      "Bash(node -e ' *)",
+      "Bash(grep -q \"Ready in\" /tmp/rmf-dev.log)",
+      "Bash(break)",
+      "Read(//tmp/**)",
+      "Bash(echo \"=== exit: $? \\(1 = no errors found, good\\) ===\")",
+      "Bash(taskkill //F //IM node.exe //FI \"WINDOWTITLE eq *\")",
+      "Bash(pkill -f \"next dev\")",
+      "Bash(pkill -f \"next-server\")",
+      "PowerShell($conn = Get-NetTCPConnection -LocalPort 3100 -State Listen -ErrorAction SilentlyContinue; if \\($conn\\) { Stop-Process -Id $conn.OwningProcess -Force; Write-Output \"killed PID $\\($conn.OwningProcess\\)\" } else { Write-Output \"no listener on 3100\" })"
     ]
   }
 }

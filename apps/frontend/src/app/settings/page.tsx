@@ -8,6 +8,7 @@ import { Layout } from '@/components/layout/Layout';
 import { useAuth } from '@/context/AuthContext';
 import { useLanguage } from '@/context/LanguageContext';
 import { notificationApi, riderApi, sellerApi, userApi } from '@/lib/api';
+import { sanitizeText } from '@/lib/sanitize';
 
 type SettingsState = {
   language: 'en' | 'fr' | 'kin';
@@ -168,7 +169,14 @@ export default function SettingsPage() {
   const saveSettings = async () => {
     setSaving(true);
     try {
-      const res = await userApi.put('/users/settings', settings);
+      const payload: SettingsState = {
+        ...settings,
+        seller: {
+          ...settings.seller,
+          autoReplyMessage: sanitizeText(settings.seller.autoReplyMessage, 500),
+        },
+      };
+      const res = await userApi.put('/users/settings', payload);
       const nextSettings = mergeSettings(res.data?.data || settings);
       setSettings(nextSettings);
       setSavedSettings(nextSettings);
@@ -185,18 +193,25 @@ export default function SettingsPage() {
   const submitSellerSettingsReview = async () => {
     setRequestingReview(true);
     try {
+      const cleanName = sanitizeText(sellerRequest.stallName, 120);
+      const cleanTagline = sanitizeText(sellerRequest.tagline, 160);
+      const cleanDescription = sanitizeText(sellerRequest.description, 2000);
+      const cleanCategories = sanitizeText(sellerRequest.categories, 300)
+        .split(',')
+        .map(item => item.trim())
+        .filter(Boolean);
       await sellerApi.post('/sellers/settings/change-request', {
-        stallName: sellerRequest.stallName,
-        description: sellerRequest.description,
+        stallName: cleanName,
+        description: cleanDescription,
         shopDetails: {
-          name: sellerRequest.stallName,
-          tagline: sellerRequest.tagline,
-          description: sellerRequest.description,
-          categories: sellerRequest.categories.split(',').map(item => item.trim()).filter(Boolean),
+          name: cleanName,
+          tagline: cleanTagline,
+          description: cleanDescription,
+          categories: cleanCategories,
         },
         market: {
-          name: sellerRequest.stallName,
-          description: sellerRequest.description,
+          name: cleanName,
+          description: cleanDescription,
         },
       });
       toast.success('Seller settings sent for admin approval');
@@ -211,7 +226,12 @@ export default function SettingsPage() {
   const submitRiderSettingsReview = async () => {
     setRequestingReview(true);
     try {
-      await riderApi.post('/riders/settings/change-request', riderRequest);
+      await riderApi.post('/riders/settings/change-request', {
+        plateNumber: sanitizeText(riderRequest.plateNumber, 32),
+        licenseUrl: sanitizeText(riderRequest.licenseUrl, 500),
+        vehiclePhotoUrl: sanitizeText(riderRequest.vehiclePhotoUrl, 500),
+        insuranceUrl: sanitizeText(riderRequest.insuranceUrl, 500),
+      });
       toast.success('Rider settings sent for admin approval');
       setRiderRequest({ plateNumber: '', licenseUrl: '', vehiclePhotoUrl: '', insuranceUrl: '' });
     } catch (error: any) {

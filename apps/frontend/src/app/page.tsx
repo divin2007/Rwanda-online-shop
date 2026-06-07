@@ -31,6 +31,7 @@ import { Footer } from '@/components/layout/Footer';
 import { useLanguage } from '@/context/LanguageContext';
 import { useAuth } from '@/context/AuthContext';
 import { getMarketUrl, getProductUrl } from '@/lib/urls';
+import { logger } from '@/lib/logger';
 
 const RiderMap = dynamic(() => import('@/components/ui/RiderMap').then(mod => mod.RiderMap), {
   ssr: false,
@@ -468,7 +469,7 @@ export default function HomePage() {
 
   useEffect(() => {
     if (socketMessage) {
-      console.log('[WebSocket] Order update received on Home Page:', socketMessage);
+      logger.debug('[WebSocket] Order update received on Home Page:', socketMessage);
       if (socketMessage.type === 'STATUS_UPDATE' && (socketMessage.status === 'delivered' || socketMessage.status === 'confirmed')) {
         refetchMarkets();
         refetchProducts();
@@ -492,7 +493,7 @@ export default function HomePage() {
           });
         },
         (error) => {
-          console.warn('[Geolocation] Error getting location:', error);
+          logger.warn('[Geolocation] Error getting location:', error?.message || 'unavailable');
         },
         { enableHighAccuracy: true, timeout: 10000 }
       );

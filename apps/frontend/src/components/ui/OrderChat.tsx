@@ -9,6 +9,7 @@ import { useSocket } from '@/hooks/useSocket';
 import { ImageUpload } from './ImageUpload';
 import { toast } from 'react-hot-toast';
 import { resolveUploadUrl } from '@/lib/uploadUrls';
+import { sanitizeText } from '@/lib/sanitize';
 
 const MapPinPicker = dynamic(() => import('./MapPinPicker').then(mod => mod.MapPinPicker), { ssr: false });
 
@@ -159,14 +160,15 @@ export const OrderChat: React.FC<OrderChatProps> = ({
 
   const handleSendMessage = async (content: string, imageUrl?: string) => {
     if (isClosed) return toast.error('This order is closed. Messages are locked.');
-    if ((!content.trim() && !imageUrl) || !user) return;
+    const safeContent = sanitizeText(content, 1000);
+    if ((!safeContent.trim() && !imageUrl) || !user) return;
 
     setIsSending(true);
     try {
       const response = await orderApi.post(`/orders/${orderId}/messages`, {
         senderId: user.id,
         senderRole: userRole,
-        content: content.trim() || (imageUrl ? 'Sent an image' : ''),
+        content: safeContent.trim() || (imageUrl ? 'Sent an image' : ''),
         imageUrl,
         channel,
         recipientRole: userRole === 'BUYER' ? 'SELLER' : 'BUYER',

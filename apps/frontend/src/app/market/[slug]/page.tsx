@@ -12,6 +12,7 @@ import { useApi } from '@/hooks/useApi';
 import { useSocket } from '@/hooks/useSocket';
 import { marketApi, productApi, reviewApi } from '@/lib/api';
 import { resolveUploadUrl } from '@/lib/uploadUrls';
+import { logger } from '@/lib/logger';
 
 const RiderMap = dynamic(() => import('@/components/ui/RiderMap').then(mod => mod.RiderMap), { ssr: false });
 
@@ -164,7 +165,7 @@ export default function MarketPage({ params }: { params: Promise<{ slug: string 
 
   useEffect(() => {
     if (socketMessage) {
-      console.log('[WebSocket] Order update received on Market Details Page:', socketMessage);
+      logger.debug('[WebSocket] Order update received on Market Details Page:', socketMessage);
       if (socketMessage.type === 'STATUS_UPDATE' && (socketMessage.status === 'delivered' || socketMessage.status === 'confirmed')) {
         fetchMarket();
         fetchCatalog();
