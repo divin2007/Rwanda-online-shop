@@ -286,9 +286,9 @@ export default function ProductDetailScreen() {
       </View>
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
-        {/* ── Sneaker Image Showcase with Terracotta Background ── */}
+        {/* Product image showcase */}
         <View style={styles.imageGalleryContainer}>
-          <Image source={{ uri: displayedImage }} style={styles.mainSneakerImage} />
+          <Image source={{ uri: displayedImage }} style={styles.mainProductImage} />
           
           <TouchableOpacity 
             style={styles.floatingWishlist} 
@@ -548,7 +548,7 @@ export default function ProductDetailScreen() {
                 <ShoppingBag color="#ffffff" size={16} style={{ marginRight: 8 }} />
               )}
               <Text style={[styles.primaryCtaTxt, { color: '#ffffff' }]}>
-                {negotiating ? 'STARTING NEGOTIATION...' : '⚡ START ESCROW NEGOTIATION'}
+                {negotiating ? 'STARTING NEGOTIATION...' : 'START ESCROW NEGOTIATION'}
               </Text>
             </TouchableOpacity>
           ) : (
@@ -636,7 +636,7 @@ const styles = StyleSheet.create({
     paddingBottom: 24,
     position: 'relative',
   },
-  mainSneakerImage: {
+  mainProductImage: {
     width: SCREEN_W * 0.85,
     height: SCREEN_W * 0.55,
     resizeMode: 'contain',

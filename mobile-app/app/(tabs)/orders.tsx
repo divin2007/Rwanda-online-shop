@@ -1,7 +1,7 @@
-import React from 'react';
-import { Image, RefreshControl, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import React, { useMemo, useState } from 'react';
+import { Image, RefreshControl, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { Link, useRouter } from 'expo-router';
-import { Clock, ReceiptText } from 'lucide-react-native';
+import { Clock, ReceiptText, Search, SlidersHorizontal } from 'lucide-react-native';
 import { EmptyBlock, ErrorBlock, LoadingBlock } from '../../src/components/StateView';
 import { useAuth } from '../../src/context/AuthContext';
 import { api } from '../../src/lib/api';
@@ -39,6 +39,8 @@ const firstProductImage = (order: Order): string | undefined => {
 export default function OrdersScreen() {
   const router = useRouter();
   const { isAuthenticated } = useAuth();
+  const [query, setQuery] = useState('');
+  const [filter, setFilter] = useState<'all' | 'active' | 'delivered' | 'disputes'>('all');
   const { data, loading, refreshing, error, refresh } = useRemote<Order[]>(
     () => isAuthenticated ? api.get<Order[]>('order', '/orders') : Promise.resolve([]),
     [isAuthenticated],
@@ -60,6 +62,22 @@ export default function OrdersScreen() {
   if (error && !data) return <ErrorBlock message={error} onRetry={refresh} />;
 
   const orders = asArray<Order>(data);
+  const filteredOrders = useMemo(() => {
+    const norm = query.trim().toLowerCase();
+    return orders.filter(order => {
+      const status = String(order.status || '').toLowerCase();
+      if (filter === 'active' && ['delivered', 'cancelled', 'resolved'].includes(status)) return false;
+      if (filter === 'delivered' && status !== 'delivered') return false;
+      if (filter === 'disputes' && !['disputed', 'resolved'].includes(status)) return false;
+      if (!norm) return true;
+      const haystack = [
+        order.orderNumber, order._id, order.status,
+        order.seller?.fullName, order.seller?.stallId,
+        ...(order.products || []).map((p: any) => p.name),
+      ].filter(Boolean).join(' ').toLowerCase();
+      return haystack.includes(norm);
+    });
+  }, [filter, orders, query]);
 
   return (
     <ScrollView
@@ -70,12 +88,32 @@ export default function OrdersScreen() {
       <View style={styles.header}>
         <ReceiptText color={colors.orange} size={22} />
         <View>
-          <Text style={styles.title}>My orders</Text>
-          <Text style={styles.subtitle}>{orders.length} order records</Text>
+          <Text style={styles.title}>Orders</Text>
+          <Text style={styles.subtitle}>{filteredOrders.length} of {orders.length} records</Text>
         </View>
       </View>
 
-      {orders.length ? orders.map(order => {
+      <View style={styles.searchBox}>
+        <Search color={colors.body} size={18} />
+        <TextInput
+          value={query}
+          onChangeText={setQuery}
+          placeholder="Search order, seller, product..."
+          placeholderTextColor={colors.faint}
+          style={styles.searchInput}
+          returnKeyType="search"
+        />
+        <SlidersHorizontal color={colors.body} size={18} />
+      </View>
+
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filters}>
+        <OrderFilter label="All" active={filter === 'all'} onPress={() => setFilter('all')} />
+        <OrderFilter label="Active" active={filter === 'active'} onPress={() => setFilter('active')} />
+        <OrderFilter label="Delivered" active={filter === 'delivered'} onPress={() => setFilter('delivered')} />
+        <OrderFilter label="Disputes" active={filter === 'disputes'} onPress={() => setFilter('disputes')} />
+      </ScrollView>
+
+      {filteredOrders.length ? filteredOrders.map(order => {
         const palette = statusPalette(order.status);
         const thumb = firstProductImage(order);
         return (
@@ -115,7 +153,7 @@ export default function OrdersScreen() {
           </TouchableOpacity>
         );
       }) : (
-        <EmptyBlock title="No orders yet" body="Orders created through checkout will appear here." />
+        <EmptyBlock title="No orders found" body="Orders created through checkout will appear here." />
       )}
 
       <Link href="/notifications" asChild>
@@ -127,13 +165,38 @@ export default function OrdersScreen() {
   );
 }
 
+function OrderFilter({ label, active, onPress }: { label: string; active: boolean; onPress: () => void }) {
+  return (
+    <TouchableOpacity style={[styles.filterChip, active && styles.filterChipActive]} onPress={onPress} activeOpacity={0.85}>
+      <Text style={[styles.filterText, active && styles.filterTextActive]}>{label}</Text>
+    </TouchableOpacity>
+  );
+}
+
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.paper },
-  content: { padding: 16, gap: 14, paddingBottom: 36 },
-  header: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: colors.card, borderColor: colors.line, borderWidth: 1, borderRadius: 12, padding: 14 },
+  content: { padding: 16, gap: 12, paddingBottom: 108 },
+  header: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: colors.card, borderColor: colors.line, borderWidth: 1, borderRadius: 8, padding: 14 },
   title: { color: colors.ink, fontSize: 22, fontWeight: '900' },
   subtitle: { color: colors.muted, fontSize: 12, fontWeight: '700', marginTop: 2 },
-  card: { backgroundColor: colors.card, borderWidth: 1, borderColor: colors.line, borderRadius: 12, padding: 12, flexDirection: 'row', gap: 12, alignItems: 'flex-start' },
+  searchBox: {
+    height: 46,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: colors.divider,
+    backgroundColor: colors.card,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 9,
+    paddingHorizontal: 14,
+  },
+  searchInput: { flex: 1, color: colors.ink, fontSize: 14, fontWeight: '700', paddingVertical: 0 },
+  filters: { gap: 8, paddingBottom: 2 },
+  filterChip: { borderWidth: 1, borderColor: colors.divider, borderRadius: 999, backgroundColor: colors.card, paddingHorizontal: 14, paddingVertical: 7 },
+  filterChipActive: { backgroundColor: colors.primaryMid, borderColor: colors.primaryMid },
+  filterText: { color: colors.body, fontSize: 12, fontWeight: '800' },
+  filterTextActive: { color: colors.primaryDark },
+  card: { backgroundColor: colors.card, borderWidth: 1, borderColor: colors.line, borderRadius: 8, padding: 12, flexDirection: 'row', gap: 12, alignItems: 'flex-start' },
   thumb: { width: 60, height: 60, borderRadius: 10, overflow: 'hidden' },
   thumbFallback: { backgroundColor: colors.paper, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: colors.line },
   cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },

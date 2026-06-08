@@ -277,6 +277,23 @@ export default function CartScreen() {
   return (
     <View style={styles.container}>
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+        <View style={styles.checkoutHero}>
+          <View>
+            <Text style={styles.heroKicker}>SOLARIS CHECKOUT</Text>
+            <Text style={styles.heroTitle}>Secure Checkout</Text>
+          </View>
+          <View style={styles.heroPill}>
+            <ShieldCheck color={colors.primaryMid} size={15} />
+            <Text style={styles.heroPillText}>ESCROW</Text>
+          </View>
+        </View>
+
+        <View style={styles.promiseBanner}>
+          <ShieldCheck color={colors.primary} size={18} />
+          <Text style={styles.promiseText}>
+            Payment is held in RMF escrow until pickup and delivery proof are confirmed.
+          </Text>
+        </View>
 
         {!isAuthenticated ? (
           <View style={styles.authCard}>
@@ -288,7 +305,7 @@ export default function CartScreen() {
 
         {/* Items */}
         <View style={styles.panel}>
-          <Text style={styles.title}>Review items</Text>
+          <CheckoutStepTitle index="01" title="Bag review" subtitle={`${items.length} cart item${items.length === 1 ? '' : 's'} ready for checkout`} />
           {items.map(item => (
             <View key={`${item.productId}-${item.variantId || 'base'}`} style={styles.cartLine}>
               <OrderLineCard item={item} />
@@ -313,7 +330,7 @@ export default function CartScreen() {
 
         {/* Delivery & Payment */}
         <View style={styles.panel}>
-          <Text style={styles.title}>Delivery and payment</Text>
+          <CheckoutStepTitle index="02" title="Delivery" subtitle="Pick GPS or tap the map to set the rider pin" />
 
           {/* Location buttons */}
           <View style={styles.locationRow}>
@@ -325,7 +342,7 @@ export default function CartScreen() {
             >
               <Navigation color={location ? colors.card : colors.orange} size={16} />
               <Text style={[styles.locationBtnText, location && styles.locationBtnTextActive]}>
-                {locating ? 'Reading GPS…' : 'Current location'}
+                {locating ? 'Reading GPS...' : 'Current location'}
               </Text>
             </TouchableOpacity>
 
@@ -407,7 +424,7 @@ export default function CartScreen() {
 
         {/* Escrow summary */}
         <View style={styles.panel}>
-          <Text style={styles.title}>Escrow summary</Text>
+          <CheckoutStepTitle index="03" title="Payment" subtitle="Mobile money prompt and escrow total" />
           <View style={styles.summaryRow}>
             <Text style={styles.summaryLabel}>Products</Text>
             <Text style={styles.summaryValue}>{money(subtotal)}</Text>
@@ -434,7 +451,7 @@ export default function CartScreen() {
 
       <View style={styles.footer}>
         <PrimaryButton
-          label={`Request payment · ${money(total)}`}
+          label={`Continue to payment - ${money(total)}`}
           onPress={placeOrders}
           loading={submitting}
           disabled={submitting || !phone.trim()}
@@ -490,13 +507,71 @@ export default function CartScreen() {
   );
 }
 
+function CheckoutStepTitle({ index, title, subtitle }: { index: string; title: string; subtitle: string }) {
+  return (
+    <View style={styles.stepHeader}>
+      <View style={styles.stepRail}>
+        <Text style={styles.stepIndex}>{index}</Text>
+      </View>
+      <View style={{ flex: 1 }}>
+        <Text style={styles.title}>{title}</Text>
+        <Text style={styles.stepSubtitle}>{subtitle}</Text>
+      </View>
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.paper },
   content: { padding: 16, paddingBottom: 118, gap: 14 },
+  checkoutHero: {
+    minHeight: 92,
+    borderRadius: 8,
+    backgroundColor: colors.ink,
+    padding: 16,
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    justifyContent: 'space-between',
+  },
+  heroKicker: { color: colors.primaryFixedDim, fontSize: 10, fontWeight: '900', letterSpacing: 1.2 },
+  heroTitle: { color: colors.card, fontSize: 26, lineHeight: 32, fontWeight: '800', marginTop: 4 },
+  heroPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    borderWidth: 1,
+    borderColor: colors.primaryFixedDim,
+    borderRadius: 999,
+    paddingHorizontal: 9,
+    paddingVertical: 5,
+  },
+  heroPillText: { color: colors.primaryFixedDim, fontSize: 10, fontWeight: '900' },
+  promiseBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    borderWidth: 1,
+    borderColor: colors.divider,
+    backgroundColor: colors.primarySoft,
+    borderRadius: 8,
+    padding: 12,
+  },
+  promiseText: { flex: 1, color: colors.primaryDark, fontSize: 12, lineHeight: 17, fontWeight: '800' },
   authCard: { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: colors.orangeSoft, borderColor: colors.orange, borderWidth: 1, borderRadius: 12, padding: 12 },
   authText: { flex: 1, color: colors.greenDark, fontSize: 12, lineHeight: 17, fontWeight: '700' },
   authLink: { color: colors.orangeDark, fontSize: 12, fontWeight: '900' },
-  panel: { backgroundColor: colors.card, borderColor: colors.line, borderWidth: 1, borderRadius: 12, padding: 14, gap: 14 },
+  panel: { backgroundColor: colors.card, borderColor: colors.line, borderWidth: 1, borderRadius: 8, padding: 14, gap: 14 },
+  stepHeader: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  stepRail: {
+    width: 36,
+    height: 36,
+    borderRadius: 4,
+    backgroundColor: colors.primaryMid,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  stepIndex: { color: colors.primaryDark, fontSize: 12, fontWeight: '900' },
+  stepSubtitle: { color: colors.body, fontSize: 12, lineHeight: 17, fontWeight: '600', marginTop: 2 },
   title: { color: colors.ink, fontSize: 18, fontWeight: '900' },
   cartLine: { gap: 8 },
   lineActions: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },

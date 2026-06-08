@@ -4,7 +4,7 @@ import {
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import {
-  Bell, ChevronRight, Heart, LogOut, Settings, Sparkles, Wallet, Clock, Truck, ShieldCheck,
+  Bell, BriefcaseBusiness, ChevronRight, Heart, LogOut, Settings, Sparkles, Wallet, Clock, Truck, ShieldCheck,
 } from 'lucide-react-native';
 import { useAuth } from '../../src/context/AuthContext';
 import { colors } from '../../src/theme';
@@ -47,18 +47,18 @@ export default function AccountScreen() {
           </TouchableOpacity>
 
           <TouchableOpacity style={s.createBtn} onPress={() => router.push('/(auth)/register')} activeOpacity={0.88}>
-            <Text style={s.createBtnText}>Create account — it's free</Text>
+            <Text style={s.createBtnText}>Create account - it's free</Text>
           </TouchableOpacity>
 
           <TouchableOpacity onPress={() => router.replace('/')}>
-            <Text style={s.skipText}>Continue browsing as guest →</Text>
+            <Text style={s.skipText}>Continue browsing as guest</Text>
           </TouchableOpacity>
         </View>
 
         <View style={s.trustRow}>
-          <Text style={s.trustText}>🔒 Encrypted</Text>
-          <Text style={s.trustText}>🛡️ Escrow-backed</Text>
-          <Text style={s.trustText}>🇷🇼 Made in Rwanda</Text>
+          <Text style={s.trustText}>Encrypted</Text>
+          <Text style={s.trustText}>Escrow-backed</Text>
+          <Text style={s.trustText}>Made in Rwanda</Text>
         </View>
       </ScrollView>
     );
@@ -67,7 +67,25 @@ export default function AccountScreen() {
   // ── Authenticated view ───────────────────────────────────────────────────────
   const roleLabel = user.role === 'SELLER' ? 'Verified Seller' : user.role === 'RIDER' ? 'Delivery Rider' : user.role === 'ADMIN' ? 'Admin' : 'Buyer';
 
+  const roleRows = user.role === 'SELLER'
+    ? [
+        { label: 'Seller Hub', sub: 'Operations, orders, QR and analytics', icon: BriefcaseBusiness, route: '/seller' },
+        { label: 'Seller Earnings', sub: 'Settlement ledger and payouts', icon: Wallet, route: '/seller/earnings' },
+      ]
+    : user.role === 'RIDER'
+    ? [
+        { label: 'Rider Deliveries', sub: 'Broadcasted jobs and accepted deliveries', icon: Truck, route: '/rider/deliveries' },
+        { label: 'Rider Earnings', sub: 'Delivery fee history and ratings', icon: Wallet, route: '/rider/earnings' },
+      ]
+    : user.role === 'ADMIN'
+    ? [
+        { label: 'Admin Console', sub: 'Operational review workspace', icon: BriefcaseBusiness, route: '/seller' },
+      ]
+    : [];
+
   const rows = [
+    ...roleRows,
+    { label: 'Rider Directory', sub: 'View approved riders before pickup', icon: Truck, route: '/riders' },
     { label: 'Notifications', sub: 'Order alerts & updates', icon: Bell, route: '/notifications' },
     { label: 'Wallet', sub: 'Balance & transactions', icon: Wallet, route: '/wallet' },
     { label: 'Wishlist', sub: 'Saved products', icon: Heart, route: '/wishlist' },
@@ -79,9 +97,6 @@ export default function AccountScreen() {
     <ScrollView style={s.root} contentContainerStyle={s.content} showsVerticalScrollIndicator={false}>
       {/* Solaris Ivory account banner */}
       <View style={s.alibabaHeader}>
-        <View style={s.alibabaBlob1} />
-        <View style={s.alibabaBlob2} />
-        
         <View style={s.profileRow}>
           <View style={s.avatarBig}>
             <Text style={s.avatarBigText}>{(user.fullName || 'U').slice(0, 2).toUpperCase()}</Text>
@@ -110,7 +125,7 @@ export default function AccountScreen() {
             <Text style={s.walletTitleText}>RMF WALLET</Text>
           </View>
           <Text style={s.walletBalanceVal}>Manage Funds</Text>
-          <Text style={s.walletActionText}>MoMo payouts ›</Text>
+          <Text style={s.walletActionText}>MoMo payouts</Text>
         </TouchableOpacity>
 
         {/* Wishlist Overview Panel */}
@@ -120,7 +135,7 @@ export default function AccountScreen() {
             <Text style={s.wishlistTitleText}>SAVED ITEMS</Text>
           </View>
           <Text style={s.wishlistVal}>Wishlist</Text>
-          <Text style={s.walletActionText}>Saved products ›</Text>
+          <Text style={s.walletActionText}>Saved products</Text>
         </TouchableOpacity>
       </View>
 
@@ -129,7 +144,7 @@ export default function AccountScreen() {
         <View style={s.panelTitleRow}>
           <Text style={s.panelTitle}>My Purchase Logs</Text>
           <TouchableOpacity onPress={() => router.push('/orders' as any)} activeOpacity={0.7}>
-            <Text style={s.panelLinkText}>All Orders ›</Text>
+            <Text style={s.panelLinkText}>All Orders</Text>
           </TouchableOpacity>
         </View>
         
@@ -187,7 +202,7 @@ export default function AccountScreen() {
         <Text style={s.logoutBtnPremiumText}>Log Out Account</Text>
       </TouchableOpacity>
 
-      <Text style={s.version}>RMF Mobile · Solaris Ivory</Text>
+      <Text style={s.version}>RMF Mobile - Solaris Ivory</Text>
     </ScrollView>
   );
 }
@@ -198,7 +213,7 @@ const s = StyleSheet.create({
   guestContent: { flexGrow: 1, padding: 24, justifyContent: 'center', gap: 20 },
   guestCard: {
     backgroundColor: CARD,
-    borderRadius: 24,
+    borderRadius: 8,
     padding: 28,
     alignItems: 'center',
     gap: 14,
@@ -213,7 +228,7 @@ const s = StyleSheet.create({
   logoCircle: {
     width: 72,
     height: 72,
-    borderRadius: 24,
+    borderRadius: 8,
     backgroundColor: ORANGE,
     alignItems: 'center',
     justifyContent: 'center',
@@ -230,7 +245,7 @@ const s = StyleSheet.create({
   signInBtn: {
     width: '100%',
     height: 52,
-    borderRadius: 14,
+    borderRadius: 8,
     backgroundColor: ORANGE,
     alignItems: 'center',
     justifyContent: 'center',
@@ -245,7 +260,7 @@ const s = StyleSheet.create({
   createBtn: {
     width: '100%',
     height: 50,
-    borderRadius: 14,
+    borderRadius: 8,
     borderWidth: 1.5,
     borderColor: ORANGE,
     backgroundColor: ORANGE_SOFT,
@@ -258,7 +273,7 @@ const s = StyleSheet.create({
   trustText: { color: '#9CA3AF', fontSize: 11, fontWeight: '600' },
 
   // Authenticated layout
-  content: { paddingBottom: 40 },
+  content: { paddingBottom: 108 },
   alibabaHeader: {
     backgroundColor: ORANGE,
     paddingTop: 40,
@@ -266,8 +281,8 @@ const s = StyleSheet.create({
     paddingHorizontal: 20,
     position: 'relative',
     overflow: 'hidden',
-    borderBottomLeftRadius: 30,
-    borderBottomRightRadius: 30,
+    borderBottomLeftRadius: 8,
+    borderBottomRightRadius: 8,
   },
   alibabaBlob1: {
     position: 'absolute',
@@ -369,7 +384,7 @@ const s = StyleSheet.create({
   quickWalletCard: {
     flex: 1,
     backgroundColor: '#ffffff',
-    borderRadius: 16,
+    borderRadius: 8,
     padding: 14,
     gap: 4,
     shadowColor: '#000',
@@ -381,7 +396,7 @@ const s = StyleSheet.create({
   quickWishlistCard: {
     flex: 1,
     backgroundColor: '#ffffff',
-    borderRadius: 16,
+    borderRadius: 8,
     padding: 14,
     gap: 4,
     shadowColor: '#000',
@@ -428,7 +443,7 @@ const s = StyleSheet.create({
   // Purchase Logs Status
   orderStatusPanel: {
     backgroundColor: CARD,
-    borderRadius: 20,
+    borderRadius: 8,
     marginHorizontal: 16,
     marginTop: 16,
     padding: 16,
@@ -476,7 +491,7 @@ const s = StyleSheet.create({
   // Services Panel
   servicesPanel: {
     backgroundColor: CARD,
-    borderRadius: 20,
+    borderRadius: 8,
     marginHorizontal: 16,
     marginTop: 16,
     paddingHorizontal: 16,
@@ -509,7 +524,7 @@ const s = StyleSheet.create({
   serviceIconWrap: {
     width: 32,
     height: 32,
-    borderRadius: 10,
+    borderRadius: 6,
     backgroundColor: ORANGE_SOFT,
     alignItems: 'center',
     justifyContent: 'center',

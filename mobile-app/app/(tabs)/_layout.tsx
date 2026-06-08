@@ -2,8 +2,8 @@ import React, { useEffect } from 'react';
 import { Platform, StyleSheet, View } from 'react-native';
 import { Tabs, useRouter } from 'expo-router';
 import {
-  Bike, BriefcaseBusiness, Home, MapPinned,
-  ReceiptText, UserCircle, Tag, Video,
+  Bike, BriefcaseBusiness, Compass, Home, Mail,
+  ReceiptText, UserCircle,
 } from 'lucide-react-native';
 import { AppHeaderSearch } from '../../src/components/AppHeader';
 import { colors } from '../../src/theme';
@@ -11,10 +11,9 @@ import { useAuth } from '../../src/context/AuthContext';
 import { api } from '../../src/lib/api';
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Alibaba-style Tab Layout
-// – Signature orange-red header bar with white search + icons
-// – Clean white tab bar with orange active indicators
-// – Proper iOS safe area handling
+// Solaris Ivory Tab Layout
+// Five primary tabs matching the Stitch mobile reference.
+// Role-specific workspaces stay reachable from Profile.
 // ─────────────────────────────────────────────────────────────────────────────
 export default function TabsLayout() {
   const { user, isAuthenticated } = useAuth();
@@ -28,11 +27,6 @@ export default function TabsLayout() {
   const RoleIcon = user?.role === 'RIDER' ? Bike
     : (user?.role === 'SELLER' || user?.role === 'ADMIN') ? BriefcaseBusiness
     : UserCircle;
-
-  const roleHref = user?.role === 'SELLER' ? '/seller'
-    : user?.role === 'RIDER' ? '/rider/deliveries'
-    : user?.role === 'ADMIN' ? '/seller'
-    : null;
 
   // Rider approval gate
   useEffect(() => {
@@ -59,7 +53,7 @@ export default function TabsLayout() {
   return (
     <Tabs
       screenOptions={{
-        // ── Header — Alibaba signature orange-red ──────────────────────────
+        // Solaris Ivory header.
         headerStyle: {
           backgroundColor: colors.surface,
           shadowColor: 'transparent',
@@ -78,7 +72,7 @@ export default function TabsLayout() {
         headerRight: () => null,
         headerShadowVisible: false,
 
-        // ── Tab bar — clean white with orange active state ─────────────────
+        // Stitch-style bottom navigation.
         tabBarActiveTintColor: colors.primaryMid,
         tabBarInactiveTintColor: '#5e5e5e',
         tabBarStyle: {
@@ -119,24 +113,22 @@ export default function TabsLayout() {
         name="markets"
         options={{
           title: 'Markets',
-          tabBarLabel: 'Markets',
-          tabBarIcon: renderTabIcon(MapPinned),
+          href: null,
         }}
       />
       <Tabs.Screen
         name="products"
         options={{
-          title: 'Products',
-          tabBarLabel: 'Products',
-          tabBarIcon: renderTabIcon(Tag),
+          title: 'Discover',
+          tabBarLabel: 'Discover',
+          tabBarIcon: renderTabIcon(Compass),
         }}
       />
       <Tabs.Screen
         name="videos"
         options={{
           title: 'Videos',
-          tabBarLabel: 'Videos',
-          tabBarIcon: renderTabIcon(Video),
+          href: null,
           headerShown: false,
           tabBarHideOnKeyboard: true,
         }}
@@ -145,10 +137,10 @@ export default function TabsLayout() {
         name="cart"
         options={{
           href: null,
-          // Override header for cart — cleaner centered title
+          // Checkout uses a centered title.
           headerStyle: { backgroundColor: colors.card, shadowColor: 'transparent', elevation: 0 },
           headerTintColor: colors.ink,
-          headerTitle: 'My Cart',
+          headerTitle: 'Secure Checkout',
           headerTitleAlign: 'center',
           headerTitleContainerStyle: { left: 16, right: 16 },
           headerLeft: undefined,
@@ -159,7 +151,9 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="notifications"
         options={{
-          href: null,
+          title: 'Inbox',
+          tabBarLabel: 'Inbox',
+          tabBarIcon: renderTabIcon(Mail),
           headerShown: false,
         }}
       />
@@ -170,7 +164,7 @@ export default function TabsLayout() {
           tabBarIcon: renderTabIcon(ReceiptText),
           headerStyle: { backgroundColor: colors.card, shadowColor: 'transparent', elevation: 0 },
           headerTintColor: colors.ink,
-          headerTitle: 'My Orders',
+          headerTitle: 'Orders',
           headerTitleAlign: 'center',
           headerTitleContainerStyle: { left: 16, right: 16 },
           headerLeft: undefined,
@@ -183,7 +177,7 @@ export default function TabsLayout() {
         options={{
           title: roleLabel,
           tabBarLabel: roleLabel,
-          href: isAuthenticated ? roleHref : null,
+          href: null,
           tabBarIcon: renderTabIcon(RoleIcon),
           headerStyle: { backgroundColor: colors.card, shadowColor: 'transparent', elevation: 0 },
           headerTintColor: colors.ink,
@@ -198,11 +192,11 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="account"
         options={{
-          tabBarLabel: 'Me',
+          tabBarLabel: 'Profile',
           tabBarIcon: renderTabIcon(UserCircle),
           headerStyle: { backgroundColor: colors.card, shadowColor: 'transparent', elevation: 0 },
           headerTintColor: colors.ink,
-          headerTitle: 'My Account',
+          headerTitle: 'Profile',
           headerTitleAlign: 'center',
           headerTitleContainerStyle: { left: 16, right: 16 },
           headerLeft: undefined,

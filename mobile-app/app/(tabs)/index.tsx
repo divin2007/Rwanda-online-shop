@@ -69,7 +69,7 @@ const QUICK_ACTIONS = [
   { id: 'new', label: 'New\nArrivals', icon: Package, color: '#00A650', bg: '#E8F8EF', badge: 'NEW' },
   { id: 'videos', label: 'Seller\nVideos', icon: Video, color: '#9B59B6', bg: '#F3E8FF', badge: 'LIVE' },
   { id: 'local', label: 'Made in\nRwanda', icon: Star, color: '#FFB800', bg: '#FFF8E1', badge: null },
-  { id: 'deliver', label: 'Fast\nDeliver', icon: Truck, color: '#E67E22', bg: '#FEF3E2', badge: null },
+  { id: 'riders', label: 'Riders', icon: Truck, color: '#E67E22', bg: '#FEF3E2', badge: null },
   { id: 'promo', label: 'Vouchers', icon: Gift, color: '#E91E8C', bg: '#FCE4F3', badge: null },
   { id: 'secure', label: 'Secure\nBuy', icon: Shield, color: '#27AE60', bg: '#E8F8EF', badge: null },
 ];
@@ -176,7 +176,7 @@ export default function HomeScreen() {
     else if (id === 'videos') router.push('/videos' as any);
     else if (id === 'new') router.push({ pathname: '/products', params: { sort: 'popular' } } as any);
     else if (id === 'local') router.push('/products' as any);
-    else if (id === 'deliver') router.push('/markets' as any);
+    else if (id === 'riders') router.push('/riders' as any);
     else if (id === 'promo') router.push({ pathname: '/products', params: { sort: 'deals' } } as any);
     else if (id === 'secure') router.push('/products' as any);
   };
@@ -196,7 +196,7 @@ export default function HomeScreen() {
     >
       <View style={styles.banner}>
         <FastImage uri={SOLARIS_HERO_IMAGE} style={StyleSheet.absoluteFillObject} />
-        <View style={styles.bannerBlob} />
+        <View style={styles.bannerScrim} />
         <View style={styles.bannerLeft}>
           <View style={styles.bannerTag}>
             <Flame color={colors.primaryMid} size={9} />
@@ -447,10 +447,9 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.surfaceHigh,
   },
-  bannerBlob: {
-    position: 'absolute',
-    inset: 0,
-    backgroundColor: 'rgba(251,249,248,0.72)',
+  bannerScrim: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(27,28,27,0.34)',
   },
   bannerLeft: { gap: 7, maxWidth: '84%' },
   bannerTag: {
@@ -466,8 +465,8 @@ const styles = StyleSheet.create({
     borderRadius: 4,
   },
   bannerTagText: { color: colors.ink, fontSize: 9, fontWeight: '900', letterSpacing: 0.5 },
-  bannerTitle: { color: colors.ink, fontSize: 27, fontWeight: '900', lineHeight: 32 },
-  bannerSub: { color: colors.body, fontSize: 13, fontWeight: '600', lineHeight: 18 },
+  bannerTitle: { color: colors.card, fontSize: 27, fontWeight: '900', lineHeight: 32 },
+  bannerSub: { color: colors.surface, fontSize: 13, fontWeight: '700', lineHeight: 18 },
   bannerBtn: {
     flexDirection: 'row',
     alignItems: 'center',
