@@ -4,8 +4,6 @@ import {
   SubscribeMessage,
   OnGatewayConnection,
   OnGatewayDisconnect,
-  ConnectedSocket,
-  MessageBody,
 } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
 
@@ -49,19 +47,6 @@ export class OrderGateway implements OnGatewayConnection, OnGatewayDisconnect {
       client.join(`seller:${sellerId}:orders`);
     }
     return { event: 'order:seller:updates', data: { subscribed: true, sellerId: sellerId || null } };
-  }
-
-  // Group Buying (Feature 1) + Live Selling (Feature 2): room subscriptions.
-  @SubscribeMessage('join:group_buy')
-  handleJoinGroupBuy(@ConnectedSocket() client: Socket, @MessageBody() groupBuyId: string) {
-    client.join(`group_buy:${groupBuyId}`);
-    return { success: true, room: `group_buy:${groupBuyId}` };
-  }
-
-  @SubscribeMessage('join:live')
-  handleJoinLive(@ConnectedSocket() client: Socket, @MessageBody() sessionId: string) {
-    client.join(`live:${sessionId}`);
-    return { success: true, room: `live:${sessionId}` };
   }
 
   sendOrderUpdate(payload: any) {

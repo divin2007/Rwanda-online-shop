@@ -9,6 +9,7 @@ import { useSocket } from '@/hooks/useSocket';
 import { ImageUpload } from './ImageUpload';
 import { toast } from 'react-hot-toast';
 import { resolveUploadUrl } from '@/lib/uploadUrls';
+import { sanitizeText } from '@/lib/sanitize';
 
 const MapPinPicker = dynamic(() => import('./MapPinPicker').then(mod => mod.MapPinPicker), { ssr: false });
 
@@ -36,7 +37,6 @@ interface OrderChatProps {
   deliveryFee?: number;
   channel?: 'ORDER' | 'DELIVERY' | 'DISPUTE';
   onOrderUpdated?: () => void;
-  embedded?: boolean;
 }
 
 const NEGOTIATION_STATUSES = ['awaiting_quote', 'quote_sent'];
@@ -58,8 +58,7 @@ export const OrderChat: React.FC<OrderChatProps> = ({
   deliveryAddress, 
   deliveryFee: initialDeliveryFee,
   channel = 'ORDER',
-  onOrderUpdated,
-  embedded = false
+  onOrderUpdated
 }) => {
   const { user } = useAuth();
   const filterMessages = React.useCallback(
@@ -161,14 +160,15 @@ export const OrderChat: React.FC<OrderChatProps> = ({
 
   const handleSendMessage = async (content: string, imageUrl?: string) => {
     if (isClosed) return toast.error('This order is closed. Messages are locked.');
-    if ((!content.trim() && !imageUrl) || !user) return;
+    const safeContent = sanitizeText(content, 1000);
+    if ((!safeContent.trim() && !imageUrl) || !user) return;
 
     setIsSending(true);
     try {
       const response = await orderApi.post(`/orders/${orderId}/messages`, {
         senderId: user.id,
         senderRole: userRole,
-        content: content.trim() || (imageUrl ? 'Sent an image' : ''),
+        content: safeContent.trim() || (imageUrl ? 'Sent an image' : ''),
         imageUrl,
         channel,
         recipientRole: userRole === 'BUYER' ? 'SELLER' : 'BUYER',
@@ -309,9 +309,8 @@ export const OrderChat: React.FC<OrderChatProps> = ({
   };
 
   return (
-    <div className={embedded ? "flex h-full min-h-0 flex-col overflow-hidden bg-transparent" : "flex h-[640px] flex-col overflow-hidden rounded-lg border border-[#dfe7e2] bg-white shadow-sm"}>
+    <div className="flex h-[640px] flex-col overflow-hidden rounded-lg border border-[#dfe7e2] bg-white shadow-sm">
       {/* Tactical Header */}
-      {!embedded && (
       <div className="flex items-center justify-between gap-4 border-b border-[#dfe7e2] bg-[#e05300] px-5 py-4">
         <div className="flex items-center gap-4">
           <div className="flex h-10 w-10 items-center justify-center rounded-md border border-white/15 bg-white text-lg font-black text-[#e05300]">
@@ -356,52 +355,6 @@ export const OrderChat: React.FC<OrderChatProps> = ({
           )}
         </div>
       </div>
-      )}
-
-      {embedded && (canPickLocation || canSendQuote) && (
-        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#ebdcd0] bg-white/85 px-4 py-3">
-          <div>
-            <p className="font-label-caps text-label-caps text-primary">
-              {isNegotiationPhase ? 'Negotiation in Progress' : 'Chat Connected'}
-            </p>
-            <p className="text-xs font-medium text-on-surface-variant">
-              {hasValidLocation
-                ? `Delivery fee: ${(currentDeliveryFee || 0).toLocaleString()} RWF`
-                : 'Drop a pin before quote confirmation.'}
-            </p>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            {canPickLocation && (
-              <button
-                type="button"
-                onClick={() => { setShowLocationPicker(!showLocationPicker); setIsQuoting(false); setIsCountering(false); }}
-                className={`rounded-md border px-3 py-2 font-label-caps text-label-caps transition-all ${
-                  showLocationPicker
-                    ? 'border-primary bg-primary text-white'
-                    : !hasValidLocation
-                      ? 'border-primary bg-primary text-white shadow-[0_0_20px_rgba(255,107,0,0.16)]'
-                      : 'border-[#ebdcd0] bg-white text-on-surface hover:border-primary hover:text-primary'
-                }`}
-              >
-                {showLocationPicker ? 'Close Map' : hasValidLocation ? 'Change Location' : 'Set Location'}
-              </button>
-            )}
-            {canSendQuote && (
-              <button
-                type="button"
-                onClick={() => { setIsQuoting(!isQuoting); setShowLocationPicker(false); setIsCountering(false); }}
-                className={`rounded-md border px-3 py-2 font-label-caps text-label-caps transition-all ${
-                  isQuoting
-                    ? 'border-primary bg-primary text-white'
-                    : 'border-[#ebdcd0] bg-white text-on-surface hover:border-primary hover:text-primary'
-                }`}
-              >
-                {isQuoting ? 'Cancel Quote' : 'Send Quote'}
-              </button>
-            )}
-          </div>
-        </div>
-      )}
 
       {/* Location Picker Matrix */}
       {showLocationPicker && (
@@ -464,7 +417,7 @@ export const OrderChat: React.FC<OrderChatProps> = ({
 
           <div 
             ref={scrollRef}
-            className="flex-1 overflow-y-auto bg-[#fbf9f8] p-5 scroll-smooth"
+            className="flex-1 overflow-y-auto bg-[#f7faf8] p-5 scroll-smooth"
           >
             <div className="space-y-5">
             {messages.map((msg, idx) => {
@@ -660,7 +613,7 @@ export const OrderChat: React.FC<OrderChatProps> = ({
                       type="text"
                       value={newMessage}
                       onChange={(e) => setNewMessage(e.target.value)}
-                      placeholder={embedded ? `Message ${recipientName}...` : "Type a message..."}
+                      placeholder="Type a message..."
                       className="flex-1 bg-[#fcf9f8] border-2 border-transparent border-b-[#e0e0e0] px-6 py-4 text-[13px] outline-none focus:border-b-[#1b1c1c] transition-all"
                     />
                     <button 

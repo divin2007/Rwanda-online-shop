@@ -1,24 +1,21 @@
 import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
-import { sellerProfileSchema, marketSchema, profileChangeRequestSchema, affiliateApplicationSchema } from '@rmf/database';
+import { sellerProfileSchema, marketSchema, profileChangeRequestSchema } from '@rmf/database';
 import { AuthGuardModule } from '@rmf/auth';
 import { SellerService } from './seller.service';
 import { SellerController } from './seller.controller';
-import { FreshnessService } from './freshness.service';
-import { FreshnessController } from './freshness.controller';
 
 @Module({
   imports: [
     MongooseModule.forFeature([
       { name: 'SellerProfile', schema: sellerProfileSchema },
       { name: 'Market', schema: marketSchema },
-      { name: 'ProfileChangeRequest', schema: profileChangeRequestSchema },
-      { name: 'AffiliateApplication', schema: affiliateApplicationSchema }
+      { name: 'ProfileChangeRequest', schema: profileChangeRequestSchema }
     ]),
     AuthGuardModule.forRoot(),
   ],
-  providers: [SellerService, FreshnessService],
-  controllers: [SellerController, FreshnessController],
+  providers: [SellerService],
+  controllers: [SellerController],
   exports: [SellerService],
 })
 export class SellerModule {}

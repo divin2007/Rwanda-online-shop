@@ -43,7 +43,7 @@ export default function DashboardPage() {
 
   const orders = ordersData || [];
   const wallet = walletData || { balance: 0 };
-  const transactions = (Array.isArray(transactionsData) ? transactionsData : transactionsData?.transactions)?.slice(0, 3) || [];
+  const transactions = transactionsData?.slice(0, 3) || [];
   const recommended = recommendedData || [];
 
   if (isLoading || !user || !isBuyer) {
@@ -84,6 +84,7 @@ export default function DashboardPage() {
               <div className="flex flex-wrap gap-4">
                 <Link href="/orders" className="rmf-btn-primary rounded-xl px-8 py-3">{t('track_orders')}</Link>
                 <Link href="/markets" className="rmf-btn-outline rounded-xl px-8 py-3 bg-white hover:bg-background-surface">{t('browse_markets')}</Link>
+                <Link href="/reviews" className="rmf-btn-outline rounded-xl px-8 py-3 bg-white hover:bg-background-surface">My Reviews</Link>
               </div>
             </div>
           </div>

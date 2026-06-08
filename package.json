@@ -30,7 +30,6 @@
     "@rmf/location": "^0.1.0",
     "@rmf/shared-types": "^0.1.0",
     "@rmf/shared-utils": "^0.1.0",
-    "@types/pdfkit": "^0.13.9",
     "ansis": "^4.2.0",
     "bcrypt": "^6.0.0",
     "chokidar": "^4.0.3",
@@ -39,12 +38,12 @@
     "mongoose": "^9.6.1",
     "passport": "^0.7.0",
     "passport-jwt": "^4.0.1",
-    "pdfkit": "^0.15.2",
     "readdirp": "^4.1.2"
   },
   "overrides": {
     "postcss": "8.5.14",
     "ws": "8.20.1",
+    "brace-expansion@5": "5.0.6",
     "engine.io": {
       "ws": "8.20.1"
     },

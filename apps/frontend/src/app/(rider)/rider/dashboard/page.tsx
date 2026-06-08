@@ -9,22 +9,13 @@ import { Layout } from '@/components/layout/Layout';
 import Link from 'next/link';
 import toast from 'react-hot-toast';
 import dynamic from 'next/dynamic';
-import { useRouter } from 'next/navigation';
-import { RiderErrandsPanel } from '@/components/rider/RiderErrandsPanel';
-
-const RiderMap = dynamic(() => import('@/components/ui/RiderMap').then(mod => mod.RiderMap), {
-  ssr: false,
-  loading: () => <div className="h-full w-full animate-pulse bg-surface-container-low rounded-lg" />,
-});
-
+const RiderMap = dynamic(() => import('@/components/ui/RiderMap').then(mod => mod.RiderMap), { ssr: false });
 const RIDER_LOCATION_HEARTBEAT_MS = 20000;
 const AVAILABLE_DELIVERIES_REFRESH_MS = 10000;
 const ACTIVE_DELIVERIES_REFRESH_MS = 10000;
 
 export default function RiderDashboardPage() {
   const { user } = useAuth();
-  const router = useRouter();
-  const [isOnline, setIsOnline] = useState(true);
   
   // Real Data Hooks
   const { data: profile, loading: profileLoading } = useApi(riderApi, 'get', `/riders/me?userId=${user?.id}`);
@@ -44,7 +35,7 @@ export default function RiderDashboardPage() {
 
   // Keep riders in the live broadcast pool even when they are standing still.
   useEffect(() => {
-    if (!socketConnected || !user?.id || !coords || !isOnline) return;
+    if (!socketConnected || !user?.id || !coords) return;
 
     const emitLocation = () => {
       emitSocket('rider:location:update', {
@@ -57,7 +48,7 @@ export default function RiderDashboardPage() {
     emitLocation();
     const timer = window.setInterval(emitLocation, RIDER_LOCATION_HEARTBEAT_MS);
     return () => window.clearInterval(timer);
-  }, [socketConnected, user?.id, coords, emitSocket, isOnline]);
+  }, [socketConnected, user?.id, coords, emitSocket]);
 
   useEffect(() => {
     if (!liveDelivery?._id) return;
@@ -100,8 +91,9 @@ export default function RiderDashboardPage() {
       };
 
       const handleLocationError = (error: GeolocationPositionError) => {
-        console.warn('High accuracy geolocation failed, trying low accuracy...', error.message);
+        console.warn('High accuracy geolocation failed or denied, trying low accuracy...', error.message);
         setCoords((current) => current || fallbackCoords);
+        // Fallback or retry with low accuracy option
         navigator.geolocation.getCurrentPosition(
           handleLocationSuccess,
           (err) => {
@@ -112,6 +104,7 @@ export default function RiderDashboardPage() {
         );
       };
 
+      // Watch position with high accuracy (enableHighAccuracy true utilizes GPS for true location like Kitabi)
       const watchId = navigator.geolocation.watchPosition(
         handleLocationSuccess,
         handleLocationError,
@@ -128,7 +121,6 @@ export default function RiderDashboardPage() {
   const activeDeliveries = deliveriesData || [];
   const availableDeliveries = availableData || [];
   const wallet = walletData || { balance: 0 };
-  const canSelfCancel = (status: string) => ['assigned', 'en_route_to_pickup'].includes(status);
 
   const handleAccept = async (id: string) => {
     try {
@@ -141,52 +133,48 @@ export default function RiderDashboardPage() {
     }
   };
 
-  const handleReleaseDelivery = async (deliveryId: string) => {
-    const reason = window.prompt('Why are you dropping this delivery? This will reduce your reliability score slightly.');
-    if (reason === null) return;
+  // Availability (online/offline) toggle with optimistic UI + rollback.
+  const [isActive, setIsActive] = useState<boolean | null>(null);
+  const [statusSaving, setStatusSaving] = useState(false);
+  const availability = isActive === null ? Boolean(profile?.isActive) : isActive;
 
+  const toggleAvailability = async () => {
+    const next = !availability;
+    setIsActive(next);
+    setStatusSaving(true);
     try {
-      await deliveryApi.post(`/deliveries/${deliveryId}/rider-cancel`, {
-        reason: reason.trim() || 'Rider cancelled from logistics dashboard',
+      await riderApi.patch('/riders/me/status', {
+        isActive: next,
+        ...(coords ? { location: coords } : {}),
       });
-      toast.success('Delivery released and rebroadcast to other riders.');
-      fetchDeliveries();
-      fetchAvailable();
+      toast.success(next ? 'You are now online' : 'You are now offline');
     } catch (e: any) {
-      toast.error(e.response?.data?.message || 'Could not release this delivery');
+      setIsActive(!next); // rollback
+      toast.error(e?.response?.data?.message || 'Could not update availability');
+    } finally {
+      setStatusSaving(false);
     }
   };
 
-  const handleStatusToggle = () => {
-    setIsOnline(!isOnline);
-    toast.success(isOnline ? 'You are now offline.' : 'You are now online and accepting orders!');
-  };
-
   if (profileLoading) {
-    return (
-      <Layout>
-        <div className="p-20 text-center flex flex-col items-center justify-center space-y-lg min-h-[60vh]">
-          <div className="w-12 h-12 border-4 border-outline-variant border-t-primary rounded-full animate-spin"></div>
-          <p className="font-label-caps text-label-caps text-on-surface-variant">Loading your dashboard...</p>
-        </div>
-      </Layout>
-    );
+    return <Layout><div className="p-20 text-center font-sans text-2xl animate-pulse text-[#1b1c1c]">Loading your dashboard...</div></Layout>;
   }
 
   if (!profile) {
     return (
       <Layout>
-        <div className="max-w-xl mx-auto py-20 text-center space-y-lg bg-surface-container-lowest border border-outline-variant rounded-lg p-xl mt-xl shadow-[0_8px_30px_rgba(27,28,28,0.03)]">
-          <div className="w-16 h-16 bg-surface-container-low border border-outline-variant rounded-full flex items-center justify-center mx-auto text-primary">
-            <span className="material-symbols-outlined text-3xl">two_wheeler</span>
+        <div className="max-w-4xl mx-auto py-20 text-center space-y-12 animate-reveal">
+          <div className="w-24 h-24 bg-[#e8f5ed] border-2 border-[#ffedd5]/60 flex items-center justify-center mx-auto mb-8 shadow-sm">
+            <svg className="w-12 h-12 text-[#ff6b00]" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" /></svg>
           </div>
-          <h1 className="font-headline-lg text-headline-lg text-on-surface">Rider Profile Not Found</h1>
-          <p className="text-body-md text-on-surface-variant max-w-md mx-auto">
-            Your logistics rider account has not been initialized. Please complete registration to view real-time delivery orders.
+          <h1 className="text-4xl font-sans tracking-normal text-[#1b1c1c]">Profile Not Found</h1>
+          <p className="text-[#414844] uppercase tracking-[0.14em] text-[10px] font-black max-w-md mx-auto leading-relaxed">
+            Your rider profile hasn't been set up yet. 
+            Complete your registration to start accepting deliveries.
           </p>
           <button 
-            onClick={() => router.push('/rider/register')}
-            className="bg-primary-container text-on-primary px-8 py-2.5 rounded font-label-caps text-label-caps hover:bg-primary transition-colors inline-block"
+            onClick={() => window.location.href = '/rider/register'}
+            className="rmf-btn-primary bg-[#e05300] border-none text-white px-12 py-3 text-[11px] font-black uppercase tracking-[0.18em] hover:bg-[#e05300] transition-all"
           >
             Register as Rider →
           </button>
@@ -199,282 +187,184 @@ export default function RiderDashboardPage() {
 
   return (
     <Layout>
-      <div className="p-gutter md:p-lg lg:p-xl space-y-lg bg-background min-h-screen">
-        
-        {/* Rider Hub Title Bar */}
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-md mb-xl border-b border-outline-variant pb-md">
+      <div className="animate-reveal space-y-10 pb-20">
+        {/* RMF Logistics Header */}
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6 border-b-2 border-[#e0e0e0] pb-8">
           <div>
-            <div className="flex items-center gap-xs mb-xs">
-              <span className="font-label-caps text-[10px] text-primary border border-outline-variant rounded-full px-2 py-0.5 bg-surface-container-lowest uppercase">
-                Shift Status
-              </span>
-              <button 
-                onClick={handleStatusToggle} 
-                className={`flex items-center gap-xs px-2 py-0.5 rounded-full font-label-caps text-[9px] font-bold border transition-colors ${
-                  isOnline 
-                    ? 'bg-[#ecfdf5] border-[#a7f3d0] text-[#065f46] hover:bg-[#d1fae5]' 
-                    : 'bg-[#fef2f2] border-[#fecaca] text-[#991b1b] hover:bg-[#fee2e2]'
-                }`}
-              >
-                <span className={`w-1.5 h-1.5 rounded-full ${isOnline ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`}></span>
-                <span>{isOnline ? 'ONLINE' : 'OFFLINE'}</span>
-              </button>
-            </div>
-            <h1 className="font-display-lg text-headline-lg md:text-display-lg font-bold text-on-surface leading-none">Rider Logistics Portal</h1>
-            <p className="font-body-md text-body-md text-on-surface-variant mt-unit">Live Operations Control Console</p>
+            <p className="text-[10px] font-black text-[#ff6b00] uppercase tracking-[0.22em] mb-4">Rider Dashboard</p>
+            <h1 className="text-3xl font-sans tracking-normal text-[#1b1c1c] leading-none">My Dashboard</h1>
           </div>
-          
-          <div className="flex items-center gap-sm bg-surface-container-lowest border border-outline-variant rounded px-md py-sm shadow-sm">
-            <span className="material-symbols-outlined text-primary text-[20px]">satellite_alt</span>
-            <span className="font-label-caps text-label-caps text-on-surface font-semibold">GPS Tracking Enabled</span>
+          <div className="flex items-center gap-4 rounded-lg border border-[#e0e0e0] bg-white px-6 py-3 shadow-sm">
+            <div>
+              <p className="text-[9px] font-black uppercase tracking-widest text-[#414844]/60">Availability</p>
+              <p className={`text-[11px] font-black uppercase tracking-widest ${availability ? 'text-green-600' : 'text-[#7b3f3f]'}`}>
+                {availability ? 'Online · accepting jobs' : 'Offline'}
+              </p>
+            </div>
+            <button
+              type="button"
+              role="switch"
+              aria-checked={availability}
+              aria-label="Toggle availability"
+              onClick={toggleAvailability}
+              disabled={statusSaving}
+              className={`relative h-7 w-14 shrink-0 rounded-full transition disabled:opacity-60 ${availability ? 'bg-green-500' : 'bg-[#d2bca8]'}`}
+            >
+              <span className={`absolute top-1 h-5 w-5 rounded-full bg-white shadow transition-all ${availability ? 'left-8' : 'left-1'}`} />
+            </button>
           </div>
         </div>
 
-        {/* Nearby Errands (Feature 4) */}
-        <RiderErrandsPanel />
-
-        {/* Dashboard Grid columns */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-gutter lg:gap-lg h-full">
-          
-          {/* Left Column: Live Map & Active Order Panel */}
-          <div className="lg:col-span-8 flex flex-col gap-gutter lg:gap-lg">
-            
-            {/* Live Map Area Card */}
-            <div className="bg-surface-container-lowest border border-outline-variant rounded-xl flex flex-col overflow-hidden relative h-[400px] lg:h-[500px] shadow-[0_8px_30px_rgba(27,28,28,0.03)]">
-              {/* Map Floating UI Overlay */}
-              <div className="absolute top-0 left-0 w-full p-md z-10 flex justify-between items-start pointer-events-none">
-                <div className="bg-surface-container-lowest/95 backdrop-blur border border-outline-variant rounded p-sm flex items-center gap-sm pointer-events-auto shadow-sm">
-                  <span className="material-symbols-outlined text-primary">my_location</span>
-                  <span className="font-data-mono text-data-mono text-on-surface">Kigali City Center</span>
-                </div>
-                <div className="bg-surface-container-lowest/95 backdrop-blur border border-outline-variant rounded p-sm flex flex-col items-end pointer-events-auto shadow-sm">
-                  <span className="font-label-caps text-[10px] text-on-surface-variant">Live Coordinates</span>
-                  <span className="font-data-mono text-data-mono-sm text-on-surface">
-                    {coords ? `${coords.lat.toFixed(4)}, ${coords.lng.toFixed(4)}` : 'Scanning GPS...'}
-                  </span>
-                </div>
+        {/* Performance Stats */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+          {[
+            { label: 'Earnings', value: `${wallet.balance?.toLocaleString() || 0} RWF`, icon: 'W' },
+            { label: 'Completion Rate', value: `${stats.completion}%`, sub: 'Target: 95%+', icon: 'R' },
+            { label: 'Your Rating', value: stats.rating?.toFixed(2) || '5.0', sub: 'Customer reviews', icon: 'S' },
+            { label: 'Total Deliveries', value: `${stats.drops}`, sub: 'Lifetime total', icon: 'D' },
+          ].map((stat, i) => (
+            <div key={i} className="bg-white border border-[#e0e0e0] p-6 flex flex-col justify-between group hover:border-[#ff6b00] transition-all shadow-sm">
+              <div className="flex justify-between items-start mb-4">
+                <p className="text-[9px] font-black uppercase tracking-widest text-[#414844] opacity-60">{stat.label}</p>
+                <span className="text-[10px] font-sans text-[#ff6b00] font-bold">{stat.icon}</span>
               </div>
+              <h2 className="text-2xl font-sans text-[#1b1c1c] tracking-normal">{stat.value}</h2>
+              {stat.sub && <p className="text-[8px] text-[#ff6b00] mt-3 font-black uppercase tracking-widest opacity-50">{stat.sub}</p>}
+            </div>
+          ))}
+        </div>
 
-              {/* Map Canvas */}
-              <div className="w-full h-full relative">
-                <RiderMap 
-                  marketId="" 
-                  centerLat={coords?.lat || -1.9441} 
-                  centerLng={coords?.lng || 30.0619} 
-                />
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="lg:col-span-2 space-y-10">
+            {/* Map Matrix */}
+            <div className="bg-white border border-[#e0e0e0] overflow-hidden shadow-sm relative group">
+               <div className="px-8 py-3 bg-[#fcf9f8] border-b border-[#e0e0e0] flex justify-between items-center">
+                  <h3 className="text-[10px] font-black uppercase tracking-widest text-[#1b1c1c]">Delivery Map</h3>
+                  <span className="text-[8px] font-bold text-[#414844] uppercase tracking-widest opacity-40">Kigali Area</span>
+               </div>
+               <div className="h-[500px] relative">
+                  <RiderMap 
+                    marketId="" 
+                    centerLat={coords?.lat || profile.currentLocation?.lat || -1.9441} 
+                    centerLng={coords?.lng || profile.currentLocation?.lng || 30.0619} 
+                  />
+               </div>
+               <div className="absolute top-20 right-8 z-10 space-y-2">
+                  <div className="bg-[#e05300] text-white px-4 py-2 text-[9px] font-black uppercase tracking-widest border border-[#ffedd5]/60 shadow-2xl">
+                    Live Tracking Active
+                  </div>
+               </div>
+            </div>
+
+            {/* Available Mandates Matrix */}
+            <div className="bg-white border border-[#e0e0e0] rounded-lg shadow-lg">
+               <div className="px-8 py-6 bg-[#e05300] flex justify-between items-center">
+                  <div className="flex items-center gap-4">
+                    <h3 className="text-[10px] font-black uppercase tracking-[0.14em] text-white">Available Deliveries</h3>
+                    <div className="w-2 h-2 bg-[#ffedd5] rounded-full animate-pulse"></div>
+                  </div>
+                  <button onClick={fetchAvailable} className="text-[8px] font-black text-[#ff6b00] uppercase tracking-widest border-b border-[#ffedd5]/60">Refresh</button>
+               </div>
+               <div className="divide-y divide-[#f0eded]">
+                 {availableDeliveries.length > 0 ? availableDeliveries.map((delivery: any) => (
+                   <div key={delivery._id} className="p-5 flex flex-col md:flex-row md:items-center justify-between gap-6 hover:bg-[#fcf9f8] transition-colors group">
+                      <div className="space-y-4">
+                         <div className="flex items-center gap-4">
+                            <span className="text-xl font-sans text-[#1b1c1c]">#{delivery.orderNumber?.substring(0,8) || delivery._id.substring(0,8).toUpperCase()}</span>
+                            <span className="text-[8px] font-black text-[#ff6b00] border border-[#ff6b00]/20 px-3 py-1 uppercase tracking-normal">UNASSIGNED</span>
+                         </div>
+                         <div className="space-y-1">
+                            <p className="text-[11px] text-[#1b1c1c] font-medium leading-relaxed opacity-80">
+                               Pickup: {delivery.pickup?.address || 'Market'}
+                            </p>
+                            <p className="text-[11px] text-[#1b1c1c] font-medium leading-relaxed opacity-80">
+                               Drop-off: {delivery.dropoff?.address || 'Customer address'}
+                            </p>
+                         </div>
+                      </div>
+                      <div className="flex items-center gap-5">
+                         <div className="text-right">
+                            <p className="text-[9px] font-black text-[#414844] uppercase tracking-widest mb-1 opacity-40">Delivery Fee</p>
+                            <p className="text-xl font-sans text-[#1b1c1c] tracking-normal">{(delivery.financials?.deliveryFee || 0).toLocaleString()} RWF</p>
+                         </div>
+                         <button 
+                           onClick={() => handleAccept(delivery._id)}
+                           className="bg-[#e05300] text-white px-5 py-3 text-[10px] font-black uppercase tracking-[0.14em] hover:bg-[#e05300] transition-all"
+                         >
+                           Accept Delivery
+                         </button>
+                      </div>
+                   </div>
+                 )) : (
+                   <div className="p-20 text-center space-y-4">
+                      <p className="text-[10px] font-black text-[#414844] uppercase tracking-[0.22em] opacity-30">No deliveries available right now</p>
+                      <div className="w-10 h-1 bg-[#e05300]/10 mx-auto"></div>
+                   </div>
+                 )}
+               </div>
+            </div>
+          </div>
+
+          {/* Active Workload Sidebar */}
+          <div className="space-y-10">
+            {currentTask ? (
+              <div className="bg-[#e05300] text-white p-6 relative overflow-hidden group shadow-2xl border-t-4 border-[#ffedd5]">
+                <div className="absolute top-0 right-0 p-5 opacity-5 group-hover:opacity-10 transition-opacity">
+                   <svg className="w-32 h-32" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" /></svg>
+                </div>
+                <p className="text-[9px] font-black uppercase tracking-[0.22em] mb-8 text-[#ff6b00]">Current Delivery</p>
+                <h2 className="text-4xl font-sans mb-10 leading-tight tracking-normal">Order #{currentTask.orderNumber?.substring(0,8) || currentTask._id.substring(0,8).toUpperCase()}</h2>
                 
-                {/* Simulated pulse marker on map center */}
-                <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 flex flex-col items-center pointer-events-none z-10">
-                  <div className="bg-primary text-on-primary rounded-full p-1 border-2 border-surface-container-lowest shadow-lg animate-bounce">
-                    <span className="material-symbols-outlined text-[20px]">two_wheeler</span>
-                  </div>
-                  <div className="w-8 h-2 bg-black/10 rounded-full blur-[2px] mt-1"></div>
-                </div>
-              </div>
-              
-              {/* Active Delivery Floating Info Panel */}
-              {currentTask && (
-                <div className="absolute bottom-md left-md right-md bg-surface-container-lowest border border-outline-variant rounded-lg p-md shadow-lg z-10">
-                  <div className="flex justify-between items-start border-b border-outline-variant/30 pb-sm mb-sm">
-                    <div>
-                      <span className="bg-primary/10 border border-primary/20 text-primary font-label-caps text-[10px] px-2 py-0.5 rounded inline-block animate-pulse">
-                        Active Order
-                      </span>
-                      <h4 className="font-headline-md text-headline-md text-on-surface mt-unit">
-                        #{currentTask.orderNumber?.substring(0, 8) || currentTask._id.substring(0, 8).toUpperCase()}
-                      </h4>
-                    </div>
-                    <div className="text-right">
-                      <p className="font-data-mono text-lg font-bold text-on-surface">Live Route</p>
-                      <p className="font-label-caps text-label-caps text-on-surface-variant">Escrow Security Protected</p>
-                    </div>
-                  </div>
-                  
-                  <div className="flex items-center gap-md mb-md">
-                    <div className="flex flex-col items-center gap-xs">
-                      <span className="material-symbols-outlined text-primary text-[18px]">storefront</span>
-                      <div className="w-0.5 h-6 bg-outline-variant"></div>
-                      <span className="material-symbols-outlined text-primary text-[18px]">location_on</span>
-                    </div>
-                    <div className="flex-1 flex flex-col justify-between h-[64px]">
+                <div className="space-y-8 mb-12">
+                   <div className="flex items-start gap-4">
+                      <div className="w-1.5 h-1.5 bg-[#ffedd5] rounded-full mt-1.5"></div>
                       <div>
-                        <p className="font-label-caps text-[9px] text-on-surface-variant">Pickup Hub</p>
-                        <p className="font-body-md text-sm text-on-surface truncate">{currentTask.pickup?.address || 'Verified Merchant Stall'}</p>
+                        <p className="text-[8px] font-black text-[#ff6b00] uppercase tracking-widest mb-1 opacity-60">Drop-off Address</p>
+                        <p className="text-xs font-medium leading-relaxed opacity-80">{currentTask.dropoff?.address || 'Customer address'}</p>
                       </div>
+                   </div>
+                   <div className="flex items-start gap-4">
+                      <div className="w-1.5 h-1.5 bg-[#ffedd5] rounded-full mt-1.5 opacity-30"></div>
                       <div>
-                        <p className="font-label-caps text-[9px] text-on-surface-variant">Drop-off Destination</p>
-                        <p className="font-body-md text-sm text-on-surface truncate">{currentTask.dropoff?.address || 'Customer Handover Point'}</p>
+                        <p className="text-[8px] font-black text-[#ff6b00] uppercase tracking-widest mb-1 opacity-60">Delivery Fee</p>
+                        <p className="text-xl font-sans">{(currentTask.financials?.deliveryFee || 0).toLocaleString()} RWF</p>
                       </div>
-                    </div>
-                  </div>
-                  
-                  <div className="flex gap-sm">
-                    <a 
-                      href={`tel:${currentTask.customerPhone || '0780000000'}`}
-                      className="flex-1 bg-surface border border-outline-variant text-on-surface font-label-caps text-label-caps py-sm rounded-lg flex justify-center items-center gap-xs hover:bg-surface-container-low transition-colors"
-                    >
-                      <span className="material-symbols-outlined text-[18px]">call</span> CALL CUSTOMER
-                    </a>
-                    <Link 
-                      href={`/orders/${currentTask.orderId}/tracking`}
-                      className="flex-1 bg-primary text-on-primary font-label-caps text-label-caps py-sm rounded-lg flex justify-center items-center gap-xs hover:bg-surface-tint transition-colors shadow-sm text-center"
-                    >
-                      <span className="material-symbols-outlined text-[18px]" style={{ fontVariationSettings: "'FILL' 1" }}>check_circle</span> TRACK DELIVERY
-                    </Link>
-                    {canSelfCancel(currentTask.status) && (
-                      <button
-                        type="button"
-                        onClick={() => handleReleaseDelivery(currentTask._id)}
-                        className="flex-1 bg-error-container text-on-error font-label-caps text-label-caps py-sm rounded-lg flex justify-center items-center gap-xs hover:opacity-90 transition-colors shadow-sm text-center"
-                      >
-                        <span className="material-symbols-outlined text-[18px]">remove_circle</span> RELEASE
-                      </button>
-                    )}
-                  </div>
+                   </div>
                 </div>
-              )}
-            </div>
-            
-            {/* Available Deliveries Queue Table/List */}
-            <div className="bg-surface-container-lowest border border-outline-variant rounded-xl shadow-[0_8px_30px_rgba(27,28,28,0.03)] overflow-hidden">
-              <div className="px-md py-md bg-surface border-b border-outline-variant flex justify-between items-center">
-                <div className="flex items-center gap-md">
-                  <h3 className="font-headline-md text-headline-md text-on-surface">Available Board</h3>
-                  <span className="bg-primary/10 text-primary border border-primary/20 font-data-mono-sm text-data-mono-sm px-2 py-0.5 rounded-full">
-                    {availableDeliveries.length} Available
-                  </span>
-                </div>
-                <button onClick={fetchAvailable} className="font-label-caps text-label-caps text-primary hover:underline font-bold">
-                  Refresh List
-                </button>
-              </div>
-              
-              <div className="divide-y divide-outline-variant/30">
-                {availableDeliveries.length > 0 ? (
-                  availableDeliveries.map((delivery: any) => (
-                    <div key={delivery._id} className="p-md flex flex-col md:flex-row md:items-center justify-between gap-md hover:bg-surface-container-low transition-colors group">
-                      <div className="space-y-sm">
-                        <div className="flex items-center gap-sm">
-                          <span className="font-data-mono text-lg font-bold text-on-surface">
-                            #{delivery.orderNumber?.substring(0, 8) || delivery._id.substring(0, 8).toUpperCase()}
-                          </span>
-                          <span className="bg-surface-container border border-outline-variant font-label-caps text-[9px] px-2 py-0.5 rounded">
-                            {delivery.pickup?.distance ? `${delivery.pickup.distance.toFixed(1)} km away` : '1.2 km away'}
-                          </span>
-                        </div>
-                        <div className="space-y-unit">
-                          <p className="text-body-md text-sm text-on-surface-variant flex items-center gap-xs">
-                            <span className="w-1.5 h-1.5 rounded-full bg-outline"></span>
-                            Pickup: <span className="font-semibold text-on-surface ml-xs">{delivery.pickup?.address || 'Wholesale Hub'}</span>
-                          </p>
-                          <p className="text-body-md text-sm text-on-surface-variant flex items-center gap-xs">
-                            <span className="w-1.5 h-1.5 rounded-full bg-primary-container"></span>
-                            Drop: <span className="font-semibold text-on-surface ml-xs">{delivery.dropoff?.address || 'Customer Location'}</span>
-                          </p>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-md justify-between md:justify-end">
-                        <div className="text-right">
-                          <p className="font-label-caps text-[10px] text-on-surface-variant">Shift Fee</p>
-                          <p className="font-data-mono text-lg font-bold text-primary">
-                            RWF {(delivery.financials?.deliveryFee || 1500).toLocaleString()}
-                          </p>
-                        </div>
-                        <button 
-                          onClick={() => handleAccept(delivery._id)}
-                          className="bg-primary-container text-on-primary font-label-caps text-label-caps px-4 py-2 rounded hover:bg-primary transition-colors flex items-center gap-xs"
-                        >
-                          Accept Order <span className="material-symbols-outlined text-[16px]">arrow_forward</span>
-                        </button>
-                      </div>
-                    </div>
-                  ))
-                ) : (
-                  <div className="p-xl text-center space-y-sm">
-                    <span className="material-symbols-outlined text-outline/40 text-4xl">local_shipping</span>
-                    <p className="font-label-caps text-label-caps text-on-surface-variant">No available deliveries in your GPS zone</p>
-                    <p className="text-body-md text-xs text-on-surface-variant/70">Scanning live coordinates Nyarugenge and Gasabo...</p>
-                  </div>
-                )}
-              </div>
-            </div>
-            
-          </div>
-          
-          {/* Right Column: Earnings Summary & Active/Queued workload */}
-          <div className="lg:col-span-4 flex flex-col gap-gutter lg:gap-lg">
-            
-            {/* Earnings Bento Box Summary */}
-            <div className="bg-surface-container-lowest border border-outline-variant rounded-xl p-md shadow-[0_8px_30px_rgba(27,28,28,0.03)] space-y-md">
-              <div className="flex justify-between items-center">
-                <span className="font-label-caps text-label-caps text-on-surface-variant font-bold">Shift Earnings</span>
-                <span className="material-symbols-outlined text-primary text-[20px]">account_balance_wallet</span>
-              </div>
-              <div className="font-data-mono text-[32px] font-bold text-on-surface leading-none">
-                RWF {(wallet.balance || stats.earnings || 14500).toLocaleString()}
-              </div>
-              <div className="grid grid-cols-2 gap-md pt-sm border-t border-outline-variant/30">
-                <div>
-                  <p className="font-label-caps text-[9px] text-on-surface-variant">Shift Drops</p>
-                  <p className="font-data-mono text-base font-bold text-on-surface">{stats.drops || 8} Deliveries</p>
-                </div>
-                <div>
-                  <p className="font-label-caps text-[9px] text-on-surface-variant">Escrow Pending</p>
-                  <p className="font-data-mono text-base font-bold text-on-surface">RWF 4,500</p>
-                </div>
-              </div>
-              <button className="w-full mt-sm border border-outline text-on-surface-variant font-label-caps text-[11px] py-2 rounded hover:bg-surface-container-low transition-all duration-300 flex justify-center items-center gap-xs font-bold">
-                <span className="material-symbols-outlined text-[16px]">sync_alt</span> MTN MoMo Instant Withdraw
-              </button>
-            </div>
-            
-            {/* Courier Metrics & Ratings */}
-            <div className="bg-surface-container-lowest border border-outline-variant rounded-xl p-md shadow-[0_8px_30px_rgba(27,28,28,0.03)] space-y-sm">
-              <h3 className="font-label-caps text-label-caps font-bold text-on-surface border-b border-outline-variant/30 pb-xs">Courier Telemetry</h3>
-              <div className="space-y-sm pt-xs">
-                <div className="flex justify-between items-center">
-                  <span className="font-body-md text-sm text-on-surface-variant">Completion Rate</span>
-                  <span className="font-data-mono text-sm font-bold text-primary">{stats.completion || 100}%</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="font-body-md text-sm text-on-surface-variant">Courier Rating</span>
-                  <span className="font-data-mono text-sm font-bold text-primary">{stats.rating?.toFixed(2) || '4.95'} ⭐</span>
-                </div>
-              </div>
-            </div>
 
-            {/* Active Task status & Queue */}
-            <div className="bg-surface-container-low border border-outline-variant rounded-xl p-md shadow-[0_8px_30px_rgba(27,28,28,0.03)] space-y-md">
-              <h3 className="font-label-caps text-label-caps font-bold text-on-surface border-b border-outline-variant pb-xs">Shift Queue</h3>
-              
-              {activeDeliveries.slice(1).length > 0 ? (
-                <div className="space-y-sm">
-                  {activeDeliveries.slice(1).map((delivery: any, idx: number) => (
-                    <div key={delivery._id} className="bg-surface-container-lowest border border-outline-variant rounded p-sm flex justify-between items-center hover:border-outline transition-colors">
-                      <div className="space-y-xs min-w-0">
-                        <div className="flex items-center gap-xs">
-                          <span className="bg-surface-container border border-outline-variant font-label-caps text-[8px] px-2 py-0.5 rounded font-bold">
-                            QUEUED
-                          </span>
-                          <span className="font-data-mono-sm text-data-mono-sm text-on-surface-variant font-semibold">
-                            #{delivery.orderNumber?.substring(0, 8) || delivery._id.substring(0, 8).toUpperCase()}
-                          </span>
-                        </div>
-                        <p className="font-body-md text-xs text-on-surface truncate">{delivery.dropoff?.address || 'Customer Handover'}</p>
-                      </div>
-                      <span className="material-symbols-outlined text-outline-variant text-[20px]">chevron_right</span>
+                <Link href={`/orders/${currentTask.orderId}/tracking`} className="block w-full bg-[#ffedd5] text-[#1b1c1c] py-3 text-[11px] font-black uppercase tracking-[0.18em] hover:bg-white transition-all shadow-sm">
+                  Track Delivery →
+                </Link>
+              </div>
+            ) : (
+              <div className="bg-[#fcf9f8] border-2 border-dashed border-[#e0e0e0]/20 p-12 text-center space-y-6">
+                 <div className="w-12 h-12 border border-[#e0e0e0]/10 flex items-center justify-center mx-auto opacity-30">
+                    <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                 </div>
+                 <p className="text-[10px] font-black text-[#414844] uppercase tracking-[0.18em] opacity-40">No active delivery — check available orders</p>
+              </div>
+            )}
+
+            <div className="space-y-8">
+              <h3 className="text-[10px] font-black uppercase tracking-[0.18em] text-[#1b1c1c] border-b border-[#f0eded] pb-4">Queued Deliveries</h3>
+              {activeDeliveries.slice(1).length > 0 ? activeDeliveries.slice(1).map((delivery: any, i: number) => (
+                <div key={i} className="bg-white border border-[#e0e0e0] p-5 flex justify-between items-center group cursor-pointer hover:border-[#ff6b00] transition-all">
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-3">
+                      <span className="text-[8px] font-black text-[#ff6b00] border border-[#ffedd5]/60 px-3 py-1 uppercase tracking-normal">QUEUED</span>
+                      <span className="text-[8px] font-bold text-[#414844] uppercase tracking-widest opacity-40">#{delivery.orderNumber?.substring(0,8) || delivery._id.substring(0,8).toUpperCase()}</span>
                     </div>
-                  ))}
+                    <h4 className="text-sm font-sans text-[#1b1c1c] line-clamp-1">{delivery.dropoff?.address || 'Customer address'}</h4>
+                  </div>
+                  <span className="text-xl opacity-20 group-hover:opacity-100 group-hover:translate-x-1 transition-all">→</span>
                 </div>
-              ) : (
-                <div className="py-md text-center bg-surface-container-lowest border border-outline-variant border-dashed rounded">
-                  <p className="font-label-caps text-[10px] text-on-surface-variant">No queued deliveries on your route</p>
+              )) : (
+                <div className="px-2">
+                   <p className="text-[9px] font-black text-[#414844] uppercase tracking-widest opacity-20">No queued deliveries</p>
                 </div>
               )}
             </div>
-            
           </div>
-          
         </div>
       </div>
     </Layout>

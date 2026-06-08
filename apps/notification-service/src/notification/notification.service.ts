@@ -87,12 +87,8 @@ export class NotificationService {
   private getTemplate(type: string, lang: 'rw' | 'en', params: any): string {
     const templates: Record<string, { en: string; rw: string }> = {
       'order.placed': {
-        en: params.referenceType === 'Delivery'
-          ? `New delivery ${params.orderNumber}: pick up from ${params.marketName || params.pickupAddress || 'the market'}, deliver to ${params.dropoffAddress || 'the customer'}, fee ${params.deliveryFee || 0} RWF.`
-          : `New order ${params.orderNumber} placed. Please prepare.`,
-        rw: params.referenceType === 'Delivery'
-          ? `Hari delivery nshya ${params.orderNumber}: fata kuri ${params.marketName || params.pickupAddress || 'isoko'}, jyana kuri ${params.dropoffAddress || 'umukiriya'}, igihembo ${params.deliveryFee || 0} RWF.`
-          : `Hari komande nshya ${params.orderNumber}. Tegura vuba.`
+        en: `New order ${params.orderNumber} placed. Please prepare.`,
+        rw: `Hari komande nshya ${params.orderNumber}. Tegura vuba.`
       },
       'delivery.assigned': {
         en: `Rider ${params.riderName} is assigned to your order.`,
@@ -115,8 +111,8 @@ export class NotificationService {
         rw: `Komande yawe ${params.orderNumber} yageze. Mwizihirwe!`
       },
       'refund.processed': {
-        en: `Refund of ${params.amount} RWF for order ${params.orderId} has been sent via MTN MoMo to your mobile money number.`,
-        rw: `Amafaranga ${params.amount} RWF ya komande ${params.orderId} yoherejwe kuri Mobile Money yawe biciye muri MTN MoMo.`
+        en: `Refund of ${params.amount} RWF for order ${params.orderId} has been sent through Paypack to your mobile money number.`,
+        rw: `Amafaranga ${params.amount} RWF ya komande ${params.orderId} yoherejwe kuri Mobile Money yawe biciye muri Paypack.`
       },
       'dispute.manual_review': {
         en: `Order ${params.orderId} requires manual dispute review for ${params.amount} RWF.`,

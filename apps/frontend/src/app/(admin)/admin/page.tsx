@@ -19,7 +19,7 @@ import { CheckCircle2 } from 'lucide-react';
 
 const RiderMap = dynamic(
   () => import('@/components/ui/RiderMap').then((mod) => mod.RiderMap),
-  { ssr: false, loading: () => <div className="w-full h-full bg-[#fbf9f8] animate-pulse flex items-center justify-center text-[#414844]">Loading Map...</div> }
+  { ssr: false, loading: () => <div className="w-full h-full bg-[#fcf9f8] animate-pulse flex items-center justify-center text-[#414844]">Loading Map...</div> }
 );
 
 const isPdfUrl = (url?: string) => Boolean(url && /\.pdf($|\?)/i.test(url));
@@ -27,14 +27,14 @@ const isPdfUrl = (url?: string) => Boolean(url && /\.pdf($|\?)/i.test(url));
 const VerificationDocumentPanel = ({ title, url }: { title: string; url?: string }) => (
   <div className="space-y-2">
     <p className="text-[10px] font-black text-[#1b1c1c] uppercase tracking-widest">{title}</p>
-    <div className="flex min-h-48 items-center justify-center overflow-hidden border border-[#ebdcd0] bg-[#fbf9f8] p-3">
+    <div className="flex min-h-48 items-center justify-center overflow-hidden border border-[#e0e0e0] bg-[#fcf9f8] p-3">
       {!url ? (
         <div className="text-center">
           <p className="text-sm font-black text-[#1b1c1c]">Not uploaded</p>
           <p className="mt-1 text-[10px] font-bold uppercase tracking-widest text-[#414844]">Document missing</p>
         </div>
       ) : isPdfUrl(url) ? (
-        <a href={url} target="_blank" rel="noreferrer" className="rounded-md border border-[#ebdcd0] bg-white px-5 py-3 text-[10px] font-black uppercase tracking-widest text-[#ff6b00] transition hover:border-[#ff6b00]">
+        <a href={url} target="_blank" rel="noreferrer" className="rounded-md border border-[#e0e0e0] bg-white px-5 py-3 text-[10px] font-black uppercase tracking-widest text-[#ff6b00] transition hover:border-[#ff6b00]">
           Open PDF
         </a>
       ) : (
@@ -174,7 +174,7 @@ function AdminDashboardContent() {
   const { data: approvedSellers, execute: fetchApprovedSellers } = useApi(sellerApi, 'get', '/sellers?isApproved=true');
   const { data: pendingProducts, execute: fetchPendingProducts } = useApi(productApi, 'get', '/products?isApproved=false');
   const { data: pendingRiders, execute: fetchRiders } = useApi(riderApi, 'get', '/riders?isApproved=false');
-  const { data: disputes, execute: fetchDisputes } = useApi(orderApi, 'get', '/orders?isDisputed=true');
+  const { data: disputes, execute: fetchDisputes } = useApi(orderApi, 'get', '/orders?isDisputed=true&dispute.resolvedAt=null');
   const { data: ordersData, execute: fetchOrders } = useApi(orderApi, 'get', `/orders?sellerId=all`, { refreshInterval: 30000 });
   const { data: markets, execute: fetchMarkets } = useApi(marketApi, 'get', '/markets');
   const marketList = Array.isArray(markets) ? markets : [];
@@ -323,17 +323,15 @@ function AdminDashboardContent() {
   const platformRevenue = totalCommission + totalGateway;
   const deliveredOrders = filteredOrders.filter((o: any) => o.status === 'delivered' || o.status === 'resolved');
   const openDisputeExposure = Array.isArray(disputes)
-    ? disputes
-        .filter((dispute: any) => !dispute.dispute?.resolvedAt)
-        .reduce((sum: number, dispute: any) => sum + Number(dispute.financials?.totalAmount || dispute.total || 0), 0)
+    ? disputes.reduce((sum: number, dispute: any) => sum + Number(dispute.financials?.totalAmount || dispute.total || 0), 0)
     : 0;
   const operationCounts = operationsOverview?.counts || {};
   const operationQueues = operationsOverview?.actionQueues || {};
   const readiness = operationsOverview?.readiness || {};
   const readinessChecks = [
-    { label: 'MTN MoMo collections', ready: readiness.mtnCollectionConfigured, detail: 'Buyer pay-in credentials' },
-    { label: 'MTN MoMo disbursements', ready: readiness.mtnDisbursementConfigured, detail: 'Payout credentials' },
-    { label: 'MTN MoMo callback', ready: readiness.mtnCallbackConfigured, detail: 'Payment callback URL' },
+    { label: 'Paypack cash-in', ready: readiness.paypackCashinConfigured, detail: 'Client credentials' },
+    { label: 'Paypack webhook', ready: readiness.paypackWebhookConfigured, detail: 'Callback signature' },
+    { label: 'Settlement MoMo', ready: readiness.paypackSettlementConfigured, detail: 'Platform wallet' },
     { label: 'SMS channel', ready: readiness.smsConfigured, detail: 'Delivery + order alerts' },
     { label: 'WhatsApp channel', ready: readiness.whatsappConfigured, detail: 'Fallback support alerts' },
     { label: 'SMTP email', ready: readiness.smtpConfigured, detail: 'Receipts and disputes' },
@@ -666,7 +664,7 @@ function AdminDashboardContent() {
                  </div>
               </div>
               <div className="rmf-modal-footer">
-                 <button onClick={() => setSelectedSeller(null)} className="px-6 py-3 border border-[#ebdcd0] text-[#1b1c1c] text-[10px] font-black uppercase tracking-widest hover:bg-[#ff6b00] hover:text-white transition-all">Cancel</button>
+                 <button onClick={() => setSelectedSeller(null)} className="px-6 py-3 border border-[#e0e0e0] text-[#1b1c1c] text-[10px] font-black uppercase tracking-widest hover:bg-[#e05300] hover:text-white transition-all">Cancel</button>
                  <button onClick={() => {
                     if (selectedSeller.plateNumber) {
                       approveRider(selectedSeller._id);
@@ -674,7 +672,7 @@ function AdminDashboardContent() {
                       approveSeller(selectedSeller._id);
                     }
                     setSelectedSeller(null);
-                 }} className="px-6 py-3 bg-[#ff6b00] text-white text-[10px] font-black uppercase tracking-widest hover:bg-[#ff6b00] transition-all">Approve Application</button>
+                 }} className="px-6 py-3 bg-[#e05300] text-white text-[10px] font-black uppercase tracking-widest hover:bg-[#e05300] transition-all">Approve Application</button>
               </div>
            </div>
         </div>
@@ -682,7 +680,7 @@ function AdminDashboardContent() {
 
       {/* ── Main Content ── */}
       <main className="flex-1 p-4 md:p-12">
-        <div className="border-b border-[#ebdcd0] pb-6 mb-8 md:mb-10 flex flex-col md:flex-row justify-between items-start md:items-end gap-6 md:gap-0">
+        <div className="border-b border-[#e0e0e0] pb-6 mb-8 md:mb-10 flex flex-col md:flex-row justify-between items-start md:items-end gap-6 md:gap-0">
           <h1 className="text-2xl md:text-4xl font-sans text-[#1b1c1c] capitalize tracking-normal">
              {activeTab.replace('-', ' ')}
           </h1>
@@ -692,7 +690,7 @@ function AdminDashboardContent() {
                <select
                   value={selectedBulkSellerId}
                   onChange={(event) => setSelectedBulkSellerId(event.target.value)}
-                  className="min-w-[15rem] rounded-md border border-[#ebdcd0] bg-white px-4 py-3 text-sm font-bold text-[#1b1c1c] outline-none transition focus:border-[#ff6b00] focus:ring-4 focus:ring-[#ff6b00]/10"
+                  className="min-w-[15rem] rounded-md border border-[#e0e0e0] bg-white px-4 py-3 text-sm font-bold text-[#1b1c1c] outline-none transition focus:border-[#ff6b00] focus:ring-4 focus:ring-[#ff6b00]/10"
                >
                   <option value="">Choose approved seller</option>
                   {Array.isArray(approvedSellers) && approvedSellers.map((seller: any) => (
@@ -703,7 +701,7 @@ function AdminDashboardContent() {
                </select>
                <button
                   onClick={downloadSample}
-                  className="rounded-md border border-[#ebdcd0] bg-white px-4 py-3 text-[9px] font-black uppercase tracking-widest text-[#414844] transition hover:bg-[#fbf9f8]"
+                  className="rounded-md border border-[#e0e0e0] bg-white px-4 py-3 text-[9px] font-black uppercase tracking-widest text-[#414844] transition hover:bg-[#fcf9f8]"
                >
                   Template
                </button>
@@ -716,7 +714,7 @@ function AdminDashboardContent() {
                />
                <label
                   htmlFor="bulk-upload-input"
-                  className="inline-flex cursor-pointer items-center justify-center gap-2 rounded-md bg-[#ff6b00] px-6 py-3 text-[10px] font-black uppercase tracking-widest text-white transition hover:bg-[#ff6b00]"
+                  className="inline-flex cursor-pointer items-center justify-center gap-2 rounded-md bg-[#ff6b00] px-6 py-3 text-[10px] font-black uppercase tracking-widest text-white transition hover:bg-[#e05300]"
                >
                   <span className="h-2 w-2 rounded-full bg-[#ffedd5]"></span>
                   Bulk upload
@@ -727,8 +725,8 @@ function AdminDashboardContent() {
 
           {activeTab === 'live-map' && (
             <div className="space-y-6 animate-reveal h-[calc(100vh-200px)]">
-               <div className="h-full border border-[#ebdcd0] bg-white flex flex-col shadow-sm relative overflow-hidden group">
-                  <div className="p-6 border-b border-[#ebdcd0] bg-[#fbf9f8] flex justify-between items-center z-10">
+               <div className="h-full border border-[#e0e0e0] bg-white flex flex-col shadow-sm relative overflow-hidden group">
+                  <div className="p-6 border-b border-[#e0e0e0] bg-[#fcf9f8] flex justify-between items-center z-10">
                      <div>
                         <h3 className="text-xl font-sans text-[#1b1c1c] flex items-center gap-3">
                            <div className="relative flex h-3 w-3">
@@ -761,7 +759,7 @@ function AdminDashboardContent() {
                   <button
                     type="button"
                     onClick={() => fetchOperations()}
-                    className="inline-flex h-11 items-center justify-center rounded-md bg-[#ff6b00] px-5 text-[10px] font-black uppercase tracking-widest text-white transition hover:bg-[#ff6b00]"
+                    className="inline-flex h-11 items-center justify-center rounded-md bg-[#ff6b00] px-5 text-[10px] font-black uppercase tracking-widest text-white transition hover:bg-[#e05300]"
                   >
                     {operationsLoading ? 'Refreshing...' : 'Refresh'}
                   </button>
@@ -828,7 +826,7 @@ function AdminDashboardContent() {
                   </div>
                   <div className="grid gap-3 p-5">
                     {readinessChecks.map(check => (
-                      <div key={check.label} className="flex items-center justify-between rounded-md border border-[#edf2ef] bg-[#fbf9f8] px-4 py-3">
+                      <div key={check.label} className="flex items-center justify-between rounded-md border border-[#edf2ef] bg-[#fcf9f8] px-4 py-3">
                         <div>
                           <p className="text-sm font-black text-[#1b1c1c]">{check.label}</p>
                           <p className="text-[10px] font-bold uppercase tracking-widest text-[#5f7569]">{check.detail}</p>
@@ -899,26 +897,26 @@ function AdminDashboardContent() {
           {activeTab === 'analytics' && (
             <div className="space-y-10 animate-reveal">
               <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
-                <div className="bg-white border border-[#ebdcd0] p-8 shadow-sm">
+                <div className="bg-white border border-[#e0e0e0] p-8 shadow-sm">
                   <p className="text-[10px] font-black uppercase tracking-[0.2em] text-[#414844] mb-2">Monthly GMV</p>
                   <p className="text-3xl font-sans text-[#1b1c1c]">{analytics?.monthlyGMV?.toLocaleString() || 0}</p>
                 </div>
-                <div className="bg-white border border-[#ebdcd0] p-8 shadow-sm border-l-4 border-l-[#ea580c]">
+                <div className="bg-white border border-[#e0e0e0] p-8 shadow-sm border-l-4 border-l-[#ea580c]">
                   <p className="text-[10px] font-black uppercase tracking-[0.2em] text-[#414844] mb-2">Platform Revenue</p>
                   <p className="text-3xl font-sans text-[#1b1c1c]">{analytics?.monthlyCommission?.toLocaleString() || 0}</p>
                 </div>
-                <div className="bg-white border border-[#ebdcd0] p-8 shadow-sm">
+                <div className="bg-white border border-[#e0e0e0] p-8 shadow-sm">
                   <p className="text-[10px] font-black uppercase tracking-[0.2em] text-[#414844] mb-2">Active Sellers</p>
                   <p className="text-3xl font-sans text-[#1b1c1c]">{analytics?.activeSellers || 0}</p>
                 </div>
-                <div className="bg-white border border-[#ebdcd0] p-8 shadow-sm">
+                <div className="bg-white border border-[#e0e0e0] p-8 shadow-sm">
                   <p className="text-[10px] font-black uppercase tracking-[0.2em] text-[#414844] mb-2">Active Riders</p>
                   <p className="text-3xl font-sans text-[#1b1c1c]">{analytics?.activeRiders || 0}</p>
                 </div>
               </div>
 
               {/* Growth Charts */}
-              <div className="bg-white border border-[#ebdcd0] p-8 shadow-sm">
+              <div className="bg-white border border-[#e0e0e0] p-8 shadow-sm">
                  <AnalyticsCharts orders={allOrders} data={dashboardAnalytics} type="admin" />
               </div>
             </div>
@@ -933,7 +931,7 @@ function AdminDashboardContent() {
                     key={range}
                     onClick={() => setDateRange(range)}
                     className={`px-6 py-3 text-[9px] font-black uppercase tracking-[0.2em] transition-all border ${
-                      dateRange === range ? 'bg-[#ff6b00] text-white border-[#ebdcd0]' : 'bg-white text-[#1b1c1c] border-[#ebdcd0] hover:border-[#ff6b00]'
+                      dateRange === range ? 'bg-[#e05300] text-white border-[#e0e0e0]' : 'bg-white text-[#1b1c1c] border-[#e0e0e0] hover:border-[#ff6b00]'
                     }`}
                   >
                     {range === 'today' ? 'Today' : range === 'week' ? 'This Week' : range === 'month' ? 'This Month' : 'All Time'}
@@ -943,22 +941,22 @@ function AdminDashboardContent() {
 
               {/* Revenue Summary Cards */}
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-                <div className="bg-[#ff6b00] text-white p-8 shadow-lg">
+                <div className="bg-[#e05300] text-white p-8 shadow-lg">
                   <p className="text-[10px] font-black uppercase tracking-[0.2em] text-white/50 mb-2">Total GMV</p>
                   <p className="text-3xl font-sans">{totalGMV.toLocaleString()}</p>
                   <p className="text-[9px] text-white/40 mt-2 uppercase tracking-widest">{filteredOrders.length} orders</p>
                 </div>
-                <div className="bg-white border border-[#ebdcd0] p-8 shadow-sm">
+                <div className="bg-white border border-[#e0e0e0] p-8 shadow-sm">
                   <p className="text-[10px] font-black uppercase tracking-[0.2em] text-[#414844] mb-2">Platform Revenue</p>
                   <p className="text-3xl font-sans text-[#ff6b00]">{platformRevenue.toLocaleString()}</p>
                   <p className="text-[9px] text-[#414844] mt-2 uppercase tracking-widest opacity-60">Comm: {totalCommission.toLocaleString()} | Gate: {totalGateway.toLocaleString()}</p>
                 </div>
-                <div className="bg-white border border-[#ebdcd0] p-8 shadow-sm">
+                <div className="bg-white border border-[#e0e0e0] p-8 shadow-sm">
                   <p className="text-[10px] font-black uppercase tracking-[0.2em] text-[#414844] mb-2">Seller Payouts</p>
                   <p className="text-3xl font-sans text-green-600">{totalSellerPayout.toLocaleString()}</p>
                   <p className="text-[9px] text-[#414844] mt-2 uppercase tracking-widest opacity-60">{(totalGMV > 0 ? (totalSellerPayout / totalGMV * 100) : 0).toFixed(1)}% of GMV</p>
                 </div>
-                <div className="bg-white border border-[#ebdcd0] p-8 shadow-sm">
+                <div className="bg-white border border-[#e0e0e0] p-8 shadow-sm">
                   <p className="text-[10px] font-black uppercase tracking-[0.2em] text-[#414844] mb-2">Rider Payouts</p>
                   <p className="text-3xl font-sans text-[#1b1c1c]">{totalRiderPayout.toLocaleString()}</p>
                   <p className="text-[9px] text-[#414844] mt-2 uppercase tracking-widest opacity-60">{deliveredOrders.length} delivered</p>
@@ -966,14 +964,14 @@ function AdminDashboardContent() {
               </div>
 
               {/* Settlement Summary */}
-              <div className="bg-white border border-[#ebdcd0] shadow-sm overflow-hidden">
-                <div className="p-6 border-b border-[#ebdcd0] bg-[#fbf9f8] flex justify-between items-center">
+              <div className="bg-white border border-[#e0e0e0] shadow-sm overflow-hidden">
+                <div className="p-6 border-b border-[#e0e0e0] bg-[#fcf9f8] flex justify-between items-center">
                   <h2 className="text-lg font-sans text-[#1b1c1c]">Settlement Report</h2>
                   <span className="text-[10px] font-black uppercase tracking-widest text-[#414844]">{filteredOrders.length} records</span>
                 </div>
                 <div className="overflow-x-auto">
                   <table className="w-full text-left">
-                    <thead className="bg-white text-[#414844] text-[9px] font-black uppercase tracking-[0.2em] border-b border-[#ebdcd0]">
+                    <thead className="bg-white text-[#414844] text-[9px] font-black uppercase tracking-[0.2em] border-b border-[#e0e0e0]">
                       <tr>
                         <th className="p-4">Order #</th>
                         <th className="p-4">Date</th>
@@ -988,7 +986,7 @@ function AdminDashboardContent() {
                         <th className="p-4 text-center">Receipt</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-[#ebdcd0] text-sm bg-[#fbf9f8]/30">
+                    <tbody className="divide-y divide-[#e0e0e0] text-sm bg-[#fcf9f8]/30">
                       {filteredOrders.length === 0 ? (
                         <tr><td colSpan={11} className="p-12 text-center text-[#414844]">No transactions in this period.</td></tr>
                       ) : (
@@ -1008,7 +1006,7 @@ function AdminDashboardContent() {
                                   ? 'bg-green-50 border-green-200 text-green-700'
                                   : order.status === 'cancelled'
                                     ? 'bg-red-50 border-red-200 text-red-700'
-                                    : 'bg-white border-[#ebdcd0] text-[#414844]'
+                                    : 'bg-white border-[#e0e0e0] text-[#414844]'
                               }`}>
                                 {order.status === 'delivered' ? 'SETTLED' :
                                  order.status === 'resolved' ? 'RESOLVED' :
@@ -1022,7 +1020,7 @@ function AdminDashboardContent() {
                               </Link>
                             </td>
                             <td className="p-4 text-center">
-                              <button onClick={() => openReceipt(order)} className="text-[10px] border border-[#ebdcd0] px-3 py-1 hover:border-[#ff6b00]">Receipt</button>
+                              <button onClick={() => openReceipt(order)} className="text-[10px] border border-[#e0e0e0] px-3 py-1 hover:border-[#ff6b00]">Receipt</button>
                             </td>
                           </tr>
                         ))
@@ -1032,17 +1030,17 @@ function AdminDashboardContent() {
                 </div>
                 {/* Pagination */}
                 {totalPages > 1 && (
-                   <div className="p-4 border-t border-[#ebdcd0] flex justify-between items-center bg-white">
+                   <div className="p-4 border-t border-[#e0e0e0] flex justify-between items-center bg-white">
                       <button 
                          disabled={page === 1} 
                          onClick={() => setPage(p => p - 1)}
-                         className="px-4 py-2 border border-[#ebdcd0] text-[9px] font-black uppercase tracking-widest disabled:opacity-30"
+                         className="px-4 py-2 border border-[#e0e0e0] text-[9px] font-black uppercase tracking-widest disabled:opacity-30"
                       >Prev</button>
                       <span className="text-[10px] font-bold text-[#414844]">Page {page} of {totalPages}</span>
                       <button 
                          disabled={page === totalPages} 
                          onClick={() => setPage(p => p + 1)}
-                         className="px-4 py-2 border border-[#ebdcd0] text-[9px] font-black uppercase tracking-widest disabled:opacity-30"
+                         className="px-4 py-2 border border-[#e0e0e0] text-[9px] font-black uppercase tracking-widest disabled:opacity-30"
                       >Next</button>
                    </div>
                 )}
@@ -1050,25 +1048,25 @@ function AdminDashboardContent() {
 
               {/* Platform P&L Summary */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div className="bg-white border border-[#ebdcd0] rounded-lg p-8">
-                  <p className="text-[10px] font-black uppercase tracking-[0.2em] text-[#1b1c1c] mb-4 border-b border-[#ebdcd0] pb-2">Platform Revenue</p>
+                <div className="bg-white border border-[#e0e0e0] rounded-lg p-8">
+                  <p className="text-[10px] font-black uppercase tracking-[0.2em] text-[#1b1c1c] mb-4 border-b border-[#e0e0e0] pb-2">Platform Revenue</p>
                   <p className="text-3xl font-sans text-[#1b1c1c]">{platformRevenue.toLocaleString()}</p>
                   <div className="text-[10px] font-bold text-[#414844] mt-4 space-y-1">
                     <p>Commission: +{totalCommission.toLocaleString()}</p>
                     <p>Gateway: +{totalGateway.toLocaleString()}</p>
                   </div>
                 </div>
-                <div className="bg-white border border-[#ebdcd0] p-8">
-                  <p className="text-[10px] font-black uppercase tracking-[0.2em] text-[#414844] mb-4 border-b border-[#ebdcd0] pb-2">Total Payouts</p>
+                <div className="bg-white border border-[#e0e0e0] p-8">
+                  <p className="text-[10px] font-black uppercase tracking-[0.2em] text-[#414844] mb-4 border-b border-[#e0e0e0] pb-2">Total Payouts</p>
                   <p className="text-3xl font-sans text-[#414844]">{(totalSellerPayout + totalRiderPayout).toLocaleString()}</p>
                   <div className="text-[10px] font-bold text-[#414844] mt-4 space-y-1">
                     <p>Sellers: {totalSellerPayout.toLocaleString()}</p>
                     <p>Riders: {totalRiderPayout.toLocaleString()}</p>
                   </div>
                 </div>
-                <div className="bg-[#ff6b00] text-white border border-[#ebdcd0] rounded-lg p-8">
+                <div className="bg-[#e05300] text-white border border-[#e0e0e0] rounded-lg p-8">
                   <p className="text-[10px] font-black uppercase tracking-[0.2em] text-white/50 mb-4 border-b border-white/20 pb-2">Net Position</p>
-                  <p className="text-3xl font-sans text-white">{(platformRevenue - (totalSellerPayout + totalRiderPayout)).toLocaleString()}</p>
+                  <p className="text-3xl font-sans text-[#ff6b00]">{(platformRevenue - (totalSellerPayout + totalRiderPayout)).toLocaleString()}</p>
                   <div className="text-[10px] font-bold text-white/40 mt-4 space-y-1">
                     <p>Revenue: {platformRevenue.toLocaleString()}</p>
                     <p>Payouts: {(totalSellerPayout + totalRiderPayout).toLocaleString()}</p>
@@ -1081,7 +1079,7 @@ function AdminDashboardContent() {
           {activeTab === 'approvals' && (
             <div className="space-y-6 animate-reveal">
               {/* Sub-tab navigation */}
-              <div className="flex items-center gap-1 rounded-xl border border-[#ebdcd0] bg-[#fbf9f8] p-1">
+              <div className="flex items-center gap-1 rounded-xl border border-[#e0e0e0] bg-[#fcf9f8] p-1">
                 {([
                   { key: 'sellers', label: '🏪 Sellers', count: Array.isArray(pendingSellers) ? pendingSellers.length : 0 },
                   { key: 'riders', label: '🛵 Riders', count: Array.isArray(pendingRiders) ? pendingRiders.length : 0 },
@@ -1092,14 +1090,14 @@ function AdminDashboardContent() {
                     onClick={() => setApprovalSubTab(t.key)}
                     className={`flex flex-1 items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-xs font-black uppercase tracking-wider transition-all ${
                       approvalSubTab === t.key
-                        ? 'bg-white text-[#ff6b00] shadow-sm border border-[#ebdcd0]'
+                        ? 'bg-white text-[#e05300] shadow-sm border border-[#e0e0e0]'
                         : 'text-[#414844] hover:text-[#1b1c1c]'
                     }`}
                   >
                     {t.label}
                     {t.count > 0 && (
                       <span className={`rounded-full px-1.5 py-0.5 text-[9px] font-black ${
-                        approvalSubTab === t.key ? 'bg-[#ffedd5] text-[#9a3412]' : 'bg-[#ebdcd0] text-[#414844]'
+                        approvalSubTab === t.key ? 'bg-[#ffedd5] text-[#9a3412]' : 'bg-[#e0e0e0] text-[#414844]'
                       }`}>{t.count}</span>
                     )}
                   </button>
@@ -1110,15 +1108,15 @@ function AdminDashboardContent() {
               {approvalSubTab === 'sellers' && (
                 <div className="space-y-4">
                   {!Array.isArray(pendingSellers) || pendingSellers.length === 0 ? (
-                    <div className="rounded-xl border border-dashed border-[#ebdcd0] bg-white p-16 text-center flex flex-col items-center justify-center">
+                    <div className="rounded-xl border border-dashed border-[#e0e0e0] bg-white p-16 text-center flex flex-col items-center justify-center">
                       <CheckCircle2 size={32} className="text-primary mb-2 animate-pulse" />
                       <p className="text-sm font-bold text-[#414844]">No pending seller applications.</p>
                     </div>
                   ) : (
                     pendingSellers.map((s: any) => (
-                      <div key={s._id} className="rounded-xl border border-[#ebdcd0] bg-white shadow-sm overflow-hidden">
+                      <div key={s._id} className="rounded-xl border border-[#e0e0e0] bg-white shadow-sm overflow-hidden">
                         {/* Header */}
-                        <div className="flex items-center justify-between gap-4 border-b border-[#ebdcd0] bg-[#fbf9f8] px-6 py-4">
+                        <div className="flex items-center justify-between gap-4 border-b border-[#e0e0e0] bg-[#fcf9f8] px-6 py-4">
                           <div>
                             <p className="text-lg font-black text-[#1b1c1c]">{s.shopDetails?.name || s.stallName || 'Unnamed shop'}</p>
                             <p className="text-[10px] font-black text-[#414844] uppercase tracking-widest mt-0.5">
@@ -1127,7 +1125,7 @@ function AdminDashboardContent() {
                           </div>
                           <div className="flex gap-2">
                             <button onClick={() => declineSeller(s._id)} className="px-4 py-2 border border-red-200 bg-red-50 text-[9px] font-black uppercase tracking-widest text-red-600 hover:bg-red-100 rounded-lg transition">Decline</button>
-                            <button onClick={() => approveSeller(s._id)} className="px-5 py-2 bg-[#ff6b00] text-white text-[9px] font-black uppercase tracking-widest hover:bg-[#a04100] rounded-lg transition">✓ Approve</button>
+                            <button onClick={() => approveSeller(s._id)} className="px-5 py-2 bg-[#e05300] text-white text-[9px] font-black uppercase tracking-widest hover:bg-[#c24600] rounded-lg transition">✓ Approve</button>
                           </div>
                         </div>
                         {/* Document grid */}
@@ -1147,15 +1145,15 @@ function AdminDashboardContent() {
               {approvalSubTab === 'riders' && (
                 <div className="space-y-4">
                   {!Array.isArray(pendingRiders) || pendingRiders.length === 0 ? (
-                    <div className="rounded-xl border border-dashed border-[#ebdcd0] bg-white p-16 text-center flex flex-col items-center justify-center">
+                    <div className="rounded-xl border border-dashed border-[#e0e0e0] bg-white p-16 text-center flex flex-col items-center justify-center">
                       <CheckCircle2 size={32} className="text-primary mb-2 animate-pulse" />
                       <p className="text-sm font-bold text-[#414844]">No pending rider applications.</p>
                     </div>
                   ) : (
                     pendingRiders.map((r: any) => (
-                      <div key={r._id} className="rounded-xl border border-[#ebdcd0] bg-white shadow-sm overflow-hidden">
+                      <div key={r._id} className="rounded-xl border border-[#e0e0e0] bg-white shadow-sm overflow-hidden">
                         {/* Header */}
-                        <div className="flex items-center justify-between gap-4 border-b border-[#ebdcd0] bg-[#fbf9f8] px-6 py-4">
+                        <div className="flex items-center justify-between gap-4 border-b border-[#e0e0e0] bg-[#fcf9f8] px-6 py-4">
                           <div>
                             <p className="text-lg font-black text-[#1b1c1c]">
                               {r.vehicleType || 'Rider'} · <span className="font-mono text-[#ff6b00]">{r.plateNumber || 'No plate'}</span>
@@ -1166,7 +1164,7 @@ function AdminDashboardContent() {
                           </div>
                           <div className="flex gap-2">
                             <button onClick={() => declineRider(r._id)} className="px-4 py-2 border border-red-200 bg-red-50 text-[9px] font-black uppercase tracking-widest text-red-600 hover:bg-red-100 rounded-lg transition">Decline</button>
-                            <button onClick={() => approveRider(r._id)} className="px-5 py-2 bg-[#ff6b00] text-white text-[9px] font-black uppercase tracking-widest hover:bg-[#a04100] rounded-lg transition">✓ Approve</button>
+                            <button onClick={() => approveRider(r._id)} className="px-5 py-2 bg-[#e05300] text-white text-[9px] font-black uppercase tracking-widest hover:bg-[#c24600] rounded-lg transition">✓ Approve</button>
                           </div>
                         </div>
                         {/* Document grid */}
@@ -1189,8 +1187,8 @@ function AdminDashboardContent() {
                     { title: 'Seller profile changes', type: 'seller' as const, items: sellerChangeRequests },
                     { title: 'Rider profile changes', type: 'rider' as const, items: riderChangeRequests },
                 ] as const).map(group => (
-                    <section key={group.type} className="rounded-xl border border-[#ebdcd0] bg-white p-6 shadow-sm">
-                      <div className="mb-5 flex items-center justify-between border-b border-[#ebdcd0] pb-4">
+                    <section key={group.type} className="rounded-xl border border-[#e0e0e0] bg-white p-6 shadow-sm">
+                      <div className="mb-5 flex items-center justify-between border-b border-[#e0e0e0] pb-4">
                         <div>
                           <p className="text-[10px] font-black uppercase tracking-[0.18em] text-[#ff6b00]">Pending review</p>
                           <h2 className="mt-1 text-xl font-black text-[#1b1c1c]">{group.title}</h2>
@@ -1198,13 +1196,13 @@ function AdminDashboardContent() {
                         <span className="rounded-full bg-[#ffedd5] px-3 py-1 text-xs font-black text-[#9a3412]">{group.items.length}</span>
                       </div>
                       {profileChangesLoading ? (
-                        <div className="h-40 animate-pulse rounded-md bg-[#fbf9f8]" />
+                        <div className="h-40 animate-pulse rounded-md bg-[#fcf9f8]" />
                       ) : group.items.length === 0 ? (
-                        <p className="rounded-md border border-dashed border-[#ebdcd0] p-8 text-center text-sm font-semibold text-[#5f7569]">No pending requests.</p>
+                        <p className="rounded-md border border-dashed border-[#e0e0e0] p-8 text-center text-sm font-semibold text-[#5f7569]">No pending requests.</p>
                       ) : (
                         <div className="space-y-4">
                           {group.items.map((request: any) => (
-                            <article key={request._id} className="rounded-md border border-[#ebdcd0] bg-[#fbf9f8] p-4">
+                            <article key={request._id} className="rounded-md border border-[#e0e0e0] bg-[#fcf9f8] p-4">
                               <div className="mb-3 flex items-center justify-between gap-3">
                                 <p className="text-xs font-black uppercase tracking-widest text-[#1b1c1c]">{request.targetId}</p>
                                 <p className="text-[10px] font-bold text-[#5f7569]">{new Date(request.createdAt).toLocaleString()}</p>
@@ -1234,9 +1232,9 @@ function AdminDashboardContent() {
           )}
 
           {activeTab === 'products' && (
-            <div className="bg-white border border-[#ebdcd0] shadow-sm animate-reveal overflow-hidden">
+            <div className="bg-white border border-[#e0e0e0] shadow-sm animate-reveal overflow-hidden">
               <table className="w-full text-left">
-                <thead className="bg-[#fbf9f8] text-[#414844] text-[9px] font-black uppercase tracking-[0.2em] border-b border-[#ebdcd0]">
+                <thead className="bg-[#fcf9f8] text-[#414844] text-[9px] font-black uppercase tracking-[0.2em] border-b border-[#e0e0e0]">
                   <tr>
                     <th className="p-6">Product Item</th>
                     <th className="p-6">Price & Stock</th>
@@ -1244,14 +1242,14 @@ function AdminDashboardContent() {
                     <th className="p-6 text-right">Actions</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-[#ebdcd0]">
+                <tbody className="divide-y divide-[#e0e0e0]">
                   {!pendingProducts || pendingProducts.length === 0 ? (
                     <tr><td colSpan={4} className="p-12 text-center text-[#414844]">No pending product approvals.</td></tr>
                   ) : (
                     visiblePendingProducts.map((p: any) => (
-                      <tr key={p._id} className="hover:bg-[#fbf9f8]/50 transition-colors">
+                      <tr key={p._id} className="hover:bg-[#fcf9f8]/50 transition-colors">
                         <td className="p-6 flex items-center gap-4">
-                          <div className="w-16 h-16 border border-[#ebdcd0] bg-[#fbf9f8] overflow-hidden p-1">
+                          <div className="w-16 h-16 border border-[#e0e0e0] bg-[#fcf9f8] overflow-hidden p-1">
                             {p.images?.[0] && <img src={p.images[0]} alt={p.name} loading="lazy" className="w-full h-full object-cover" />}
                           </div>
                           <div>
@@ -1266,7 +1264,7 @@ function AdminDashboardContent() {
                         <td className="p-6 text-xs text-[#414844]">{new Date(p.createdAt).toLocaleDateString()}</td>
                         <td className="p-6 text-right flex justify-end gap-3">
                           <button className="px-4 py-2 border border-red-200 bg-red-50 text-[9px] font-black uppercase tracking-widest text-red-600 hover:border-red-500" onClick={() => declineProduct(p._id)}>Reject</button>
-                          <button className="px-4 py-2 bg-[#ff6b00] text-white text-[9px] font-black uppercase tracking-widest hover:bg-[#ff6b00]" onClick={() => approveProduct(p._id)}>Approve</button>
+                          <button className="px-4 py-2 bg-[#e05300] text-white text-[9px] font-black uppercase tracking-widest hover:bg-[#e05300]" onClick={() => approveProduct(p._id)}>Approve</button>
                         </td>
                       </tr>
                     ))
@@ -1275,12 +1273,12 @@ function AdminDashboardContent() {
               </table>
               <div ref={productLoadRef} className="min-h-1" />
               {loadingMoreProducts && (
-                <div className="border-t border-[#ebdcd0] p-4">
+                <div className="border-t border-[#e0e0e0] p-4">
                   {[1, 2, 3].map(i => <div key={i} className="mb-3 h-16 animate-pulse rounded-md bg-[#f0eded]" />)}
                 </div>
               )}
               {!loadingMoreProducts && visibleProductsCount < pendingProductList.length && (
-                <div className="border-t border-[#ebdcd0] p-4 text-center text-[10px] font-black uppercase tracking-[0.2em] text-[#414844]">
+                <div className="border-t border-[#e0e0e0] p-4 text-center text-[10px] font-black uppercase tracking-[0.2em] text-[#414844]">
                   Scroll to load more product approvals
                 </div>
               )}
@@ -1333,12 +1331,12 @@ function AdminDashboardContent() {
 
                   <label className="mt-4 block">
                     <span className="mb-1 block text-[10px] font-black uppercase tracking-[0.14em] text-[#405046]">Attributes JSON</span>
-                    <textarea value={taxonomyForm.attributesJson} onChange={e => setTaxonomyForm((prev: any) => ({ ...prev, attributesJson: e.target.value }))} className="min-h-40 w-full rounded-md border border-[#dfe7e2] bg-[#fbf9f8] p-3 font-mono text-xs outline-none focus:border-[#ff6b00]" />
+                    <textarea value={taxonomyForm.attributesJson} onChange={e => setTaxonomyForm((prev: any) => ({ ...prev, attributesJson: e.target.value }))} className="min-h-40 w-full rounded-md border border-[#dfe7e2] bg-[#fcf9f8] p-3 font-mono text-xs outline-none focus:border-[#ff6b00]" />
                   </label>
 
                   <label className="mt-4 block">
                     <span className="mb-1 block text-[10px] font-black uppercase tracking-[0.14em] text-[#405046]">Variant axes JSON</span>
-                    <textarea value={taxonomyForm.variantAxesJson} onChange={e => setTaxonomyForm((prev: any) => ({ ...prev, variantAxesJson: e.target.value }))} className="min-h-28 w-full rounded-md border border-[#dfe7e2] bg-[#fbf9f8] p-3 font-mono text-xs outline-none focus:border-[#ff6b00]" />
+                    <textarea value={taxonomyForm.variantAxesJson} onChange={e => setTaxonomyForm((prev: any) => ({ ...prev, variantAxesJson: e.target.value }))} className="min-h-28 w-full rounded-md border border-[#dfe7e2] bg-[#fcf9f8] p-3 font-mono text-xs outline-none focus:border-[#ff6b00]" />
                   </label>
 
                   <div className="mt-5 flex flex-wrap gap-3">
@@ -1382,7 +1380,7 @@ function AdminDashboardContent() {
                     ['Unknown attributes', governanceReport?.unknownAttributes || []],
                     ['Needs category backfill', governanceReport?.uncategorized || []],
                   ].map(([title, rows]: any) => (
-                    <div key={title} className="rounded-lg border border-[#edf1ee] bg-[#fbf9f8] p-4">
+                    <div key={title} className="rounded-lg border border-[#edf1ee] bg-[#fcf9f8] p-4">
                       <p className="text-sm font-black text-[#1b1c1c]">{title}</p>
                       <div className="mt-3 max-h-72 space-y-2 overflow-y-auto">
                         {rows.length === 0 ? (
@@ -1447,12 +1445,12 @@ function AdminDashboardContent() {
 
                   <label className="mt-4 block">
                     <span className="mb-1 block text-[10px] font-black uppercase tracking-[0.14em] text-[#405046]">Attributes JSON</span>
-                    <textarea value={taxonomyForm.attributesJson} onChange={e => setTaxonomyForm((prev: any) => ({ ...prev, attributesJson: e.target.value }))} className="min-h-40 w-full rounded-md border border-[#dfe7e2] bg-[#fbf9f8] p-3 font-mono text-xs outline-none focus:border-[#ff6b00]" />
+                    <textarea value={taxonomyForm.attributesJson} onChange={e => setTaxonomyForm((prev: any) => ({ ...prev, attributesJson: e.target.value }))} className="min-h-40 w-full rounded-md border border-[#dfe7e2] bg-[#fcf9f8] p-3 font-mono text-xs outline-none focus:border-[#ff6b00]" />
                   </label>
 
                   <label className="mt-4 block">
                     <span className="mb-1 block text-[10px] font-black uppercase tracking-[0.14em] text-[#405046]">Variant axes JSON</span>
-                    <textarea value={taxonomyForm.variantAxesJson} onChange={e => setTaxonomyForm((prev: any) => ({ ...prev, variantAxesJson: e.target.value }))} className="min-h-28 w-full rounded-md border border-[#dfe7e2] bg-[#fbf9f8] p-3 font-mono text-xs outline-none focus:border-[#ff6b00]" />
+                    <textarea value={taxonomyForm.variantAxesJson} onChange={e => setTaxonomyForm((prev: any) => ({ ...prev, variantAxesJson: e.target.value }))} className="min-h-28 w-full rounded-md border border-[#dfe7e2] bg-[#fcf9f8] p-3 font-mono text-xs outline-none focus:border-[#ff6b00]" />
                   </label>
 
                   <div className="mt-5 flex flex-wrap gap-3">
@@ -1496,7 +1494,7 @@ function AdminDashboardContent() {
                     ['Unknown attributes', governanceReport?.unknownAttributes || []],
                     ['Needs category backfill', governanceReport?.uncategorized || []],
                   ].map(([title, rows]: any) => (
-                    <div key={title} className="rounded-lg border border-[#edf1ee] bg-[#fbf9f8] p-4">
+                    <div key={title} className="rounded-lg border border-[#edf1ee] bg-[#fcf9f8] p-4">
                       <p className="text-sm font-black text-[#1b1c1c]">{title}</p>
                       <div className="mt-3 max-h-72 space-y-2 overflow-y-auto">
                         {rows.length === 0 ? (
@@ -1539,9 +1537,9 @@ function AdminDashboardContent() {
                 ))}
               </div>
 
-              <div className="bg-white border border-[#ebdcd0] shadow-sm overflow-hidden">
+              <div className="bg-white border border-[#e0e0e0] shadow-sm overflow-hidden">
                 <table className="w-full text-left">
-                  <thead className="bg-[#fbf9f8] text-[#414844] text-[9px] font-black uppercase tracking-[0.2em] border-b border-[#ebdcd0]">
+                  <thead className="bg-[#fcf9f8] text-[#414844] text-[9px] font-black uppercase tracking-[0.2em] border-b border-[#e0e0e0]">
                     <tr>
                       <th className="p-6">Order ID</th>
                       <th className="p-6">Amount</th>
@@ -1550,12 +1548,12 @@ function AdminDashboardContent() {
                       <th className="p-6 text-right">Resolution</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-[#ebdcd0]">
+                  <tbody className="divide-y divide-[#e0e0e0]">
                     {!disputes || disputes.length === 0 ? (
                       <tr><td colSpan={5} className="p-12 text-center text-[#414844]">No open disputes.</td></tr>
                     ) : (
                       disputes.map((d: any) => (
-                        <tr key={d._id} className="hover:bg-[#fbf9f8]/50">
+                        <tr key={d._id} className="hover:bg-[#fcf9f8]/50">
                           <td className="p-6 font-mono text-[10px] font-bold text-[#1b1c1c]">#{d._id.substring(0,8).toUpperCase()}</td>
                           <td className="p-6 text-lg font-sans text-[#ff6b00]">{d.financials?.totalAmount || d.total} RWF</td>
                           <td className="p-6 text-xs text-[#414844]">{d.dispute?.reason || 'Undelivered'}</td>
@@ -1571,13 +1569,13 @@ function AdminDashboardContent() {
                               <Link href={`/admin/disputes/${d._id}`} className="px-3 py-2 border border-[#ff6b00] text-[#ff6b00] text-[9px] font-black uppercase tracking-widest hover:bg-[#fff7ed] transition-colors">
                                 Review
                               </Link>
-                              <button className="px-3 py-2 bg-[#ff6b00] text-white text-[9px] font-black uppercase tracking-widest hover:bg-[#ff6b00] transition-colors" onClick={() => resolveDispute(d._id, 'refund')}>
+                              <button className="px-3 py-2 bg-[#e05300] text-white text-[9px] font-black uppercase tracking-widest hover:bg-[#ff6b00] transition-colors" onClick={() => resolveDispute(d._id, 'refund')}>
                                 Full Refund
                               </button>
-                              <button className="px-3 py-2 border border-[#ebdcd0] text-[#1b1c1c] text-[9px] font-black uppercase tracking-widest hover:bg-[#f7faf8] transition-colors" onClick={() => resolveDispute(d._id, 'redeliver')}>
+                              <button className="px-3 py-2 border border-[#e0e0e0] text-[#1b1c1c] text-[9px] font-black uppercase tracking-widest hover:bg-[#f7faf8] transition-colors" onClick={() => resolveDispute(d._id, 'redeliver')}>
                                 Redeliver
                               </button>
-                              <button className="px-3 py-2 border border-[#ebdcd0] text-[#7b3f3f] text-[9px] font-black uppercase tracking-widest hover:bg-[#fff5f3] transition-colors" onClick={() => resolveDispute(d._id, 'reject')}>
+                              <button className="px-3 py-2 border border-[#e0e0e0] text-[#7b3f3f] text-[9px] font-black uppercase tracking-widest hover:bg-[#fff5f3] transition-colors" onClick={() => resolveDispute(d._id, 'reject')}>
                                 Deny
                               </button>
                             </div>
@@ -1593,29 +1591,29 @@ function AdminDashboardContent() {
 
           {activeTab === 'markets' && (
             <div className="space-y-8 animate-reveal">
-              <div className="flex justify-between items-center border-b border-[#ebdcd0] pb-6">
+              <div className="flex justify-between items-center border-b border-[#e0e0e0] pb-6">
                  <div>
                    <h2 className="text-3xl font-sans text-[#1b1c1c]">Markets Directory</h2>
                    <p className="text-[10px] font-black text-[#414844] uppercase tracking-[0.2em] mt-2">Manage physical market locations</p>
                  </div>
                  <div className="flex gap-4">
-                   <button className="px-6 py-3 border border-[#ebdcd0] text-[#1b1c1c] text-[10px] font-black uppercase tracking-widest hover:bg-[#ff6b00] hover:text-white transition-all" onClick={handleSyncImagery}>Sync Images</button>
-                   <button className="px-6 py-3 bg-[#ff6b00] text-white text-[10px] font-black uppercase tracking-widest hover:bg-[#ff6b00] transition-all" onClick={() => setIsAddingMarket(true)}>Create Market</button>
+                   <button className="px-6 py-3 border border-[#e0e0e0] text-[#1b1c1c] text-[10px] font-black uppercase tracking-widest hover:bg-[#e05300] hover:text-white transition-all" onClick={handleSyncImagery}>Sync Images</button>
+                   <button className="px-6 py-3 bg-[#e05300] text-white text-[10px] font-black uppercase tracking-widest hover:bg-[#e05300] transition-all" onClick={() => setIsAddingMarket(true)}>Create Market</button>
                  </div>
               </div>
 
               {isAddingMarket && (
-                <div className="bg-white border border-[#ebdcd0] rounded-lg p-8 shadow-xl">
+                <div className="bg-white border border-[#e0e0e0] rounded-lg p-8 shadow-xl">
                   <form onSubmit={handleCreateMarket} className="space-y-6">
-                    <h3 className="text-xl font-sans border-b border-[#ebdcd0] pb-4 mb-6">New Market Details</h3>
+                    <h3 className="text-xl font-sans border-b border-[#e0e0e0] pb-4 mb-6">New Market Details</h3>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       <div className="space-y-2">
                         <label className="text-[9px] font-black uppercase tracking-widest text-[#1b1c1c]">Market Name</label>
-                        <input required className="w-full bg-[#fbf9f8] border border-[#ebdcd0] p-4 text-sm outline-none focus:border-[#ff6b00]" value={newMarket.name} onChange={e => setNewMarket(prev => ({ ...prev, name: e.target.value }))} placeholder="e.g. Kimironko Market" />
+                        <input required className="w-full bg-[#fcf9f8] border border-[#e0e0e0] p-4 text-sm outline-none focus:border-[#ff6b00]" value={newMarket.name} onChange={e => setNewMarket(prev => ({ ...prev, name: e.target.value }))} placeholder="e.g. Kimironko Market" />
                       </div>
                       <div className="space-y-2">
                         <label className="text-[9px] font-black uppercase tracking-widest text-[#1b1c1c]">Market Code</label>
-                        <input required className="w-full bg-[#fbf9f8] border border-[#ebdcd0] p-4 text-sm outline-none focus:border-[#ff6b00]" value={newMarket.code} onChange={e => setNewMarket(prev => ({ ...prev, code: e.target.value.toUpperCase() }))} placeholder="e.g. KIM" />
+                        <input required className="w-full bg-[#fcf9f8] border border-[#e0e0e0] p-4 text-sm outline-none focus:border-[#ff6b00]" value={newMarket.code} onChange={e => setNewMarket(prev => ({ ...prev, code: e.target.value.toUpperCase() }))} placeholder="e.g. KIM" />
                       </div>
                     </div>
                     
@@ -1626,38 +1624,38 @@ function AdminDashboardContent() {
 
                     <div className="space-y-2">
                       <label className="text-[9px] font-black uppercase tracking-widest text-[#1b1c1c]">Description</label>
-                      <textarea className="w-full bg-[#fbf9f8] border border-[#ebdcd0] p-4 text-sm outline-none focus:border-[#ff6b00] h-24" value={newMarket.description} onChange={e => setNewMarket(prev => ({ ...prev, description: e.target.value }))} placeholder="Market overview..." />
+                      <textarea className="w-full bg-[#fcf9f8] border border-[#e0e0e0] p-4 text-sm outline-none focus:border-[#ff6b00] h-24" value={newMarket.description} onChange={e => setNewMarket(prev => ({ ...prev, description: e.target.value }))} placeholder="Market overview..." />
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                        <div className="space-y-2">
                           <label className="text-[9px] font-black uppercase tracking-widest text-[#1b1c1c]">Latitude</label>
-                          <input type="number" step="any" className="w-full bg-[#fbf9f8] border border-[#ebdcd0] p-4 text-sm outline-none focus:border-[#ff6b00]" value={newMarket.lat} onChange={e => setNewMarket(prev => ({ ...prev, lat: parseFloat(e.target.value) }))} />
+                          <input type="number" step="any" className="w-full bg-[#fcf9f8] border border-[#e0e0e0] p-4 text-sm outline-none focus:border-[#ff6b00]" value={newMarket.lat} onChange={e => setNewMarket(prev => ({ ...prev, lat: parseFloat(e.target.value) }))} />
                        </div>
                        <div className="space-y-2">
                           <label className="text-[9px] font-black uppercase tracking-widest text-[#1b1c1c]">Longitude</label>
-                          <input type="number" step="any" className="w-full bg-[#fbf9f8] border border-[#ebdcd0] p-4 text-sm outline-none focus:border-[#ff6b00]" value={newMarket.lng} onChange={e => setNewMarket(prev => ({ ...prev, lng: parseFloat(e.target.value) }))} />
+                          <input type="number" step="any" className="w-full bg-[#fcf9f8] border border-[#e0e0e0] p-4 text-sm outline-none focus:border-[#ff6b00]" value={newMarket.lng} onChange={e => setNewMarket(prev => ({ ...prev, lng: parseFloat(e.target.value) }))} />
                        </div>
                        <div className="space-y-2">
                           <label className="text-[9px] font-black uppercase tracking-widest text-[#1b1c1c]">Type</label>
-                          <select className="w-full bg-[#fbf9f8] border border-[#ebdcd0] p-4 text-sm outline-none focus:border-[#ff6b00]" value={newMarket.type} onChange={e => setNewMarket(prev => ({ ...prev, type: e.target.value }))}>
+                          <select className="w-full bg-[#fcf9f8] border border-[#e0e0e0] p-4 text-sm outline-none focus:border-[#ff6b00]" value={newMarket.type} onChange={e => setNewMarket(prev => ({ ...prev, type: e.target.value }))}>
                              <option value="public">Public Market</option>
                              <option value="individual">Independent Area</option>
                           </select>
                        </div>
                     </div>
 
-                    <div className="flex justify-end gap-4 pt-6 border-t border-[#ebdcd0]">
-                       <button type="button" className="px-6 py-3 border border-[#ebdcd0] text-[#1b1c1c] text-[10px] font-black uppercase tracking-widest hover:border-[#ff6b00]" onClick={() => setIsAddingMarket(false)}>Cancel</button>
-                       <button type="submit" className="px-6 py-3 bg-[#ff6b00] text-white text-[10px] font-black uppercase tracking-widest hover:bg-[#ff6b00]">Create Market</button>
+                    <div className="flex justify-end gap-4 pt-6 border-t border-[#e0e0e0]">
+                       <button type="button" className="px-6 py-3 border border-[#e0e0e0] text-[#1b1c1c] text-[10px] font-black uppercase tracking-widest hover:border-[#ff6b00]" onClick={() => setIsAddingMarket(false)}>Cancel</button>
+                       <button type="submit" className="px-6 py-3 bg-[#e05300] text-white text-[10px] font-black uppercase tracking-widest hover:bg-[#e05300]">Create Market</button>
                     </div>
                   </form>
                 </div>
               )}
 
-              <div className="bg-white border border-[#ebdcd0] shadow-sm overflow-hidden">
+              <div className="bg-white border border-[#e0e0e0] shadow-sm overflow-hidden">
                 <table className="w-full text-left">
-                  <thead className="bg-[#fbf9f8] text-[#414844] text-[9px] font-black uppercase tracking-[0.2em] border-b border-[#ebdcd0]">
+                  <thead className="bg-[#fcf9f8] text-[#414844] text-[9px] font-black uppercase tracking-[0.2em] border-b border-[#e0e0e0]">
                     <tr>
                       <th className="p-6">Market Info</th>
                       <th className="p-6">Code</th>
@@ -1665,15 +1663,15 @@ function AdminDashboardContent() {
                       <th className="p-6 text-right">Metrics</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-[#ebdcd0]">
+                  <tbody className="divide-y divide-[#e0e0e0]">
                     {!markets || markets.length === 0 ? (
                       <tr><td colSpan={4} className="p-12 text-center text-[#414844]">No markets created yet.</td></tr>
                     ) : (
                       visibleMarkets.map((m: any) => (
-                        <tr key={m._id} className="hover:bg-[#fbf9f8]/50">
+                        <tr key={m._id} className="hover:bg-[#fcf9f8]/50">
                           <td className="p-6">
                             <div className="flex items-center gap-6">
-                               <div className="w-16 h-16 border border-[#ebdcd0] bg-[#fbf9f8] p-1 overflow-hidden">
+                               <div className="w-16 h-16 border border-[#e0e0e0] bg-[#fcf9f8] p-1 overflow-hidden">
                                   {m.imageUrl && <img src={m.imageUrl} alt={m.name} className="w-full h-full object-cover" />}
                                </div>
                                <div>
@@ -1692,7 +1690,8 @@ function AdminDashboardContent() {
                                  <p className="text-xl font-sans text-[#ff6b00]">{m.totalSellers || 0}</p>
                                  <p className="text-[8px] font-black text-[#414844] uppercase tracking-widest mt-1">Sellers</p>
                                </div>
-                               <button className="px-4 py-2 border border-[#ebdcd0] text-[9px] font-black uppercase tracking-widest text-[#1b1c1c] hover:border-[#ff6b00]" onClick={() => setEditingMarket({
+                               <Link href={`/admin/markets/${m._id}/penalties`} className="px-4 py-2 border border-[#d9b8ad] text-[9px] font-black uppercase tracking-widest text-[#7b3f3f] hover:border-[#7b3f3f] hover:bg-[#fff5f3]">Penalties</Link>
+                               <button className="px-4 py-2 border border-[#e0e0e0] text-[9px] font-black uppercase tracking-widest text-[#1b1c1c] hover:border-[#ff6b00]" onClick={() => setEditingMarket({
                                  ...m,
                                  lat: m.location?.coordinates?.[1],
                                  lng: m.location?.coordinates?.[0]
@@ -1706,12 +1705,12 @@ function AdminDashboardContent() {
                 </table>
                 <div ref={marketLoadRef} className="min-h-1" />
                 {loadingMoreMarkets && (
-                  <div className="border-t border-[#ebdcd0] p-4">
+                  <div className="border-t border-[#e0e0e0] p-4">
                     {[1, 2, 3].map(i => <div key={i} className="mb-3 h-16 animate-pulse rounded-md bg-[#f0eded]" />)}
                   </div>
                 )}
                 {!loadingMoreMarkets && visibleMarketsCount < marketList.length && (
-                  <div className="border-t border-[#ebdcd0] p-4 text-center text-[10px] font-black uppercase tracking-[0.2em] text-[#414844]">
+                  <div className="border-t border-[#e0e0e0] p-4 text-center text-[10px] font-black uppercase tracking-[0.2em] text-[#414844]">
                     Scroll to load more markets
                   </div>
                 )}
@@ -1732,11 +1731,11 @@ function AdminDashboardContent() {
                       <div className="grid gap-6 md:grid-cols-2">
                         <div className="space-y-2">
                           <label className="text-[9px] font-black uppercase tracking-widest text-[#1b1c1c]">Market Name</label>
-                          <input required className="w-full bg-[#fbf9f8] border border-[#ebdcd0] p-4 text-sm outline-none focus:border-[#ff6b00]" value={editingMarket.name} onChange={e => setEditingMarket((prev: any) => ({ ...prev, name: e.target.value }))} />
+                          <input required className="w-full bg-[#fcf9f8] border border-[#e0e0e0] p-4 text-sm outline-none focus:border-[#ff6b00]" value={editingMarket.name} onChange={e => setEditingMarket((prev: any) => ({ ...prev, name: e.target.value }))} />
                         </div>
                         <div className="space-y-2">
                           <label className="text-[9px] font-black uppercase tracking-widest text-[#1b1c1c]">Market Code</label>
-                          <input required className="w-full bg-[#fbf9f8] border border-[#ebdcd0] p-4 text-sm outline-none focus:border-[#ff6b00]" value={editingMarket.code} onChange={e => setEditingMarket((prev: any) => ({ ...prev, code: e.target.value.toUpperCase() }))} />
+                          <input required className="w-full bg-[#fcf9f8] border border-[#e0e0e0] p-4 text-sm outline-none focus:border-[#ff6b00]" value={editingMarket.code} onChange={e => setEditingMarket((prev: any) => ({ ...prev, code: e.target.value.toUpperCase() }))} />
                         </div>
                       </div>
 
@@ -1747,12 +1746,12 @@ function AdminDashboardContent() {
 
                       <div className="space-y-2">
                         <label className="text-[9px] font-black uppercase tracking-widest text-[#1b1c1c]">Description</label>
-                        <textarea className="w-full bg-[#fbf9f8] border border-[#ebdcd0] p-4 text-sm outline-none focus:border-[#ff6b00] h-24" value={editingMarket.description} onChange={e => setEditingMarket((prev: any) => ({ ...prev, description: e.target.value }))} />
+                        <textarea className="w-full bg-[#fcf9f8] border border-[#e0e0e0] p-4 text-sm outline-none focus:border-[#ff6b00] h-24" value={editingMarket.description} onChange={e => setEditingMarket((prev: any) => ({ ...prev, description: e.target.value }))} />
                       </div>
                       </div>
                       <div className="rmf-modal-footer">
-                        <button type="button" className="px-6 py-3 border border-[#ebdcd0] text-[#1b1c1c] text-[10px] font-black uppercase tracking-widest hover:border-[#ff6b00]" onClick={() => setEditingMarket(null)}>Cancel</button>
-                        <button type="submit" className="px-6 py-3 bg-[#ff6b00] text-white text-[10px] font-black uppercase tracking-widest hover:bg-[#ff6b00]">Save Changes</button>
+                        <button type="button" className="px-6 py-3 border border-[#e0e0e0] text-[#1b1c1c] text-[10px] font-black uppercase tracking-widest hover:border-[#ff6b00]" onClick={() => setEditingMarket(null)}>Cancel</button>
+                        <button type="submit" className="px-6 py-3 bg-[#e05300] text-white text-[10px] font-black uppercase tracking-widest hover:bg-[#e05300]">Save Changes</button>
                       </div>
                     </form>
                   </div>
@@ -1785,9 +1784,9 @@ function AdminDashboardContent() {
                 ))}
               </div>
 
-              <div className="bg-white border border-[#ebdcd0] shadow-sm overflow-hidden">
+              <div className="bg-white border border-[#e0e0e0] shadow-sm overflow-hidden">
               <table className="w-full text-left">
-                <thead className="bg-[#fbf9f8] text-[#414844] text-[9px] font-black uppercase tracking-[0.2em] border-b border-[#ebdcd0]">
+                <thead className="bg-[#fcf9f8] text-[#414844] text-[9px] font-black uppercase tracking-[0.2em] border-b border-[#e0e0e0]">
                   <tr>
                     <th className="p-6 w-32">Type / Severity</th>
                     <th className="p-6 w-48">Actor / Entity</th>
@@ -1796,12 +1795,12 @@ function AdminDashboardContent() {
                     <th className="p-6 w-48 text-right">Next Step</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-[#ebdcd0]">
+                <tbody className="divide-y divide-[#e0e0e0]">
                   {!fraudAlerts || fraudAlerts.length === 0 ? (
                     <tr><td colSpan={5} className="p-12 text-center text-[#414844]">No active fraud alerts. System secure.</td></tr>
                   ) : (
                     fraudAlerts.map((f: any) => (
-                      <tr key={f._id} className="hover:bg-[#fbf9f8]/50 group transition-all">
+                      <tr key={f._id} className="hover:bg-[#fcf9f8]/50 group transition-all">
                         <td className="p-6">
                            <div className="flex flex-col gap-1">
                              <span className={`text-[8px] font-black uppercase tracking-normal ${f.type === 'SECURITY_FLAG' ? 'text-blue-600' : 'text-[#ff6b00]'}`}>{f.type?.replace('_', ' ') || 'FLAG'}</span>
@@ -1823,7 +1822,7 @@ function AdminDashboardContent() {
                            {f.relatedOrders && f.relatedOrders.length > 0 && (
                              <div className="mt-2 flex flex-wrap gap-1">
                                {f.relatedOrders.slice(0, 5).map((order: string) => (
-                                 <span key={order} className="bg-[#fbf9f8] border border-[#ebdcd0] px-2 py-0.5 text-[8px] font-mono font-bold text-[#414844]">{order}</span>
+                                 <span key={order} className="bg-[#fcf9f8] border border-[#e0e0e0] px-2 py-0.5 text-[8px] font-mono font-bold text-[#414844]">{order}</span>
                                ))}
                                {f.relatedOrders.length > 5 && <span className="text-[8px] text-[#414844] font-black">+{f.relatedOrders.length - 5} more</span>}
                              </div>
@@ -1860,9 +1859,9 @@ function AdminDashboardContent() {
                 </p>
               </div>
 
-              <div className="bg-white border border-[#ebdcd0] shadow-sm overflow-hidden">
+              <div className="bg-white border border-[#e0e0e0] shadow-sm overflow-hidden">
                 <table className="w-full text-left">
-                  <thead className="bg-[#fbf9f8] text-[#414844] text-[9px] font-black uppercase tracking-[0.2em] border-b border-[#ebdcd0]">
+                  <thead className="bg-[#fcf9f8] text-[#414844] text-[9px] font-black uppercase tracking-[0.2em] border-b border-[#e0e0e0]">
                     <tr>
                       <th className="p-6">Transaction ID</th>
                       <th className="p-6">User Reference</th>
@@ -1872,7 +1871,7 @@ function AdminDashboardContent() {
                       <th className="p-6 text-right">Actions</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-[#ebdcd0]">
+                  <tbody className="divide-y divide-[#e0e0e0]">
                     {payoutsLoading ? (
                       <tr>
                         <td colSpan={6} className="p-12 text-center text-[#414844] animate-pulse">
@@ -1887,7 +1886,7 @@ function AdminDashboardContent() {
                       </tr>
                     ) : (
                       payoutRequests.map((p: any) => (
-                        <tr key={p._id} className="hover:bg-[#fbf9f8]/50 group transition-all">
+                        <tr key={p._id} className="hover:bg-[#fcf9f8]/50 group transition-all">
                           <td className="p-6">
                             <span className="font-mono text-xs font-bold uppercase">#PAY-{p._id.substring(0,8).toUpperCase()}</span>
                             <span className="block text-[8px] text-[#414844] font-bold uppercase mt-1 opacity-60">
@@ -1929,7 +1928,7 @@ function AdminDashboardContent() {
                                 <button
                                   type="button"
                                   onClick={() => handleApprovePayout(p._id)}
-                                  className="rounded-md border border-green-200 bg-[#ff6b00] hover:bg-[#ff6b00] px-4 py-2 text-[9px] font-black uppercase tracking-widest text-white transition"
+                                  className="rounded-md border border-green-200 bg-[#ff6b00] hover:bg-[#e05300] px-4 py-2 text-[9px] font-black uppercase tracking-widest text-white transition"
                                 >
                                   Approve & Pay
                                 </button>

@@ -49,16 +49,6 @@ export class ReviewService {
 
     // Re-calculate the average rating for the target
     await this.updateTargetAverageRating(data.targetType, data.targetId);
-
-    // Maintain the rider's five-star breakdown, which feeds the elevated (93%)
-    // payout tier in order-service. targetId for a rider review is the
-    // RiderProfile _id (validated in assertReviewAllowed), so we update by _id.
-    if (data.targetType === 'rider') {
-      const inc: Record<string, number> = { totalReviewCount: 1 };
-      if (data.rating === 5) inc.fiveStarCount = 1;
-      await this.riderModel.findByIdAndUpdate(data.targetId, { $inc: inc }).exec();
-    }
-
     await this.updateOrderReviewCompletion(data.orderId);
 
     return review;

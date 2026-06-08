@@ -3,14 +3,13 @@ import axios from 'axios';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import { v4 as uuidv4 } from 'uuid';
-import { OrderStatus, PaymentStatus, DisputeResolution, DisputeType } from '@rmf/shared-types';
+import { OrderStatus, PaymentStatus, DisputeResolution } from '@rmf/shared-types';
 import { StateConflictError } from '@rmf/shared-utils';
 import { LocationService } from '@rmf/location';
 import { FraudDetectionService } from './fraud-detection.service';
 import { BuyerProtectionService } from './buyer-protection.service';
 import { PaymentService } from './payment.service';
 import { OrderGateway } from './order.gateway';
-import { AffiliateService } from './affiliate.service';
 
 const ORDER_TRANSITIONS: Record<string, string[]> = {
   [OrderStatus.AWAITING_QUOTE]: [OrderStatus.QUOTE_SENT, OrderStatus.PLACED, OrderStatus.CANCELLED],
@@ -28,12 +27,6 @@ const ORDER_TRANSITIONS: Record<string, string[]> = {
   [OrderStatus.CANCELLED]: [],
   [OrderStatus.RESOLVED]: []
 };
-
-// Phase 3: buyer dispute window. 7 days (168h) to align with Rwanda Law n°011/2026
-// 7-day withdrawal right. Overridable via DISPUTE_WINDOW_HOURS env var.
-const DISPUTE_WINDOW_HOURS = Number(process.env.DISPUTE_WINDOW_HOURS) > 0
-  ? Number(process.env.DISPUTE_WINDOW_HOURS)
-  : 168;
 
 const PAYMENT_TRANSITIONS: Record<string, string[]> = {
   [PaymentStatus.PENDING]: [PaymentStatus.PAID, PaymentStatus.FAILED],
@@ -59,27 +52,8 @@ export class OrderService implements OnModuleInit, OnModuleDestroy {
     private paymentService: PaymentService,
     private orderGateway: OrderGateway,
     @InjectModel('User') private userModel: Model<any>,
-    @InjectModel('LedgerEntry') private ledgerModel: Model<any>,
-    @InjectModel('Menu') private menuModel: Model<any>,
-    @InjectModel('RiderProfile') private riderProfileModel: Model<any>,
-    private affiliateService: AffiliateService
+    @InjectModel('LedgerEntry') private ledgerModel: Model<any>
   ) { }
-
-  /**
-   * Rider revenue split. Elevated to 93% for proven top performers, else 90%.
-   * Qualification: rating >= 4.9, >= 50 lifetime deliveries, and a five-star
-   * ratio of at least 90% over a non-trivial review count.
-   */
-  private getRiderSplitPct(rider: any): number {
-    if (!rider) return 0.9;
-    const rating = Number(rider.rating || 0);
-    const totalDeliveries = Number(rider.totalDeliveries || 0);
-    const totalReviews = Number(rider.totalReviewCount || 0);
-    const fiveStars = Number(rider.fiveStarCount || 0);
-    const fiveStarRatio = totalReviews > 0 ? fiveStars / totalReviews : 0;
-    const qualifies = rating >= 4.9 && totalDeliveries >= 50 && fiveStarRatio >= 0.9;
-    return qualifies ? 0.93 : 0.9;
-  }
 
   private normalizeId(value: any): string | null {
     if (value === null || value === undefined) return null;
@@ -103,13 +77,6 @@ export class OrderService implements OnModuleInit, OnModuleDestroy {
 
   private isOrderSeller(order: any, userId: string): boolean {
     return this.idsMatch(order?.seller?.userId ?? order?.sellerUserId, userId);
-  }
-
-  private isOrderRider(order: any, userId: string): boolean {
-    return this.idsMatch(
-      order?.rider?.userId ?? order?.delivery?.rider?.userId ?? order?.riderUserId,
-      userId,
-    );
   }
 
   private productIdFromLine(line: any): string | null {
@@ -320,99 +287,6 @@ export class OrderService implements OnModuleInit, OnModuleDestroy {
     });
   }
 
-  private lineIsMenuItem(line: any): boolean {
-    return Boolean(line?.menuItemId);
-  }
-
-  private orderHasMenuItems(products: any[] = []): boolean {
-    return (products || []).some(line => this.lineIsMenuItem(line));
-  }
-
-  /**
-   * Snapshot menu-item order lines from the Menu collection.
-   * CRITICAL (payment safety): never trust client-supplied unitPrice or modifier
-   * prices. The authoritative price is recomputed from the stored menu item price
-   * plus the extraPrice of each selected modifier option as stored in the DB.
-   */
-  private async snapshotMenuItems(products: any[] = []): Promise<any[]> {
-    const menuItemIds = products
-      .filter(line => this.lineIsMenuItem(line))
-      .map(line => String(line.menuItemId))
-      .filter(id => Types.ObjectId.isValid(id));
-
-    if (menuItemIds.length === 0) return products;
-
-    // Menu items are subdocuments inside menu.sections[].items[].
-    // Find every menu whose sections contain one of the requested item ids,
-    // then build a flat map of itemId -> item.
-    const menus = await this.menuModel.find({
-      'sections.items._id': { $in: menuItemIds.map(id => new Types.ObjectId(id)) },
-      deletedAt: null,
-      isActive: true,
-    }).lean().exec();
-
-    const itemMap = new Map<string, any>();
-    for (const menu of menus) {
-      for (const section of (menu.sections || [])) {
-        for (const item of (section.items || [])) {
-          itemMap.set(String(item._id), { item, sellerId: menu.sellerId });
-        }
-      }
-    }
-
-    return products.map(line => {
-      if (!this.lineIsMenuItem(line)) return line;
-      const found = itemMap.get(String(line.menuItemId));
-      if (!found) {
-        throw new BadRequestException(`Menu item ${line.menuItemId} is no longer available`);
-      }
-      const { item } = found;
-      if (item.isAvailable === false) {
-        throw new BadRequestException(`Menu item "${item.name}" is currently unavailable`);
-      }
-
-      // Recompute modifier total from the DB, matching selected options by label/name.
-      const selectedModifiers = Array.isArray(line.selectedModifiers) ? line.selectedModifiers : [];
-      let modifierTotal = 0;
-      const snapshotModifiers: any[] = [];
-      for (const selected of selectedModifiers) {
-        const modifierDef = (item.modifiers || []).find(
-          (m: any) => String(m.name) === String(selected?.name)
-        );
-        if (!modifierDef) continue;
-        const selectedLabels = Array.isArray(selected?.options)
-          ? selected.options
-          : (selected?.label !== undefined ? [selected.label] : []);
-        for (const label of selectedLabels) {
-          const optionDef = (modifierDef.options || []).find(
-            (o: any) => String(o.label) === String(label)
-          );
-          if (!optionDef) continue;
-          const extra = Number(optionDef.extraPrice || 0);
-          modifierTotal += extra;
-          snapshotModifiers.push({ name: modifierDef.name, label: optionDef.label, extraPrice: extra });
-        }
-      }
-
-      const unitPrice = Number(item.price) + modifierTotal;
-
-      return {
-        ...line,
-        menuItemId: String(line.menuItemId),
-        name: line.name || item.name,
-        unitPrice,
-        images: Array.isArray(line.images) && line.images.length > 0 ? line.images : (item.images || []),
-        imageUrl: line.imageUrl || item.images?.[0],
-        preparationMinutes: item.preparationMinutes ?? 15,
-        selectedModifiers: snapshotModifiers,
-        dietaryTags: item.dietaryTags || [],
-        isMenuItem: true,
-        stockType: 'on_demand',
-        priceSnapshotAt: new Date(),
-      };
-    });
-  }
-
   async getPublicStats(): Promise<any> {
     const startOfDay = new Date();
     startOfDay.setHours(0, 0, 0, 0);
@@ -521,16 +395,6 @@ export class OrderService implements OnModuleInit, OnModuleDestroy {
 
       const orderNumber = `ORD-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
       const status = isQuoteRequest ? OrderStatus.AWAITING_QUOTE : (orderData.schedule ? OrderStatus.SCHEDULED : OrderStatus.PLACED);
-      if (orderData.payment?.method && orderData.payment.method !== 'MTN_MOMO') {
-        throw new BadRequestException('Only MTN MoMo is supported for order payments');
-      }
-      orderData.payment = { ...(orderData.payment || {}), method: 'MTN_MOMO' };
-      // Snapshot menu items (priced from the Menu collection) and product items
-      // (priced from the Product collection) independently so mixed/menu-only/
-      // product-only carts all resolve to authoritative server-side prices.
-      if (this.orderHasMenuItems(orderData.products)) {
-        orderData.products = await this.snapshotMenuItems(orderData.products || []);
-      }
       orderData.products = await this.snapshotOrderProducts(orderData.products || []);
 
       // CRITICAL FIX: Recalculate financials server-side to prevent cart manipulation
@@ -581,21 +445,6 @@ export class OrderService implements OnModuleInit, OnModuleDestroy {
           }
         } catch (e: any) {
           this.logger.warn(`Failed to lookup details for seller ${orderData.seller.sellerId}: ${e.message}`);
-        }
-      }
-
-      // Affiliate attribution (Feature 3): if a referral code is present and resolves to
-      // an active link, tag the order as a referral; otherwise drop the code silently.
-      if (orderData.affiliateCode) {
-        try {
-          const link = await this.affiliateService.linkExists(String(orderData.affiliateCode));
-          if (link) {
-            orderData.orderSource = 'referral';
-          } else {
-            delete orderData.affiliateCode;
-          }
-        } catch {
-          delete orderData.affiliateCode;
         }
       }
 
@@ -773,15 +622,9 @@ export class OrderService implements OnModuleInit, OnModuleDestroy {
     
     const isBuyerAction = buyerActions.includes(newStatus) && isBuyer;
     const isSellerAction = sellerActions.includes(newStatus) && isSeller;
-    // Rider transitions are authorized for the rider assigned to the order, or for an
-    // authenticated internal service call. The 'internal-service' identity is only
-    // produced by verifyInternalOrJwt AFTER validating INTERNAL_SERVICE_SECRET — the
-    // unauthenticated 'system' magic-string bypass has been removed (audit A3).
-    const isInternalService = userId === 'internal-service';
-    const isRiderAction = riderActions.includes(newStatus)
-      && (this.isOrderRider(order, userId) || isInternalService);
+    const isRiderOrSystemAction = riderActions.includes(newStatus) || userId === 'system';
 
-    if (!isBuyerAction && !isSellerAction && !isRiderAction) {
+    if (!isBuyerAction && !isSellerAction && !isRiderOrSystemAction) {
       throw new BadRequestException('You do not have permission to perform this status transition');
     }
 
@@ -871,6 +714,13 @@ export class OrderService implements OnModuleInit, OnModuleDestroy {
     return updated;
   }
 
+  private getPlatformSettlementPhone(): string | null {
+    return process.env.PAYPACK_PLATFORM_PHONE
+      || process.env.RMF_PLATFORM_MOMO_NUMBER
+      || process.env.PLATFORM_MOMO_NUMBER
+      || null;
+  }
+
   private toObjectId(value: any): Types.ObjectId | null {
     const id = this.normalizeId(value);
     return id && Types.ObjectId.isValid(id) ? new Types.ObjectId(id) : null;
@@ -958,7 +808,7 @@ export class OrderService implements OnModuleInit, OnModuleDestroy {
       currency: 'RWF',
       description: input.description,
       balanceAfter: 0,
-      provider: 'mtn_momo',
+      provider: 'paypack',
       externalRef: input.externalRef,
       status: input.status || 'posted',
       metadata: {
@@ -1050,6 +900,94 @@ export class OrderService implements OnModuleInit, OnModuleDestroy {
     this.clearEscrowReleaseTimer(order._id);
   }
 
+  private async paypackCashoutAndRecord(input: {
+    order: any;
+    userId?: string | null;
+    phone: string;
+    amount: number;
+    account: string;
+    purpose: 'seller_payout' | 'rider_payout' | 'platform_commission';
+    description: string;
+    stateRefPath: string;
+    stateStatusPath: string;
+    stateDatePath: string;
+  }) {
+    const amount = Math.round(Number(input.amount || 0));
+    if (amount <= 0) {
+      await this.updateSettlementState(input.order._id, { [input.stateStatusPath]: 'skipped' });
+      return { skipped: true };
+    }
+
+    const existing = await this.recordSettlementLedger({
+      order: input.order,
+      userId: input.userId,
+      account: input.account,
+      amount,
+      description: `${input.description} (idempotency check)`,
+      status: 'reserved',
+      metadata: { purpose: input.purpose },
+    });
+
+    if (existing?.status === 'posted' && existing?.externalRef) {
+      return { success: true, transactionId: existing.externalRef, duplicate: true };
+    }
+
+    const payout = await this.paymentService.requestPaypackCashout({
+      amount,
+      phone: input.phone,
+      idempotencyKey: `${input.purpose}:${this.normalizeId(input.order._id)}:${amount}`,
+      purpose: input.purpose,
+    });
+
+    if (!payout.success) {
+      await this.ledgerModel.updateOne(
+        { _id: existing._id },
+        {
+          $set: {
+            account: `${input.account}_failed`,
+            status: 'failed',
+            description: `${input.description} failed: ${payout.error || 'Paypack error'}`,
+            externalRef: payout.transactionId,
+            metadata: {
+              ...(existing.metadata || {}),
+              error: payout.error,
+            },
+          },
+        }
+      ).exec();
+      await this.updateSettlementState(input.order._id, {
+        [input.stateStatusPath]: 'failed',
+        'settlement.status': 'failed',
+        'settlement.lastError': payout.error || 'Paypack cashout failed',
+      });
+      throw new Error(payout.error || 'Paypack cashout failed');
+    }
+
+    await this.ledgerModel.updateOne(
+      { _id: existing._id },
+      {
+        $set: {
+          status: 'posted',
+          description: input.description,
+          externalRef: payout.transactionId,
+          metadata: {
+            ...(existing.metadata || {}),
+            phoneLast4: String(input.phone).slice(-4),
+          },
+        },
+      }
+    ).exec();
+
+    await this.updateSettlementState(input.order._id, {
+      [input.stateStatusPath]: 'paid',
+      [input.stateRefPath]: payout.transactionId,
+      [input.stateDatePath]: new Date(),
+    });
+
+    return payout;
+  }
+
+  // Real money stays in PayPack merchant account.
   // This method credits seller/rider internal wallet balances in the DB.
   // Actual cashout only happens when the seller/rider taps "Withdraw" in the app.
   private async triggerPayoutFlow(order: any, payFor: 'seller' | 'rider' | 'both' = 'both') {
@@ -1128,24 +1066,10 @@ export class OrderService implements OnModuleInit, OnModuleDestroy {
           return;
         }
 
-        // Elevated split: top-performing riders earn 93% of the delivery fee
-        // instead of the standard 90%. We recompute from the live profile at
-        // settlement time so newly-qualified riders are rewarded. We never apply
-        // it if a riderPayout was already locked into the order financials.
-        let finalRiderCredit = riderCredit;
-        if (order.financials?.riderPayout === undefined || order.financials?.riderPayout === null) {
-          const riderProfile = await this.riderProfileModel.findOne({ userId: riderTarget.userId }).lean().exec().catch(() => null);
-          const splitPct = this.getRiderSplitPct(riderProfile);
-          finalRiderCredit = Math.max(0, Math.round(deliveryFee * splitPct));
-          if (splitPct > 0.9) {
-            this.logger.log(`[Wallet] Elevated rider split ${splitPct * 100}% applied for order ${order.orderNumber}`);
-          }
-        }
-
         await axios.post(`${walletServiceUrl}/wallets/internal/credit`, {
           userId:      riderTarget.userId,
           role:        'RIDER',
-          amount:      finalRiderCredit,
+          amount:      riderCredit,
           orderId:     String(order._id),
           orderNumber: order.orderNumber,
           description: `Delivery earnings from order ${order.orderNumber}`,
@@ -1154,14 +1078,7 @@ export class OrderService implements OnModuleInit, OnModuleDestroy {
         await this.updateSettlementState(order._id, {
           'settlement.riderStatus': 'credited',
         });
-        this.logger.log(`[Wallet] Rider wallet credited ${finalRiderCredit} RWF for order ${order.orderNumber}`);
-      }
-
-      // ── Affiliate commission (Feature 3): pay the referrer after escrow release ──
-      if (order.affiliateCode) {
-        await this.affiliateService.creditAffiliateCommission(String(order._id)).catch((err) => {
-          this.logger.error(`Affiliate commission credit failed for order ${order.orderNumber}: ${err?.message}`);
-        });
+        this.logger.log(`[Wallet] Rider wallet credited ${riderCredit} RWF for order ${order.orderNumber}`);
       }
 
       // ── Mark settlement complete ──
@@ -1286,28 +1203,29 @@ export class OrderService implements OnModuleInit, OnModuleDestroy {
     return updated;
   }
 
-  /**
-   * Look up an order by its MTN MoMo payment reference (X-Reference-Id) or order number.
-   * Returns null if no match — callers (e.g. the MTN callback) use this to verify a
-   * reference is known before mutating any state.
-   */
-  async findOrderByPaymentReference(transactionRef: string, orderNumber?: string): Promise<any | null> {
-    let order = orderNumber ? await this.orderModel.findOne({ orderNumber }) : null;
-    if (!order && transactionRef) {
-      order = await this.orderModel.findOne({ 'payment.transactionRef': transactionRef });
-    }
-    return order || null;
-  }
-
   async processPaymentCallbackByReference(
     status: PaymentStatus,
     transactionRef: string,
     orderNumber?: string,
   ): Promise<any> {
-    const order = await this.findOrderByPaymentReference(transactionRef, orderNumber);
+    const cleanRef = String(transactionRef || '').replace(/^PAYPACK:/, '');
+    const candidateRefs = Array.from(new Set([
+      transactionRef,
+      cleanRef,
+      cleanRef ? `PAYPACK:${cleanRef}` : '',
+    ].filter(Boolean)));
+
+    let order = orderNumber ? await this.orderModel.findOne({ orderNumber }) : null;
+    if (!order) {
+      order = await this.orderModel.findOne({ 'payment.transactionRef': { $in: candidateRefs } });
+    }
     if (!order) throw new NotFoundException('Order not found for payment reference');
 
-    return this.processPaymentCallback(order.orderNumber, status, transactionRef);
+    const storedRef = order.payment?.transactionRef && candidateRefs.includes(order.payment.transactionRef)
+      ? order.payment.transactionRef
+      : transactionRef;
+
+    return this.processPaymentCallback(order.orderNumber, status, storedRef);
   }
 
   private async decrementProductStock(order: any) {
@@ -1317,8 +1235,6 @@ export class OrderService implements OnModuleInit, OnModuleDestroy {
     const headers = secret ? { 'x-internal-service-key': secret } : {};
 
     for (const item of products) {
-      // Menu items are made-to-order (on_demand) and hold no Product stock.
-      if (!item.productId || item.isMenuItem) continue;
       try {
         await axios.post(`${productUrl}/products/${item.productId}/stock`, {
           change: -item.quantity
@@ -1337,7 +1253,6 @@ export class OrderService implements OnModuleInit, OnModuleDestroy {
     const headers = secret ? { 'x-internal-service-key': secret } : {};
 
     for (const item of products) {
-      if (!item.productId || item.isMenuItem) continue;
       try {
         await axios.post(`${productUrl}/products/${item.productId}/stock`, {
           change: item.quantity
@@ -1356,7 +1271,6 @@ export class OrderService implements OnModuleInit, OnModuleDestroy {
     const headers = secret ? { 'x-internal-service-key': secret } : {};
 
     for (const item of products) {
-      if (!item.productId || item.isMenuItem) continue;
       try {
         await axios.post(`${productUrl}/products/${item.productId}/orders/increment`, {
           count: item.quantity || 1
@@ -1381,14 +1295,12 @@ export class OrderService implements OnModuleInit, OnModuleDestroy {
 
       // Resolve market coordinates for accurate pickup location via Market Service
       let pickupCoords = { lat: -1.9441, lng: 30.0619 }; // fallback to Kigali center
-      let marketName: string | undefined;
       try {
         const marketUrl = process.env.MARKET_SERVICE_URL || 'http://localhost:3002/api/v1';
         const { data: market } = await axios.get(`${marketUrl}/markets/${seller.marketId}`, { headers });
         if (market?.location?.coordinates) {
           pickupCoords = { lat: market.location.coordinates[1], lng: market.location.coordinates[0] };
         }
-        marketName = market?.name || market?.data?.name;
       } catch (err) {
         this.logger.warn(`Could not fetch market coordinates for ${seller.marketId}, using default. Error: ${err.message}`);
       }
@@ -1396,41 +1308,11 @@ export class OrderService implements OnModuleInit, OnModuleDestroy {
       const dropoffAddress = buyer.deliveryAddress || {};
       const plainOrder = await this.orderModel.findById(order._id).lean().exec();
 
-      // Cold-chain detection (Feature 6): flag the delivery if any catalogue product
-      // in the order is perishable, and use the tightest maxDeliveryMinutes constraint.
-      let isPerishable = false;
-      let maxDeliveryMinutes: number | undefined;
-      try {
-        const orderProducts = (plainOrder?.products || order.products || []) as any[];
-        const productIds = orderProducts
-          .map((p: any) => p?.productId)
-          .filter((id: any) => id && Types.ObjectId.isValid(String(id)));
-        if (productIds.length) {
-          const perishableProducts = await this.productModel
-            .find({ _id: { $in: productIds }, perishable: true })
-            .select('maxDeliveryMinutes')
-            .lean()
-            .exec();
-          if (perishableProducts.length) {
-            isPerishable = true;
-            const mins = perishableProducts
-              .map((p: any) => Number(p.maxDeliveryMinutes))
-              .filter((n: number) => Number.isFinite(n) && n > 0);
-            if (mins.length) maxDeliveryMinutes = Math.min(...mins);
-          }
-        }
-      } catch (perishErr: any) {
-        this.logger.warn(`Perishable detection failed for order ${orderNumber}: ${perishErr?.message}`);
-      }
-
       const response = await axios.post(`${deliveryUrl}/deliveries`, {
         orderId: order._id,
         orderNumber,
-        isPerishable,
-        ...(maxDeliveryMinutes ? { maxDeliveryMinutes } : {}),
         pickup: {
           marketId: seller.marketId,
-          marketName,
           stallId: seller.stallId,
           coordinates: pickupCoords,
           address: seller.address || 'Market pickup'
@@ -1443,7 +1325,6 @@ export class OrderService implements OnModuleInit, OnModuleDestroy {
           deliveryFee: plainOrder?.financials?.deliveryFee ?? order.financials?.deliveryFee ?? 500,
           totalAmount: plainOrder?.financials?.totalAmount ?? order.financials?.totalAmount ?? 0
         },
-        riderEarnings: Math.round((plainOrder?.financials?.riderPayout ?? order.financials?.riderPayout ?? ((plainOrder?.financials?.deliveryFee ?? order.financials?.deliveryFee ?? 500) * 0.9))),
         notes: order.notes
       }, { headers });
 
@@ -1463,9 +1344,7 @@ export class OrderService implements OnModuleInit, OnModuleDestroy {
     if (!order) throw new NotFoundException('Order not found');
 
     const normalizedRole = String(role || '').toUpperCase();
-    // 'internal-service' is the INTERNAL_SERVICE_SECRET-validated identity (see
-    // verifyInternalOrJwt). The unauthenticated 'system' magic string was removed (audit A3).
-    const canManageDispatch = this.isOrderSeller(order, userId) || normalizedRole === 'ADMIN' || userId === 'internal-service';
+    const canManageDispatch = this.isOrderSeller(order, userId) || normalizedRole === 'ADMIN' || userId === 'system' || userId === 'internal-service';
     if (!canManageDispatch) {
       throw new BadRequestException('You do not have permission to start rider dispatch for this order');
     }
@@ -1481,12 +1360,7 @@ export class OrderService implements OnModuleInit, OnModuleDestroy {
     return this.orderModel.findById(id).exec();
   }
 
-  async raiseDispute(
-    id: string,
-    reason: string,
-    evidenceUrls: string[] = [],
-    type: DisputeType = DisputeType.GENERAL,
-  ): Promise<any> {
+  async raiseDispute(id: string, reason: string, evidenceUrls: string[] = []): Promise<any> {
     const order = await this.orderModel.findById(id);
     if (!order) throw new NotFoundException('Order not found');
 
@@ -1500,14 +1374,10 @@ export class OrderService implements OnModuleInit, OnModuleDestroy {
       throw new BadRequestException('Cannot raise a dispute: no confirmed delivery record found for this order');
     }
 
-    // Phase 3: 7-day dispute window aligned with Rwanda Law n°011/2026 7-day withdrawal right.
     const hoursSinceDelivery = (Date.now() - new Date(deliveryHistory.changedAt).getTime()) / (1000 * 60 * 60);
-    if (hoursSinceDelivery > DISPUTE_WINDOW_HOURS) {
-      throw new BadRequestException(
-        `Disputes must be raised within ${Math.round(DISPUTE_WINDOW_HOURS / 24)} days of delivery`,
-      );
+    if (hoursSinceDelivery > 24) {
+      throw new BadRequestException('Disputes must be raised within 24 hours of delivery');
     }
-    const disputeType = Object.values(DisputeType).includes(type) ? type : DisputeType.GENERAL;
     this.clearEscrowReleaseTimer(order._id);
 
     return await this.orderModel.findByIdAndUpdate(
@@ -1516,7 +1386,6 @@ export class OrderService implements OnModuleInit, OnModuleDestroy {
         $set: {
           status: OrderStatus.DISPUTED,
           'dispute.isDisputed': true,
-          'dispute.type': disputeType,
           'dispute.reason': reason,
           'dispute.evidenceUrls': evidenceUrls.slice(0, 8),
           'dispute.raisedAt': new Date(),
@@ -1529,40 +1398,19 @@ export class OrderService implements OnModuleInit, OnModuleDestroy {
     );
   }
 
-  async resolveDispute(id: string, resolution: DisputeResolution, refundPercentage?: number): Promise<any> {
+  async resolveDispute(id: string, resolution: DisputeResolution): Promise<any> {
     const order = await this.orderModel.findById(id);
     if (!order) throw new NotFoundException('Order not found');
 
     this.validateTransition(order.status, OrderStatus.RESOLVED, ORDER_TRANSITIONS);
 
-    const total = Number(order.financials?.totalAmount || 0);
-    const isFullRefund = resolution === DisputeResolution.REFUND;
-    const isPartialRefund = resolution === DisputeResolution.PARTIAL_REFUND;
-
-    // Compute the server-side refund amount. Client-supplied amounts are never trusted —
-    // only a percentage (1..100) is accepted and applied against the DB order total.
-    let refundAmount = 0;
-    let pct = 100;
-    if (isPartialRefund) {
-      pct = Math.floor(Number(refundPercentage));
-      if (!Number.isFinite(pct) || pct < 1 || pct > 100) {
-        throw new BadRequestException('Partial refund percentage must be an integer between 1 and 100');
-      }
-      refundAmount = Math.round(total * (pct / 100));
-      if (refundAmount <= 0) {
-        throw new BadRequestException('Computed partial refund amount must be greater than zero');
-      }
-    } else if (isFullRefund) {
-      refundAmount = total;
-    }
-
     let refundResult: any = null;
-    if (isFullRefund || isPartialRefund) {
+    if (resolution === DisputeResolution.REFUND) {
       await this.orderModel.findByIdAndUpdate(id, {
         $set: {
           'refund.status': 'pending',
-          'refund.amount': refundAmount,
-          'refund.reason': `Dispute resolution: ${resolution}${isPartialRefund ? ` (${pct}%)` : ''}`,
+          'refund.amount': order.financials.totalAmount,
+          'refund.reason': `Dispute resolution: ${resolution}`,
           'refund.requestedAt': new Date(),
           'settlement.payoutBlockedReason': 'Refund is being processed',
         },
@@ -1570,7 +1418,7 @@ export class OrderService implements OnModuleInit, OnModuleDestroy {
       try {
         refundResult = await this.buyerProtection.executeInstantRefund(
           order,
-          refundAmount,
+          order.financials.totalAmount,
           `Dispute resolution refund for order ${order.orderNumber || id}`
         );
       } catch (error: any) {
@@ -1593,16 +1441,14 @@ export class OrderService implements OnModuleInit, OnModuleDestroy {
           status: OrderStatus.RESOLVED,
           'dispute.resolvedAt': new Date(),
           'dispute.resolution': resolution,
-          ...(isPartialRefund ? { 'dispute.refundPercentage': pct } : {}),
-          ...(isFullRefund || isPartialRefund ? {
-            // A partial refund leaves the order PAID (only part was returned); a full refund marks REFUNDED.
-            ...(isFullRefund ? { 'payment.status': PaymentStatus.REFUNDED } : {}),
-            'settlement.status': isFullRefund ? 'refunded' : 'partial',
-            'settlement.payoutBlockedReason': isPartialRefund ? 'Partial refund issued; remaining settlement pending review' : null,
+          ...(resolution === DisputeResolution.REFUND ? {
+            'payment.status': PaymentStatus.REFUNDED,
+            'settlement.status': 'refunded',
+            'settlement.payoutBlockedReason': null,
             'refund.status': 'refunded',
-            'refund.amount': refundAmount,
+            'refund.amount': order.financials.totalAmount,
             'refund.transactionRef': refundResult?.transactionRef,
-            'refund.reason': `Dispute resolution: ${resolution}${isPartialRefund ? ` (${pct}%)` : ''}`,
+            'refund.reason': `Dispute resolution: ${resolution}`,
             'refund.refundedAt': new Date(),
           } : {
             'settlement.payoutBlockedReason': resolution === DisputeResolution.REDELIVER ? 'Awaiting redelivery completion' : null,
@@ -1657,7 +1503,7 @@ export class OrderService implements OnModuleInit, OnModuleDestroy {
     const isNotProduction = process.env.NODE_ENV !== 'production';
     const shouldAutoConfirmPayments = isNotProduction && process.env.AUTO_CONFIRM_PAYMENTS === 'true';
 
-    (order as any)._paymentRetryNonce = uuidv4();
+    (order as any)._paypackRetryNonce = uuidv4();
     const paymentResult = await this.paymentService.requestPaymentPrompt(order);
     if (!paymentResult.success) {
       await this.orderModel.findByIdAndUpdate(id, {
@@ -1742,7 +1588,8 @@ export class OrderService implements OnModuleInit, OnModuleDestroy {
     const maxAttempts = process.env.NODE_ENV !== 'production' ? 6 : 120; // 30s in dev, 10 min in prod
     const isNotProduction = process.env.NODE_ENV !== 'production';
     const shouldAutoConfirm = isNotProduction && (
-      process.env.MTN_MOMO_TARGET_ENV === 'sandbox'
+      process.env.MTN_MOMO_TARGET_ENV === 'sandbox' ||
+      process.env.PAYPACK_AUTO_CONFIRM === 'true'
     );
 
     const order = await this.orderModel.findOne({ orderNumber }).exec();

@@ -1,1005 +1,1400 @@
 # Google Stitch Full Website Generation Prompt For RMF
 
-Copy everything in this document into Google Stitch. The goal is to generate a complete, responsive, production-grade frontend design for the existing Rwanda Market Facilitator codebase. This must look ultra-premium, but every screen must map to the current routes, data models, workflows, and constraints already present in the project.
+Copy this full prompt into Google Stitch.
 
-## 0. Non-Negotiable Product Rules
+Important instruction for Stitch:
 
-Design the RMF platform as an operational commerce system, not a generic landing page. The first screen must be the usable buyer marketplace experience. Every dashboard must feel like a real tool with live data, tables, maps, status chips, message workflows, image/video previews, and clear empty/loading/error states.
+Do not create only 4 overview screens. Do not create only a landing page. Do not create only one screen per portal. Create a complete multi-page web application design with every route, workflow, state, and responsive layout described below.
 
-Use only the implemented route map below. Do not invent primary routes that do not exist. You may include optional future frames only if clearly marked as future design frames.
+I need a full high-fidelity website design system and screen set for the entire RMF platform. Treat this as a complete production marketplace application, not a concept mockup.
 
-RMF must not be represented as holding customer funds. Payments, payouts, and refunds are Paypack-operated money movement. RMF only displays order accounting, Paypack references, settlement statuses, payout attempts, and ledger entries. Do not design a wallet where RMF stores spendable customer balances. Where the current route says wallet, design it as a Paypack settlement/accounting ledger.
+Generate all pages in groups:
 
-Product detail pages must use the canonical product URL `/product/[productId]`. Market storefront links must use `/market/[slug]` or the market subdomain pattern. Do not route product detail cards to `/market/[slug]/product/[productId]` unless the current screen is already inside the market context.
+1. Public buyer marketplace pages
+2. Buyer account/order pages
+3. Seller portal pages
+4. Rider portal pages
+5. Admin portal pages
+6. Authentication/onboarding pages
+7. Shared system states such as loading, empty, offline, unauthorized, approval pending, and error states
 
-All product and market images, seller videos, delivery proof images, chat images, and document uploads must be visible as real media slots. Never hide uploaded images behind abstract icons only.
+For every page, create both desktop and mobile responsive versions where the layout changes significantly.
 
-## 1. Solaris Ivory Design System
+Design enough screens that a developer can implement the whole RMF website from the output. If there are many pages, organize them by section, but still create individual screens for each route listed in this prompt.
 
-Use the Solaris Ivory visual system everywhere.
+## Product Name
 
-Colors:
-- Primary brand: `#ff6b00`
-- Primary hover: `#e05300`
-- Primary glow: `rgba(255, 107, 0, 0.08)`
-- Secondary rust: `#a63b00`
-- Secondary hover: `#7f2b00`
-- Secondary light accent: `#ffdbce`
-- Accent gold: `#f59e0b`
-- Accent hover: `#d97706`
-- Accent badge fill: `#fef3c7`
-- Logistics blue: `#3b82f6`
-- Logistics hover: `#005ac2`
-- Logistics highlight: `#d8e2ff`
-- Main canvas: `#fbf9f8`
-- Surface canvas: `#f5f3f3`
-- Card white: `#ffffff`
-- Soft border: `#ebdcd0`
-- Strong border: `#d2bca8`
-- Text primary: `#1b1c1c`
-- Text secondary: `#574e47`
-- Text muted: `#8e7164`
-- White: `#ffffff`
-- Success: `#12805c`
-- Error: `#ba1a1a`
-- Warning: `#f59e0b`
-- Info: `#3b82f6`
+Rwandan Market Facilitator, abbreviated as RMF.
 
-Visual treatment:
-- Main background: warm cream canvas with subtle top-right radial orange glow.
-- Cards: white or `rgba(255, 255, 255, 0.85)`, 1px orange-tinted border, soft `0 8px 30px rgba(27,28,28,0.03)` shadow.
-- Glass overlays: use restrained translucent panels only on hero images, maps, media, and dashboards.
-- Buttons: icon plus label for major actions, icon-only for compact tools where a standard symbol exists.
-- Font pairing: Work Sans for body and headings. JetBrains Mono for RWF prices, transaction refs, order numbers, coordinates, verified tags, timestamps, SKU, and status telemetry.
-- Motion: 0.3s cubic-bezier transitions on hover, active, tabs, modals, and route state changes.
-- Avoid nested cards inside cards. Use full-width bands and clear panels. Keep cards to repeated items, modals, order panels, and tool surfaces.
-- Do not use text that blends into the background. Every text/background pair must pass normal readability by sight.
-- Cards must be compact enough for data density. No giant repeated market cards on dashboard lists.
+## Product Purpose
 
-## 2. Current Implemented Route Inventory
+RMF connects physical Rwandan markets to digital commerce. Buyers discover trusted markets, shops, products, promotions, seller videos, and delivery options. Sellers digitize their physical stalls, manage products, negotiate orders, upload product videos, handle inventory, and receive payouts. Riders accept nearby delivery jobs, track pickups and handovers on maps, and receive earnings. Admins govern the platform, approve sellers/riders/products, manage taxonomy, monitor fraud, resolve disputes, track live operations, and manage payout/accounting workflows.
 
-Public and buyer routes:
+This must feel like a serious trust-based marketplace, not a generic e-commerce template. The design should communicate local commerce, payment trust, verified vendors, market logistics, and operational clarity.
+
+## Core Design Direction
+
+Use the current RMF orange brand direction across the full product.
+
+Primary colors:
+
+- RMF orange: `#ff6b00`
+- Deep orange: `#e05300`
+- Warm orange surface: `#ffedd5`
+- Amber highlight: `#f59e0b`
+- Soft background: `#fdfaf7`
+- Ink text: `#1b1c1c`
+- Muted brown-gray text: `#574e47`
+- Warm border: `#ebdcd0`
+- White cards: `#ffffff`
+- Error red: `#ba1a1a`
+- Map/route blue: `#3b82f6`
+
+Visual tone:
+
+- Warm, trustworthy, professional, local, and commerce-focused.
+- Use real market/product imagery whenever possible.
+- Avoid heavy green dominance, purple gradients, dark SaaS dashboards, oversized generic hero sections, decorative blobs, and abstract SVG-heavy visuals.
+- Cards should be compact, scannable, and useful.
+- Buttons should be clear, high-contrast, and action-focused.
+- Tables should be dense but readable.
+- Mobile layouts should feel like a native shopping and logistics app.
+
+## System Architecture In Plain Language
+
+RMF has four main user worlds:
+
+1. Buyer Marketplace
+2. Seller Portal
+3. Rider Portal
+4. Admin Portal
+
+The system relationships are:
+
+- A user can be a buyer, seller, rider, or admin.
+- A market is a physical place with a name, district, coordinates, opening status, sellers, products, videos, reviews, and delivery coverage.
+- A seller belongs to a market or operates an independent shop/stall.
+- A product belongs to a seller, market, category, and taxonomy branch.
+- A product can have variants, such as size, color, weight, fabric, unit, packaging, or material.
+- A product variant is the exact purchasable item added to the cart and order.
+- A buyer creates orders from products or variants.
+- Some products allow negotiation. In that case, the order begins as a quote request.
+- Payment is handled through MoMo/Paypack/card-like integrations and is tied to escrow-like order states.
+- A rider is assigned after payment/confirmation and delivery readiness.
+- Delivery is tracked using maps, rider location, pickup proof, handover proof, and QR confirmation.
+- Reviews, likes, video interactions, purchases, and browsing history feed recommendations.
+- Admins oversee approvals, taxonomy, disputes, fraud, payouts, accounting, market data, and operational maps.
+
+## Data Objects The Design Must Represent
+
+### Market
+
+Fields shown across the site:
+
+- Market name
+- Slug
+- District and city
+- Coordinates
+- Distance from user
+- Opening status
+- Open hours
+- Verified status
+- Market type: public market, independent shop, artisan hub, border trade center, logistics hub
+- Seller count
+- Product count
+- Featured products
+- Promotions
+- Top sellers
+- Market videos
+- Reviews and rating
+- Delivery availability
+- Map pin
+
+### Seller
+
+Fields shown across seller-facing and buyer-facing pages:
+
+- Shop name
+- Seller name
+- Stall code
+- Market association
+- Verification status
+- Rating
+- MoMo payout number
+- Product count
+- Active orders
+- Pending quote requests
+- Wallet balance
+- Seller advertisement video
+- Product advertisement videos
+- Settings change requests
+
+### Product
+
+Fields shown across product cards, product pages, seller inventory, admin approvals, and checkout:
+
+- Product name
+- Product image/video
+- Price in RWF
+- Seller name
+- Market name
+- Category branch
+- Product attributes
+- Variants
+- Stock quantity
+- Unit of measure
+- Availability status
+- Rating and review count
+- Promotion/deal badge
+- Negotiable or fixed price status
+- Made in Rwanda status
+- Delivery estimate
+
+### Variant
+
+Variants must be visually treated as purchasable options, not hidden metadata.
+
+Variant fields:
+
+- Variant name
+- Size, color, material, weight, flavor, pattern, capacity, package, or other category-specific option
+- Variant price
+- Variant stock
+- Variant image
+- Optional variant video
+- SKU
+
+When a buyer adds a variant to cart, the cart and order must show that exact variant, not only the parent product.
+
+### Order
+
+Fields shown in buyer, seller, rider, and admin screens:
+
+- Order ID
+- Buyer
+- Seller
+- Market
+- Items and variants
+- Quantity
+- Snapshot price
+- Total
+- Payment status
+- Order status
+- Negotiation status
+- Delivery status
+- Rider assignment
+- Timeline
+- Messages
+- Receipt
+- Escrow/release/dispute state
+- Pickup and handover proof
+
+### Delivery
+
+Fields shown in rider and tracking views:
+
+- Pickup market/shop
+- Drop-off location
+- Distance
+- Fee
+- Rider
+- Rider status
+- Current map position
+- Route line
+- ETA
+- Pickup proof photo
+- Handover QR
+- Handover confirmation
+- Delivery timeline
+
+### Video
+
+Fields shown in video pages and market/shop/product pages:
+
+- Video thumbnail
+- Video playback
+- Seller/shop name
+- Market name
+- Product name if attached to product
+- Category
+- Likes
+- Dislikes
+- Comments
+- CTA to view product/shop/market
+- Search terms and tags
+
+## Main Workflows
+
+### Buyer Discovery Workflow
+
+The buyer opens RMF and sees:
+
+1. Global header with RMF logo, search, location, language, notifications, cart, and account.
+2. Hero showing trusted local markets and a direct call to browse markets or start selling.
+3. Nearby markets based on detected or selected location.
+4. Recommended products based on preferences, likes, viewed products, viewed categories, purchases, and market proximity.
+5. Promotions and flash deals.
+6. Made in Rwanda products.
+7. Trending market videos.
+8. Map-based market discovery.
+9. Trust indicators for escrow, verified sellers, rider tracking, and secure payments.
+
+Search should allow buyers to find markets, sellers, products, categories, product videos, and Made in Rwanda items.
+
+### Location And Distance Workflow
+
+The website should use buyer location when available.
+
+If browser geolocation is allowed:
+
+1. Detect user coordinates.
+2. Calculate distance from user to each market.
+3. Display nearest open verified markets first.
+4. Show distance badges like `1.8 km away`.
+5. Estimate delivery availability and delivery fee.
+6. Highlight nearby market pins on the map.
+
+If geolocation is denied:
+
+1. Default to Kigali.
+2. Show a clear location selector.
+3. Let the user choose a district/market area manually.
+4. Re-rank markets based on that selected location.
+
+Map behavior:
+
+- Market cards and map pins should be connected.
+- Hovering or selecting a market card highlights its map pin.
+- Clicking a map pin opens a compact market preview.
+- Users can switch between list, grid, and map views.
+- On mobile, use a full-width map with a draggable bottom sheet for market cards.
+
+### Product Recommendation Workflow
+
+New buyers should be asked what they like after registration, similar to Pinterest onboarding.
+
+The preference picker should show broad categories and branch categories, for example:
+
+- Food and groceries
+- Fresh produce
+- Fashion
+- Textiles
+- Shoes
+- Cosmetics
+- Beauty and personal care
+- Jewelry and bracelets
+- Home and living
+- Furniture
+- Building materials
+- Cement and tiles
+- Electronics
+- Crafts
+- Art
+- Baby products
+- Agriculture
+- Tools
+- Auto parts
+- Services
+
+The system should recommend products and markets using:
+
+- Selected interests
+- Viewed products
+- Viewed markets
+- Search terms
+- Added-to-cart events
+- Likes on videos
+- Likes/dislikes on products
+- Purchases
+- Category affinity
+- Nearby markets
+- Seller rating
+- Product popularity
+
+Design recommendation surfaces on:
+
+- Home page
+- Market page
+- Product detail page
+- Cart upsells
+- Videos page
+- Buyer dashboard
+
+### Category And Taxonomy Workflow
+
+RMF needs a robust category system like a large e-commerce marketplace.
+
+Product creation should use a drilldown picker:
+
+1. Choose parent category.
+2. Choose child category.
+3. Choose deeper child/grandchild category.
+4. Stop only when the seller reaches the exact product category.
+5. Show category-specific attributes after the final category is selected.
+
+Example:
+
+Home and Building -> Building Materials -> Cement -> Portland Cement
+
+Fashion -> Women -> Shoes -> Sandals
+
+Beauty -> Skincare -> Face Care -> Moisturizer
+
+Crafts -> Jewelry -> Bracelets -> Beaded Bracelets
+
+The design should show:
+
+- Breadcrumb path
+- Search within categories
+- Recommended categories while typing
+- Required attributes
+- Optional attributes
+- Variant creation section
+- Image/video upload section
+- Validation state
+
+### Variant Workflow
+
+Products can have variants.
+
+Seller creates:
+
+- Parent product information
+- Shared product images
+- Shared description
+- Category and attributes
+- Variant options
+- Variant-level stock
+- Variant-level price
+- Variant-level image
+- Optional variant-level video
+
+Buyer sees:
+
+- Product title
+- Variant selector
+- Variant price
+- Variant stock
+- Variant image changes when selected
+- Add to cart uses selected variant
+
+Cart and order must show:
+
+- Parent product name
+- Selected variant
+- Variant image
+- Variant price snapshot
+- Variant quantity
+
+### Negotiation Workflow
+
+Some products are negotiable.
+
+Flow:
+
+1. Buyer clicks negotiate on a product or order.
+2. Buyer enters message, requested quantity, location, and optional offer.
+3. Order is created in `awaiting_quote`.
+4. Seller sees quote request in seller dashboard.
+5. Seller sends a quote with price, notes, availability, and expiration.
+6. Buyer accepts, rejects, or counters.
+7. If accepted, order becomes payable.
+8. Buyer pays through MoMo/Paypack/card.
+9. Payment creates escrow-like hold and moves order to fulfillment.
+10. Seller prepares product.
+11. Rider pickup begins when ready.
+
+Design requirements:
+
+- Chat-like negotiation UI.
+- Quote cards with price, expiry, and action buttons.
+- Buyer and seller views should be different but consistent.
+- Timeline should show every state.
+- Users should never be sent to another role dashboard accidentally.
+
+### Payment And Escrow Workflow
+
+The payment flow must clearly show trust.
+
+Buyer:
+
+- Reviews items and variants.
+- Sees subtotal, delivery fee, service fee, and total.
+- Chooses MoMo/Paypack/card option.
+- Confirms payment.
+- Sees payment pending, confirmed, failed, or retry state.
+
+Escrow-like handling:
+
+- Buyer payment is tracked before seller payout.
+- Seller payout is tied to fulfillment and delivery confirmation.
+- Rider payout is tied to completed delivery.
+- If dispute is opened, payout can be paused.
+- Admin can review payment, order, dispute, refund, and payout state.
+
+Design should show:
+
+- Payment trust badges
+- Escrow timeline
+- Receipt
+- Refund/dispute entry point
+- Payout release state for sellers
+
+### Rider Dispatch And Distance Pricing Workflow
+
+When an order is ready for delivery:
+
+1. The system searches for riders within 150 meters of the shop or market.
+2. Available riders receive a broadcast job card.
+3. If no rider accepts, search radius increases by 50 meters at a time.
+4. The UI shows the expanding radius to admin and possibly seller.
+5. Rider receives pickup, drop-off, distance, ETA, and payout.
+6. Once accepted, rider is assigned and live tracking starts.
+
+Delivery fee logic:
+
+- Use a base fee at the start.
+- If rider search expands from 1 km to 8 km, add 500 RWF.
+- If rider search expands from 8 km to 16 km, add 800 RWF.
+- Continue progressive distance-based pricing for farther ranges.
+- The design should show fee explanation in checkout, admin live operations, and rider job cards.
+
+Tracking:
+
+- Buyer sees rider map, route, ETA, and timeline.
+- Seller sees pickup preparation and pickup confirmation.
+- Rider sees pickup pin, drop-off pin, navigation CTA, proof upload, and QR handover.
+- Admin sees live map of active riders and deliveries.
+
+### Video Advertisement Workflow
+
+RMF has TikTok-style commerce videos.
+
+Video types:
+
+- Product advertisement video
+- Variant product video
+- Shop advertisement video, only one main ad per shop
+- Market video
+
+Video pages:
+
+- `/videos`: global video feed across markets and shops
+- Market page video section: videos only from that market
+- Shop page video section: videos only from that shop
+- Product page video section: product or variant video
+
+Video behavior:
+
+- Vertical snap scrolling.
+- Full-screen or near-full-screen video cards.
+- Overlay market name, shop name, product name, price, rating, and CTA.
+- Like, dislike, comment, share, save, and view product.
+- Search can filter by product, market, shop, category, and tags.
+- Search should become more detailed as users type more words, for example `pants black cotton`.
+
+### Seller Settings And Approval Workflow
+
+Sellers should have settings for market/shop information.
+
+Seller can request changes to:
+
+- Shop name
+- Stall number
+- Business phone
+- MoMo number
+- Opening hours
+- Delivery/pickup preferences
+- Shop banner
+- Shop logo
+- Shop ad video
+- Bio/about text
+- Product return rules
+- Notification preferences
+
+Seller cannot directly change:
+
+- Shop slug
+- Verified identity fields without admin approval
+- Sensitive payout identity without review
+
+Any sensitive change creates an admin approval request.
+
+### Rider Settings And Approval Workflow
+
+Riders can request changes to:
+
+- Phone
+- Vehicle type
+- Plate number
+- Availability area
+- MoMo payout number
+- Profile image
+- Notification preferences
+
+Sensitive changes go to admin review before approval.
+
+### Admin Governance Workflow
+
+Admins must have screens for:
+
+- Platform analytics
+- Accounting
+- Live operations map
+- Seller approvals
+- Rider approvals
+- Product approvals
+- Market directory
+- Product taxonomy manager
+- Category attribute governance
+- Bulk import/backfill tools
+- Fraud alerts
+- Dispute and refund queue
+- Payout approvals
+- Settings change requests
+- Support tickets
+- Audit logs
+
+Admin design should prioritize:
+
+- Dense tables
+- Clear filters
+- Active tab highlighting
+- Bulk actions
+- Detail drawers
+- Status chips
+- Skeleton loading
+- Infinite loading for large lists
+- Audit trail visibility
+
+## Pages And Routes To Design
+
+Design all major desktop and mobile screens.
+
+### Public And Buyer Pages
+
+#### `/`
+
+Buyer home.
+
+Data displayed:
+
+- Global search
+- Location selector
+- Language selector
+- Cart
+- Account state
+- Hero with market image
+- Active market stats
+- Verified seller stats
+- Orders stats
+- Nearby markets
+- Recommended products
+- Promotions
+- Made in Rwanda rail
+- Trending videos
+- Market map preview
+- Trust/payment badges
+- Footer
+
+#### `/markets`
+
+Market discovery.
+
+Data displayed:
+
+- Search and filters
+- Active/open market toggle
+- Category chips
+- Distance filter
+- District filter
+- Market type filter
+- Market cards
+- Map/list toggle
+- Market map with pins
+- Promotions from markets
+- Most bought products
+- Featured sellers
+
+#### `/market/[slug]`
+
+Individual market storefront.
+
+Data displayed:
+
+- Market hero
+- Market name
+- Open/closed status
+- Distance
+- District
+- Seller count
+- Product count
+- Rating
+- Map location
+- Featured sellers
+- Promotions
+- Product grid
+- Filters and facets
+- Most bought
+- Highly reviewed
+- Market videos
+- Reviews
+- Delivery estimate
+
+#### `/products`
+
+Global product listing.
+
+Data displayed:
+
+- Product search
+- Category tree filter
+- Attribute filters
+- Variant-aware cards
+- Price filter
+- Market filter
+- Seller filter
+- Distance filter
+- Sort by recommended, nearest, most bought, rating, newest, price
+
+#### `/product/[id]` or market product route
+
+Product detail.
+
+Data displayed:
+
+- Product gallery
+- Product video
+- Variant selector
+- Selected variant image/video
+- Price
+- Stock
+- Attributes
+- Seller
+- Market
+- Reviews
+- Delivery estimate
+- Add to cart
+- Negotiate if enabled
+- Related products
+- Similar videos
+
+#### `/videos`
+
+Global commerce video feed.
+
+Data displayed:
+
+- Vertical video feed
+- Search bar
+- Filter chips
+- Market/shop/product metadata
+- Like/dislike/comment actions
+- Product CTA
+- Shop CTA
+- Market CTA
+
+#### `/cart`
+
+Shopping cart.
+
+Data displayed:
+
+- Items
+- Variant names
+- Variant images
+- Quantity
+- Price snapshots
+- Seller grouping
+- Market grouping
+- Delivery estimate
+- Service fees
+- Checkout CTA
+
+#### `/checkout`
+
+Checkout and payment.
+
+Data displayed:
+
+- Buyer contact
+- Delivery location
+- Map pin confirmation
+- Order summary
+- Delivery fee explanation
+- Payment methods
+- Escrow/trust explanation
+- Confirm payment
+
+#### `/orders`
+
+Buyer order history.
+
+Data displayed:
+
+- Active orders
+- Past orders
+- Payment state
+- Delivery state
+- Negotiation state
+- Track order CTA
+- Receipt CTA
+
+#### `/orders/[id]/tracking`
+
+Order tracking.
+
+Data displayed:
+
+- Map
+- Rider current position
+- Pickup and drop-off pins
+- Timeline
+- Escrow/payment state
+- Order items
+- Chat
+- QR/handover confirmation if needed
+- Dispute/refund action
+
+#### `/preferences`
+
+Buyer preference onboarding and editing.
+
+Data displayed:
+
+- Category interest picker
+- Selected interests
+- Recommended markets/products preview
+- Save preferences
+
+#### `/login`
+
+Authentication.
+
+Data displayed:
+
+- Email/phone login
+- Password
+- Google login if supported
+- Forgot password
+- Role-aware redirect after login
+
+#### `/register`
+
+Account creation.
+
+Data displayed:
+
+- Role selection: buyer, seller, rider
+- Buyer registration
+- Seller onboarding redirect
+- Rider onboarding redirect
+- Preference onboarding after buyer creation
+
+#### Shared Utility Pages
+
+Design:
+
+- 404 page
+- Offline/service unavailable state
+- Loading skeleton state
+- Empty state
+- Unauthorized state
+- Settings page
+- Notifications page
+- Wallet page
+- Wishlist page
+- Help/contact/privacy/terms pages
+
+### Seller Pages
+
+#### `/seller/onboarding`
+
+Seller onboarding.
+
+Data displayed:
+
+- Business identity
+- Market/stall selection
+- Location pin
+- MoMo payout number
+- Shop logo/banner
+- Opening hours
+- Document upload
+- Approval status
+
+#### `/seller/dashboard`
+
+Seller home.
+
+Data displayed:
+
+- Wallet balance
+- Pending orders
+- Pending quotes
+- Products listed
+- Rating
+- Revenue chart
+- Active orders
+- Quick actions
+- Market/shop health
+
+#### `/seller/products`
+
+Inventory.
+
+Data displayed:
+
+- Search
+- Filters
+- Product list/table
+- Category
+- Variants
+- Stock
+- Price
+- Status
+- Edit
+- Soft delete/archive
+- Audit state
+- Infinite scrolling
+
+#### `/seller/products/new`
+
+Create product.
+
+Data displayed:
+
+- Category drilldown picker
+- Product fields
+- Attributes by category
+- Variants
+- Variant image/video
+- Stock
+- Price
+- Negotiation toggle
+- Upload media
+- Save draft/publish
+
+#### `/seller/products/[id]/edit`
+
+Edit product.
+
+Data displayed:
+
+- Existing data
+- Variant editor
+- Image/video manager
+- Stock editor
+- Audit warning for sensitive changes
+
+#### `/seller/orders`
+
+Seller order queue.
+
+Data displayed:
+
+- Awaiting quote
+- Payment pending
+- Ready to prepare
+- Ready for pickup
+- Completed
+- Search/filter
+- Order drawer
+
+#### `/seller/orders/[id]`
+
+Order detail and negotiation.
+
+Data displayed:
+
+- Order timeline
+- Items
+- Variant details
+- Buyer notes
+- Chat
+- Quote cards
+- Send quote
+- Prepare order
+- Pickup proof
+- Receipt
+- Escrow state
+
+#### `/seller/promotions`
+
+Promotions.
+
+Data displayed:
+
+- Active deals
+- New deal form
+- Product selector
+- Discount
+- Date range
+- Performance stats
+
+#### `/seller/videos`
+
+Seller video manager.
+
+Data displayed:
+
+- Shop ad video, one active main video
+- Product videos
+- Variant videos
+- Upload/edit/delete
+- Comments/likes
+- Performance stats
+
+#### `/seller/earnings`
+
+Earnings and payouts.
+
+Data displayed:
+
+- Wallet balance
+- Ledger
+- Payout status
+- MoMo destination
+- Pending payout
+- Escrow release state
+
+#### `/seller/settings`
+
+Settings.
+
+Data displayed:
+
+- Shop settings
+- Notification settings
+- Payout settings
+- Change request status
+- Admin approval requirement for sensitive updates
+
+### Rider Pages
+
+#### `/rider/register`
+
+Rider onboarding.
+
+Data displayed:
+
+- Identity
+- Vehicle type
+- Plate number
+- Phone
+- MoMo payout
+- Documents
+- Preferred area
+- Approval status
+
+#### `/rider/dashboard`
+
+Rider work home.
+
+Data displayed:
+
+- Online/offline toggle
+- Earnings
+- Completion rate
+- Rating
+- Live map
+- Nearby jobs
+- Active delivery
+- Queue
+
+#### `/rider/deliveries`
+
+Delivery list.
+
+Data displayed:
+
+- Active jobs
+- History
+- Pickup
+- Drop-off
+- Earnings
+- Status
+- Track CTA
+
+#### `/rider/deliveries/[id]`
+
+Delivery detail.
+
+Data displayed:
+
+- Map
+- Route
+- Pickup details
+- Drop-off details
+- Pickup proof upload
+- QR handover
+- Chat
+- Timeline
+
+#### `/rider/earnings`
+
+Rider earnings.
+
+Data displayed:
+
+- Weekly earnings
+- Completed deliveries
+- Wallet
+- Payout history
+- Delivery fee breakdown
+
+#### `/rider/settings`
+
+Rider settings.
+
+Data displayed:
+
+- Profile
+- Vehicle details
+- Payout details
+- Notification preferences
+- Change request approval status
+
+### Admin Pages
+
+#### `/admin`
+
+Admin shell with tabs/sidebar.
+
+Tabs and data:
+
+- Analytics: GMV, orders, revenue, users, market health, charts
+- Accounting: platform revenue, payouts, ledger, fees, payment status
+- Live operations: rider map, active orders, expanding rider search radius
+- Seller approvals: seller applications, documents, approve/reject
+- Rider approvals: rider applications, documents, approve/reject
+- Product approvals: products awaiting approval, media, category validation
+- Markets directory: market table, edit, sync images, map pin, active state
+- Taxonomy manager: category tree, attributes, required fields, synonyms
+- Governance reports: missing attributes, bad data, category audit
+- Disputes/refunds: dispute queue, order evidence, refund/redelivery actions
+- Fraud: suspicious orders, locations, payment/rider flags
+- Payouts: seller/rider payout approval
+- Settings change requests: seller/rider requested updates
+- Support: user tickets and admin notes
+- Audit logs: actions taken by admins and system
+
+Admin UX:
+
+- Sticky sidebar with active state.
+- Dense data tables.
+- Filters on top.
+- Detail drawer for row inspection.
+- Bulk actions.
+- Skeleton loading.
+- Infinite loading for large datasets.
+- Clear status chips.
+
+## Scroll And Interaction Patterns
+
+### Home Page
+
+- Desktop: hero plus useful side panels, then compact sections.
+- Mobile: search first, location second, then horizontal rails.
+- Use carousels for recommended products, Made in Rwanda, promotions, and videos.
+- Do not stack too many huge sections vertically.
+
+### Market Pages
+
+- Desktop: map/list split where useful.
+- Mobile: map with bottom sheet or product rails.
+- Sticky filters should collapse on mobile.
+- Product cards should be compact and readable.
+
+### Product Pages
+
+- Desktop: media left, purchase panel right.
+- Mobile: media carousel first, sticky add-to-cart/negotiation action at bottom.
+- Variant selection should be visible and easy.
+
+### Seller/Admin Tables
+
+- Use infinite scroll or lazy pagination.
+- Show skeleton rows while loading more data.
+- Keep actions visible but not visually noisy.
+
+### Videos Page
+
+- Vertical snap scroll.
+- Video fills the main viewport area.
+- Metadata and actions overlay the video.
+- Comments open in a side drawer on desktop and bottom sheet on mobile.
+
+### Tracking Pages
+
+- Map should be central.
+- Timeline should be clear.
+- Chat should be available but not dominate the map.
+- Rider proof and QR actions should be obvious.
+
+## Required States
+
+Design each important screen with:
+
+- Loading skeleton
+- Empty state
+- Error state
+- Offline services state
+- Unauthorized state
+- Pending approval state
+- Rejected approval state
+- Payment pending
+- Payment failed
+- Payment confirmed
+- Quote pending
+- Quote accepted
+- Quote expired
+- Rider search expanding
+- No rider found
+- Dispute active
+- Payout pending
+- Payout approved
+
+## Security And Trust Cues
+
+The design must show role separation clearly:
+
+- Buyers must never see seller dashboard controls.
+- Sellers must only manage their own shop, products, and orders.
+- Riders must only see assigned or available delivery jobs.
+- Admins must see audit trails and approval controls.
+
+Trust cues:
+
+- Verified seller badges
+- Verified market badges
+- Secure payment labels
+- Escrow timeline
+- Buyer protection
+- Pickup proof
+- Handover QR
+- Admin-reviewed changes
+- Audit log indicators
+
+## Navigation Model
+
+### Public Buyer Navigation
+
+Header:
+
+- RMF logo
+- Search
+- Location selector
+- Language
+- Notifications
+- Cart
+- Account
+
+Main nav:
+
+- Markets
+- Products
+- Videos
+- Made in Rwanda
+- Deals
+
+### Seller Navigation
+
+Sidebar:
+
+- Dashboard
+- Products
+- Orders
+- Promotions
+- Videos
+- Earnings
+- Analytics
+- Reviews
+- Settings
+
+### Rider Navigation
+
+Sidebar or bottom nav:
+
+- Dashboard
+- Deliveries
+- Earnings
+- Settings
+
+### Admin Navigation
+
+Sidebar:
+
+- Analytics
+- Accounting
+- Live Operations
+- Approvals
+- Markets
+- Products
+- Taxonomy
+- Disputes
+- Fraud
+- Payouts
+- Settings Requests
+- Support
+- Audit Logs
+
+## Mobile Design Requirements
+
+Mobile should feel native and iOS-first.
+
+Rules:
+
+- Header search should take most of the header width.
+- Cart belongs in the header, not the bottom nav.
+- Bottom nav should be role-aware.
+- If no user is logged in, do not show seller/rider-only bottom nav.
+- Buyer bottom nav can include Home, Markets, Videos, Orders, Account.
+- Seller bottom nav can include Dashboard, Products, Orders, Videos, Settings.
+- Rider bottom nav can include Dashboard, Jobs, Active, Earnings, Settings.
+- Use bottom sheets for filters, comments, map details, and quick actions.
+- Use large tap targets.
+- Avoid dense desktop tables on mobile; use cards.
+
+## Design Deliverable Required From Stitch
+
+Generate a complete high-fidelity website and responsive mobile web design for RMF.
+
+Do not design only the landing page.
+Do not summarize each portal into one generic screen.
+Do not stop at four screens.
+Do not create decorative concept art instead of working application pages.
+
+Create this as a full route-by-route product design. Each route below should become its own designed page or screen group:
+
+Public and buyer:
+
 - `/`
 - `/markets`
 - `/market/[slug]`
-- `/market/[slug]/product/[productId]`
 - `/products`
-- `/product/[productId]`
+- `/product/[id]`
 - `/videos`
 - `/cart`
 - `/checkout`
 - `/orders`
-- `/orders/[orderId]/tracking`
-- `/dashboard`
-- `/wallet`
-- `/wishlist`
+- `/orders/[id]/tracking`
 - `/preferences`
+- `/wishlist`
+- `/wallet`
 - `/settings`
+- `/notifications`
+- `/login`
+- `/register`
+- `/forgot-password`
+- `/help`
 - `/contact`
 - `/privacy`
 - `/terms`
-- `/login`
-- `/register`
+- `404`
+- `offline/service unavailable`
 
-Seller routes:
+Seller:
+
 - `/seller/onboarding`
 - `/seller/dashboard`
 - `/seller/products`
 - `/seller/products/new`
+- `/seller/products/[id]/edit`
 - `/seller/orders`
-- `/seller/orders/[orderId]`
+- `/seller/orders/[id]`
 - `/seller/promotions`
 - `/seller/videos`
 - `/seller/earnings`
 - `/seller/analytics`
 - `/seller/reviews`
 - `/seller/qr`
+- `/seller/settings`
 
-Rider routes:
+Rider:
+
 - `/rider/register`
-- `/rider/setup`
 - `/rider/dashboard`
 - `/rider/deliveries`
+- `/rider/deliveries/[id]`
 - `/rider/earnings`
+- `/rider/settings`
 
-Admin routes:
-- `/admin`
-- `/admin/disputes/[orderId]`
-- `/admin/orders/[orderId]`
-- `/admin/support`
+Admin:
 
-Backend service clients used by the frontend:
-- User/Auth service: `userApi`, port 3001
-- Market service: `marketApi`, port 3002
-- Product/catalog/promotion/video service: `productApi`, port 3003
-- Seller service: `sellerApi`, port 3004
-- Rider service: `riderApi`, port 3005
-- Order/payment/dispute/chat service: `orderApi`, port 3006
-- Settlement/accounting service: `walletApi`, port 3007
-- Delivery service: `deliveryApi`, port 3008
-- Notification service: port 3009
+- `/admin?tab=analytics`
+- `/admin?tab=accounting`
+- `/admin?tab=live-map`
+- `/admin?tab=seller-approvals`
+- `/admin?tab=rider-approvals`
+- `/admin?tab=product-approvals`
+- `/admin?tab=markets`
+- `/admin?tab=taxonomy`
+- `/admin?tab=governance`
+- `/admin?tab=disputes`
+- `/admin?tab=fraud`
+- `/admin?tab=payouts`
+- `/admin?tab=settings-requests`
+- `/admin?tab=support`
+- `/admin?tab=audit-logs`
 
-## 3. Data Contracts To Use In The Design
+For complex pages, include secondary states as separate frames:
 
-Use these real fields in labels, table headers, cards, filters, side panels, and empty states.
-
-User and profile:
-- `id`, `_id`, `fullName`, `phone`, `email`, `role`
-- Roles: `BUYER`, `SELLER`, `RIDER`, `ADMIN`
-- Recommendation profile and discovery preferences may influence markets/products.
-
-Market:
-- `_id`, `name`, `slug`, `code`, `type`, `ownerId`, `description`, `imageUrl`
-- `location.address`, `location.coordinates`
-- `operatingHours.open`, `operatingHours.close`, `operatingHours.daysOpen`
-- `isActive`, `rating`, `totalSellers`, `activeProducts`, `totalOrders`, `createdAt`
-- Display public markets and individual shops with distinct but related card treatments.
-
-Seller profile:
-- `userId`, `marketId`, `stallId`, `stallName`, `description`
-- `shopDetails.name`, `shopDetails.slug`, `shopDetails.code`
-- `shopDetails.logoUrl`, `shopDetails.bannerUrl`, `shopDetails.imageUrl`, `shopDetails.hubImageUrl`
-- `shopDetails.tagline`, `shopDetails.description`, `shopDetails.categories`
-- `shopDetails.operatingHours.open`, `shopDetails.operatingHours.close`, `shopDetails.operatingHours.daysOpen`
-- `isApproved`, `isOnVacation`, `vacationMessage`, `rating`, `totalSales`, `totalOrders`
-- Documents: `businessPermitUrl`, `rraCertificateUrl`, `idCardUrl`, `stallPhotoUrl`
-- Capabilities: `delivery`, `bulk`, `custom`, `returns`
-
-Product:
-- `_id`, `sellerId`, `marketId`, `name`, `description`
-- `category`, `categoryId`, `categoryLabel`, `productType`, `attributeSetVersion`
-- `price`, `priceUpdatedAt`, `unit`
-- `stockType`: `finite`, `infinite`, `on_demand`
-- `stockQuantity`, `inStock`
-- `images`
-- `weight`, `minWeight`, `maxWeight`
-- `minPrice`, `maxPrice`
-- `attributes`
-- `variantAxes`: `key`, `label`, `values`
-- `variants`: `sku`, `title`, `options`, `price`, `unit`, `stockType`, `stockQuantity`, `inStock`, `images`, `videoUrl`, `thumbnailUrl`, `attributes`, `isActive`
-- `isApproved`, `isActive`, `isMadeInRwanda`, `isNegotiable`, `rating`, `totalOrders`
-- Promotions may attach to the whole product or to `variantSku`.
-
-Promotion:
-- `sellerId`, `productId`, `variantSku`, `type`, `discount`
-- `startDate`, `endDate`, `maxQuantity`, `currentSales`, `promotedPrice`, `isActive`
-- Promotion cards must show the base product price plus any variant override, then discount/promoted price.
-- Sort promotion displays by highest removed percentage or strongest discount first.
-
-Seller video and stories:
-- `sellerId`, `sellerUserId`, `marketId`, `productId`, `variantSku`
-- `placement`: `PRODUCT_AD`, `SHOP_AD`, `STORY`
-- `categoryId`, `title`, `caption`, `videoUrl`, `thumbnailUrl`, `durationSeconds`, `tags`
-- `processingStatus`, `moderationStatus`, `moderationReason`
-- `isActive`, `isArchived`, `viewCount`, `likeCount`, `dislikeCount`, `commentCount`, `comments`
-- Stories should visually communicate 24-hour freshness where the backend provides story placement. Use dynamic video thumbnails from data.
-
-Order/transaction:
-- `orderNumber`
-- Buyer: `buyer.userId`, `buyer.fullName`, `buyer.phone`, `buyer.nationalId`, `buyer.deliveryAddress.address`, `buyer.deliveryAddress.coordinates.lat`, `buyer.deliveryAddress.coordinates.lng`
-- Seller: `seller.sellerId`, `seller.userId`, `seller.fullName`, `seller.stallId`, `seller.marketId`
-- Products: `productId`, `name`, `unitPrice`, `quantity`, `unit`, `category`, `categoryId`, `imageUrl`, `images`, `attributes`, `variantId`, `variantTitle`, `sellerSku`, `priceSnapshotAt`, `weight`, `customization`, `prototypeImage`
-- Financials: `subtotal`, `deliveryFee`, `platformCommission`, `gatewayFee`, `totalAmount`, `sellerPayout`, `riderPayout`
-- Payment: `method`, `status`, `transactionRef`, `errorMessage`, `paidAt`
-- Settlement: `status`, `sellerStatus`, `sellerPayoutRef`, `sellerSettledAt`, `riderStatus`, `riderPayoutRef`, `riderSettledAt`, `platformStatus`, `platformCommissionRef`, `platformSettledAt`, `releaseAvailableAt`, `releaseTriggeredAt`, `payoutBlockedReason`, `lastError`, `updatedAt`
-- Refund: `status`, `amount`, `transactionRef`, `reason`, `requestedAt`, `refundedAt`, `error`
-- Dispute: `isDisputed`, `reason`, `evidenceUrls`, `raisedAt`, `resolvedAt`, `adminNote`, `resolution`
-- Messages: `senderId`, `senderRole`, `channel`, `recipientRole`, `content`, `imageUrl`, `type`, `quoteAmount`, `timestamp`
-- Status history: `status`, `changedBy`, `changedAt`, `note`
-- Security: `ipAddress`, `deviceInfo`, `isFlagged`, `flagReason`, `reviewedBy`, `reviewedAt`
-
-Order statuses to design:
-- `awaiting_quote`, `quote_sent`, `placed`, `confirmed`, `preparing`, `ready_for_pickup`, `picked_up`, `in_transit`, `awaiting_confirmation`, `delivered`, `disputed`, `resolved`, `cancelled`
-
-Payment and settlement states:
-- Payment: pending, paid, failed, refunded
-- Settlement: pending, escrow_held, release_pending, partial, settled, refunded, failed
-- Seller/rider/platform settlement: pending, paid, failed, skipped, pending_rider_assignment
-- Remember: "escrow" in UI means Paypack/payment-provider controlled settlement state, not RMF-held funds.
-
-Delivery:
-- `orderId`, `orderNumber`
-- Rider: `rider.riderId`, `rider.userId`, `rider.fullName`, `rider.phone`, `rider.plateNumber`
-- Pickup: `marketId`, `stallId`, `coordinates.lat`, `coordinates.lng`, `qrScannedAt`, `qrVerifiedBy`, `qrPayload`, `pickupPhotoUrl`, `sellerConfirmed`, `riderConfirmed`
-- Dropoff: `address`, `coordinates.lat`, `coordinates.lng`, `deliveredAt`
-- Route: `distanceKm`, `estimatedMinutes`, `actualMinutes`, `geometry`
-- Financials: `deliveryFee`, `baseDeliveryFee`, `searchSurcharge`, `totalAmount`
-- Dispatch: `strategy`, `currentRadiusMeters`, `nextRadiusMeters`, `maxRadiusMeters`, `broadcastCount`, `manualRebroadcastCount`, `notifiedRiderIds`, `lastBroadcastAt`, `acceptedAt`
-- Tracking: `lat`, `lng`, `recordedAt`
-- Status chips must cover assigned, en route, pending handover, picked up, delivered, and related statuses.
-
-Rider profile:
-- `userId`, `plateNumber`, `isApproved`, `isActive`
-- `currentLocation.lat`, `currentLocation.lng`, `currentLocation.updatedAt`
-- `rating`, `totalDeliveries`, `rejectionRate`
-- Documents: `licenseUrl`, `vehiclePhotoUrl`, `idCardUrl`, `insuranceUrl`
-
-Review:
-- `orderId`, `buyerId`, `targetType`: `seller`, `rider`, `market`, `product`
-- `targetId`, `rating`, `comment`, `createdAt`
-- Completed orders must expose separate review cards for seller, rider, market, and each product.
-
-Ledger entry:
-- `ledgerId`, `userId`, `transactionId`, `type`, `account`, `amount`, `currency`, `description`, `balanceAfter`, `provider`, `externalRef`, `status`, `metadata`, `createdAt`
-- This is accounting-only. Label as "Paypack settlement ledger" or "Accounting ledger", not RMF wallet funds.
-
-Profile change request:
-- `targetType`, `targetId`, `userId`, `status`, `requestedChanges`, `reviewNotes`, `reviewedBy`, `reviewedAt`, `appliedAt`, `auditTrail`
-
-Support ticket:
-- `name`, `email`, `phone`, `userId`, `subject`, `message`, `status`, `resolvedBy`, `resolvedAt`, `createdAt`
-
-## 4. Category Taxonomy Requirements
-
-All category UIs must use the current robust taxonomy model, not old static categories.
-
-Core data shape:
-- L1 category: `id`, `label`, `defaultUnit`
-- L2 subcategory: `id`, `label`, `defaultUnit`, `parentId`
-- L3 product type: `id`, `label`, `defaultUnit`, `productType`
-- Attribute fields: key, label, type, options/values
-- Variant axes: key, label, values
-
-Top-level category keys to show:
-- `grocery` - Groceries and Fresh Produce
-- `food` - Food and Beverage
-- `bakery` - Bakery and Patisserie
-- `fashion` - Fashion and Apparel
-- `shoes` - Shoes and Footwear
-- `sportswear` - Sportswear, Fitness and Outdoor
-- `hardware` - Hardware, Tools and Construction
-- `handicrafts` - Handicrafts and Rwandan Artisanship
-- `home` - Home, Furniture and Kitchen
-- `electronics` - Electronics and Tech
-- `cosmetics` - Cosmetics, Beauty and Health
-- `automotive` - Automotive, Moto and Transport
-- `education` - Stationery, Books, Toys and Learning
-- `agriculture` - Agriculture and Farming
-- `services` - Services and Professional Tasks
-- `events` - Events, Rentals and Entertainment
-- `property` - Real Estate and Property
-- `pets` - Pets and Animal Care
-- `solar-energy` - Solar, Renewable Energy and Clean Water
-- `office-business` - Office and Business Supplies
-- `finance` - Financial Products and Insurance
-- `other` - General and Other
-
-Smart unit rules:
-- If product type default unit is kg, the buying unit and price computation must visually read as kilogram-based.
-- If a seller selects carrots, root vegetables, dry beans, cereals, meat, or other kg-based types, show kg controls and avoid "pieces" language.
-- If a product has `minWeight`/`maxWeight`, show a range picker or range label.
-- If a product has `minPrice`/`maxPrice`, show a negotiable price range.
-- If shoes have a custom size variant, route the buyer into negotiation/availability-check flow.
-
-## 5. Global Components
-
-Header:
-- Sticky top header with RMF logo, live platform tag, search input, category suggestions, location badge, basket button with orange count, language selector EN/FR/KIN, and role/profile switcher.
-- Header must adapt between platform host and market subdomain context. Leaving a market returns to `localhost:3000` root, not a slug route.
-
-Cards:
-- Market card: cover image, verified badge, open/closed state, type, seller/product/order counts, location, rating, highest promotion percent, explore button.
-- Product card: image, name, category, unit, price, promoted price if active, Made in Rwanda badge, negotiable/on-demand badge, rating, seller/market, add/cart/negotiation affordance.
-- Order card: product thumbnail, order number, status, payment status, total amount, seller/rider names where available, primary action.
-- Delivery card: pickup/dropoff, rider, route, fee, status, QR/proof indicators.
-
-Maps:
-- Use Leaflet-style panels for market maps, rider tracking, pin-drop checkout, and admin live operations.
-- Map containers must be visually stable and not reused by multiple instances in one DOM panel.
-
-Chat:
-- Role-colored bubbles: buyer charcoal/neutral, seller orange, rider blue, admin dark/green.
-- Always show channel (`ORDER`, `DELIVERY`, `DISPUTE`) if it matters.
-- Quote message blocks show RWF amount, delivery fee context, accept/counter/decline controls for buyer.
-- Closed orders lock message inputs with a clear security explanation.
-- Attachments render as image previews inside message bubbles.
-
-Tables:
-- Dense but readable rows, sticky headers on long panels, monospace refs, compact status chips, clear empty state.
-
-Forms:
-- Use stepper or segmented controls for product stock type, market type, payment method, recurring order, status filters, and approval tabs.
-- Upload fields must preview the actual uploaded media/document.
-
-## 6. Route-By-Route Screen Specifications
-
-### `/` Buyer Home And Exploration
-
-Data:
-- Markets from `/markets?activeOnly=true`
-- Product recommendations from `/products/recommendations/for-me?limit=24`
-- Public stats from `/orders/public/stats`
-- Seller videos from `/seller-videos?limit=8`
-- User profile/preferences when logged in
+- loading skeleton
+- empty state
+- data loaded state
+- network/offline failure
+- unauthorized/role mismatch
+- pending approval
+- rejected approval
+- payment pending
+- payment failed
+- quote pending
+- quote accepted
+- rider search expanding
+- no rider found
+- dispute active
 
 Design:
-- Sticky global navigation.
-- Hero section: "Trusted markets delivered to you." Use real market/produce imagery, ambient orange glow, search, "Explore Stalls", "Start Selling", and a live activity map.
-- Platform pulse row: Active Sellers, Live Deliveries, Orders Today, Avg Delivery Time.
-- Rwanda's Market Hubs grid with dynamic Market cards.
-- Trending products grid using Product card fields.
-- Made in Rwanda section limited to a curated dynamic category shelf. Do not render hundreds of category bubbles. Use 8 to 12 visible chips plus "View all".
-- Market stories shelf: dynamic `SellerVideo` story/ad thumbnails with live/view count cues.
-- Side panels: featured markets, most bought products, trust indicators.
-- Empty states: no active markets, no products, videos unavailable, API offline.
 
-Mobile:
-- Header collapses cleanly.
-- Hero search first, map below.
-- Horizontal story shelf and category chips.
-- Product and market cards in one-column or two-column compact grid.
-
-### `/markets` Explore Markets Directory
-
-Data:
-- Markets, product recommendations, catalog facets, catalog categories, promotions.
-- Query inputs: `search`, `location`, `lat`, `lng`, product category, attribute filters, price range, market type.
-
-Design:
-- Hero showing count of markets displayed.
-- Filter panel with search, price range, market type, top-level taxonomy chips, facet attribute selectors.
-- Product result section appears when product filters are active. It must state which markets the displayed products come from.
-- Promotional markets shelf sorted by strongest discount.
-- Recommended, New Markets, Most Bought From, Top Rated shelves using compact market cards at roughly 70 percent of the current oversized visual footprint.
-- Marketplace directory grid with accurate `0 results` empty state when applicable.
-- Map explorer at bottom with mapped hubs and live rider layer.
-
-States:
-- Live markets offline warning.
-- Product fetch offline warning.
-- Location filter active.
-- Loading skeletons.
-
-### `/market/[slug]` Market Detail And Stalls
-
-Data:
-- Market by slug.
-- Products by market.
-- Promotions by market.
-- Catalog facets by market.
-- Seller videos by market.
-- Market reviews.
-
-Design:
-- Panoramic market cover using `imageUrl` or seller/shop banner image. Market logo must use logo image where present.
-- Top badges: verified, open/closed, rating, operating hours, delivery ETA, total sellers, product count, active promotion percent.
-- Under the hero, immediately show the market ad/video spotlight if available. This must be prominent enough for buyers to see without scrolling far.
-- Tabs: Shop Products, Seller Videos, About the Market, Reviews and Feedback.
-- Shop tab:
-  - Left taxonomy/category/filter accordion.
-  - Right product rails: promotions, most bought, filtered all products.
-  - Market stories dynamic rail.
-  - Top rated seller mini cards.
-- Videos tab: seller video feed.
-- About tab: description, operational facts, location map.
-- Reviews tab: market reviews with verified buyer look.
-
-Important copy:
-- Do not say RMF holds escrow funds. Use "Paypack-protected payment flow" or "provider-protected settlement".
-
-### `/product/[productId]` And `/market/[slug]/product/[productId]` Product Detail
-
-Data:
-- Product by ID.
-- Product reviews.
-- Market and seller from populated `marketId` and `sellerId`.
-- Variants, attributes, promotion, stock, negotiable ranges.
-
-Design:
-- Multi-image carousel with thumbnails, zoom/lightbox, variant image switching.
-- Breadcrumbs: Home, Markets, Market, Product.
-- Product info panel:
-  - Category breadcrumb and category label.
-  - H1 product name.
-  - Seller/market identity.
-  - Badges: Made in Rwanda, negotiable, on demand, verified origin.
-  - Stock type, stock quantity, in-stock indicator.
-  - Unit and weight controls.
-  - Price: base price plus selected variant override. If promotion active, show crossed original and promoted price.
-  - Variant picker with SKU, title, option values, variant image, stock, unit, and price delta.
-  - Price range and weight range if `minPrice/maxPrice` or `minWeight/maxWeight` exist.
-  - Customization textarea for on-demand and custom shoe size.
-  - Standard item action: quantity stepper plus Add to Cart.
-  - Negotiable/on-demand/custom shoe action: Negotiate or Check Availability, opening quote order and redirecting to `/orders?open=ID`.
-- Review section:
-  - Rating summary, distribution bars, verified buyer reviews, merchant response placeholder.
-
-States:
-- Product unavailable.
-- Sold out.
-- On-demand.
-- Negotiable.
-- Custom shoe size.
-- Promotion expired or active.
-
-### `/products` Product Discovery
-
-Data:
-- Product catalog and recommendation results.
-- Catalog taxonomy and facets.
-
-Design:
-- Search-and-filter product grid.
-- Product cards must show category, unit, variant awareness, promotion, seller/market, Made in Rwanda, negotiable, and stock state.
-- Use compact filters, not a huge side rail on mobile.
-
-### `/videos` Public Seller Video Feed
-
-Data:
-- Seller videos.
-- Optional filters for market, seller, product, story.
-
-Design:
-- Video-first marketplace feed with thumbnails, title, caption, seller, market, placement, views, likes, comments, tags.
-- Story placement looks time-sensitive.
-- Product ad and shop ad placements include CTA to product/market.
-- Moderation/processing unavailable states.
-
-### `/cart`
-
-Data:
-- Cart context items with product image, product title, category, unit, variant, quantity, price, subtotal, seller/market.
-
-Design:
-- Itemized checkout table:
-  - Image
-  - Item title
-  - Category badge
-  - Selected variant/weight/unit
-  - Quantity stepper
-  - Subtotal in RWF
-  - Trash icon action
-- Summary panel with subtotal, estimated delivery, service/gateway fee preview, checkout button.
-- Group items by seller if useful because checkout creates separate orders per seller.
-- Empty cart state routes to `/markets`.
-
-### `/checkout`
-
-Data:
-- Cart context.
-- Market coordinates from first item market.
-- Delivery fee from `/deliveries/fee`.
-- Order creation via Paypack payment prompt through `/orders`.
-
-Design:
-- Four-step checkout:
-  1. Delivery Location
-  2. Payment and Details
-  3. Schedule Delivery
-  4. Summary Receipt Board
-- Delivery Location:
-  - Pin-drop map.
-  - Coordinates display.
-  - "Location Pinned" status.
-  - Delivery fee updates as coordinates move.
-- Payment:
-  - Radio cards: MTN MoMo, Airtel Money, Tigo Cash.
-  - Fields: mobile money phone, delivery notes, National ID when total > 50000 RWF.
-  - NID description: "By law, orders over 50,000 RWF require a valid Rwandan National ID for verification."
-- Schedule:
-  - Recurring order toggle.
-  - Frequency: Weekly, Monthly.
-  - Delivery day selector Monday through Sunday.
-- Summary:
-  - Subtotal, Delivery Fee, 2 percent gateway/service fee, Grand Total.
-  - Button states: Confirm and Pay, Processing, Awaiting Payment.
-  - Explain payment prompt is sent to the phone.
-
-### `/orders`
-
-Data:
-- Buyer orders by buyer ID.
-- Optional `open=ID` parameter opens receipt/chat modal.
-- Delivery cache per delivery ID.
-
-Design:
-- Order history list with product thumbnail, order number, status, first product, seller, created date, total paid, tracking link, receipt action.
-- Auto-refresh every 10 seconds visual cue.
-- Receipt modal uses the shared receipt view and negotiation chat where applicable.
-- Empty state: no orders yet, CTA to Explore Markets.
-
-### `/orders/[orderId]/tracking`
-
-Data:
-- Order by ID with messages, status, payment, financials.
-- Delivery by delivery ID.
-- Live order and delivery sockets.
-- Reviews for completed order.
-
-Design:
-- Authorization-aware tracking workspace.
-- Header with order number, status, payment status, receipt action.
-- Timeline with all order statuses and current step.
-- Map area switches between broadcast map, rider tracking map, and delivered/resolved complete state.
-- Chat area:
-  - Segmented control to choose Seller or Rider.
-  - Seller chat uses `ORDER` channel and quote controls.
-  - Rider chat uses `DELIVERY` channel and unlocks after dispatch.
-  - Closed delivered/resolved/cancelled orders lock message input.
-- Rider controls:
-  - Pickup photo upload.
-  - Stall QR scanner/payload field.
-  - Verify pickup with QR.
-  - Confirm item handover.
-  - Mark delivered.
-- Buyer controls:
-  - Confirm receipt during `awaiting_confirmation`.
-  - Raise dispute after delivered.
-- Review panel:
-  - Separate cards for seller, rider, market, and each product.
-  - Each can be submitted independently.
-
-### `/dashboard` Buyer Dashboard
-
-Data:
-- User profile, active orders, wishlist, recent ledger/order activity if available.
-
-Design:
-- Greeting banner with avatar and buyer profile.
-- Active orders count, wishlist count, recent purchases, open disputes, pending reviews.
-- Quick action cards: continue shopping, orders, wishlist, preferences, support.
-- Use the Paypack accounting language if showing financial history.
-
-### `/wallet`
-
-Data:
-- Ledger entries and payout/settlement history.
-
-Design:
-- Rename conceptually in UI to "Paypack Settlement Ledger" or "Accounting Ledger".
-- Display balance only as accounting/reserve/settlement summary, not stored customer funds.
-- Table columns:
-  - Date
-  - Ledger ID
-  - Transaction ID
-  - Type: debit/credit
-  - Account
-  - Amount RWF
-  - Provider
-  - External Ref
-  - Status
-  - Balance After
-- Include clear notice: "Money movement is processed by Paypack. RMF records accounting entries only."
-
-### `/wishlist`
-
-Data:
-- Wishlist product IDs and populated products where available.
-
-Design:
-- Saved products grid with product image, seller/market, price, promotion, stock, add/remove actions.
-- Empty state with market browsing CTA.
-
-### `/preferences`
-
-Data:
-- Discovery preferences, selected markets/categories, recommendation profile.
-
-Design:
-- Preference center with category interests, preferred markets, distance/location preference, notification toggles.
-- Show how preferences improve recommendation rows on `/markets` and `/`.
-
-### `/settings`
-
-Data:
-- User profile and role-specific settings.
-
-Design:
-- Account settings, contact details, notification preferences, security summary.
-- Role switcher callouts for seller/rider/admin where available.
-
-### `/contact`
-
-Data:
-- Support ticket fields: name, email, phone, subject, message.
-
-Design:
-- Contact admin form with support status explanation.
-- Include logged-in user context if present.
-- Confirmation state after ticket creation.
-
-### `/login` And `/register`
-
-Design:
-- Premium auth forms using the same Solaris Ivory visual identity.
-- Role selection in register: buyer, seller, rider.
-- Login states: loading, error, success redirect.
-- Register states: seller/rider onboarding continuation CTAs.
-
-### `/privacy` And `/terms`
-
-Design:
-- Legal text layouts with readable headings and anchored sections.
-- Payment language must be Paypack/provider-based.
-- Mention National ID only as required for high-value order verification.
-
-## 7. Seller Routes
-
-### `/seller/onboarding`
-
-Data:
-- Seller profile submission fields and document uploads.
-- Market/shop info and approval status.
-
-Design:
-- Multi-step onboarding:
-  - Shop identity: name, slug, tagline, description, categories.
-  - Market assignment/location.
-  - Operating hours.
-  - Media: logo, banner, image/hub image.
-  - Documents: business permit, RRA certificate, ID card, stall photo.
-  - Capabilities: delivery, bulk, custom, returns.
-  - Agreement/contract.
-- If profile exists and `isApproved=false`, show "Application received, under review" state. Do not ask to refill approval details.
-- If approved, route-oriented CTA to seller dashboard.
-
-### `/seller/dashboard`
-
-Data:
-- Seller profile.
-- Products by seller.
-- Active orders.
-- Paypack/accounting summary.
-- Seller analytics.
-
-Design:
-- Seller status header with shop image/logo, stall ID, approval state, vacation state.
-- KPI cards:
-  - Daily/monthly revenue from completed orders.
-  - Active product listings.
-  - Pending orders needing action.
-  - Rating and reviews.
-  - Paypack settlement amount/status, not RMF wallet.
-- Pending order queue with actions:
-  - Send quote
-  - Mark preparing
-  - Ready for pickup
-  - Open order
-- Performance panel: fulfillment rate, repeat buyer rate, average prep time.
-- Quick links: products, promotions, videos, earnings, reviews, QR.
-
-### `/seller/products`
-
-Data:
-- Seller product list.
-
-Design:
-- Inventory table/grid with image, name, category, unit, stock type, stock quantity, price, min/max price, variants count, approval state, active state, total orders, rating.
-- Actions: edit, pause/activate, delete/archive, add product.
-- Filters: category, approval, stock type, active, negotiable.
-
-### `/seller/products/new`
-
-Data:
-- Catalog categories from `/products/catalog/categories`.
-- Product form fields and image upload.
-
-Design:
-- Product editor with Single Listing and Bulk Import tabs.
-- Category drilldown picker L1/L2/L3.
-- Smart attribute fields from selected category.
-- Unit auto-set from selected product type default unit.
-- Price, min/max price for negotiable, stock type, quantity, weight/min/max weight.
-- Images preview grid with real uploaded images.
-- Variants editor:
-  - Axes and options.
-  - SKU, title, option values, price delta, unit, stock, images, video thumbnail.
-- Bulk import:
-  - Template download.
-  - CSV/Excel upload.
-  - Import results: total, successful, failed, error logs.
-
-### `/seller/orders`
-
-Data:
-- Seller orders by seller user ID/status.
-
-Design:
-- Order management list with filters by status, payment, settlement, date.
-- Show buyer, products, total, delivery state, quote state, unread messages.
-- Bulk readable but compact.
-
-### `/seller/orders/[orderId]`
-
-Data:
-- Single order, delivery, messages, financials, status history.
-
-Design:
-- Seller operations dossier:
-  - Header with order number, initialized date, payment status.
-  - Shared receipt action.
-  - Negotiation/client conversation panel using `OrderChat`.
-  - Buyer details and order notes.
-  - Items ordered table with image, SKU/product ID, valuation, quantity, total.
-  - Financial reconciliation: subtotal, delivery, total, seller payout, platform commission, gateway fee.
-  - Logistics handover protocol:
-    - Rider assignment.
-    - Dispatch broadcasts.
-    - Confirm handover.
-    - Rider scan and merchant confirmation status.
-  - Fulfillment timeline.
-- If order is closed/resolved/cancelled, messaging and status actions lock.
-
-### `/seller/promotions`
-
-Data:
-- Products and variants.
-- Promotions.
-
-Design:
-- Create/edit promotion form:
-  - Product selector.
-  - Variant selector with unique display key using `variant.sku`, `variant.id`, and index fallback.
-  - Apply to whole product option.
-  - Type, discount, date range, max quantity.
-  - Computed original price: base product price plus selected variant override.
-  - Computed promoted price.
-- Promotion list sorted by highest discount impact.
-- State warnings for expired, inactive, sold out, duplicate variant SKU.
-
-### `/seller/videos`
-
-Data:
-- Seller videos/stories.
-
-Design:
-- Seller video management:
-  - Upload video, thumbnail, title, caption, placement, product, variantSku, categoryId, tags.
-  - Status chips: processing, moderation, active, archived.
-  - Metrics: views, likes, dislikes, comments.
-  - Story placement highlights 24-hour freshness if applicable.
-
-### `/seller/earnings`
-
-Data:
-- Ledger entries, settled orders, Paypack payout references.
-
-Design:
-- Paypack settlement earnings page.
-- Do not show RMF-held wallet copy.
-- Show:
-  - Available settled amount from accounting.
-  - Pending settlement.
-  - Seller payout refs.
-  - Failed payout retry status.
-  - Table of order, subtotal, commission, gateway fee, seller payout, Paypack ref, status.
-
-### `/seller/analytics`
-
-Data:
-- Seller dashboard analytics and chart data.
-
-Design:
-- Sales, fulfillment, product performance, promotion impact, conversion, customer repeats, time filters.
-
-### `/seller/reviews`
-
-Data:
-- Reviews targeting seller and products.
-
-Design:
-- Rating summary, filter by target type, review cards, merchant response placeholder.
-
-### `/seller/qr`
-
-Data:
-- Seller stall QR credential.
-
-Design:
-- Printable QR credential page for pickup verification.
-- Include stall ID, shop name, market, verification instructions, last generated timestamp.
-
-## 8. Rider Routes
-
-### `/rider/register`
-
-Data:
-- Rider application fields and document uploads.
-
-Design:
-- Registration with plate number, license, vehicle photo, ID card, insurance.
-- Submit state and under-review state.
-
-### `/rider/setup`
-
-Design:
-- Post-approval setup checklist:
-  - Permissions for location.
-  - Online status readiness.
-  - Document status.
-  - Test map/location panel.
-
-### `/rider/dashboard`
-
-Data:
-- Rider profile.
-- Rider stats.
-- Active deliveries.
-- Available deliveries.
-- Current location.
-- Paypack/accounting summary.
-
-Design:
-- Rider console:
-  - Online/location status.
-  - Earnings, completion rate, rating, total deliveries.
-  - Live delivery map.
-  - Available deliveries list with pickup/dropoff, fee, accept action.
-  - Active delivery panel with current order, dropoff, delivery fee, tracking link.
-  - Queued deliveries.
-- Location heartbeat visual and stale-location warning.
-
-### `/rider/deliveries`
-
-Data:
-- Rider delivery history and active deliveries.
-
-Design:
-- Delivery table/cards with order number, pickup, dropoff, distance, ETA, fee, status, proof/QR state.
-- Filters by active, completed, failed, disputed.
-
-### `/rider/earnings`
-
-Data:
-- Rider payout/ledger entries.
-
-Design:
-- Paypack rider payout history with delivery fee split, payout ref, status, dates.
-- Do not call it RMF-held balance.
-
-## 9. Admin Routes
-
-### `/admin`
-
-Data:
-- Analytics, operations overview, fraud alerts, pending sellers/riders/products, disputes, orders, markets, payouts, profile change requests, taxonomy, accounting.
-
-Design:
-- Admin left navigation tabs:
-  - Analytics
-  - Operations
-  - Live Map
-  - Sellers
-  - Products
-  - Riders
-  - Approvals
-  - Disputes
-  - Markets
-  - Taxonomy
-  - Accounting
-  - Payouts
-  - Profile Changes
-  - Fraud Watch
-- Top readiness strip:
-  - Paypack cash-in configured
-  - Paypack webhook configured
-  - Settlement MoMo configured
-  - SMS
-  - WhatsApp
-  - SMTP
-  - Mapbox/OpenCage geocoder
-- Analytics:
-  - GMV, commission, gateway fees, seller payout, rider payout, active orders, dispute exposure.
-- Operations:
-  - Queue cards by status.
-  - Dispatch health.
-  - Service readiness.
-- Approvals:
-  - Seller document panels and approve/decline.
-  - Rider document panels and approve/decline.
-  - Profile change requests approve/reject.
-- Products:
-  - Pending product approval table with product media and category.
-- Markets:
-  - Market creation/edit modal with image upload and location.
-- Taxonomy:
-  - Category governance, form fields, attributes JSON/axes JSON, warnings.
-- Accounting:
-  - Order financial report with export CSV.
-  - Paypack settlement refs.
-  - Dispute/refund status.
-- Payouts:
-  - Paypack payout approvals/status, not wallet withdrawals.
-- Fraud:
-  - Fraud alerts with severity, actor, reason, linked orders, next step.
-
-### `/admin/disputes/[orderId]`
-
-Data:
-- Single disputed order with order, delivery, messages, dispute evidence, refund status.
-
-Design:
-- Full single dispute review page:
-  - Horizontal three-panel order views: buyer/client view, seller view, rider view.
-  - Each panel shows that role's timeline, messages, proof images, QR events, payment/settlement view, and responsibilities.
-  - Evidence gallery from `dispute.evidenceUrls`, chat attachments, delivery pickup photo.
-  - Admin resolution actions:
-    - Refund buyer through Paypack refund/reversal.
-    - Redeliver.
-    - Release/settle where allowed.
-    - Reject dispute.
-  - BPF reserve accounting panel only as internal ledger, not real fund holding.
-  - Immutable audit notes.
-
-### `/admin/orders/[orderId]`
-
-Data:
-- Single order dossier.
-
-Design:
-- Admin order review with all fields:
-  - Buyer, seller, rider, product lines, delivery, payment, settlement, refund, dispute, messages, status history, security.
-  - Controls for operational override with confirmation.
-  - Read-only Paypack refs and provider state.
-
-### `/admin/support`
-
-Data:
-- Support tickets.
-
-Design:
-- Support inbox:
-  - Name, email, phone, user, subject, message, status, created date.
-  - Resolve/close actions.
-  - Filters by OPEN, IN_PROGRESS, RESOLVED, CLOSED.
-
-## 10. Security, Payment, Refund, And Settlement UX
-
-Payment:
-- Buyers pay via Paypack with MTN MoMo, Airtel Money, or Tigo Cash.
-- UI must show phone prompt and "Awaiting Payment" state.
-- Use `payment.transactionRef` and `payment.paidAt` as provider telemetry.
-
-Payout:
-- On confirmation, Paypack payout split:
-  - Seller receives subtotal minus RMF commission.
-  - Rider receives delivery payout.
-  - RMF commission/gateway/service accounting is recorded.
-- Display seller/rider/platform settlement refs and statuses.
-
-Refund:
-- Approved disputes call Paypack refund/reversal to buyer MoMo number.
-- Display `refund.status`, `refund.amount`, `refund.transactionRef`, `refund.reason`, `refund.requestedAt`, `refund.refundedAt`, `refund.error`.
-- BPF is an internal accounting reserve only. Do not show it as a spendable wallet.
-
-Closed orders:
-- Delivered, resolved, completed, closed, and cancelled orders must show all completed steps and lock messages/actions that are no longer allowed.
-- Provide a clear security notice: "This order is closed. Messages are locked for security."
-
-National ID:
-- Orders over 50,000 RWF require a 16-digit Rwandan NID input on checkout.
-
-## 11. Responsive And State Coverage
-
-For every route, include desktop, tablet, and mobile layouts.
-
-Every major screen must include:
-- Loading skeleton
+- Buyer marketplace
+- Market discovery
+- Market storefront
+- Product detail
+- Videos feed
+- Cart and checkout
+- Order tracking
+- Buyer preferences
+- Seller portal
+- Rider portal
+- Admin portal
+- Auth pages
+- Settings pages
+- Loading, empty, offline, and error states
+
+Include reusable components:
+
+- Header
+- Role-aware sidebar
+- Mobile bottom nav
+- Product card
+- Variant selector
+- Market card
+- Seller card
+- Video card
+- Order card
+- Quote card
+- Payment summary
+- Escrow timeline
+- Delivery timeline
+- Map panel
+- Filter drawer
+- Category drilldown picker
+- Admin data table
+- Status chip
+- Skeleton loader
 - Empty state
-- Error/offline state
-- Auth-required state where relevant
-- Permission denied state for protected order tracking
-- Active/live socket connected state
-- API retry or stale data state where useful
+- Toast/notification
+- Modal and drawer
 
-Map safety:
-- Each map panel must have stable dimensions and a unique container context.
-- Do not render multiple live maps inside one reused DOM container.
-
-Accessibility:
-- Buttons have clear labels.
-- Icon-only controls have hover tooltip text.
-- Forms have labels.
-- Tables remain readable on mobile through cards or horizontal scroll.
-
-## 12. Final Output From Google Stitch
-
-Generate the complete website design frames for all implemented routes listed in section 2.
-
-For each frame, annotate:
-- Route path.
-- Primary data objects used.
-- Key states included.
-- Desktop and mobile behavior.
-
-Do not output a generic marketing site. Output a full RMF operational commerce design system that can be implemented directly in the current Next.js frontend.
+The final design should make RMF feel like a complete trust-commerce platform for Rwandan physical markets, with strong orange branding, local market imagery, map-driven discovery, escrow clarity, role-specific workflows, and compact professional e-commerce layouts.

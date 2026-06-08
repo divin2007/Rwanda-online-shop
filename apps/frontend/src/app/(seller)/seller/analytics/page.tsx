@@ -24,15 +24,15 @@ export default function SellerAnalyticsPage() {
 
   return (
     <Layout>
-      <div className="w-full p-6 md:p-8 space-y-16 animate-reveal pb-32">
+      <div className="max-w-7xl mx-auto space-y-16 animate-reveal pb-32">
         {/* ── Header Section ── */}
-        <div className="border-b border-outline-variant pb-12">
+        <div className="border-b-2 border-[#e0e0e0] pb-12">
           <div className="flex items-center gap-4 mb-6">
-             <div className="w-12 h-px bg-primary" />
-             <p className="text-[10px] font-black text-primary uppercase tracking-[0.5em]">Analytics & Reporting</p>
+             <div className="w-12 h-px bg-[#ffd700]" />
+             <p className="text-[10px] font-black text-[#ff6b00] uppercase tracking-[0.5em]">Analytics & Reporting</p>
           </div>
-          <h1 className="text-6xl md:text-7xl font-sans text-on-surface leading-[0.85] tracking-normal">Sales Analytics</h1>
-          <p className="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest mt-6 opacity-80">
+          <h1 className="text-7xl md:text-8xl font-sans text-[#1b1c1c] leading-[0.85] tracking-normal">Sales Analytics</h1>
+          <p className="text-[10px] font-bold text-[#414844] uppercase tracking-widest mt-6 opacity-80">
             Performance report for {profile?.shopDetails?.name || 'Your Shop'}
           </p>
         </div>
@@ -40,15 +40,15 @@ export default function SellerAnalyticsPage() {
         {/* ── High Level Metrics ── */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
            {[
-             { label: 'Total Revenue', val: `${summary?.salesToday?.toLocaleString() || 0} RWF`, sub: 'Lifetime sales volume', icon: <DollarSign className="w-12 h-12 text-primary" /> },
-             { label: 'Total Orders', val: summary?.totalOrders || 0, sub: 'All processed orders', icon: <Package className="w-12 h-12 text-primary-container" /> },
-             { label: 'Average Prep Time', val: avgPrepTime, sub: 'Time from order to pickup', icon: <Zap className="w-12 h-12 text-primary" /> }
+             { label: 'Total Revenue', val: `${summary?.salesToday?.toLocaleString() || 0} RWF`, sub: 'Lifetime sales volume', icon: <DollarSign className="w-12 h-12 text-[#ff6b00]" /> },
+             { label: 'Total Orders', val: summary?.totalOrders || 0, sub: 'All processed orders', icon: <Package className="w-12 h-12 text-primary" /> },
+             { label: 'Average Prep Time', val: avgPrepTime, sub: 'Time from order to pickup', icon: <Zap className="w-12 h-12 text-amber-500" /> }
            ].map((stat, i) => (
-             <div key={i} className="bg-surface-container-lowest border border-outline-variant border-l-4 border-l-primary p-8 shadow-sm hover:shadow-md transition-shadow relative overflow-hidden group">
+             <div key={i} className="bg-white border border-[#e0e0e0] border-l-4 border-l-[#1b1c1c] p-8 shadow-sm hover:shadow-md transition-shadow relative overflow-hidden group">
                 <div className="absolute top-4 right-4 opacity-20 group-hover:opacity-40 transition-opacity">{stat.icon}</div>
-                <p className="text-[9px] font-black uppercase tracking-widest text-on-surface-variant mb-2">{stat.label}</p>
-                <h3 className="text-4xl font-sans tracking-normal text-on-surface">{stat.val}</h3>
-                <p className="text-[9px] font-medium uppercase tracking-widest text-primary mt-4">{stat.sub}</p>
+                <p className="text-[9px] font-black uppercase tracking-widest text-[#414844] mb-2">{stat.label}</p>
+                <h3 className="text-4xl font-sans tracking-normal text-[#1b1c1c]">{stat.val}</h3>
+                <p className="text-[9px] font-medium uppercase tracking-widest text-[#ff6b00] mt-4">{stat.sub}</p>
              </div>
            ))}
         </div>
@@ -56,15 +56,15 @@ export default function SellerAnalyticsPage() {
         {/* ── Detailed Analytics Matrix ── */}
         <div className="space-y-12">
            {/* Revenue Chart */}
-           <div className="bg-surface-container-lowest border border-outline-variant p-8 md:p-10 space-y-10 shadow-sm flex flex-col">
-              <div className="flex justify-between items-end border-b border-outline-variant pb-6">
+           <div className="bg-white border border-[#e0e0e0] p-8 md:p-10 space-y-10 shadow-sm flex flex-col">
+              <div className="flex justify-between items-end border-b border-[#e0e0e0] pb-6">
                  <div>
-                    <h3 className="text-3xl font-sans tracking-normal text-on-surface">Revenue Trend</h3>
-                    <p className="text-[9px] font-black uppercase tracking-[0.2em] text-on-surface-variant mt-2 opacity-50">Last 30 Days</p>
+                    <h3 className="text-3xl font-sans tracking-normal text-[#1b1c1c]">Revenue Trend</h3>
+                    <p className="text-[9px] font-black uppercase tracking-[0.2em] text-[#414844] mt-2 opacity-50">Last 30 Days</p>
                  </div>
                  <div className="flex items-center gap-2">
-                    <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" />
-                    <p className="text-[9px] font-black text-on-surface uppercase tracking-widest">Live</p>
+                    <div className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse" />
+                    <p className="text-[9px] font-black text-[#1b1c1c] uppercase tracking-widest">Live</p>
                  </div>
               </div>
               <div className="flex-1 min-h-[300px]">
@@ -73,11 +73,11 @@ export default function SellerAnalyticsPage() {
            </div>
 
            {/* Top Products */}
-           <div className="bg-surface-container-lowest border border-outline-variant p-8 md:p-10 space-y-10 shadow-sm relative overflow-hidden flex flex-col">
-              <div className="flex justify-between items-end border-b border-outline-variant pb-6">
+           <div className="bg-white border border-[#e0e0e0] p-8 md:p-10 space-y-10 shadow-sm relative overflow-hidden flex flex-col">
+              <div className="flex justify-between items-end border-b border-[#e0e0e0] pb-6">
                  <div>
-                    <h3 className="text-3xl font-sans tracking-normal text-on-surface">Top Products</h3>
-                    <p className="text-[9px] font-black uppercase tracking-[0.2em] text-on-surface-variant mt-2 opacity-50">Best selling items by volume</p>
+                    <h3 className="text-3xl font-sans tracking-normal text-[#1b1c1c]">Top Products</h3>
+                    <p className="text-[9px] font-black uppercase tracking-[0.2em] text-[#414844] mt-2 opacity-50">Best selling items by volume</p>
                  </div>
               </div>
               
@@ -86,12 +86,12 @@ export default function SellerAnalyticsPage() {
                     analytics.performance.map((prod: any, i: number) => (
                        <div key={i} className="group">
                           <div className="flex justify-between items-end mb-2">
-                             <span className="text-[10px] font-black uppercase tracking-widest text-on-surface line-clamp-1 pr-4">{prod.name}</span>
-                             <span className="text-base font-sans text-primary flex-shrink-0">{prod.sales} Sold</span>
+                             <span className="text-[10px] font-black uppercase tracking-widest text-[#1b1c1c] line-clamp-1 pr-4">{prod.name}</span>
+                             <span className="text-base font-sans text-[#ff6b00] flex-shrink-0">{prod.sales} Sold</span>
                           </div>
-                          <div className="h-1.5 bg-surface-container-low relative rounded-full overflow-hidden">
+                          <div className="h-1.5 bg-[#fcf9f8] relative rounded-full overflow-hidden">
                              <div 
-                                className="absolute top-0 left-0 h-full bg-primary transition-all duration-1000 rounded-full" 
+                                className="absolute top-0 left-0 h-full bg-[#e05300] transition-all duration-1000 rounded-full" 
                                 style={{ width: `${Math.min(100, (prod.sales / (analytics?.performance?.[0]?.sales || 1)) * 100)}%` }}
                              />
                           </div>
@@ -99,7 +99,7 @@ export default function SellerAnalyticsPage() {
                     ))
                  ) : (
                     <div className="h-full flex items-center justify-center py-20 text-center">
-                       <p className="text-lg font-sans text-on-surface-variant">No sales data available yet.</p>
+                       <p className="text-lg font-sans text-[#414844]">No sales data available yet.</p>
                     </div>
                  )}
               </div>
@@ -107,8 +107,8 @@ export default function SellerAnalyticsPage() {
         </div>
 
         {/* ── Store Performance Summary ── */}
-        <div className="bg-primary text-white p-10 md:p-12 relative shadow-xl mt-8 rounded-xl overflow-hidden">
-           <div className="absolute top-0 right-0 px-6 py-3 bg-primary-container text-on-primary text-[9px] font-black uppercase tracking-[0.4em]">Store Health</div>
+        <div className="bg-[#e05300] text-white p-10 md:p-12 relative shadow-xl mt-8">
+           <div className="absolute top-0 right-0 px-6 py-3 bg-[#ffd700] text-[#1b1c1c] text-[9px] font-black uppercase tracking-[0.4em]">Store Health</div>
            
            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12 pt-8">
               <div className="space-y-3">
@@ -125,7 +125,7 @@ export default function SellerAnalyticsPage() {
               </div>
               <div className="space-y-3">
                  <p className="text-[9px] font-black uppercase tracking-widest text-white/50">Customer Rating</p>
-                 <p className="text-4xl font-sans text-white">{ratingValue > 0 ? ratingValue.toFixed(1) : 'New'}</p>
+                 <p className="text-4xl font-sans text-[#ff6b00]">{ratingValue > 0 ? ratingValue.toFixed(1) : 'New'}</p>
                  <div className="h-px bg-white/10 my-4" />
                  <p className="text-[8px] uppercase tracking-widest opacity-40">{summary?.totalReviews || 0} buyer reviews</p>
               </div>
@@ -135,8 +135,8 @@ export default function SellerAnalyticsPage() {
                  <div className="h-px bg-white/10 my-4" />
                  <p className="text-[8px] uppercase tracking-widest opacity-40">Verified and open for business</p>
               </div>
-            </div>
-         </div>
+           </div>
+        </div>
       </div>
     </Layout>
   );

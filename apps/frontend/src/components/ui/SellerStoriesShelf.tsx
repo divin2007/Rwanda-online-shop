@@ -132,8 +132,8 @@ export function SellerStoriesShelf() {
   }
 
   return (
-    <div className="relative border-b border-[#eaded4] bg-[#fdfaf7] py-6 px-gutter md:px-xl">
-      <div className="w-full">
+    <div className="relative border-b border-[#eaded4] bg-[#fdfaf7] py-6 px-4 md:px-8">
+      <div className="mx-auto max-w-[1440px]">
         <div className="mb-4 flex items-center gap-2">
           <Sparkles className="h-4 w-4 text-[#ff6b00] animate-bounce" />
           <h2 className="text-sm font-black uppercase tracking-widest text-[#1b1c1c]">Live Seller Stories</h2>

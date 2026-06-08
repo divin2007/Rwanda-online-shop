@@ -2,7 +2,6 @@ import { Injectable, Logger } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
-import axios from 'axios';
 import { OrderStatus } from '@rmf/shared-types';
 
 @Injectable()
@@ -10,37 +9,8 @@ export class ScheduledOrdersService {
   private readonly logger = new Logger(ScheduledOrdersService.name);
 
   constructor(
-    @InjectModel('Transaction') private orderModel: Model<any>,
-    @InjectModel('GroupBuy') private groupBuyModel: Model<any>
+    @InjectModel('Transaction') private orderModel: Model<any>
   ) {}
-
-  // Group Buying (Feature 1): hourly expiry of open group buys that miss their target.
-  @Cron('0 * * * *')
-  async expireGroupBuys() {
-    const now = new Date();
-    const expiring = await this.groupBuyModel.find({ status: 'open', deadline: { $lt: now }, deletedAt: null }).exec();
-    let cancelled = 0;
-    for (const g of expiring) {
-      if (Number(g.currentQty || 0) < Number(g.targetQty || 0)) {
-        g.status = 'cancelled';
-        g.cancelledAt = now;
-        g.cancelReason = 'Deadline passed — minimum quantity not reached';
-        await g.save();
-        this.notifyGroupBuyParticipants(g, 'group_buy.cancelled');
-        cancelled++;
-      }
-    }
-    if (cancelled) this.logger.log(`Cancelled ${cancelled} expired group buy(s).`);
-  }
-
-  private notifyGroupBuyParticipants(g: any, type: string) {
-    const url = `${process.env.NOTIFICATION_SERVICE_URL || 'http://localhost:3009/api/v1'}/notifications/dispatch`;
-    const secret = process.env.INTERNAL_SERVICE_SECRET;
-    const headers = secret ? { 'x-internal-service-key': secret } : {};
-    for (const p of g.participants || []) {
-      axios.post(url, { userId: String(p.userId), type, params: { groupBuyId: String(g._id) }, channels: ['IN_APP'] }, { headers }).catch(() => {});
-    }
-  }
 
   @Cron('0 6 * * *')
   async executeScheduledOrders() {

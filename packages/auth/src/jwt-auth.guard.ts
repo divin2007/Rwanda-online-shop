@@ -1,11 +1,9 @@
-import { ExecutionContext, Injectable, UnauthorizedException, SetMetadata, Logger } from '@nestjs/common';
+import { ExecutionContext, Injectable, UnauthorizedException, SetMetadata } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import { Reflector } from '@nestjs/core';
 
 @Injectable()
 export class JwtAuthGuard extends AuthGuard('jwt') {
-  private readonly logger = new Logger(JwtAuthGuard.name);
-
   constructor(private reflector: Reflector) {
     super();
   }
@@ -25,10 +23,6 @@ export class JwtAuthGuard extends AuthGuard('jwt') {
         const request = context.switchToHttp().getRequest();
         const authHeader = request.headers?.authorization;
         if (authHeader && authHeader.startsWith('Mock-Bearer ')) {
-          if (process.env.DISABLE_MOCK_AUTH === 'true') {
-            throw new UnauthorizedException('Mock-Bearer auth is disabled in this environment');
-          }
-          this.logger.warn('[SECURITY] Mock-Bearer auth used.');
           const parts = authHeader.substring(12).split(':');
           const userId = parts[0] || '6a0b828384bd8fb2fa9cabce';
           const role = parts[1] || 'BUYER';

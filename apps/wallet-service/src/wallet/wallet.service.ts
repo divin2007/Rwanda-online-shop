@@ -8,20 +8,15 @@ import {
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import axios from 'axios';
-import * as crypto from 'crypto';
 
 const MIN_WITHDRAWAL_RWF = 500;
-
-// Disbursement status poller tuning.
-const POLL_INTERVAL_MS = 30_000;
-const POLL_MAX_ATTEMPTS = 10;
 
 @Injectable()
 export class WalletService {
   private readonly logger = new Logger(WalletService.name);
 
-  // In-memory MTN Disbursement access token cache.
-  private disbursementToken?: { token: string; expiresAt: number };
+  // In-memory PayPack access token cache
+  private paypackToken?: { token: string; expiresAt: number };
 
   constructor(
     @InjectModel('Wallet') private walletModel: Model<any>,
@@ -31,7 +26,7 @@ export class WalletService {
 
   // ─────────────────────────────────────────────────────────────
   // INTERNAL: Called by order-service after delivery is confirmed
-  // Credits seller and rider internal wallet balances. No external transfer here.
+  // Credits seller and rider wallets — no PayPack cashout here
   // ─────────────────────────────────────────────────────────────
   async creditWallet(input: {
     userId: string;
@@ -46,9 +41,8 @@ export class WalletService {
 
     const userObjectId = new Types.ObjectId(input.userId);
 
-    // Upsert wallet — create if first time earning. `new: true` returns the
-    // post-increment document so we can record an accurate balanceAfter.
-    const updatedWallet = await this.walletModel.findOneAndUpdate(
+    // Upsert wallet — create if first time earning
+    await this.walletModel.findOneAndUpdate(
       { userId: userObjectId },
       {
         $setOnInsert: { role: input.role, currency: 'RWF' },
@@ -61,11 +55,8 @@ export class WalletService {
       { upsert: true, new: true },
     );
 
-    const balanceAfter = Number(updatedWallet?.availableBalance ?? updatedWallet?.balance ?? amount);
-
     // Record ledger credit entry
     await new this.ledgerModel({
-      ledgerId: this.newLedgerId('CRD'),
       userId: userObjectId,
       transactionId: new Types.ObjectId(input.orderId),
       type: 'credit',
@@ -73,7 +64,7 @@ export class WalletService {
       amount,
       currency: 'RWF',
       description: input.description,
-      balanceAfter,
+      balanceAfter: 0, // updated below
       provider: 'internal',
       status: 'posted',
       metadata: { orderNumber: input.orderNumber, role: input.role },
@@ -182,24 +173,22 @@ export class WalletService {
       throw new BadRequestException('Provide a valid Rwanda MoMo number (07xxxxxxxx or +25078xxxxxxxx)');
     }
 
+    // ── Check balance ──
     const userObjectId = new Types.ObjectId(userId);
+    const wallet = await this.walletModel.findOne({ userId: userObjectId }).exec();
+    const available = wallet ? (wallet.availableBalance ?? wallet.balance ?? 0) : 0;
 
-    // ── Atomic debit (P2: no double-spend) ──
-    // The $gte pre-condition + $inc in a single findOneAndUpdate guarantees that two
-    // concurrent withdrawals cannot both pass the balance check. If the document does
-    // not match (insufficient balance), updated is null and we reject.
-    const debited = await this.walletModel.findOneAndUpdate(
-      { userId: userObjectId, availableBalance: { $gte: amountRwf } },
-      {
-        $inc: { availableBalance: -amountRwf, pendingBalance: amountRwf },
-        $set: { updatedAt: new Date() },
-      },
-      { new: true },
-    ).exec();
-
-    if (!debited) {
-      throw new BadRequestException('Insufficient balance or concurrent withdrawal in progress');
+    if (available < amountRwf) {
+      throw new BadRequestException(
+        `Insufficient balance. Available: ${available} RWF, Requested: ${amountRwf} RWF`,
+      );
     }
+
+    // ── Lock funds (deduct from available, add to pending) ──
+    await this.walletModel.findOneAndUpdate(
+      { userId: userObjectId },
+      { $inc: { availableBalance: -amountRwf, pendingBalance: amountRwf } },
+    );
 
     // ── Create withdrawal request ──
     const withdrawalRequest = await new this.payoutRequestModel({
@@ -212,261 +201,124 @@ export class WalletService {
       requestedAt: new Date(),
     }).save();
 
-    // ── Call MTN MoMo disbursement (Transfer) ──
-    let gatewayRef: string;
+    // ── Call PayPack cashout ──
     try {
-      gatewayRef = await this.callMtnDisbursement(amountRwf, normalizedPhone, String(withdrawalRequest._id));
-    } catch (err: any) {
-      // Initiation failed before MTN accepted the transfer: reverse the debit fully.
-      await this.walletModel.findOneAndUpdate(
-        { userId: userObjectId },
-        { $inc: { availableBalance: amountRwf, pendingBalance: -amountRwf } },
-      ).exec();
+      const paypackRef = await this.callPaypackCashout(amountRwf, normalizedPhone, String(withdrawalRequest._id));
 
-      await this.payoutRequestModel.findByIdAndUpdate(withdrawalRequest._id, {
-        $set: { status: 'FAILED', failureReason: err.message },
-      }).exec();
-
-      this.logger.error(`[Wallet] Withdrawal initiation failed for user ${userId}: ${err.message}`);
-      throw new BadRequestException(`Withdrawal failed: ${err.message}`);
-    }
-
-    // ── MTN accepted (202). Funds remain in pendingBalance. Mark PROCESSING (P3) ──
-    // The money is NOT settled yet — only confirmed once the poller sees SUCCESSFUL.
-    await this.payoutRequestModel.findByIdAndUpdate(withdrawalRequest._id, {
-      $set: {
-        status: 'PROCESSING',
-        gatewayRef,
-        processedAt: new Date(),
-      },
-    }).exec();
-
-    // ── Record ledger debit (pending until the transfer confirms) ──
-    await new this.ledgerModel({
-      ledgerId: this.newLedgerId('WTH'),
-      userId: userObjectId,
-      type: 'debit',
-      account: 'wallet_withdrawal',
-      amount: amountRwf,
-      currency: 'RWF',
-      description: `Withdrawal of ${amountRwf} RWF to ${normalizedPhone}`,
-      balanceAfter: Number(debited.availableBalance ?? 0),
-      provider: 'mtn_momo',
-      externalRef: gatewayRef,
-      status: 'pending',
-      metadata: { withdrawalRequestId: withdrawalRequest._id, role: normalizedRole },
-    }).save();
-
-    // ── Poll MTN for the final transfer result in the background ──
-    this.addWithdrawalStatusPoller(gatewayRef, String(withdrawalRequest._id), userId, amountRwf);
-
-    this.logger.log(
-      `[Wallet] Withdrawal of ${amountRwf} RWF is PROCESSING for ${normalizedRole} ${userId}. MTN ref: ${gatewayRef}`,
-    );
-
-    return {
-      success: true,
-      message: `${amountRwf} RWF is being sent to ${normalizedPhone}`,
-      gatewayRef,
-      status: 'PROCESSING',
-    };
-  }
-
-  // ─────────────────────────────────────────────────────────────
-  // Background poller: confirm the MTN transfer, then settle or reverse.
-  // SUCCESSFUL → payout COMPLETED, drain pendingBalance, bump totalWithdrawn.
-  // FAILED     → payout FAILED, return funds to availableBalance.
-  // Timeout (still PENDING after max attempts) → leave PROCESSING for manual/admin review.
-  // ─────────────────────────────────────────────────────────────
-  addWithdrawalStatusPoller(
-    referenceId: string,
-    payoutRequestId: string,
-    userId: string,
-    amount: number,
-  ): void {
-    const userObjectId = new Types.ObjectId(userId);
-    let attempts = 0;
-
-    const settleSuccess = async () => {
+      // ── Success: mark completed, release pending ──
       await this.walletModel.findOneAndUpdate(
         { userId: userObjectId },
         {
           $inc: {
-            pendingBalance: -amount,
-            totalWithdrawn: amount,
-            balance: -amount, // legacy sync
+            pendingBalance: -amountRwf,
+            totalWithdrawn: amountRwf,
+            balance: -amountRwf, // legacy sync
           },
         },
-      ).exec();
-      await this.payoutRequestModel.findByIdAndUpdate(payoutRequestId, {
-        $set: { status: 'COMPLETED', settledAt: new Date() },
-      }).exec();
-      await this.ledgerModel.updateOne(
-        { externalRef: referenceId, account: 'wallet_withdrawal' },
-        { $set: { status: 'posted' } },
-      ).exec();
-      this.logger.log(`[Wallet] Withdrawal ${payoutRequestId} settled (MTN ref ${referenceId}).`);
-    };
+      );
 
-    const reverseFailure = async (reason: string) => {
-      // Return the locked funds to available; remove from pending.
+      await this.payoutRequestModel.findByIdAndUpdate(withdrawalRequest._id, {
+        $set: {
+          status: 'COMPLETED',
+          paypackRef,
+          gatewayRef: paypackRef, // legacy compat
+          settledAt: new Date(),
+          processedAt: new Date(),
+        },
+      });
+
+      // ── Record ledger debit ──
+      await new this.ledgerModel({
+        userId: userObjectId,
+        type: 'debit',
+        account: 'wallet_withdrawal',
+        amount: amountRwf,
+        currency: 'RWF',
+        description: `Withdrawal of ${amountRwf} RWF to ${normalizedPhone}`,
+        balanceAfter: 0,
+        provider: 'paypack',
+        externalRef: paypackRef,
+        status: 'posted',
+        metadata: { withdrawalRequestId: withdrawalRequest._id, role: normalizedRole },
+      }).save();
+
+      this.logger.log(
+        `[Wallet] Withdrawal of ${amountRwf} RWF completed for ${normalizedRole} ${userId}. PayPack ref: ${paypackRef}`,
+      );
+
+      return {
+        success: true,
+        message: `${amountRwf} RWF is being sent to ${normalizedPhone}`,
+        paypackRef,
+        status: 'COMPLETED',
+      };
+    } catch (err: any) {
+      // ── Failure: restore available balance, clear pending ──
       await this.walletModel.findOneAndUpdate(
         { userId: userObjectId },
-        { $inc: { availableBalance: amount, pendingBalance: -amount } },
-      ).exec();
-      await this.payoutRequestModel.findByIdAndUpdate(payoutRequestId, {
-        $set: { status: 'FAILED', failureReason: reason },
-      }).exec();
-      await this.ledgerModel.updateOne(
-        { externalRef: referenceId, account: 'wallet_withdrawal' },
-        { $set: { status: 'failed' } },
-      ).exec();
-      this.logger.warn(`[Wallet] Withdrawal ${payoutRequestId} reversed (MTN ref ${referenceId}): ${reason}`);
-    };
+        { $inc: { availableBalance: amountRwf, pendingBalance: -amountRwf } },
+      );
 
-    const poll = setInterval(async () => {
-      attempts += 1;
-      try {
-        const status = await this.getMtnDisbursementStatus(referenceId);
-        if (status === 'SUCCESSFUL') {
-          clearInterval(poll);
-          await settleSuccess();
-        } else if (status === 'FAILED') {
-          clearInterval(poll);
-          await reverseFailure('MTN reported the transfer as FAILED');
-        } else if (attempts >= POLL_MAX_ATTEMPTS) {
-          clearInterval(poll);
-          this.logger.warn(
-            `[Wallet] Withdrawal ${payoutRequestId} still PENDING after ${attempts} polls; leaving PROCESSING for review (MTN ref ${referenceId}).`,
-          );
-        }
-      } catch (err: any) {
-        if (attempts >= POLL_MAX_ATTEMPTS) {
-          clearInterval(poll);
-          this.logger.error(
-            `[Wallet] Poller gave up for withdrawal ${payoutRequestId} (MTN ref ${referenceId}): ${err.message}. Left PROCESSING for review.`,
-          );
-        }
-      }
-    }, POLL_INTERVAL_MS);
+      await this.payoutRequestModel.findByIdAndUpdate(withdrawalRequest._id, {
+        $set: { status: 'FAILED', failureReason: err.message },
+      });
 
-    // Don't keep the event loop alive solely for this timer.
-    if (typeof poll.unref === 'function') poll.unref();
+      this.logger.error(`[Wallet] Withdrawal failed for user ${userId}: ${err.message}`);
+      throw new BadRequestException(`Withdrawal failed: ${err.message}`);
+    }
   }
 
   // ─────────────────────────────────────────────────────────────
-  // MTN MoMo Disbursement config / helpers
+  // PAYPACK: Get access token (cached)
   // ─────────────────────────────────────────────────────────────
-  private get mtnBaseUrl(): string {
-    if (process.env.MTN_MOMO_BASE_URL) return process.env.MTN_MOMO_BASE_URL;
-    return process.env.MTN_MOMO_TARGET_ENV === 'sandbox'
-      ? 'https://sandbox.momodeveloper.mtn.com'
-      : 'https://proxy.momoapi.mtn.com';
-  }
-
-  private get mtnTargetEnv(): string {
-    return process.env.MTN_MOMO_TARGET_ENV || 'mtnrwanda';
-  }
-
-  private get mtnCurrency(): string {
-    return process.env.MTN_MOMO_CURRENCY || 'RWF';
-  }
-
-  // ─────────────────────────────────────────────────────────────
-  // MTN: Get disbursement access token (cached ~1h)
-  // ─────────────────────────────────────────────────────────────
-  private async getDisbursementToken(): Promise<string> {
-    if (this.disbursementToken && this.disbursementToken.expiresAt > Date.now() + 10_000) {
-      return this.disbursementToken.token;
+  private async getPaypackToken(): Promise<string> {
+    if (this.paypackToken && this.paypackToken.expiresAt > Date.now() + 10_000) {
+      return this.paypackToken.token;
     }
 
-    const auth = Buffer
-      .from(`${process.env.MTN_MOMO_DISBURSEMENT_USER_ID}:${process.env.MTN_MOMO_DISBURSEMENT_API_SECRET}`)
-      .toString('base64');
+    const baseUrl = process.env.PAYPACK_BASE_URL || 'https://payments.paypack.rw/api';
+    const res = await axios.post(`${baseUrl}/auth/agents/authorize`, {
+      client_id: process.env.PAYPACK_CLIENT_ID,
+      client_secret: process.env.PAYPACK_CLIENT_SECRET,
+    });
 
-    const res = await axios.post(
-      `${this.mtnBaseUrl}/disbursement/token/`,
-      {},
-      {
-        headers: {
-          Authorization: `Basic ${auth}`,
-          'Ocp-Apim-Subscription-Key': process.env.MTN_MOMO_DISBURSEMENT_API_KEY,
-        },
-        timeout: 15_000,
-      },
-    );
+    const token = res.data?.access || res.data?.token;
+    const expiresIn = Number(res.data?.expires || 3600);
+    if (!token) throw new Error('PayPack did not return an access token');
 
-    const token = res.data?.access_token;
-    const expiresIn = Number(res.data?.expires_in || 3600);
-    if (!token) throw new Error('MTN Disbursement did not return an access token');
-
-    this.disbursementToken = { token, expiresAt: Date.now() + Math.max(expiresIn - 60, 60) * 1000 };
+    this.paypackToken = { token, expiresAt: Date.now() + (expiresIn - 60) * 1000 };
     return token;
   }
 
   // ─────────────────────────────────────────────────────────────
-  // MTN: Transfer (disburse to phone). Returns the X-Reference-Id we set,
-  // which is the gateway transaction reference. Idempotent on idempotencyKey.
+  // PAYPACK: Cash-out (disburse to phone)
   // ─────────────────────────────────────────────────────────────
-  private async callMtnDisbursement(
+  private async callPaypackCashout(
     amount: number,
     phone: string,
     idempotencyKey: string,
   ): Promise<string> {
-    const token = await this.getDisbursementToken();
-    const referenceId = this.deterministicUuid(idempotencyKey);
-    const partyId = this.toMsisdn(phone);
+    const baseUrl = process.env.PAYPACK_BASE_URL || 'https://payments.paypack.rw/api';
+    const webhookMode = process.env.PAYPACK_WEBHOOK_MODE || 'development';
+    const token = await this.getPaypackToken();
 
-    await axios.post(
-      `${this.mtnBaseUrl}/disbursement/v1_0/transfer`,
-      {
-        amount: String(amount),
-        currency: this.mtnCurrency,
-        externalId: idempotencyKey,
-        payee: { partyIdType: 'MSISDN', partyId },
-        payerMessage: 'Withdrawal from RMF wallet',
-        payeeNote: 'Rwanda Marketplace payout',
-      },
+    const res = await axios.post(
+      `${baseUrl}/transactions/cashout`,
+      { amount, number: phone, environment: webhookMode },
       {
         headers: {
           Authorization: `Bearer ${token}`,
-          'X-Reference-Id': referenceId,
-          'X-Target-Environment': this.mtnTargetEnv,
           'Content-Type': 'application/json',
-          'Ocp-Apim-Subscription-Key': process.env.MTN_MOMO_DISBURSEMENT_API_KEY,
+          'Idempotency-Key': idempotencyKey,
+          'X-Webhook-Mode': webhookMode,
         },
         timeout: 20_000,
       },
     );
 
-    return referenceId;
-  }
-
-  // ─────────────────────────────────────────────────────────────
-  // MTN: Poll a transfer's status. Returns SUCCESSFUL | FAILED | PENDING | ERROR.
-  // ─────────────────────────────────────────────────────────────
-  private async getMtnDisbursementStatus(referenceId: string): Promise<string> {
-    try {
-      const token = await this.getDisbursementToken();
-      const res = await axios.get(
-        `${this.mtnBaseUrl}/disbursement/v1_0/transfer/${referenceId}`,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            'X-Target-Environment': this.mtnTargetEnv,
-            'Ocp-Apim-Subscription-Key': process.env.MTN_MOMO_DISBURSEMENT_API_KEY,
-          },
-          timeout: 15_000,
-        },
-      );
-      const value = String(res.data?.status || '').trim().toUpperCase();
-      if (value === 'SUCCESSFUL') return 'SUCCESSFUL';
-      if (value === 'FAILED') return 'FAILED';
-      return 'PENDING';
-    } catch (err: any) {
-      this.logger.warn(`[Wallet] MTN status poll failed for ${referenceId}: ${err.message}`);
-      return 'ERROR';
-    }
+    const ref = res.data?.ref || res.data?.data?.ref || res.data?.reference;
+    if (!ref) throw new Error('PayPack cashout did not return a transaction reference');
+    return String(ref);
   }
 
   // ─────────────────────────────────────────────────────────────
@@ -479,31 +331,6 @@ export class WalletService {
     if (phone.startsWith('250')) phone = '0' + phone.slice(3);
     if (/^07\d{8}$/.test(phone)) return phone;
     return null;
-  }
-
-  // Convert a normalized 07XXXXXXXX number to MTN MSISDN 2507XXXXXXXX.
-  private toMsisdn(phone: string): string {
-    const digits = String(phone).replace(/\D/g, '');
-    if (digits.startsWith('2507') && digits.length === 12) return digits;
-    if (digits.startsWith('07') && digits.length === 10) return '250' + digits.slice(1);
-    if (digits.startsWith('7') && digits.length === 9) return '250' + digits;
-    return digits;
-  }
-
-  private newLedgerId(prefix: string): string {
-    return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-  }
-
-  // Stable UUIDv4-shaped value from a key so a retry reuses the same X-Reference-Id.
-  private deterministicUuid(key: string): string {
-    const hash = crypto.createHash('sha256').update(String(key)).digest('hex');
-    return [
-      hash.slice(0, 8),
-      hash.slice(8, 12),
-      '4' + hash.slice(13, 16),
-      ((parseInt(hash.slice(16, 17), 16) & 0x3) | 0x8).toString(16) + hash.slice(17, 20),
-      hash.slice(20, 32),
-    ].join('-');
   }
 
   // ─────────────────────────────────────────────────────────────
@@ -532,7 +359,7 @@ export class WalletService {
   }
 
   async completePayout(_payoutId: string): Promise<any> {
-    throw new BadRequestException('Payouts are now processed automatically via MTN MoMo.');
+    throw new BadRequestException('Payouts are now processed automatically via PayPack.');
   }
 
   async failPayout(_payoutId: string, _reason: string): Promise<any> {

@@ -5,6 +5,7 @@ import { Card } from '@/components/ui/Card';
 import { useAuth } from '@/context/AuthContext';
 import { useApi } from '@/hooks/useApi';
 import { reviewApi, sellerApi } from '@/lib/api';
+import Link from 'next/link';
 import { Star } from 'lucide-react';
 
 export default function SellerReviewsPage() {
@@ -21,7 +22,23 @@ export default function SellerReviewsPage() {
 
   return (
     <Layout>
-      <main className="min-h-screen bg-background-main p-4 md:p-8">
+      <div className="flex flex-col md:flex-row min-h-screen bg-background-main">
+        {/* Sidebar */}
+        <aside className="w-full md:w-64 bg-background-card border-r border-border p-6 hidden md:block">
+          <div className="mb-8">
+            <h2 className="font-heading font-bold text-xl">{profile?.shopDetails?.name || 'My Shop'}</h2>
+            <p className="text-sm text-text-secondary">Stall: {profile?.stallId}</p>
+          </div>
+          <nav className="space-y-2">
+            <Link href="/seller/dashboard" className="block px-4 py-2 text-text-secondary hover:bg-background-surface hover:text-text-primary font-medium rounded-lg">Dashboard</Link>
+            <Link href="/seller/products" className="block px-4 py-2 text-text-secondary hover:bg-background-surface hover:text-text-primary font-medium rounded-lg">Products</Link>
+            <Link href="/seller/reviews" className="block px-4 py-2 bg-primary/10 text-primary font-bold rounded-lg">Reviews</Link>
+            <Link href="/seller/earnings" className="block px-4 py-2 text-text-secondary hover:bg-background-surface hover:text-text-primary font-medium rounded-lg">Earnings</Link>
+          </nav>
+        </aside>
+
+        {/* Main Content */}
+        <main className="flex-1 p-4 md:p-8">
           <div className="max-w-4xl">
             <h1 className="text-3xl font-heading font-bold text-text-primary mb-2">Shop Reviews</h1>
             <p className="text-text-secondary mb-8">What customers are saying about your service and products.</p>
@@ -64,7 +81,8 @@ export default function SellerReviewsPage() {
               </div>
             )}
           </div>
-      </main>
+        </main>
+      </div>
     </Layout>
   );
 }

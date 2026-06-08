@@ -12,7 +12,7 @@ export default function VideosPage() {
   return (
     <Layout>
       <div className="bg-[#fdfaf7]">
-        <section className="w-full px-gutter pb-2 pt-lg md:px-xl md:pt-xl">
+        <section className="mx-auto max-w-[1440px] px-4 pb-2 pt-8 md:px-8 md:pt-12">
           <div className="rounded-3xl bg-[#1b1c1c] p-8 text-white shadow-2xl md:p-12">
             <p className="text-[11px] font-black uppercase tracking-[0.24em] text-[#ff6b00]">RMF video market</p>
             <h1 className="mt-3 max-w-3xl text-4xl font-black tracking-tight md:text-6xl">Watch sellers show the products before you order.</h1>

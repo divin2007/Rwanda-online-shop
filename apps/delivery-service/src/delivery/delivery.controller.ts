@@ -149,14 +149,6 @@ export class DeliveryController {
   }
 
   @UseGuards(JwtAuthGuard)
-  @Roles(UserRole.RIDER)
-  @Post(':id/rider-cancel')
-  async riderCancel(@Param('id') id: string, @Body() body: { reason?: string }, @Request() req: any) {
-    const delivery = await this.deliveryService.riderCancel(id, req.user?.userId, body?.reason);
-    return { success: true, data: delivery };
-  }
-
-  @UseGuards(JwtAuthGuard)
   @Post(':id/rebroadcast')
   async rebroadcast(@Param('id') id: string, @Request() req: any) {
     const role = String(req.user?.role || '').toUpperCase();

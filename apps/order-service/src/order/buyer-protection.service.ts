@@ -26,7 +26,7 @@ export class BuyerProtectionService {
       throw new BadRequestException('Buyer id is required for refund processing');
     }
     if (!buyerPhone) {
-      throw new BadRequestException('Buyer mobile money number is required for MoMo refund');
+      throw new BadRequestException('Buyer mobile money number is required for Paypack refund');
     }
     if (!refundAmount || refundAmount <= 0) {
       throw new BadRequestException('Refund amount must be greater than zero');
@@ -35,23 +35,23 @@ export class BuyerProtectionService {
     const transactionId = new Types.ObjectId(orderId);
     const existingRefund = await this.ledgerModel.findOne({
       transactionId,
-      account: 'buyer_mtn_refund',
+      account: 'buyer_paypack_refund',
     }).lean().exec();
 
     if (existingRefund) {
       this.logger.log(`Skipping duplicate refund for order ${orderId}; already recorded as ${existingRefund.externalRef || 'processed'}.`);
       return {
         success: true,
-        processedVia: 'mtn_disbursement',
+        processedVia: 'paypack_cashout',
         amount: refundAmount,
         transactionRef: existingRefund.externalRef,
         duplicate: true,
       };
     }
 
-    this.logger.log(`Executing MTN MoMo refund disbursement for order ${orderId} from BPF accounting reserve...`);
+    this.logger.log(`Executing Paypack refund cashout for order ${orderId} from BPF accounting reserve...`);
 
-    const refund = await this.paymentService.requestMtnRefund({
+    const refund = await this.paymentService.requestPaypackRefund({
       amount: refundAmount,
       phone: buyerPhone,
       idempotencyKey: `refund:${orderId}:${refundAmount}`,
@@ -65,12 +65,12 @@ export class BuyerProtectionService {
         type: 'debit',
         account: 'buyer_protection_refund_failed',
         amount: refundAmount,
-        description: `Failed MoMo refund for order ${orderId}: ${refund.error || 'Unknown MTN MoMo error'}`,
+        description: `Failed Paypack refund for order ${orderId}: ${refund.error || 'Unknown Paypack error'}`,
         externalRef: refund.transactionId,
         status: 'failed',
         metadata: { orderNumber: order?.orderNumber, reason, error: refund.error },
       });
-      throw new BadRequestException(refund.error || 'MoMo refund failed');
+      throw new BadRequestException(refund.error || 'Paypack refund failed');
     }
 
     await this.recordLedgerEntry({
@@ -88,9 +88,9 @@ export class BuyerProtectionService {
       transactionId,
       userId: buyerId,
       type: 'credit',
-      account: 'buyer_mtn_refund',
+      account: 'buyer_paypack_refund',
       amount: refundAmount,
-      description: `MTN MoMo refund disbursement to buyer for order ${orderId}`,
+      description: `Paypack refund cashout to buyer for order ${orderId}`,
       externalRef: refund.transactionId,
       status: 'posted',
       metadata: { orderNumber: order?.orderNumber, reason, phoneLast4: String(buyerPhone).slice(-4) },
@@ -109,8 +109,8 @@ export class BuyerProtectionService {
       this.logger.warn(`Refund notification failed for ${buyerId}: ${error.message}`);
     });
 
-    this.logger.log(`Refund of ${refundAmount} RWF sent to buyer ${buyerId} through MTN MoMo.`);
-    return { success: true, processedVia: 'mtn_disbursement', amount: refundAmount, transactionRef: refund.transactionId };
+    this.logger.log(`Refund of ${refundAmount} RWF sent to buyer ${buyerId} through Paypack.`);
+    return { success: true, processedVia: 'paypack_cashout', amount: refundAmount, transactionRef: refund.transactionId };
   }
 
   async escalateForManualReview(orderId: string, amount: number) {
@@ -209,7 +209,7 @@ export class BuyerProtectionService {
       currency: 'RWF',
       description: input.description,
       balanceAfter,
-      provider: 'mtn_momo',
+      provider: 'paypack',
       externalRef: input.externalRef,
       status: input.status || 'posted',
       metadata: input.metadata,

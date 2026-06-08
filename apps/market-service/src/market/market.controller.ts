@@ -82,34 +82,6 @@ export class MarketController {
     return { success: true, data: markets };
   }
 
-  // Public blended market search (text + reviews + proximity + capped premium boost).
-  // Declared before @Get(':id') so it is not captured by the param route.
-  @Public()
-  @Get('search')
-  async search(
-    @Query('q') q?: string,
-    @Query('lat') lat?: string,
-    @Query('lng') lng?: string,
-    @Query('sort') sort?: string,
-    @Query('type') type?: string,
-    @Query('category') category?: string,
-    @Query('limit') limit?: string,
-    @Query('skip') skip?: string,
-  ) {
-    const markets = await this.marketService.searchMarkets({
-      q,
-      lat: lat !== undefined && lat !== '' ? Number(lat) : undefined,
-      lng: lng !== undefined && lng !== '' ? Number(lng) : undefined,
-      sort,
-      // `category` is accepted for API symmetry with product search; markets currently
-      // filter by `type` only, so it is forwarded as the type filter when provided.
-      type: type || category,
-      limit: limit ? Number(limit) : undefined,
-      skip: skip ? Number(skip) : undefined,
-    });
-    return { success: true, data: markets };
-  }
-
   @Public()
   @Get('slug/:slug')
   async findBySlug(@Param('slug') slug: string) {

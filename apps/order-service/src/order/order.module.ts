@@ -1,12 +1,11 @@
 import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
-import { transactionSchema, marketSchema, sellerProfileSchema, userSchema, productSchema, deliverySchema, ledgerEntrySchema, menuSchema, referralLinkSchema, affiliateProfileSchema, groupBuySchema, riderProfileSchema } from '@rmf/database';
+import { transactionSchema, marketSchema, sellerProfileSchema, userSchema, productSchema, deliverySchema, ledgerEntrySchema } from '@rmf/database';
 import { OrderService } from './order.service';
 import { OrderController } from './order.controller';
 import { FraudDetectionService } from './fraud-detection.service';
 import { BuyerProtectionService } from './buyer-protection.service';
 import { ScheduledOrdersService } from './scheduled-orders.service';
-import { AffiliateService } from './affiliate.service';
 
 import { MulterModule } from '@nestjs/platform-express';
 import { OrderGateway } from './order.gateway';
@@ -22,15 +21,10 @@ import { PaymentService } from './payment.service';
       { name: 'Product', schema: productSchema },
       { name: 'Delivery', schema: deliverySchema },
       { name: 'LedgerEntry', schema: ledgerEntrySchema },
-      { name: 'Menu', schema: menuSchema },
-      { name: 'ReferralLink', schema: referralLinkSchema },
-      { name: 'AffiliateProfile', schema: affiliateProfileSchema },
-      { name: 'GroupBuy', schema: groupBuySchema },
-      { name: 'RiderProfile', schema: riderProfileSchema },
     ]),
     MulterModule.register({})
   ],
-  providers: [OrderService, FraudDetectionService, ScheduledOrdersService, BuyerProtectionService, OrderGateway, PaymentService, AffiliateService],
+  providers: [OrderService, FraudDetectionService, ScheduledOrdersService, BuyerProtectionService, OrderGateway, PaymentService],
   controllers: [OrderController],
   exports: [OrderService, OrderGateway, PaymentService],
 })

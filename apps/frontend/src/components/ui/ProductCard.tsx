@@ -14,9 +14,6 @@ import { formatCurrency } from '@/lib/format';
 import { trackProductSignal } from '@/lib/recommendations';
 import { getProductUrl } from '@/lib/urls';
 import { resolveUploadUrl } from '@/lib/uploadUrls';
-import { PerishableBadge } from '@/components/ui/PerishableBadge';
-import { SellerTierBadge } from '@/components/ui/SellerTierBadge';
-import { ConditionBadge } from '@/components/ui/ConditionBadge';
 
 interface ProductCardProps {
   product: {
@@ -38,17 +35,12 @@ interface ProductCardProps {
     stockType?: 'finite' | 'infinite' | 'on_demand';
     isMadeInRwanda?: boolean;
     isNegotiable?: boolean;
-    perishable?: boolean;
-    maxDeliveryMinutes?: number;
-    condition?: 'new' | 'grade_a' | 'grade_b' | 'grade_c' | 'refurbished' | null;
     category?: string;
     sellerId?: string | {
       _id?: string;
       userId?: string;
       stallId?: string;
       stallName?: string;
-      certificationTier?: 'BRONZE' | 'SILVER' | 'GOLD';
-      exportReady?: boolean;
       shopDetails?: {
         name?: string;
       };
@@ -162,9 +154,9 @@ export const ProductCard = ({ product, isCompact = false }: ProductCardProps) =>
     <Link
       href={productUrl}
       onClick={() => trackProductSignal(product, 'product_view')}
-      className="group flex h-full flex-col overflow-hidden rounded-lg border border-outline-variant bg-surface-container-lowest custom-shadow hover:border-primary transition-all duration-300"
+      className="group flex h-full flex-col overflow-hidden rounded-lg border border-[#e2bfb0] bg-white transition-colors hover:border-[#ff6b00]"
     >
-      <div className="relative aspect-[4/3] overflow-hidden bg-surface-container-low">
+      <div className="relative aspect-[4/3] overflow-hidden bg-[#efeded]">
         {images[0] ? (
           <Image
             src={images[0]}
@@ -175,36 +167,24 @@ export const ProductCard = ({ product, isCompact = false }: ProductCardProps) =>
             className={`object-cover transition-transform duration-500 group-hover:scale-[1.03] ${available ? '' : 'opacity-50 grayscale'}`}
           />
         ) : (
-          <div className="flex h-full items-center justify-center px-md text-center font-data-mono text-data-mono-sm text-outline">
+          <div className="flex h-full items-center justify-center px-4 text-center font-mono text-[10px] font-bold uppercase tracking-[0.16em] text-[#8e7164]">
             Image unavailable
           </div>
         )}
 
-        <div className="absolute left-2 top-2 flex flex-wrap gap-xs">
-          <span className="inline-flex items-center gap-xs rounded-sm bg-surface-container-lowest px-2 py-0.5 border border-outline font-label-caps text-[9px] text-primary shadow-sm">
-            <BadgeCheck size={10} className="text-primary-container" />
+        <div className="absolute left-3 top-3 flex flex-wrap gap-1.5">
+          <span className="inline-flex items-center gap-1 rounded-sm bg-[#ff9f1c] px-2 py-1 font-mono text-[10px] font-bold uppercase tracking-[0.08em] text-[#221b00]">
+            <BadgeCheck size={12} />
             Verified
           </span>
           {product.isMadeInRwanda && (
-            <div className="bg-surface-container-lowest border border-outline rounded-full px-2 py-0.5 flex items-center gap-xs shadow-sm">
-              <span className="w-1.5 h-1.5 rounded-full bg-primary-container"></span>
-              <span className="font-label-caps text-label-caps text-[9px] text-on-surface">Made in Rwanda</span>
-            </div>
-          )}
-          {hasPromotion && (
-            <span className="rounded-sm bg-error text-on-error font-label-caps text-[9px] px-2 py-0.5 shadow-sm">
-              Deal
+            <span className="rounded-sm bg-white px-2 py-1 font-mono text-[10px] font-bold uppercase tracking-[0.08em] text-[#ff6b00]">
+              Local
             </span>
           )}
-          {product.perishable && (
-            <PerishableBadge maxDeliveryMinutes={product.maxDeliveryMinutes} />
-          )}
-          {product.condition && product.condition !== 'new' && (
-            <ConditionBadge condition={product.condition} size="xs" />
-          )}
-          {product.isMadeInRwanda && sellerProfile?.exportReady && (
-            <span className="rounded-sm bg-surface-container-lowest border border-outline font-label-caps text-[9px] px-2 py-0.5 text-primary shadow-sm">
-              Export Ready
+          {hasPromotion && (
+            <span className="rounded-sm bg-[#ba1a1a] px-2 py-1 font-mono text-[10px] font-bold uppercase tracking-[0.08em] text-white">
+              Deal
             </span>
           )}
         </div>
@@ -216,68 +196,63 @@ export const ProductCard = ({ product, isCompact = false }: ProductCardProps) =>
             if (!isInWishlist(product._id)) trackProductSignal(product, 'wishlist');
             toggleWishlist(product._id);
           }}
-          className="absolute right-2 top-2 flex h-8 w-8 items-center justify-center rounded-full bg-surface-container-lowest text-primary-container transition-colors border border-outline-variant hover:bg-surface-container-low"
+          className="absolute right-3 top-3 flex h-9 w-9 items-center justify-center rounded bg-white text-[#ff6b00] transition-colors hover:bg-[#ffedd5]"
           aria-label="Toggle wishlist"
         >
-          <Heart size={14} fill={isInWishlist(product._id) ? 'currentColor' : 'none'} />
+          <Heart size={16} fill={isInWishlist(product._id) ? 'currentColor' : 'none'} />
         </button>
       </div>
 
-      <div className="flex flex-1 flex-col p-md space-y-xs">
-        <div className="flex items-center justify-between gap-sm">
-          <span className="font-label-caps text-[9px] text-on-surface-variant uppercase tracking-wider">
+      <div className={`flex flex-1 flex-col ${isCompact ? 'p-3' : 'p-4'}`}>
+        <div className="flex items-start justify-between gap-2">
+          <span className="line-clamp-1 min-w-0 font-mono text-[9px] font-bold uppercase tracking-[0.12em] text-[#ff6b00] sm:text-[10px] sm:tracking-[0.16em]">
             {product.category || 'Product'}
           </span>
-          <span className={`font-label-caps text-[9px] px-2 py-0.5 rounded-full ${available ? 'bg-primary/10 text-primary-container' : 'bg-error-container text-error'}`}>
+          <span className={`rmf-status-chip shrink-0 text-[8px] sm:text-[10px] ${available ? 'text-[#12805c]' : 'text-[#ba1a1a]'}`}>
             {available ? 'In stock' : 'Unavailable'}
           </span>
         </div>
 
-        <h3 className="text-body-md font-bold text-on-surface group-hover:text-primary transition-colors leading-tight font-sans line-clamp-2">
+        <h3 className={`${isCompact ? 'mt-2 text-base' : 'mt-3 text-lg'} line-clamp-2 font-black leading-tight text-[#1b1c1c]`}>
           {product.name}
         </h3>
-        <p className="font-label-caps text-[10px] text-on-surface-variant flex items-center gap-xs">
-          by {sellerName}
-          {sellerProfile?.certificationTier && (
-            <SellerTierBadge tier={sellerProfile.certificationTier} size="xs" />
-          )}
-        </p>
+        <p className="mt-1 line-clamp-1 text-xs font-medium text-[#574e47]">by {sellerName}</p>
 
-        <div className="pt-sm border-t border-outline-variant flex items-center justify-between mt-sm">
+        <div className="mt-4 flex items-end justify-between gap-3">
           <div>
-            <div className="flex flex-wrap items-baseline gap-xs">
-              <span className="font-data-mono text-data-mono text-primary-container text-base font-bold">
+            <div className="flex flex-wrap items-baseline gap-2">
+              <span className={`${isCompact ? 'text-base' : 'text-xl'} font-black text-[#ff6b00]`}>
                 {priceRangeLabel || formatCurrency(displayPrice)}
               </span>
               {hasPromotion && (
-                <span className="font-data-mono text-data-mono-sm text-on-surface-variant line-through">
+                <span className="text-xs font-bold text-[#8e7164] line-through">
                   {formatCurrency(product.price)}
                 </span>
               )}
             </div>
-            <p className="font-data-mono-sm text-[10px] text-on-surface-variant">
+            <p className="mt-1 font-mono text-[10px] font-bold uppercase tracking-[0.14em] text-[#574e47]">
               per {product.unit}
             </p>
           </div>
         </div>
 
-        <div className="pt-sm mt-auto">
+        <div className="mt-auto pt-4">
           {isNegotiable ? (
             <button
               type="button"
               onClick={handleNegotiation}
-              className="inline-flex h-9 w-full items-center justify-center gap-xs rounded border border-outline bg-surface-container-lowest px-3 py-2 font-label-caps text-label-caps text-primary hover:bg-surface-container-low transition-all"
+              className="inline-flex min-h-10 w-full items-center justify-center gap-2 whitespace-normal rounded border border-[#ff6b00] bg-white px-2 py-2 text-center font-mono text-[10px] font-bold uppercase tracking-[0.08em] text-[#ff6b00] transition-colors hover:bg-[#ffedd5] sm:px-3 sm:text-[11px] sm:tracking-[0.12em]"
             >
-              <MessageCircle size={14} className="text-primary-container" />
+              <MessageCircle size={15} />
               Negotiate
             </button>
           ) : (
             <button
               type="button"
               onClick={handleCart}
-              className="inline-flex h-9 w-full items-center justify-center gap-xs rounded bg-primary-container text-on-primary px-3 py-2 font-label-caps text-label-caps hover:bg-primary transition-colors"
+              className="inline-flex min-h-10 w-full items-center justify-center gap-2 whitespace-normal rounded bg-[#ff6b00] px-2 py-2 text-center font-mono text-[10px] font-bold uppercase tracking-[0.08em] text-white transition-colors hover:bg-[#e05300] sm:px-3 sm:text-[11px] sm:tracking-[0.12em]"
             >
-              <ShoppingCart size={14} />
+              <ShoppingCart size={15} />
               {t('product_add_to_cart') || 'Add to cart'}
             </button>
           )}

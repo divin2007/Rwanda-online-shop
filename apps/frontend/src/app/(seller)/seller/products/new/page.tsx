@@ -63,11 +63,6 @@ function NewProductPageContent() {
     maxPrice: '',
     isMadeInRwanda: true,
     isNegotiable: false,
-    perishable: false,
-    maxDeliveryMinutes: '',
-    exportMinQty: '',
-    condition: '',
-    qualityNotes: '',
     images: [] as string[],
     attributes: {} as Record<string, unknown>,
     variants: [] as ProductVariantDraft[],
@@ -104,11 +99,6 @@ function NewProductPageContent() {
               maxPrice: product.maxPrice?.toString() || '',
               isMadeInRwanda: product.isMadeInRwanda ?? true,
               isNegotiable: product.isNegotiable ?? false,
-              perishable: product.perishable ?? false,
-              maxDeliveryMinutes: product.maxDeliveryMinutes?.toString() || '',
-              exportMinQty: product.exportMinQty?.toString() || '',
-              condition: product.condition || '',
-              qualityNotes: product.qualityNotes || '',
               images: product.images || [],
               attributes: product.attributes || {},
               variants: product.variants || [],
@@ -188,13 +178,6 @@ function NewProductPageContent() {
         maxWeight: formData.maxWeight ? Number(formData.maxWeight) : undefined,
         minPrice: formData.minPrice ? Number(formData.minPrice) : undefined,
         maxPrice: formData.maxPrice ? Number(formData.maxPrice) : undefined,
-        perishable: formData.perishable,
-        maxDeliveryMinutes: formData.perishable && formData.maxDeliveryMinutes
-          ? Number(formData.maxDeliveryMinutes)
-          : undefined,
-        exportMinQty: formData.exportMinQty ? Number(formData.exportMinQty) : undefined,
-        condition: formData.condition || undefined,
-        qualityNotes: formData.qualityNotes?.trim() || undefined,
         sellerId: user.id
       };
 
@@ -216,7 +199,7 @@ function NewProductPageContent() {
 
   return (
     <Layout>
-      <div className="w-full px-gutter py-xl md:px-xl animate-reveal">
+      <div className="max-w-5xl mx-auto py-20 px-6 animate-reveal">
          {/* Page Header */}
          <div className="mb-20 border-b-2 border-[#e0e0e0] pb-12">
             <div className="flex items-center gap-6 mb-8">
@@ -257,7 +240,7 @@ function NewProductPageContent() {
             </div>
          )}
 
-         <div className="bg-white border border-[#e0e0e0] rounded-lg shadow-sm relative overflow-hidden">
+         <div className="bg-white border border-[#e0e0e0] rounded-lg shadow-2xl relative overflow-hidden">
             <div className="absolute top-0 left-0 w-full h-2 bg-[#ff6b00]"></div>
             
             {activeTab === 'single' ? (
@@ -474,72 +457,6 @@ function NewProductPageContent() {
                                 <span className="text-[9px] text-[#414844] opacity-60">Require buyers to chat with you to agree on a price.</span>
                              </div>
                           </label>
-                          <label className="flex items-center gap-6 cursor-pointer group">
-                             <div className={`w-10 h-10 border-2 flex items-center justify-center transition-all ${formData.perishable ? 'bg-[#e05300] border-[#e0e0e0] text-white' : 'border-[#e0e0e0]/20'}`}>
-                                {formData.perishable && <span className="text-sm">✓</span>}
-                             </div>
-                             <input
-                               type="checkbox"
-                               className="sr-only"
-                               checked={formData.perishable}
-                               onChange={e => setFormData({...formData, perishable: e.target.checked})}
-                             />
-                             <div className="space-y-1">
-                                <span className="text-[11px] font-black uppercase tracking-widest block text-[#1b1c1c]">Perishable / Cold-chain</span>
-                                <span className="text-[9px] text-[#414844] opacity-60">Prioritized delivery is assigned for perishable goods.</span>
-                             </div>
-                          </label>
-                          {formData.perishable && (
-                            <div className="rounded-lg border border-[#e0e0e0]/20 bg-white/70 p-5 space-y-3">
-                              <label className="text-[10px] font-black uppercase tracking-[0.3em] text-[#1b1c1c]/40">Deliver Within (minutes)</label>
-                              <input
-                                type="number"
-                                min="1"
-                                placeholder="e.g. 60"
-                                value={formData.maxDeliveryMinutes}
-                                onChange={e => setFormData({...formData, maxDeliveryMinutes: e.target.value})}
-                                className="w-full border-b-2 border-[#e0e0e0]/20 bg-transparent py-2 text-sm focus:border-[#e05300] focus:outline-none"
-                              />
-                            </div>
-                          )}
-                          {formData.isMadeInRwanda && (
-                            <div className="rounded-lg border border-[#e0e0e0]/20 bg-white/70 p-5 space-y-3">
-                              <label className="text-[10px] font-black uppercase tracking-[0.3em] text-[#1b1c1c]/40">Export Minimum Order Qty (optional)</label>
-                              <input
-                                type="number"
-                                min="1"
-                                placeholder="Minimum units for export buyers"
-                                value={formData.exportMinQty}
-                                onChange={e => setFormData({...formData, exportMinQty: e.target.value})}
-                                className="w-full border-b-2 border-[#e0e0e0]/20 bg-transparent py-2 text-sm focus:border-[#e05300] focus:outline-none"
-                              />
-                            </div>
-                          )}
-                          <div className="rounded-lg border border-[#e0e0e0]/20 bg-white/70 p-5 space-y-3">
-                            <label className="text-[10px] font-black uppercase tracking-[0.3em] text-[#1b1c1c]/40">Condition / Quality Grade</label>
-                            <select
-                              value={formData.condition}
-                              onChange={e => setFormData({ ...formData, condition: e.target.value })}
-                              className="w-full bg-[#fcf9f8] border border-[#e0e0e0]/20 p-4 text-[10px] font-black uppercase tracking-widest outline-none focus:border-[#ff6b00]"
-                            >
-                              <option value="">Not specified (treated as new)</option>
-                              <option value="new">New</option>
-                              <option value="grade_a">Grade A — Like new, no visible wear</option>
-                              <option value="grade_b">Grade B — Light wear, fully functional</option>
-                              <option value="grade_c">Grade C — Visible wear, works as expected</option>
-                              <option value="refurbished">Refurbished</option>
-                            </select>
-                            {formData.condition && formData.condition !== 'new' && (
-                              <textarea
-                                rows={2}
-                                maxLength={500}
-                                placeholder="Quality notes — describe any wear, defects, or what was refurbished (optional)"
-                                value={formData.qualityNotes}
-                                onChange={e => setFormData({ ...formData, qualityNotes: e.target.value })}
-                                className="w-full bg-[#fcf9f8] border border-[#e0e0e0]/20 p-4 text-sm outline-none focus:border-[#ff6b00] leading-relaxed"
-                              />
-                            )}
-                          </div>
                           {formData.isNegotiable && (
                             <div className="grid grid-cols-1 gap-8 rounded-lg border border-[#e0e0e0]/20 bg-white/70 p-5 md:grid-cols-2">
                               <div className="space-y-3">

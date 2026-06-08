@@ -12,13 +12,9 @@ const PLATFORM_ROUTES = [
   '/dashboard',
   '/seller',
   '/rider',
-  '/riders',
   '/admin',
   '/markets',
   '/market',
-  '/messages',
-  '/disputes',
-  '/errands',
   '/product',
   '/products',
   '/settings',
@@ -33,20 +29,13 @@ const PLATFORM_ROUTES = [
   '/favicon.ico',
 ];
 
-// localhost subdomains cannot share host-only cookies with localhost itself.
-// Keep cart and checkout on the market subdomain in local dev so items added
-// from kimironko.localhost:3000 remain visible at kimironko.localhost:3000/cart.
-const LOCAL_SUBDOMAIN_PLATFORM_ROUTES = new Set(['/cart', '/checkout']);
-
 const isIpv4Host = (hostname: string) => /^(?:\d{1,3}\.){3}\d{1,3}$/.test(hostname);
 
 const apexHostFor = (hostname: string, hostWithPort: string) => {
-  const port = hostWithPort.includes(':') ? hostWithPort.split(':').pop() : '';
-  const portSuffix = port ? `:${port}` : '';
-  if (hostname.endsWith('.localhost')) return `localhost${portSuffix}`;
+  if (hostname.endsWith('.localhost')) return 'localhost:3000';
   if (hostname.endsWith('.onrender.com')) return hostWithPort.replace(/^[^.]+\./, '');
   const parts = hostname.split('.');
-  return parts.length >= 3 ? parts.slice(-2).join('.') + portSuffix : hostWithPort;
+  return parts.length >= 3 ? parts.slice(-2).join('.') : hostWithPort;
 };
 
 const protocolFor = (hostWithPort: string) => hostWithPort.includes('localhost') ? 'http' : 'https';
@@ -122,12 +111,6 @@ export function middleware(req: NextRequest) {
       url.pathname === route || url.pathname.startsWith(route + '/')
     );
     if (isPlatformRoute) {
-      const canStayOnLocalSubdomain = Array.from(LOCAL_SUBDOMAIN_PLATFORM_ROUTES).some(route =>
-        url.pathname === route || url.pathname.startsWith(route + '/')
-      );
-      if (canStayOnLocalSubdomain) {
-        return NextResponse.next();
-      }
       const isPrefetch = req.headers.get('purpose') === 'prefetch' || 
                          req.headers.has('x-middleware-prefetch') ||
                          req.headers.has('RSC') || 

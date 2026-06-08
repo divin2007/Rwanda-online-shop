@@ -12,56 +12,9 @@ export class SellerService {
   constructor(
     @InjectModel('SellerProfile') private sellerModel: Model<any>,
     @InjectModel('Market') private marketModel: Model<any>,
-    @InjectModel('ProfileChangeRequest') private changeRequestModel: Model<any>,
-    @InjectModel('AffiliateApplication') private affiliateApplicationModel: Model<any>
+    @InjectModel('ProfileChangeRequest') private changeRequestModel: Model<any>
   ) {
     this.locationService = new LocationService();
-  }
-
-  // ── Affiliate application review (Feature 3, seller side) ────────────────
-  private async resolveSellerId(userId: string): Promise<any> {
-    const seller = await this.sellerModel.findOne({ userId, deletedAt: null }).select('_id').lean().exec();
-    if (!seller) throw new NotFoundException('Seller profile not found');
-    return seller._id;
-  }
-
-  async listAffiliateApplications(userId: string, status = 'pending'): Promise<any[]> {
-    const sellerId = await this.resolveSellerId(userId);
-    return this.affiliateApplicationModel
-      .find({ sellerId, status })
-      .sort({ createdAt: -1 })
-      .lean()
-      .exec();
-  }
-
-  async approveAffiliateApplication(userId: string, applicationId: string, commissionRate?: number): Promise<any> {
-    const sellerId = await this.resolveSellerId(userId);
-    const cap = parseInt(process.env.AFFILIATE_MAX_COMMISSION_RATE || '15', 10);
-    const update: any = { status: 'approved', reviewedAt: new Date() };
-    if (commissionRate !== undefined) {
-      const rate = Number(commissionRate);
-      if (Number.isFinite(rate) && rate > 0) {
-        update.proposedCommissionRate = Math.min(rate, Number.isFinite(cap) ? cap : 15);
-      }
-    }
-    const application = await this.affiliateApplicationModel.findOneAndUpdate(
-      { _id: applicationId, sellerId },
-      { $set: update },
-      { new: true },
-    );
-    if (!application) throw new NotFoundException('Application not found for this seller');
-    return application;
-  }
-
-  async rejectAffiliateApplication(userId: string, applicationId: string, reviewNote?: string): Promise<any> {
-    const sellerId = await this.resolveSellerId(userId);
-    const application = await this.affiliateApplicationModel.findOneAndUpdate(
-      { _id: applicationId, sellerId },
-      { $set: { status: 'rejected', reviewedAt: new Date(), reviewNote: reviewNote ? String(reviewNote).slice(0, 1000) : undefined } },
-      { new: true },
-    );
-    if (!application) throw new NotFoundException('Application not found for this seller');
-    return application;
   }
 
   private cleanString(value: any, max = 500): string | undefined {
@@ -148,97 +101,8 @@ export class SellerService {
     return { seller, market };
   }
 
-  static readonly BUSINESS_TYPES = ['STANDARD', 'RESTAURANT', 'HOTEL', 'CAFE', 'BAKERY', 'CATERING', 'JUICE_BAR', 'FOOD_KIOSK'];
-
   async findAll(filter: any = {}): Promise<any[]> {
     return this.sellerModel.find({ ...filter, deletedAt: null }).exec();
-  }
-
-  /**
-   * Public, PII-safe seller discovery listing. Returns only storefront-relevant
-   * fields — NEVER KYC documents (idCardUrl, rraCertificateUrl, businessPermitUrl)
-   * or other sensitive profile data. Used by buyer-facing discovery (home, markets,
-   * storefront menu tabs) which must work for logged-out visitors.
-   */
-  async findPublic(filter: any = {}): Promise<any[]> {
-    return this.sellerModel
-      .find({ ...filter, deletedAt: null, isApproved: true })
-      .select('_id userId marketId stallId stallName businessType rating totalSales totalOrders shopDetails isOnVacation certificationTier exportReady exportMinimumOrderQty freshnessCheckin isApproved')
-      .lean()
-      .exec();
-  }
-
-  // ── Seller Certification Tiers (Feature 11) ──────────────────────────────
-  /** Authenticated seller's own tier + progress to next tier. */
-  async getMyTier(userId: string): Promise<any> {
-    const seller = await this.sellerModel
-      .findOne({ userId, deletedAt: null })
-      .select('certificationTier tierCalculatedAt tierMetrics rating')
-      .lean()
-      .exec();
-    if (!seller) throw new NotFoundException('Seller profile not found');
-
-    const tier = seller.certificationTier || 'BRONZE';
-    const metrics = seller.tierMetrics || {};
-    const totalOrders = Number(metrics.totalOrders || 0);
-    const rating = Number(metrics.avgRating ?? seller.rating ?? 0);
-
-    // Requirements to reach the NEXT tier up.
-    let nextTierRequirements: any = null;
-    if (tier === 'BRONZE') {
-      nextTierRequirements = {
-        tier: 'SILVER',
-        ordersNeeded: Math.max(0, 50 - totalOrders),
-        ratingNeeded: 4.0,
-        maxDisputeRate: 0.05,
-      };
-    } else if (tier === 'SILVER') {
-      nextTierRequirements = {
-        tier: 'GOLD',
-        ordersNeeded: Math.max(0, 200 - totalOrders),
-        ratingNeeded: 4.5,
-        maxDisputeRate: 0.02,
-      };
-    }
-
-    return {
-      tier,
-      tierCalculatedAt: seller.tierCalculatedAt || null,
-      tierMetrics: { disputeRate: metrics.disputeRate ?? 0, avgRating: rating, totalOrders },
-      nextTierRequirements,
-    };
-  }
-
-  /** Public tier snapshot for a seller profile id. */
-  async getPublicTier(sellerId: string): Promise<any> {
-    const seller = await this.sellerModel
-      .findOne({ _id: sellerId, deletedAt: null })
-      .select('certificationTier tierCalculatedAt')
-      .lean()
-      .exec();
-    if (!seller) throw new NotFoundException('Seller profile not found');
-    return {
-      tier: seller.certificationTier || 'BRONZE',
-      tierCalculatedAt: seller.tierCalculatedAt || null,
-    };
-  }
-
-  /**
-   * Update only the businessType for the authenticated seller.
-   * Validates against the allowed enum server-side; never trusts raw body fields.
-   */
-  async updateBusinessType(userId: string, businessType: string): Promise<any> {
-    const value = String(businessType || '').toUpperCase();
-    if (!SellerService.BUSINESS_TYPES.includes(value)) {
-      throw new BadRequestException(`Invalid business type. Allowed: ${SellerService.BUSINESS_TYPES.join(', ')}`);
-    }
-    const updated = await this.sellerModel.findOneAndUpdate(
-      { userId, deletedAt: null },
-      { $set: { businessType: value } },
-      { new: true }
-    ).exec();
-    if (!updated) throw new NotFoundException('Seller profile not found');
-    return updated;
   }
 
   async create(sellerData: any): Promise<any> {

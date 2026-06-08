@@ -95,7 +95,7 @@ describe('Payment Callback Webhook HMAC Verification (e2e)', () => {
     expect(response.status).toBe(404);
   });
 
-  it('should reject legacy Airtel Money webhook signatures', async () => {
+  it('should accept Airtel Money webhook with valid HMAC-SHA256 signature in X-Airtel-Signature', async () => {
     const payload = {
       orderNumber: 'ORD-54321',
       status: 'FAILED',
@@ -113,7 +113,7 @@ describe('Payment Callback Webhook HMAC Verification (e2e)', () => {
       .set('x-airtel-signature', validSignature)
       .send(payload);
 
-    expect(response.status).toBe(401);
-    expect(response.body.message).toContain('Missing signature header');
+    // Should pass signature validation and proceed to order lookup (which returns 404 since it is a dummy order)
+    expect(response.status).toBe(404);
   });
 });

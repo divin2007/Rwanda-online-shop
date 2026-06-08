@@ -1299,34 +1299,6 @@ export class ProductService implements OnModuleInit {
       }
     }
 
-    // Cold-chain / perishable handling (Feature 6).
-    productData.perishable = this.parseBooleanFlag(productData.perishable) === true;
-    if (productData.perishable) {
-      const maxMin = Number(productData.maxDeliveryMinutes);
-      productData.maxDeliveryMinutes = Number.isFinite(maxMin) && maxMin > 0 ? Math.round(maxMin) : 120;
-    } else {
-      delete productData.maxDeliveryMinutes;
-    }
-    // Export facilitation minimum order quantity (Feature 9).
-    if (productData.exportMinQty !== undefined && productData.exportMinQty !== '') {
-      const minQty = Number(productData.exportMinQty);
-      productData.exportMinQty = Number.isFinite(minQty) && minQty > 0 ? Math.round(minQty) : undefined;
-      if (productData.exportMinQty === undefined) delete productData.exportMinQty;
-    } else {
-      delete productData.exportMinQty;
-    }
-
-    // Product condition grade (Phase 3). Invalid/empty → null (treated as new).
-    const validConditions = ['new', 'grade_a', 'grade_b', 'grade_c', 'refurbished'];
-    productData.condition = validConditions.includes(String(productData.condition))
-      ? String(productData.condition)
-      : null;
-    if (productData.qualityNotes !== undefined && productData.qualityNotes !== null) {
-      productData.qualityNotes = String(productData.qualityNotes).trim().slice(0, 500) || undefined;
-    } else {
-      delete productData.qualityNotes;
-    }
-
     if (isNaN(productData.price)) throw new BadRequestException('Price must be a valid number.');
     if (productData.isNegotiable && productData.minPrice && productData.maxPrice && productData.minPrice > productData.maxPrice) {
       throw new BadRequestException('Minimum negotiable price cannot be greater than maximum price.');
@@ -1373,7 +1345,6 @@ export class ProductService implements OnModuleInit {
       origin,
       latitude,
       longitude,
-      condition,
     } = query;
     // Normalize cache key: only include fields that affect the query, in sorted order
     const canonicalQuery = JSON.stringify({
@@ -1395,7 +1366,6 @@ export class ProductService implements OnModuleInit {
       origin,
       latitude,
       longitude,
-      condition,
       isApproved: query.isApproved,
     });
     const cacheKey = `products:all:${canonicalQuery}`;
@@ -1541,11 +1511,6 @@ export class ProductService implements OnModuleInit {
       if (query.maxPrice) filter.price.$lte = Number(query.maxPrice);
     }
 
-    // Product condition grade filter (Phase 3).
-    if (query.condition && ['new', 'grade_a', 'grade_b', 'grade_c', 'refurbished'].includes(String(query.condition))) {
-      filter.condition = query.condition;
-    }
-
     for (const [key, value] of Object.entries(query)) {
       const attrKey = key.startsWith('attr_') ? key.slice(5) : key.startsWith('attributes.') ? key.slice(11) : null;
       if (!attrKey || value === undefined || value === '') continue;
@@ -1619,115 +1584,6 @@ export class ProductService implements OnModuleInit {
 
     return finalResults;
 
-  }
-
-  /**
-   * Dedicated public product search using the MongoDB $text index with a blended ranking:
-   *   rankScore = textRelevance*0.50 + ratingScore*0.30 + recencyScore*0.10 + premiumBoostFromSeller*0.10
-   * Falls back to the regex-based findAll() when no query term is supplied (browse mode),
-   * so empty-query category browsing keeps the richer existing ranking.
-   */
-  async searchProducts(params: {
-    q?: string;
-    marketId?: string;
-    sort?: string;
-    condition?: string;
-    category?: string;
-    limit?: number;
-    skip?: number;
-  }): Promise<any[]> {
-    const q = String(params.q || '').trim();
-    const limit = Math.min(Math.max(Number(params.limit) || 30, 1), 100);
-    const skip = Math.max(Number(params.skip) || 0, 0);
-
-    // No query term → delegate to the existing browse pipeline (category/condition filters applied below).
-    if (!q) {
-      return this.findAll({
-        approvedOnly: true,
-        isActive: true,
-        marketId: params.marketId,
-        category: params.category,
-        sortBy: params.sort === 'newest' ? { createdAt: -1 } : undefined,
-        limit,
-        skip,
-        ...(params.condition ? { condition: params.condition } : {}),
-      });
-    }
-
-    const validConditions = ['new', 'grade_a', 'grade_b', 'grade_c', 'refurbished'];
-    const match: any = { deletedAt: null, isActive: true, isApproved: true, $text: { $search: q } };
-    if (params.marketId && Types.ObjectId.isValid(params.marketId)) {
-      match.marketId = new Types.ObjectId(params.marketId);
-    }
-    if (params.condition && validConditions.includes(String(params.condition))) {
-      match.condition = params.condition;
-    }
-
-    const rows = await this.productModel
-      .find(match, { score: { $meta: 'textScore' } })
-      .select('-auditTrail')
-      .populate('sellerId', 'stallName shopDetails rating totalOrders userId marketId premiumTier premiumUntil spotlightScore isPremium')
-      .populate('marketId', 'name slug code location imageUrl spotlightScore premiumTier')
-      .sort({ score: { $meta: 'textScore' } })
-      .limit(200)
-      .lean()
-      .exec();
-
-    const maxScore = rows.reduce((m: number, r: any) => Math.max(m, Number(r.score || 0)), 0) || 1;
-    const now = Date.now();
-    const SEVEN_DAYS = 7 * 24 * 60 * 60 * 1000;
-
-    const scored = rows.map((p: any) => {
-      const textRelevance = Number(p.score || 0) / maxScore;
-      const sellerRating = Number(p.sellerId?.rating || p.rating || 0);
-      const ratingScore = Math.max(0, Math.min(1, sellerRating / 5));
-      const ageMs = now - new Date(p.createdAt || now).getTime();
-      const recencyScore = ageMs <= SEVEN_DAYS ? 1 : Math.max(0, 1 - (ageMs - SEVEN_DAYS) / (90 * 24 * 60 * 60 * 1000));
-      const sellerPremiumActive = Boolean(
-        p.sellerId?.isPremium &&
-        p.sellerId?.premiumTier !== 'none' &&
-        (!p.sellerId?.premiumUntil || new Date(p.sellerId.premiumUntil) > new Date())
-      );
-      const marketPremiumActive = Boolean(
-        p.marketId?.premiumTier &&
-        p.marketId?.premiumTier !== 'none'
-      );
-      // Seller and market spotlight scores (0..100) contribute at most 0.10.
-      const premiumScore = Math.max(
-        sellerPremiumActive ? Number(p.sellerId?.spotlightScore || 0) : 0,
-        marketPremiumActive ? Number(p.marketId?.spotlightScore || 0) : 0,
-      );
-      const premiumBoostFromSeller = Math.min(0.1, (premiumScore / 100) * 0.1);
-      const rankScore =
-        textRelevance * 0.5 + ratingScore * 0.3 + recencyScore * 0.1 + premiumBoostFromSeller;
-      return { ...this.withCatalogMetadata(p), rankScore, isSponsored: premiumBoostFromSeller > 0 };
-    });
-
-    let ordered: any[];
-    switch (params.sort) {
-      case 'price_asc':
-        ordered = scored.sort((a, b) => Number(a.price || 0) - Number(b.price || 0));
-        break;
-      case 'price_desc':
-        ordered = scored.sort((a, b) => Number(b.price || 0) - Number(a.price || 0));
-        break;
-      case 'newest':
-        ordered = scored.sort(
-          (a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime(),
-        );
-        break;
-      case 'rating':
-        ordered = scored.sort((a, b) => Number(b.rating || 0) - Number(a.rating || 0));
-        break;
-      default:
-        ordered = scored.sort((a, b) => {
-          if (a.isSponsored !== b.isSponsored) return a.isSponsored ? -1 : 1;
-          return b.rankScore - a.rankScore;
-        });
-    }
-
-    const enriched = await this.enrichWithPromotions(ordered);
-    return enriched.slice(skip, skip + limit);
   }
 
   async getFacets(query: any): Promise<any> {
@@ -1918,22 +1774,6 @@ export class ProductService implements OnModuleInit {
     delete updateData.sellerId;
     delete updateData.marketId;
     updateData = await this.normalizeProductData(updateData, existing);
-
-    // Cold-chain / perishable handling on update (Feature 6).
-    if (updateData.perishable !== undefined) {
-      updateData.perishable = this.parseBooleanFlag(updateData.perishable) === true;
-      if (updateData.perishable) {
-        const maxMin = Number(updateData.maxDeliveryMinutes ?? existing?.maxDeliveryMinutes);
-        updateData.maxDeliveryMinutes = Number.isFinite(maxMin) && maxMin > 0 ? Math.round(maxMin) : 120;
-      } else {
-        updateData.maxDeliveryMinutes = null;
-      }
-    }
-    if (updateData.exportMinQty !== undefined && updateData.exportMinQty !== '') {
-      const minQty = Number(updateData.exportMinQty);
-      if (Number.isFinite(minQty) && minQty > 0) updateData.exportMinQty = Math.round(minQty);
-      else updateData.exportMinQty = null;
-    }
 
     const updatedProduct = await this.productModel.findOneAndUpdate(
       { _id: id, deletedAt: null },

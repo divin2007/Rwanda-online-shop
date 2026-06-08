@@ -42,48 +42,50 @@ export default function WishlistPage() {
 
   return (
     <Layout>
-      <div className="w-full p-6 md:p-8 space-y-lg animate-reveal">
-        {/* Banner with brand hero-glow */}
-        <section className="relative overflow-hidden rounded-lg border border-outline-variant bg-[#1b1c1b] p-md text-white shadow-md custom-shadow">
-          <div className="absolute inset-0 bg-gradient-to-r from-black/85 via-black/40 to-transparent z-10"></div>
-          <div className="absolute inset-0 hero-glow pointer-events-none z-10"></div>
-          
-          <div className="relative z-20 space-y-xs">
-            <p className="flex items-center gap-xs text-[10px] font-black uppercase tracking-wider text-primary-container">
-              <span className="w-1.5 h-1.5 rounded-full bg-primary-container animate-pulse"></span> {t('nav_wishlist') || 'Wishlist'}
-            </p>
-            <h1 className="max-w-xl font-display-lg text-headline-lg text-white leading-tight">
-              {t('saved_items') || 'Saved Items'}
-            </h1>
-            <p className="max-w-xl text-xs text-white/80 leading-relaxed font-body-md">
-              {t('wishlist_subtitle') || 'Products you have bookmarked for later consideration or pricing negotiations.'}
-            </p>
+      <div className="animate-reveal space-y-20 pb-20">
+        {/* Tactical Header */}
+        <div className="relative bg-white text-[#1b1c1c] p-16 overflow-hidden group shadow-2xl border border-[#e0e0e0] rounded-lg">
+          <div className="absolute top-0 right-0 p-10 opacity-5">
+             <div className="text-[150px] font-sans leading-none select-none">SAVE</div>
           </div>
-        </section>
+          
+          <div className="relative z-10 space-y-6">
+             <div className="flex items-center gap-6">
+                <div className="w-12 h-px bg-[#ffd700]"></div>
+                 <p className="text-[11px] font-black text-[#ff6b00] uppercase tracking-[0.5em]">{t('nav_wishlist')}</p>
+             </div>
+             <h1 className="text-7xl font-sans tracking-normal leading-none text-[#1b1c1c]">
+               {t('saved_items')}
+             </h1>
+             <p className="text-[10px] font-bold uppercase tracking-widest text-[#1b1c1c]/60">
+               {t('wishlist_subtitle')}
+             </p>
+          </div>
+        </div>
 
-        <div className="w-full">
+        <div className="max-w-[1920px] mx-auto px-0">
           {loading ? (
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-md">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-12">
               {[...Array(4)].map((_, i) => (
-                <div key={i} className="animate-pulse bg-surface-container-low border border-outline-variant h-72 rounded-lg" />
+                <div key={i} className="animate-pulse bg-[#f0eded] border border-[#e0e0e0] h-80"></div>
               ))}
             </div>
           ) : products.length === 0 ? (
-            <div className="border border-dashed border-outline-variant rounded-lg bg-surface-container-low/30 py-20 text-center group shadow-sm flex flex-col items-center justify-center">
-              <div className="w-14 h-14 bg-surface-container-lowest border border-outline-variant rounded-full flex items-center justify-center mb-6 text-on-surface-variant group-hover:text-primary transition-all shadow-sm">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
-              </div>
-              <h2 className="font-headline-md text-headline-md text-on-surface mb-2">{t('wishlist_empty_title') || 'Your wishlist is empty'}</h2>
-              <p className="font-data-mono-sm text-[9px] text-on-surface-variant uppercase tracking-wider mb-8">{t('wishlist_empty_desc') || 'Products you save will appear here.'}</p>
-              <Link 
-                href="/markets" 
-                className="rounded-md bg-primary-container text-white px-6 py-3 text-xs font-black uppercase tracking-wider hover:bg-primary transition-all duration-300 shadow-sm active:scale-[0.99]"
-              >
-                {t('home_hero_cta') || 'Explore Markets'} →
-              </Link>
+            <div className="border border-dashed border-[#e0e0e0] rounded-lg bg-[#fcf9f8]/50 py-32 text-center group">
+               <div className="w-20 h-20 bg-white border border-[#e0e0e0] flex items-center justify-center mx-auto mb-10 group-hover:bg-[#e05300] group-hover:text-white transition-all shadow-sm">
+                  <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+               </div>
+               <h2 className="text-3xl font-sans tracking-normal text-[#1b1c1c] mb-4">{t('wishlist_empty_title')}</h2>
+               <p className="text-[11px] font-black text-[#414844] uppercase tracking-[0.5em] mb-12 opacity-60">{t('wishlist_empty_desc')}</p>
+               <Link 
+                 href="/markets" 
+                 className="rmf-btn-primary bg-[#e05300] text-white px-12 py-5 shadow-[0_20px_50px_-15px_rgba(0,0,0,0.3)] hover:bg-[#e05300]"
+               >
+                 {t('home_hero_cta')} →
+               </Link>
             </div>
           ) : (
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-md">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-12">
               {products.map(product => (
                 <ProductCard key={product._id} product={product} />
               ))}

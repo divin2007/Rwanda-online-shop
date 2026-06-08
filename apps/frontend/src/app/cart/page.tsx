@@ -59,7 +59,7 @@ export default function CartPage() {
   return (
     <Layout>
       <div className="bg-[#fdfaf7] min-h-screen">
-        <div className="w-full space-y-12 pb-40 pt-12 p-6 md:p-8 animate-reveal">
+        <div className="rmf-container space-y-12 pb-40 pt-12 px-4 md:px-8 max-w-7xl mx-auto animate-reveal">
           
           {/* ── High-End Checkout Progress Stepper ── */}
           <div className="flex items-center justify-between max-w-3xl mx-auto mb-16 select-none bg-white/50 backdrop-blur-sm border border-[#ebdcd0]/50 rounded-2xl p-4 shadow-sm">
@@ -305,7 +305,7 @@ export default function CartPage() {
                   <div className="flex items-center justify-center gap-3 mt-8 pt-6 border-t border-[#f2e8e0]">
                     <CreditCard size={12} className="text-[#80756c]" />
                     <p className="text-[9px] font-black uppercase tracking-widest text-center text-[#80756c]">
-                      MTN MoMo Secure Encryption
+                      MTN MoMo & Airtel Secure Encryption
                     </p>
                   </div>
                   

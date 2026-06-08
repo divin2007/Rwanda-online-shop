@@ -54,16 +54,9 @@ class BuyerDto {
 }
 
 class ProductDto {
-  @IsOptional()
   @IsString()
-  productId?: string;
-
-  @IsOptional()
-  @IsString()
-  menuItemId?: string;
-
-  @IsOptional()
-  isMenuItem?: boolean;
+  @IsNotEmpty()
+  productId!: string;
 
   @IsString()
   @IsNotEmpty()
@@ -187,7 +180,7 @@ export class CreateOrderDto {
   @IsOptional()
   @IsObject()
   payment?: {
-    method?: 'MTN_MOMO';
+    method?: 'MTN_MOMO' | 'AIRTEL_MONEY' | 'TIGO_CASH';
     [key: string]: any;
   };
 
@@ -198,15 +191,4 @@ export class CreateOrderDto {
   @IsOptional()
   @IsObject()
   security?: Record<string, any>;
-
-  // Affiliate referral attribution (Feature 3). The slug of the ReferralLink that
-  // brought the buyer here; validated and credited server-side after escrow release.
-  @IsOptional()
-  @IsString()
-  affiliateCode?: string;
-
-  // Live selling attribution (Feature 2). Set when the order originates from a live session.
-  @IsOptional()
-  @IsString()
-  liveSessionId?: string;
 }

@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, BadRequestException, ConflictException, ForbiddenException, HttpException, HttpStatus, forwardRef, Inject } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, ConflictException, forwardRef, Inject } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { LocationService, RouteService, Coordinates } from '@rmf/location';
@@ -203,19 +203,13 @@ export class DeliveryService {
     const searchSurcharge = this.calculateDispatchSearchSurcharge(boundedRadiusMeters);
     const deliveryFee = baseDeliveryFee + searchSurcharge;
     const payload = delivery.toObject ? delivery.toObject() : delivery;
-    // Cold-chain priority (Feature 6): perishable orders prefer the closest rider and
-    // broadcast under a distinct priority strategy so the gateway sorts by proximity.
-    const isPerishable = Boolean(delivery.isPerishable);
-    const dispatchStrategy = isPerishable ? 'PROGRESSIVE_RADIUS_PRIORITY' : 'PROGRESSIVE_RADIUS';
     const result = this.deliveryGateway.broadcastToActiveRiders(payload, coords.lat, coords.lng, {
       searchSurcharge,
       deliveryFee,
       radiusMeters: boundedRadiusMeters,
       nextRadiusMeters,
       maxRadiusMeters: config.maxRadiusMeters,
-      strategy: dispatchStrategy,
-      prioritizeProximity: isPerishable,
-      excludedRiderIds: (delivery.dispatch?.excludedRiderIds || []).map((id: any) => String(id)),
+      strategy: 'PROGRESSIVE_RADIUS',
     });
 
     const existingNotified = new Set((delivery.dispatch?.notifiedRiderIds || []).map((id: any) => String(id)));
@@ -226,7 +220,7 @@ export class DeliveryService {
         'financials.baseDeliveryFee': baseDeliveryFee,
         'financials.deliveryFee': deliveryFee,
         'financials.searchSurcharge': searchSurcharge,
-        'dispatch.strategy': dispatchStrategy,
+        'dispatch.strategy': 'PROGRESSIVE_RADIUS',
         'dispatch.initialRadiusMeters': config.initialRadiusMeters,
         'dispatch.currentRadiusMeters': boundedRadiusMeters,
         'dispatch.nextRadiusMeters': nextRadiusMeters,
@@ -252,9 +246,6 @@ export class DeliveryService {
         orderId: delivery.orderId,
         referenceId: delivery._id,
         referenceType: 'Delivery',
-        marketName: delivery.pickup?.marketName || delivery.pickup?.hubName || delivery.pickup?.stallName || 'the market',
-        pickupAddress: delivery.pickup?.address || 'the pickup point',
-        dropoffAddress: delivery.dropoff?.address || 'the customer destination',
         broadcastMode: 'PROGRESSIVE_RADIUS',
         radiusMeters: boundedRadiusMeters,
         nextRadiusMeters,
@@ -309,11 +300,6 @@ export class DeliveryService {
       || 500
     );
     const dispatchConfig = this.getDispatchConfig();
-    // Snapshot the rider's expected earnings (standard 90% of the base fee) so
-    // the rider's delivery card can show take-home up front. The authoritative
-    // payout (incl. the elevated 93% tier) is recomputed in order-service at
-    // settlement; this is a display estimate.
-    const riderEarnings = Number(data.riderEarnings ?? Math.round(baseDeliveryFee * 0.9));
     const delivery = new this.deliveryModel({
       ...data,
       financials: {
@@ -322,7 +308,6 @@ export class DeliveryService {
         deliveryFee: baseDeliveryFee,
         searchSurcharge: 0,
       },
-      riderEarnings,
       dispatch: {
         strategy: 'PROGRESSIVE_RADIUS',
         initialRadiusMeters: dispatchConfig.initialRadiusMeters,
@@ -407,39 +392,6 @@ export class DeliveryService {
       { new: true }
     );
 
-    // Cold-chain SLA breach alert (Feature 6): if a perishable delivery has exceeded its
-    // maxDeliveryMinutes window and is not yet delivered, alert the seller once.
-    try {
-      if (
-        updatedDelivery?.isPerishable &&
-        updatedDelivery.maxDeliveryMinutes &&
-        !updatedDelivery.perishableAlertSentAt &&
-        newStatus !== DeliveryStatus.DELIVERED
-      ) {
-        const startedAt = new Date(updatedDelivery.createdAt || Date.now()).getTime();
-        const elapsedMinutes = (Date.now() - startedAt) / 60000;
-        if (elapsedMinutes > Number(updatedDelivery.maxDeliveryMinutes)) {
-          await this.deliveryModel.findByIdAndUpdate(id, { $set: { perishableAlertSentAt: new Date() } });
-          const order = await this.orderModel
-            .findById(updatedDelivery.orderId)
-            .select('seller')
-            .lean()
-            .exec();
-          const sellerUserId = this.normalizeId(order?.seller?.userId);
-          if (sellerUserId) {
-            this.triggerNotification(sellerUserId, 'delivery.perishable_delay', {
-              orderNumber: updatedDelivery.orderNumber,
-              orderId: updatedDelivery.orderId,
-              maxDeliveryMinutes: updatedDelivery.maxDeliveryMinutes,
-              elapsedMinutes: Math.round(elapsedMinutes),
-            });
-          }
-        }
-      }
-    } catch (perishErr: any) {
-      console.error('Perishable delay alert failed', perishErr?.message);
-    }
-
     // Notify the order-service
     if (updatedDelivery?.orderId) {
       let orderStatus = '';
@@ -468,30 +420,7 @@ export class DeliveryService {
   }
 
   async completeDelivery(id: string, actorUserId: string): Promise<any> {
-    const result = await this.updateStatus(id, DeliveryStatus.DELIVERED, actorUserId);
-
-    // Reliability recovery: a successful delivery nudges the score back up by
-    // 0.01, capped at 1.0. Read-then-write so we never exceed the cap.
-    try {
-      const riderUserId = result?.rider?.userId || actorUserId;
-      if (riderUserId) {
-        const profile = await this.riderModel.findOne({ userId: riderUserId }).exec();
-        if (profile) {
-          const current = typeof profile.reliabilityScore === 'number' ? profile.reliabilityScore : 1;
-          const next = Math.min(1, Math.round((current + 0.01) * 100) / 100);
-          if (next !== current) {
-            await this.riderModel.findOneAndUpdate(
-              { userId: riderUserId },
-              { $set: { reliabilityScore: next } },
-            ).exec();
-          }
-        }
-      }
-    } catch (e) {
-      console.error('Failed to apply rider reliability recovery', e);
-    }
-
-    return result;
+    return this.updateStatus(id, DeliveryStatus.DELIVERED, actorUserId);
   }
 
   async photoVerifiedPickup(id: string, photoUrl: string, qrData: string, actorUserId?: string): Promise<any> {
@@ -787,113 +716,6 @@ export class DeliveryService {
     }
 
     return delivery;
-  }
-
-  /**
-   * An already-assigned rider abandons the delivery before pickup.
-   * Differs from rejectDelivery (a fresh decline): this penalises the rider's
-   * reliability score, rate-limits abuse, and excludes the rider from re-dispatch.
-   */
-  async riderCancel(id: string, riderUserId: string, reason?: string): Promise<any> {
-    if (!id.match(/^[0-9a-fA-F]{24}$/)) {
-      throw new BadRequestException('Invalid delivery ID format');
-    }
-    if (!riderUserId) {
-      throw new BadRequestException('Rider identity is required to cancel');
-    }
-
-    const delivery = await this.deliveryModel.findById(id).exec();
-    if (!delivery) {
-      throw new NotFoundException(`Delivery ${id} not found`);
-    }
-
-    // Only the currently-assigned rider may cancel, and only before pickup.
-    const cancellableStatuses = [DeliveryStatus.ASSIGNED, DeliveryStatus.EN_ROUTE_TO_PICKUP];
-    if (!cancellableStatuses.includes(delivery.status)) {
-      throw new ConflictException(`Delivery cannot be cancelled at its current status (${delivery.status})`);
-    }
-    if (String(delivery.rider?.userId || '') !== String(riderUserId)) {
-      throw new ForbiddenException('Only the assigned rider can cancel this delivery');
-    }
-
-    // Rate limit: max 2 self-cancellations in a rolling 24h window before the
-    // account is flagged. We count audited cancellations across the rider's
-    // deliveries within the window.
-    const windowStart = new Date(Date.now() - 24 * 60 * 60 * 1000);
-    const recentCancellations = await this.deliveryModel.countDocuments({
-      'dispatch.excludedRiderIds': delivery.rider?.userId,
-      riderCancelledAt: { $gte: windowStart },
-    }).exec();
-    if (recentCancellations >= 2) {
-      throw new HttpException(
-        'Daily cancellation limit reached — account flagged for review',
-        HttpStatus.TOO_MANY_REQUESTS,
-      );
-    }
-
-    const cancellingRiderUserId = delivery.rider?.userId;
-
-    // Unassign the rider, keep the delivery in the pool (ASSIGNED), record the
-    // audit fields, and exclude the rider from re-dispatch (cooling-off).
-    const updated = await this.deliveryModel.findOneAndUpdate(
-      {
-        _id: id,
-        status: { $in: cancellableStatuses },
-        'rider.userId': riderUserId,
-      },
-      {
-        $set: {
-          status: DeliveryStatus.ASSIGNED,
-          'rider.riderId': null,
-          'rider.userId': null,
-          'rider.fullName': null,
-          'rider.phone': null,
-          'rider.plateNumber': null,
-          riderCancelledAt: new Date(),
-          riderCancelReason: reason || 'Rider cancelled',
-        },
-        $addToSet: { 'dispatch.excludedRiderIds': cancellingRiderUserId },
-      },
-      { new: true },
-    ).exec();
-
-    if (!updated) {
-      // Lost a race (someone else moved the delivery on). Re-check and surface.
-      const exists = await this.deliveryModel.findById(id).exec();
-      if (!exists) throw new NotFoundException(`Delivery ${id} not found`);
-      throw new ConflictException(`Delivery cannot be cancelled at its current status (${exists.status})`);
-    }
-
-    // Reliability penalty: decrement by 0.05, floored at 0; bump cancellation tally.
-    // Computed read-then-write so the floor is exact (a bare $inc could go negative).
-    try {
-      const profile = await this.riderModel.findOne({ userId: cancellingRiderUserId }).exec();
-      if (profile) {
-        const current = typeof profile.reliabilityScore === 'number' ? profile.reliabilityScore : 1;
-        const next = Math.max(0, Math.round((current - 0.05) * 100) / 100);
-        await this.riderModel.findOneAndUpdate(
-          { userId: cancellingRiderUserId },
-          { $set: { reliabilityScore: next }, $inc: { cancellationCount: 1 } },
-        ).exec();
-      }
-    } catch (e) {
-      console.error('Failed to apply rider reliability penalty', e);
-    }
-
-    // Audit log entry.
-    console.warn(
-      `[AUDIT] rider-cancel: delivery=${id} order=${updated.orderNumber} ` +
-      `rider=${cancellingRiderUserId} reason="${reason || 'Rider cancelled'}" at=${new Date().toISOString()}`,
-    );
-
-    // Re-dispatch immediately to other riders (excluding the canceller).
-    try {
-      this.scheduleAdaptiveBroadcast(String(updated._id), 0);
-    } catch (e) {
-      console.error('Failed to rebroadcast delivery after rider cancellation', e);
-    }
-
-    return updated;
   }
 
   async rebroadcastDelivery(id: string): Promise<any> {

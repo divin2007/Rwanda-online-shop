@@ -1,5 +1,5 @@
 import mongoose, { Schema, model } from 'mongoose';
-import { OrderStatus, PaymentStatus, DisputeResolution, DisputeType } from '@rmf/shared-types';
+import { OrderStatus, PaymentStatus, DisputeResolution } from '@rmf/shared-types';
 
 export const transactionSchema = new Schema({
   orderNumber: { type: String, required: true, unique: true },
@@ -24,12 +24,7 @@ export const transactionSchema = new Schema({
     marketId: { type: Schema.Types.ObjectId, ref: 'Market', required: true }
   },
   products: [{
-    // productId is required for catalogue products but absent for menu items.
-    productId: { type: Schema.Types.ObjectId, ref: 'Product' },
-    // menuItemId references a Menu subdocument item (made-to-order food/dining lines).
-    menuItemId: { type: Schema.Types.ObjectId },
-    isMenuItem: { type: Boolean, default: false },
-    stockType: { type: String }, // e.g. 'on_demand' for menu items
+    productId: { type: Schema.Types.ObjectId, ref: 'Product', required: true },
     name: { type: String, required: true },
     unitPrice: { type: Number, required: true },
     quantity: { type: Number, required: true },
@@ -45,15 +40,7 @@ export const transactionSchema = new Schema({
     priceSnapshotAt: { type: Date },
     weight: { type: Number },
     customization: { type: String },
-    prototypeImage: { type: String },
-    // Menu-item specifics:
-    preparationMinutes: { type: Number },
-    dietaryTags: [{ type: String }],
-    selectedModifiers: [{
-      name: { type: String },
-      label: { type: String },
-      extraPrice: { type: Number, default: 0 }
-    }]
+    prototypeImage: { type: String }
   }],
   financials: {
     subtotal: { type: Number, required: true },
@@ -82,8 +69,6 @@ export const transactionSchema = new Schema({
     platformStatus: { type: String, enum: ['pending', 'paid', 'failed', 'skipped'], default: 'pending' },
     platformCommissionRef: { type: String },
     platformSettledAt: { type: Date },
-    // Affiliate commission settlement state (Feature 3): 'credited' | 'skipped_self_referral' | 'skipped_zero'
-    affiliateStatus: { type: String },
     releaseAvailableAt: { type: Date },
     releaseTriggeredAt: { type: Date },
     payoutBlockedReason: { type: String },
@@ -107,22 +92,13 @@ export const transactionSchema = new Schema({
     nextRun: Date
   },
   deliveryId: { type: Schema.Types.ObjectId, ref: 'Delivery' },
-  // Origin of the order — drives commission/attribution logic in expansion features.
-  orderSource: { type: String, enum: ['direct', 'live_session', 'group_buy', 'referral', 'b2b_recurring'], default: 'direct' },
-  groupBuyId: { type: Schema.Types.ObjectId, ref: 'GroupBuy' },
-  liveSessionId: { type: Schema.Types.ObjectId, ref: 'LiveSession' },
-  affiliateCode: { type: String },
   dispute: {
     isDisputed: { type: Boolean, default: false },
-    // Categorises the dispute (Phase 3). Defaults to GENERAL for backward compatibility.
-    type: { type: String, enum: Object.values(DisputeType), default: DisputeType.GENERAL },
     reason: String,
     evidenceUrls: [{ type: String }],
     raisedAt: Date,
     resolvedAt: Date,
     adminNote: String,
-    // refundPercentage is only set for PARTIAL_REFUND resolutions (1–100).
-    refundPercentage: { type: Number },
     resolution: { type: String, enum: Object.values(DisputeResolution) }
   },
   attributes: { type: Map, of: String },
@@ -168,10 +144,5 @@ transactionSchema.index({ 'seller.marketId': 1, createdAt: -1 });
 transactionSchema.index({ 'buyer.userId': 1, createdAt: -1 });
 transactionSchema.index({ status: 1, createdAt: -1 });
 transactionSchema.index({ deletedAt: 1 });
-// Fast lookup for MTN MoMo payment callbacks by reference id.
-transactionSchema.index({ 'payment.transactionRef': 1 });
-// Settlement worker queries and payment-status filtering.
-transactionSchema.index({ 'settlement.status': 1 });
-transactionSchema.index({ 'payment.status': 1, status: 1 });
 
 export const Transaction = mongoose.models.Transaction || model('Transaction', transactionSchema);

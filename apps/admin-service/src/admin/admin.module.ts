@@ -10,18 +10,11 @@ import {
   supportTicketSchema,
   sellerVideoSchema,
   notificationLogSchema,
-  ledgerEntrySchema,
-  priceIndexSchema,
-  userSchema,
-  exportInquirySchema,
-  b2bAccountSchema
+  ledgerEntrySchema
 } from '@rmf/database';
 import { AuthGuardModule } from '@rmf/auth';
 import { AdminService } from './admin.service';
-import { TierCalculationService } from './tier-calculation.service';
-import { PriceIndexService } from './price-index.service';
 import { AdminController } from './admin.controller';
-import { PriceIndexController } from './price-index.controller';
 
 @Module({
   imports: [
@@ -35,16 +28,12 @@ import { PriceIndexController } from './price-index.controller';
       { name: 'SupportTicket', schema: supportTicketSchema },
       { name: 'SellerVideo', schema: sellerVideoSchema },
       { name: 'NotificationLog', schema: notificationLogSchema },
-      { name: 'LedgerEntry', schema: ledgerEntrySchema },
-      { name: 'PriceIndex', schema: priceIndexSchema },
-      { name: 'User', schema: userSchema },
-      { name: 'ExportInquiry', schema: exportInquirySchema },
-      { name: 'B2BAccount', schema: b2bAccountSchema }
+      { name: 'LedgerEntry', schema: ledgerEntrySchema }
     ]),
     AuthGuardModule.forRoot(),
   ],
-  providers: [AdminService, TierCalculationService, PriceIndexService],
-  controllers: [AdminController, PriceIndexController],
+  providers: [AdminService],
+  controllers: [AdminController],
   exports: [AdminService],
 })
 export class AdminModule {}

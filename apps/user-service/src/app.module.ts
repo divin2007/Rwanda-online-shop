@@ -6,8 +6,6 @@ import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { AuthModule } from './auth/auth.module';
 import { UsersModule } from './users/users.module';
-import { AffiliateModule } from './affiliate/affiliate.module';
-import { B2bModule } from './b2b/b2b.module';
 
 @Module({
   imports: [
@@ -19,8 +17,6 @@ import { B2bModule } from './b2b/b2b.module';
     HealthCheckModule,
     AuthModule,
     UsersModule,
-    AffiliateModule,
-    B2bModule,
   ],
   controllers: [AppController],
   providers: [AppService],

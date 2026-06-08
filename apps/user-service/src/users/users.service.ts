@@ -237,13 +237,6 @@ export class UsersService {
   }
 
   async create(userData: any): Promise<any> {
-    const requestedRole = String(userData.role || UserRole.BUYER).toUpperCase();
-    if (requestedRole === UserRole.ADMIN) {
-      throw new BadRequestException('Admin accounts cannot be created through public registration');
-    }
-    if (![UserRole.BUYER, UserRole.SELLER, UserRole.RIDER].includes(requestedRole as UserRole)) {
-      throw new BadRequestException('Invalid registration role');
-    }
     // 1C fix: build dedup filter carefully — only include phone if actually provided.
     // Google OAuth users have phone=undefined, which would match any other user with no phone.
     const dedupFilter: any[] = [{ email: userData.email }];
@@ -289,7 +282,7 @@ export class UsersService {
     const newUser = new this.userModel({
       ...userData,
       passwordHash,
-      role: requestedRole,
+      role: userData.role || UserRole.BUYER,
       referralCode,
       referredBy: userData.referredBy || null,
       preferences: initialPreferences,
