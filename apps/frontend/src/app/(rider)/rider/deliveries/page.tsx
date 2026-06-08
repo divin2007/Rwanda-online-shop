@@ -7,7 +7,18 @@ import { useApi } from '@/hooks/useApi';
 import { deliveryApi, riderApi } from '@/lib/api';
 import { Search, Bike, Store, MapPin } from 'lucide-react';
 import Link from 'next/link';
-import { ProofOfDelivery } from '@/components/ui/ProofOfDelivery';
+import toast from 'react-hot-toast';
+import { RiderErrandsPanel } from '@/components/rider/RiderErrandsPanel';
+
+async function confirmStallOpen(sellerId?: string) {
+  if (!sellerId) return toast.error('Seller information unavailable for this delivery');
+  try {
+    await riderApi.post(`/riders/stall-confirmation/${sellerId}`, {});
+    toast.success('Thanks! You confirmed the stall is open.');
+  } catch (e: any) {
+    toast.error(e?.response?.data?.message || 'Could not confirm stall');
+  }
+}
 
 const RIDER_DELIVERIES_REFRESH_MS = 10000;
 
@@ -53,6 +64,22 @@ export default function RiderDeliveriesPage() {
     };
   }, [deliveries, profile]);
 
+  const canSelfCancel = (status: string) => ['assigned', 'en_route_to_pickup'].includes(status);
+
+  const cancelAcceptedDelivery = async (deliveryId: string) => {
+    const reason = window.prompt('Why are you dropping this delivery? This will reduce your reliability score slightly.');
+    if (reason === null) return;
+    try {
+      await deliveryApi.post(`/deliveries/${deliveryId}/rider-cancel`, {
+        reason: reason.trim() || 'Rider cancelled from delivery console',
+      });
+      toast.success('Delivery released and rebroadcast to other riders.');
+      fetchDeliveries();
+    } catch (e: any) {
+      toast.error(e?.response?.data?.message || 'Could not release this delivery');
+    }
+  };
+
   const getStatusBadge = (status: string) => {
     const styles: Record<string, string> = {
       delivered: 'bg-green-100 text-green-800 border-green-300',
@@ -72,7 +99,7 @@ export default function RiderDeliveriesPage() {
 
   return (
     <Layout>
-      <div className="mx-auto max-w-6xl space-y-6 animate-reveal pb-20">
+      <div className="w-full p-6 md:p-8 space-y-6 animate-reveal pb-20">
         
         {/* ── Header ── */}
         <div className="overflow-hidden rounded-lg border border-[#0b4b32]/20 bg-[#e05300] p-6 text-white shadow-sm md:p-8">
@@ -86,7 +113,7 @@ export default function RiderDeliveriesPage() {
             <p className="mt-2 max-w-xl text-sm font-semibold leading-6 text-white/65">Track pickups, handovers, earnings, and proof steps from one place.</p>
           </div>
           
-          <div className="flex flex-wrap items-center gap-3">
+          <div className="flex gap-3">
             <div className="rounded-md border border-white/10 bg-white/5 px-4 py-3 text-right [&>p:last-child]:!text-white">
               <p className="mb-1 text-[9px] font-black uppercase tracking-widest text-white/45">Plate No.</p>
               <p className="text-xl font-sans text-[#1b1c1c] tracking-normal">{profile?.plateNumber || '—'}</p>
@@ -95,9 +122,6 @@ export default function RiderDeliveriesPage() {
               <p className="mb-1 text-[9px] font-black uppercase tracking-widest text-white/45">Rating</p>
               <p className="text-xl font-sans tracking-normal text-[#ffedd5]">{stats.rating > 0 ? stats.rating.toFixed(1) : 'New'}</p>
             </div>
-            <Link href="/rider/history" className="rounded-md bg-[#ffedd5] px-5 py-3 text-[10px] font-black uppercase tracking-widest text-[#e05300] transition hover:bg-white">
-              Full history →
-            </Link>
           </div>
         </div>
 
@@ -209,7 +233,10 @@ export default function RiderDeliveriesPage() {
                           </div>
                           <div>
                              <p className="text-[8px] font-black text-[#ff6b00] uppercase tracking-widest mb-1">Pickup</p>
-                             <p className="text-sm font-bold text-[#1b1c1c] leading-snug">{delivery.pickup?.address || 'Market Location'}</p>
+                             {delivery.pickup?.marketName && (
+                               <p className="text-[11px] font-black text-[#1b1c1c] leading-snug">{delivery.pickup.marketName}</p>
+                             )}
+                             <p className="text-sm font-bold text-[#1b1c1c] leading-snug">{delivery.pickup?.address || delivery.pickup?.marketName || 'Market Location'}</p>
                           </div>
                        </div>
                        <div className="w-px h-6 bg-[#e0e0e0] ml-4 -my-4" />
@@ -226,34 +253,49 @@ export default function RiderDeliveriesPage() {
 
                     <div className="flex flex-col justify-between items-end sm:items-end items-start border-t sm:border-t-0 border-[#f0eded] pt-6 sm:pt-0">
                        <div className="text-left sm:text-right mb-6 sm:mb-0">
-                          <p className="text-[8px] font-black text-[#414844] uppercase tracking-widest mb-1">Earnings</p>
+                          {delivery.deliveryType && delivery.deliveryType !== 'standard' && (
+                            <span className="inline-block mb-2 rounded-full border border-[#ffdbce] bg-[#fff7ed] px-2.5 py-0.5 text-[9px] font-black uppercase tracking-widest text-[#a63b00]">
+                              {String(delivery.deliveryType).replace(/_/g, ' ')}
+                            </span>
+                          )}
+                          <p className="text-[8px] font-black text-[#414844] uppercase tracking-widest mb-1">Your Earnings</p>
                           <p className="text-3xl font-sans text-[#1b1c1c] tracking-normal">
-                            {delivery.financials?.deliveryFee?.toLocaleString() || '500'} <span className="text-xs not-italic font-sans text-[#ff6b00] font-black uppercase">RWF</span>
+                            {(delivery.riderEarnings ?? Math.round((delivery.financials?.deliveryFee || 500) * 0.9)).toLocaleString()} <span className="text-xs not-italic font-sans text-[#ff6b00] font-black uppercase">RWF</span>
                           </p>
                        </div>
-                       <Link href={`/orders/${delivery.orderId}/tracking`} className="w-full sm:w-auto">
-                         <button className="w-full sm:w-auto bg-[#ff6b00] hover:bg-[#e05300] text-white font-black uppercase tracking-[0.14em] text-[10px] transition-all py-3 px-8 shadow-md">
-                            Track Delivery →
+                       <div className="flex w-full flex-col gap-2 sm:w-auto">
+                         <button
+                           onClick={() => confirmStallOpen(delivery.pickup?.sellerId || delivery.sellerId)}
+                           className="w-full sm:w-auto border border-[#ff6b00] text-[#ff6b00] hover:bg-[#fff3e6] font-black uppercase tracking-[0.14em] text-[10px] transition-all py-3 px-8"
+                         >
+                           Confirm Stall is Open
                          </button>
-                       </Link>
+                         <Link href={`/orders/${delivery.orderId}/tracking`} className="w-full sm:w-auto">
+                           <button className="w-full sm:w-auto bg-[#ff6b00] hover:bg-[#e05300] text-white font-black uppercase tracking-[0.14em] text-[10px] transition-all py-3 px-8 shadow-md">
+                              Track Delivery →
+                           </button>
+                         </Link>
+                         {canSelfCancel(delivery.status) && (
+                           <button
+                             onClick={() => cancelAcceptedDelivery(delivery._id)}
+                             className="w-full sm:w-auto border border-[#f1cbc3] text-[#7b3f3f] hover:bg-[#fff5f3] font-black uppercase tracking-[0.14em] text-[10px] transition-all py-3 px-8"
+                           >
+                             Release Delivery
+                           </button>
+                         )}
+                       </div>
                     </div>
                   </div>
                 </div>
-
-                {/* Proof-of-delivery steps for active deliveries */}
-                {filter === 'active' && delivery.status !== 'delivered' && delivery.status !== 'failed' && (
-                  <div className="border-t border-[#e0e0e0] p-5">
-                    <ProofOfDelivery
-                      deliveryId={delivery._id}
-                      status={delivery.status}
-                      onUpdated={fetchDeliveries}
-                    />
-                  </div>
-                )}
               </div>
             ))}
           </div>
         )}
+
+        {/* Errands (Feature 4) — available alongside deliveries */}
+        <div className="mt-8">
+          <RiderErrandsPanel />
+        </div>
       </div>
     </Layout>
   );

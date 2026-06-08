@@ -1,6 +1,5 @@
 'use client';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import Link from 'next/link';
 import { Bell } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useSocket } from '@/hooks/useSocket';
@@ -199,15 +198,13 @@ export const NotificationBell = ({ compact = false }: { compact?: boolean }) => 
             )}
           </div>
 
-          <div className="bg-[#fcf9f8] p-4 text-center">
-            <Link
-              href="/notifications"
-              onClick={() => setIsOpen(false)}
-              className="text-xs font-black text-[#ff6b00] transition hover:text-[#e05300]"
-            >
-              {t('notif_view_all')} -&gt;
-            </Link>
-          </div>
+          {notifications.length > 0 && (
+            <div className="bg-[#fcf9f8] p-4 text-center">
+              <button className="text-xs font-black text-[#ff6b00] transition hover:text-[#e05300]">
+                {t('notif_view_all')} -&gt;
+              </button>
+            </div>
+          )}
         </div>
       )}
     </div>

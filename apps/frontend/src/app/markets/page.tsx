@@ -3,21 +3,25 @@
 import React, { useEffect, useState, useMemo, Suspense, useRef } from 'react';
 import { useSearchParams } from 'next/navigation';
 import dynamic from 'next/dynamic';
+import Link from 'next/link';
 import { Layout } from '@/components/layout/Layout';
 import { MarketCard } from '@/components/ui/MarketCard';
 import { ProductCard } from '@/components/ui/ProductCard';
 import { useApi } from '@/hooks/useApi';
 import { useSocket } from '@/hooks/useSocket';
-import { marketApi, productApi, userApi } from '@/lib/api';
+import { marketApi, productApi, userApi, sellerApi } from '@/lib/api';
 import { useLanguage } from '@/context/LanguageContext';
 import { useAuth } from '@/context/AuthContext';
+import { getMarketUrl } from '@/lib/urls';
 import { MapPin, PackageCheck, Search, ShieldCheck, SlidersHorizontal, Sparkles, WifiOff, Clock, TrendingUp, Star, BadgePercent } from 'lucide-react';
-import { logger } from '@/lib/logger';
 
 const RiderMap = dynamic(() => import('@/components/ui/RiderMap').then(mod => mod.RiderMap), {
   ssr: false,
-  loading: () => <div className="h-full w-full animate-pulse bg-[#f0eded]" />,
+  loading: () => <div className="h-full w-full animate-pulse bg-surface-container-low rounded-lg" />,
 });
+
+const marketHref = (market: any) => getMarketUrl(market.slug || market._id);
+const marketLocation = (market: any) => market.location?.address || 'Kigali, Rwanda';
 
 interface Market {
   _id: string;
@@ -33,6 +37,8 @@ interface Market {
   activeProducts?: number;
   totalSellers?: number;
   createdAt?: string;
+  isSponsored?: boolean;
+  premiumTier?: 'none' | 'basic' | 'standard' | 'spotlight';
   location?: {
     address?: string;
     coordinates?: [number, number];
@@ -115,11 +121,25 @@ const getProductMarketId = (product: Product) => {
   return typeof product.marketId === 'object' ? product.marketId._id || '' : product.marketId;
 };
 
-const getProductQueryPath = (searchQuery: string, productCategory: string, attributeFilters: Record<string, string>, priceRange: { min: string; max: string }) => {
+const productSortToQuery: Record<string, string> = {
+  relevance: '-totalOrders',
+  rating: '-rating',
+  newest: '-createdAt',
+  price_asc: 'price',
+  price_desc: '-price',
+};
+
+const getProductQueryPath = (
+  searchQuery: string,
+  productCategory: string,
+  attributeFilters: Record<string, string>,
+  priceRange: { min: string; max: string },
+  sortMode: string,
+) => {
   const params = new URLSearchParams({
     limit: '24',
     isActive: 'true',
-    sortBy: '-totalOrders',
+    sortBy: productSortToQuery[sortMode] || productSortToQuery.relevance,
   });
   const trimmedSearch = searchQuery.trim();
 
@@ -135,7 +155,7 @@ const getProductQueryPath = (searchQuery: string, productCategory: string, attri
     if (value) params.set(`attributes.${key}`, value);
   });
 
-  return `/products/recommendations/for-me?${params.toString()}`;
+  return `/products?${params.toString()}`;
 };
 
 const getFacetQueryPath = (searchQuery: string) => {
@@ -190,31 +210,50 @@ function MarketsContent() {
   const [selectedCategory, setSelectedCategory] = useState('ALL');
   const [selectedProductCategory, setSelectedProductCategory] = useState('all');
   const [attributeFilters, setAttributeFilters] = useState<Record<string, string>>({});
+  const [sortMode, setSortMode] = useState('relevance');
   
   const searchParams = useSearchParams();
   const search = searchParams.get('search');
+  const [businessType, setBusinessType] = useState<string>(searchParams.get('businessType') || 'ALL');
+  // Set of marketIds that contain at least one approved food seller of the selected business type.
+  const [foodMarketIds, setFoodMarketIds] = useState<Set<string> | null>(null);
   const requestedLocation = searchParams.get('location') || '';
   const requestedLat = Number(searchParams.get('lat'));
   const requestedLng = Number(searchParams.get('lng'));
   const hasCoordinateSearch = Number.isFinite(requestedLat) && Number.isFinite(requestedLng);
-  const productQueryPath = useMemo(() => getProductQueryPath(searchQuery, selectedProductCategory, attributeFilters, priceRange), [attributeFilters, searchQuery, selectedProductCategory, priceRange]);
+  const productQueryPath = useMemo(
+    () => getProductQueryPath(searchQuery, selectedProductCategory, attributeFilters, priceRange, sortMode),
+    [attributeFilters, searchQuery, selectedProductCategory, priceRange, sortMode],
+  );
   const facetQueryPath = useMemo(() => getFacetQueryPath(searchQuery), [searchQuery]);
   
   const { user } = useAuth();
   const { data: profileData, execute: refetchProfile } = useApi<any>(userApi, 'get', user ? '/users/profile' : '');
-  const { data: marketsData, loading, error, execute: fetchMarkets } = useApi<Market[]>(marketApi, 'get', '/markets?activeOnly=true');
+  const { data: marketsData, loading, error, execute: fetchMarkets } = useApi<Market[]>(marketApi, 'get', '/markets');
+  // Server-side ranked market search (text + reviews + proximity + capped premium boost).
+  // Only used when the buyer has typed a query; returns isSponsored flags.
+  const marketSearchPath = useMemo(() => {
+    const q = searchQuery.trim();
+    if (!q) return '';
+    const params = new URLSearchParams({ q, sort: sortMode });
+    if (hasCoordinateSearch) {
+      params.set('lat', String(requestedLat));
+      params.set('lng', String(requestedLng));
+    }
+    return `/markets/search?${params.toString()}`;
+  }, [searchQuery, sortMode, hasCoordinateSearch, requestedLat, requestedLng]);
+  const { data: searchedMarketsData } = useApi<Market[]>(marketApi, 'get', marketSearchPath);
   const { data: productsData, loading: productsLoading, error: productsError, execute: refetchProducts } = useApi<Product[]>(productApi, 'get', productQueryPath);
   const { data: facetsData, execute: refetchFacets } = useApi<any>(productApi, 'get', facetQueryPath);
   const { data: catalogCategoriesData } = useApi<any[]>(productApi, 'get', '/products/catalog/categories');
   const { data: promotionsData, execute: refetchPromotions } = useApi<any[]>(productApi, 'get', '/promotions/active');
 
-  // Real-time WebSocket synchronization
   const orderSocketUrl = process.env.NEXT_PUBLIC_ORDER_SERVICE_URL || 'http://localhost:3006';
   const { data: socketMessage } = useSocket(orderSocketUrl, 'order:seller:updates');
 
   useEffect(() => {
     if (socketMessage) {
-      logger.debug('[WebSocket] Order update received on Markets Page:', socketMessage);
+      console.log('[WebSocket] Order update received on Markets Page:', socketMessage);
       if (socketMessage.type === 'STATUS_UPDATE' && (socketMessage.status === 'delivered' || socketMessage.status === 'confirmed')) {
         fetchMarkets();
         refetchProducts();
@@ -271,6 +310,30 @@ function MarketsContent() {
     }
   }, [fetchMarkets, requestedLocation, search]);
 
+  // When a business-type filter is active, resolve which markets contain such sellers.
+  useEffect(() => {
+    if (businessType === 'ALL') {
+      setFoodMarketIds(null);
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await sellerApi.get(`/sellers/discover?businessType=${encodeURIComponent(businessType)}`);
+        const ids = new Set<string>();
+        for (const s of (res.data?.data || [])) {
+          if (!s.isApproved) continue;
+          const mId = typeof s.marketId === 'object' ? s.marketId?._id : s.marketId;
+          if (mId) ids.add(String(mId));
+        }
+        if (!cancelled) setFoodMarketIds(ids);
+      } catch {
+        if (!cancelled) setFoodMarketIds(new Set());
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [businessType]);
+
   const allMarkets = useMemo(() => Array.isArray(marketsData) ? marketsData : [], [marketsData]);
   const matchingProducts = useMemo(
     () => (Array.isArray(productsData) ? productsData : []),
@@ -284,6 +347,7 @@ function MarketsContent() {
     });
     return ids;
   }, [matchingProducts]);
+
   const productSourceMarkets = useMemo(() => {
     const marketsById = new Map(allMarkets.map(market => [market._id, market]));
     const sources = new Map<string, Market>();
@@ -312,20 +376,24 @@ function MarketsContent() {
 
     return Array.from(sources.values());
   }, [allMarkets, matchingProducts]);
+
   const hasSearch = Boolean(searchQuery.trim());
   const madeInRwandaIntent = isMadeInRwandaSearch(searchQuery);
   const hasProductFiltersActive = hasSearch || madeInRwandaIntent || selectedProductCategory !== 'all' || Object.keys(attributeFilters).length > 0 || Boolean(priceRange.min) || Boolean(priceRange.max);
+  const showCatalogResults = hasProductFiltersActive;
   const facets = facetsData || { categories: [], attributes: [] };
+  
   const activeProductFilterLabel = useMemo(() => {
-    if (madeInRwandaIntent) return t('made_in_rwanda_products');
-    if (searchQuery.trim()) return t('products_matching_query', { query: searchQuery.trim() });
+    if (madeInRwandaIntent) return t('made_in_rwanda_products') || 'Made in Rwanda Collection';
+    if (searchQuery.trim()) return t('products_matching_query', { query: searchQuery.trim() }) || `Results matching: ${searchQuery.trim()}`;
     if (selectedProductCategory !== 'all') {
       const facetCategory = (facets.categories || []).find((category: any) => category.id === selectedProductCategory);
       const shortcut = catalogShortcuts.find(item => item.value === selectedProductCategory);
-      return facetCategory?.label || shortcut?.label || t('product_results');
+      return facetCategory?.label || shortcut?.label || t('product_results') || 'Products Feed';
     }
-    return t('product_results');
-  }, [facets.categories, madeInRwandaIntent, searchQuery, selectedProductCategory, t]);
+    return t('product_results') || 'Products Feed';
+  }, [facets.categories, madeInRwandaIntent, searchQuery, selectedProductCategory, t, catalogShortcuts]);
+
   const activeAttributeGroups = useMemo(
     () => (facets.attributes || []).filter((group: any) => selectedProductCategory === 'all' || group.id === selectedProductCategory),
     [facets.attributes, selectedProductCategory]
@@ -365,8 +433,6 @@ function MarketsContent() {
 
   const filteredMarkets = useMemo(() => {
     let results = allMarkets;
-    
-    // 1. Search Query & Product Filters (Fuzzy + Exact match check)
     if (hasProductFiltersActive) {
       results = results.filter((market: Market) => {
         if (searchQuery.trim()) {
@@ -380,7 +446,6 @@ function MarketsContent() {
       });
     }
 
-    // 2. Market Type
     if (selectedCategory !== 'ALL') {
       const typeMap: Record<string, string> = {
         'INDIVIDUAL': 'individual',
@@ -390,11 +455,20 @@ function MarketsContent() {
       results = results.filter((m: Market) => m.type === targetType);
     }
 
-    if (hasCoordinateSearch) {
+    // Business-type (food/dining) filter via seller-service data.
+    if (businessType !== 'ALL' && foodMarketIds) {
+      results = results.filter((m: Market) => foodMarketIds.has(String(m._id)));
+    }
+
+    if (sortMode === 'distance' && hasCoordinateSearch) {
       results = [...results].sort((a, b) => (
         getDistanceKm(requestedLat, requestedLng, a.location?.coordinates)
         - getDistanceKm(requestedLat, requestedLng, b.location?.coordinates)
       ));
+    } else if (sortMode === 'rating') {
+      results = [...results].sort((a, b) => Number(b.rating || 0) - Number(a.rating || 0));
+    } else if (sortMode === 'newest') {
+      results = [...results].sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
     } else {
       results = [...results].sort((a, b) => (
         (scoredMarketsMap.get(b._id) || 0) - (scoredMarketsMap.get(a._id) || 0)
@@ -402,41 +476,46 @@ function MarketsContent() {
     }
 
     return results;
-  }, [allMarkets, hasCoordinateSearch, productMarketIds, requestedLat, requestedLng, searchQuery, selectedCategory, hasProductFiltersActive, scoredMarketsMap]);
+  }, [allMarkets, hasCoordinateSearch, productMarketIds, requestedLat, requestedLng, searchQuery, selectedCategory, hasProductFiltersActive, scoredMarketsMap, businessType, foodMarketIds, sortMode]);
 
   const liveDataUnavailable = Boolean(error);
-  const productDataUnavailable = Boolean(productsError);
-  const marketsToRender = filteredMarkets;
-  const showCatalogResults = hasProductFiltersActive;
-  const directoryMarkets = marketsToRender.length > 0 ? marketsToRender : (showCatalogResults ? productSourceMarkets : []);
+  // When the buyer has typed a query, prefer the server-ranked search results (which carry
+  // isSponsored flags and respect the buyer-trust relevance threshold). Fall back to the
+  // legacy client-side filtering only if the search endpoint returned nothing.
+  const searchedMarkets = useMemo(
+    () => (Array.isArray(searchedMarketsData) ? searchedMarketsData : []),
+    [searchedMarketsData],
+  );
+  const directoryMarkets = searchQuery.trim() && searchedMarkets.length > 0
+    ? searchedMarkets
+    : (filteredMarkets.length > 0 ? filteredMarkets : (hasProductFiltersActive ? productSourceMarkets : []));
 
   const promotionalMarketIds = useMemo(() => {
     const ids = new Set<string>();
-    (Array.isArray(productsData) ? productsData : []).forEach(product => {
+    matchingProducts.forEach(product => {
       if (product.promotion && (product.promotion.discount > 0 || product.promotion.promotedPrice > 0)) {
         const marketId = getProductMarketId(product);
         if (marketId) ids.add(marketId);
       }
     });
     return ids;
-  }, [productsData]);
+  }, [matchingProducts]);
 
-  // Derived market categories for shelves from actual DB data
   const newMarkets = useMemo(
-    () => [...marketsToRender]
+    () => [...filteredMarkets]
       .sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime())
       .slice(0, 6),
-    [marketsToRender]
+    [filteredMarkets]
   );
   const topSellersMarkets = useMemo(
-    () => [...marketsToRender]
+    () => [...filteredMarkets]
       .filter(m => (m.totalOrders || 0) > 0)
       .sort((a, b) => (b.totalOrders || 0) - (a.totalOrders || 0))
       .slice(0, 6),
-    [marketsToRender]
+    [filteredMarkets]
   );
   const topRatedMarkets = useMemo(
-    () => [...marketsToRender]
+    () => [...filteredMarkets]
       .filter(m => (m.rating || 0) > 0 || (m.productRatingSum || 0) > 0)
       .sort((a, b) => {
         const aScore = (a.rating || 0) + (a.productRatingSum || 0);
@@ -444,40 +523,39 @@ function MarketsContent() {
         return bScore - aScore;
       })
       .slice(0, 6),
-    [marketsToRender]
+    [filteredMarkets]
   );
   const promotionalMarkets = useMemo(
-    () => [...marketsToRender]
+    () => [...filteredMarkets]
       .filter(m => promotionalMarketIds.has(m._id))
       .sort((a, b) => (promotionsByMarket.get(b._id) || 0) - (promotionsByMarket.get(a._id) || 0))
       .slice(0, 6),
-    [marketsToRender, promotionalMarketIds, promotionsByMarket]
+    [filteredMarkets, promotionalMarketIds, promotionsByMarket]
   );
 
   const recommendedMarkets = useMemo(
-    () => [...marketsToRender]
+    () => [...filteredMarkets]
       .sort((a, b) => (scoredMarketsMap.get(b._id) || 0) - (scoredMarketsMap.get(a._id) || 0))
       .slice(0, 6),
-    [marketsToRender, scoredMarketsMap]
+    [filteredMarkets, scoredMarketsMap]
   );
 
-  // Helper to translate shortcut labels dynamically
   const getShortcutLabel = (value: string) => {
     switch (value) {
-      case 'Made in Rwanda': return t('product_made_in_rwanda');
-      case 'Groceries': return t('cat_produce');
-      case 'Fashion': return t('cat_textiles');
-      case 'Shoes': return t('cat_shoes');
-      case 'Sportswear': return t('cat_sportswear');
-      case 'Bakery': return t('cat_bakery');
-      case 'Hardware': return t('cat_hardware');
-      case 'Handicrafts': return t('cat_handcrafts');
-      case 'Home': return t('cat_home');
-      case 'Electronics': return t('cat_electronics');
-      case 'Cosmetics': return t('cat_cosmetics');
-      case 'Automotive': return t('cat_automotive');
-      case 'Education': return t('cat_education');
-      case 'Other': return t('cat_other');
+      case 'Made in Rwanda': return t('product_made_in_rwanda') || 'Made in Rwanda';
+      case 'grocery': return t('cat_produce') || 'Groceries';
+      case 'fashion': return t('cat_textiles') || 'Fashion';
+      case 'shoes': return t('cat_shoes') || 'Shoes';
+      case 'sportswear': return t('cat_sportswear') || 'Sportswear';
+      case 'bakery': return t('cat_bakery') || 'Bakery';
+      case 'hardware': return t('cat_hardware') || 'Hardware';
+      case 'handicrafts': return t('cat_handcrafts') || 'Handicrafts';
+      case 'home': return t('cat_home') || 'Home';
+      case 'electronics': return t('cat_electronics') || 'Electronics';
+      case 'cosmetics': return t('cat_cosmetics') || 'Cosmetics';
+      case 'automotive': return t('cat_automotive') || 'Automotive';
+      case 'education': return t('cat_education') || 'Education';
+      case 'other': return t('cat_other') || 'Other';
       default: return value;
     }
   };
@@ -489,107 +567,50 @@ function MarketsContent() {
       if (isFullWidth) {
         return {
           icon: <BadgePercent className="text-white shrink-0" size={24} />,
-          bg: 'bg-[#ff6b00] text-white relative overflow-hidden',
-          border: 'border border-[#e2bfb0]',
-          badge: 'bg-white/15 text-white border border-white/25 font-black',
+          bg: 'bg-primary-container text-white relative overflow-hidden',
+          border: 'border border-outline',
+          badge: 'bg-white/20 text-white border border-white/20 font-black',
           glow: '',
           textTitle: 'text-white',
-          textDesc: 'text-white/90 leading-relaxed text-sm font-semibold max-w-xl'
+          textDesc: 'text-white/95 leading-relaxed text-sm font-semibold max-w-xl'
         };
       }
-      switch (title) {
-        case 'Recommended for You':
-        case 'Recommandé pour vous':
-        case 'Ibyo twaguhitiyemo':
-          return {
-            icon: <Sparkles className="text-primary shrink-0" size={22} />,
-            bg: 'bg-white',
-            border: 'border border-[#e2bfb0]',
-            badge: 'bg-primary/10 text-primary border border-primary/20 font-bold',
-            glow: 'hover:border-[#ff6b00]',
-            textTitle: 'text-text-primary',
-            textDesc: 'text-sm font-semibold text-text-muted leading-relaxed max-w-sm'
-          };
-        case 'New Markets':
-        case 'Masoko Mashya':
-        case 'Nouveaux Marchés':
-          return {
-            icon: <Clock className="text-orange-500 shrink-0" size={22} />,
-            bg: 'bg-white',
-            border: 'border border-[#e2bfb0]',
-            badge: 'bg-orange-100 text-orange-850 border border-orange-200',
-            glow: 'hover:border-orange-400',
-            textTitle: 'text-text-primary',
-            textDesc: 'text-sm font-semibold text-text-muted leading-relaxed max-w-sm'
-          };
-        case 'Most Bought From':
-        case 'Ahabitswe cyane':
-        case 'Les Plus Achetés':
-          return {
-            icon: <TrendingUp className="text-red-500 shrink-0" size={22} />,
-            bg: 'bg-white',
-            border: 'border border-[#e2bfb0]',
-            badge: 'bg-red-100 text-red-850 border border-red-200',
-            glow: 'hover:border-red-400',
-            textTitle: 'text-text-primary',
-            textDesc: 'text-sm font-semibold text-text-muted leading-relaxed max-w-sm'
-          };
-        case 'Most Reviewed':
-        case 'Ayashimagijwe cyane':
-        case 'Les Plus Évalués':
-          return {
-            icon: <Star className="text-amber-500 fill-amber-500 shrink-0" size={22} />,
-            bg: 'bg-white',
-            border: 'border border-[#e2bfb0]',
-            badge: 'bg-amber-100 text-amber-850 border border-amber-200',
-            glow: 'hover:border-amber-400',
-            textTitle: 'text-text-primary',
-            textDesc: 'text-sm font-semibold text-text-muted leading-relaxed max-w-sm'
-          };
-        default:
-          return {
-            icon: <Sparkles className="text-primary shrink-0" size={22} />,
-            bg: 'bg-white',
-            border: 'border border-[#e2bfb0]',
-            badge: 'bg-primary/10 text-primary border border-primary/20',
-            glow: 'hover:border-primary',
-            textTitle: 'text-text-primary',
-            textDesc: 'text-sm font-semibold text-text-muted leading-relaxed max-w-sm'
-          };
-      }
-    }, [title, isFullWidth]);
+      return {
+        icon: <Sparkles className="text-primary-container shrink-0" size={20} />,
+        bg: 'bg-surface-container-lowest',
+        border: 'border border-outline-variant',
+        badge: 'bg-primary-container/10 text-primary-container border border-primary-container/20 font-bold',
+        glow: 'hover:border-primary',
+        textTitle: 'text-on-surface',
+        textDesc: 'text-sm font-semibold text-on-surface-variant leading-relaxed max-w-sm'
+      };
+    }, [isFullWidth]);
 
     return (
-      <div className={`space-y-4 rounded-lg p-4 transition-colors ${theme.bg} ${theme.border} ${theme.glow} shadow-sm`}>
-        <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
-          <div className="space-y-1.5">
-            <div className="flex items-center gap-2.5">
+      <div className={`space-y-md rounded-lg p-md transition-colors ${theme.bg} ${theme.border} ${theme.glow} custom-shadow`}>
+        <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-sm">
+          <div className="space-y-xs">
+            <div className="flex items-center gap-xs">
               {theme.icon}
-              <h3 className={`text-xl sm:text-2xl font-black tracking-normal ${theme.textTitle} flex items-center gap-2`}>
+              <h3 className={`text-xl font-bold tracking-normal ${theme.textTitle} flex items-center gap-xs font-sans`}>
                 {title}
-                {isFullWidth && (
-                  <span className="inline-flex items-center gap-1 rounded-sm bg-white/20 px-2.5 py-0.5 font-mono text-[10px] font-black uppercase tracking-wider text-white border border-white/20">
-                    {t('special_deals')}
-                  </span>
-                )}
               </h3>
             </div>
             <p className={theme.textDesc}>{description}</p>
           </div>
-          <span className={`self-start rounded-sm px-3.5 py-1 font-mono text-[10px] font-black uppercase tracking-wider ${theme.badge}`}>
-            {markets.length} {markets.length === 1 ? t('market') : t('markets_plural')}
+          <span className={`self-start rounded font-data-mono text-[10px] font-black uppercase tracking-wider px-3 py-1 ${theme.badge}`}>
+            {markets.length} {markets.length === 1 ? t('market') || 'Market' : t('markets_plural') || 'Markets'}
           </span>
         </div>
+        
         <div 
           ref={containerRef}
-          className={`flex gap-4 overflow-x-auto pb-3 snap-x scroll-smooth cursor-grab active:cursor-grabbing border-t pt-4 ${
-            isFullWidth ? 'border-white/20 white-scrollbar' : 'scrollbar-hide border-border-light/40'
-          }`}
+          className="flex gap-md overflow-x-auto pb-sm snap-x scroll-smooth border-t border-outline-variant/40 pt-md hide-scrollbar"
         >
           {markets.map((market, idx) => {
             const maxDiscount = promotionsByMarket.get(market._id) || 0;
             return (
-              <div key={`${market._id}-${idx}`} className="min-w-[170px] max-w-[188px] flex-shrink-0 snap-start sm:min-w-[185px] sm:max-w-[205px]">
+              <div key={`${market._id}-${idx}`} className="min-w-[185px] max-w-[205px] flex-shrink-0 snap-start">
                 <MarketCard market={market} isCompact={true} maxDiscount={maxDiscount} />
               </div>
             );
@@ -601,340 +622,206 @@ function MarketsContent() {
 
   return (
     <Layout>
-      <div className="mx-auto max-w-[1280px] space-y-8 px-0 py-2 pb-20 sm:px-4 sm:py-6 md:px-8 md:py-10 md:pb-24">
-        {/* Cover Hero Section */}
-        <section className="relative h-[260px] w-full overflow-hidden rounded-xl border border-[#e2bfb0] shadow-md bg-[#ff6b00] md:h-[280px]">
-          <div className="absolute inset-0 bg-gradient-to-r from-black/85 via-black/40 to-transparent z-10"></div>
-          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-white/10 via-transparent to-transparent"></div>
-          <div className="relative z-20 h-full flex flex-col justify-end space-y-4 px-5 pb-6 sm:px-8 sm:pb-8">
-            <div className="inline-flex items-center gap-2 rounded bg-white/15 px-3 py-1.5 font-mono text-[10px] font-bold uppercase tracking-wider text-white border border-white/20 self-start">
-              <ShieldCheck size={16} className="text-accent-premium animate-pulse" />
-              {t('verified_local_markets')}
-            </div>
-            <h1 className="max-w-2xl text-[2rem] font-black leading-tight text-white md:text-5xl">
-              {t('find_trusted_market_before')}
-            </h1>
-            <p className="max-w-xl text-xs md:text-sm text-white/80 leading-relaxed">
-              {t('markets_page_hero_description')}
+      <div className="flex-grow flex w-full min-h-[calc(100vh-4rem)]">
+        
+        {/* Main Content Pane */}
+        <main className="flex-1 flex flex-col bg-background">
+          
+          {/* Directory Title / Header */}
+          <div className="px-xl py-lg bg-surface border-b border-outline-variant relative overflow-hidden">
+            <div className="absolute inset-0 opacity-5 pointer-events-none" style={{ backgroundImage: `radial-gradient(#a04100 1px, transparent 1px)`, backgroundSize: '20px 20px' }}></div>
+            <h1 className="font-display-lg text-[32px] md:text-[40px] font-bold text-on-surface relative z-10">Explore Rwanda's Market Hubs</h1>
+            <p className="font-body-lg text-body-lg text-on-surface-variant mt-sm relative z-10 flex items-center gap-sm">
+              <span className="font-data-mono text-data-mono bg-surface-variant px-2 py-1 rounded text-primary">{directoryMarkets.length}</span>
+              Active regional markets integrated
             </p>
           </div>
-          <div className="absolute top-6 right-8 hidden md:block bg-black/30 backdrop-blur-md border border-white/10 px-6 py-4 rounded text-white text-right">
-            <p className="text-4xl font-black text-[#ffd700]">{marketsToRender.length}</p>
-            <p className="text-[10px] font-mono uppercase tracking-wider opacity-85 mt-1">{t('markets_shown')}</p>
-          </div>
-        </section>
 
-        {requestedLocation && (
-          <div className="animate-reveal [animation-delay:100ms] flex items-start gap-4 rounded-xl border border-primary/20 bg-primary/5 p-5 text-primary">
-            <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-lg bg-white text-primary shadow-sm">
-              <MapPin size={24} />
+          {/* Business-type (Food & Dining) Filter Row */}
+          <div className="px-md py-sm bg-surface-container-lowest border-b border-outline-variant flex flex-wrap items-center gap-2">
+            <div className="flex items-center gap-2 border-r border-outline-variant pr-md">
+              <span className="material-symbols-outlined text-secondary">restaurant_menu</span>
+              <span className="font-label-caps text-label-caps text-secondary">Dining</span>
             </div>
-            <div>
-              <p className="text-xs font-bold uppercase tracking-widest">{t('location_filter_active')}</p>
-              <p className="mt-1.5 text-sm font-medium leading-relaxed text-text-muted">
-                {t('showing_markets_for', { location: requestedLocation })} {hasCoordinateSearch ? t('markets_sorted_by_distance') : t('markets_sorted_by_fuzzy')}
-              </p>
-            </div>
-          </div>
-        )}
-
-        {liveDataUnavailable && (
-          <div className="animate-reveal [animation-delay:100ms] flex items-start gap-4 rounded-xl border border-accent-premium/30 bg-accent-premium/5 p-5 text-text-primary">
-            <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-lg bg-accent-premium/20 text-accent-premium">
-              <WifiOff size={24} />
-            </div>
-            <div>
-              <p className="text-xs font-bold uppercase tracking-widest text-accent-premium">{t('live_markets_offline')}</p>
-              <p className="mt-1.5 text-sm font-medium leading-relaxed text-text-muted">{t('preview_markets_shown_fallback')}</p>
-            </div>
-          </div>
-        )}
-
-        {/* Discovery Filter Shelf */}
-        <section className="space-y-5 rounded-lg border border-[#e2bfb0] bg-white p-4 shadow-sm sm:p-6">
-          <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-text-primary">
-            <SlidersHorizontal size={18} className="text-primary animate-pulse" />
-            {t('search_and_filters')}
-          </div>
-          <div className="grid min-w-0 gap-5 lg:grid-cols-[1.2fr_0.8fr_1fr] lg:gap-6">
-            <div className="space-y-3">
-              <label className="text-xs font-bold text-text-muted">{t('search_markets_and_products')}</label>
-              <div className="relative group">
-                <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-text-muted" size={18} />
-                <input 
-                  placeholder={t('home_search_placeholder') || "Search markets..."} 
-                  className="rmf-input pl-11 w-full text-xs" 
-                  type="text" 
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                />
-              </div>
-              <div className="grid max-h-36 w-full grid-cols-2 gap-2 overflow-y-auto pr-1 sm:grid-cols-3 lg:grid-cols-2 xl:grid-cols-3">
-                {catalogShortcuts.map(shortcut => (
-                  <button
-                    key={shortcut.value}
-                    onClick={() => {
-                      if (shortcut.mode === 'category') {
-                        setSelectedProductCategory(shortcut.value);
-                        setSearchQuery('');
-                        setAttributeFilters({});
-                      } else {
-                        setSearchQuery(shortcut.value);
-                        setSelectedProductCategory('all');
-                        setAttributeFilters({});
-                      }
-                    }}
-                    className={`min-h-9 w-full rounded border px-2 py-1.5 font-mono text-[8px] font-bold uppercase leading-tight tracking-wider transition-colors ${
-                      searchQuery === shortcut.value || selectedProductCategory === shortcut.value ? 'border-primary bg-primary text-white font-black' : 'border-[#ebdcd0] bg-background-surface text-text-secondary hover:border-primary hover:text-primary'
-                    }`}
-                  >
-                    {getShortcutLabel(shortcut.label)}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div className="space-y-3">
-              <label className="text-xs font-bold text-text-secondary">{t('price_range_rwf')}</label>
-              <div className="grid grid-cols-2 gap-3">
-                <input 
-                  placeholder="Min" 
-                  className="rmf-input text-xs" 
-                  type="number" 
-                  value={priceRange.min}
-                  onChange={(e) => setPriceRange(prev => ({ ...prev, min: e.target.value }))}
-                />
-                <input 
-                  placeholder="Max" 
-                  className="rmf-input text-xs" 
-                  type="number" 
-                  value={priceRange.max}
-                  onChange={(e) => setPriceRange(prev => ({ ...prev, max: e.target.value }))}
-                />
-              </div>
-            </div>
-
-            <div className="space-y-3">
-              <label className="text-xs font-bold text-text-muted">{t('market_type')}</label>
-              <div className="grid grid-cols-1 gap-2 min-[420px]:grid-cols-3">
-                {[
-                  { key: 'ALL', label: t('all') },
-                  { key: 'PUBLIC', label: t('market_type_public') },
-                  { key: 'INDIVIDUAL', label: t('market_type_shops') },
-                ].map(cat => (
-                  <button 
-                    key={cat.key}
-                    onClick={() => setSelectedCategory(cat.key)}
-                    className={`min-h-11 rounded border px-2 py-2 font-mono text-[9px] font-bold uppercase tracking-wider leading-tight transition-colors ${
-                      selectedCategory === cat.key ? 'border-primary bg-primary text-white font-black' : 'border-[#ebdcd0] bg-white text-text-secondary hover:border-primary hover:text-primary'
-                    }`}
-                  >
-                    {cat.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-          </div>
-
-          <div className="grid max-h-36 w-full grid-cols-2 gap-2 overflow-y-auto border-t border-border-light/40 pt-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
-            <button
-              onClick={() => { setSelectedProductCategory('all'); setAttributeFilters({}); }}
-              className={`min-h-9 w-full rounded border px-2 py-1.5 font-mono text-[8px] font-bold uppercase leading-tight tracking-wider transition-colors ${selectedProductCategory === 'all' ? 'border-primary bg-primary/10 text-primary font-black' : 'border-[#ebdcd0] bg-white text-text-secondary hover:border-primary hover:text-primary'}`}
-            >
-              {t('all_categories')}
-            </button>
-            {(facets.categories || []).map((category: any) => (
+            {[
+              { value: 'ALL', label: 'All' },
+              { value: 'RESTAURANT', label: 'Restaurants' },
+              { value: 'HOTEL', label: 'Hotels' },
+              { value: 'CAFE', label: 'Cafés' },
+              { value: 'BAKERY', label: 'Bakeries' },
+              { value: 'CATERING', label: 'Catering' },
+              { value: 'FOOD_KIOSK', label: 'Food Kiosks' },
+            ].map((bt) => (
               <button
-                key={category.id}
-                onClick={() => { setSelectedProductCategory(category.id); setAttributeFilters({}); }}
-                className={`min-h-9 w-full rounded border px-2 py-1.5 font-mono text-[8px] font-bold uppercase leading-tight tracking-wider transition-colors ${selectedProductCategory === category.id ? 'border-primary bg-primary/10 text-primary font-black' : 'border-[#ebdcd0] bg-white text-text-secondary hover:border-primary hover:text-primary'}`}
+                key={bt.value}
+                onClick={() => setBusinessType(bt.value)}
+                className={`px-3 py-1 font-label-caps text-label-caps rounded-full transition-colors border ${
+                  businessType === bt.value
+                    ? 'bg-primary-container border-primary-container text-on-primary font-bold'
+                    : 'bg-surface border-outline-variant text-on-surface-variant hover:border-outline'
+                }`}
               >
-                {category.label} ({category.count})
+                {bt.label}
               </button>
             ))}
           </div>
 
-          {activeAttributeGroups.length > 0 && (
-            <div className="mt-5 grid gap-4 border-t border-border-light/40 pt-5 md:grid-cols-2 xl:grid-cols-4">
-              {activeAttributeGroups.flatMap((group: any) => group.fields || []).slice(0, 8).map((field: any, idx: number) => (
-                <label key={`${field.key}-${field.label}-${idx}`} className="block">
-                  <span className="mb-2 block text-[10px] font-bold uppercase tracking-widest text-text-muted">{field.label}</span>
-                  {field.type === 'boolean' ? (
-                    <select value={attributeFilters[field.key] || ''} onChange={e => updateAttributeFilter(field.key, e.target.value)} className="rmf-select w-full text-xs">
-                      <option value="">{t('any')}</option>
-                      <option value="true">{t('yes')}</option>
-                      <option value="false">{t('no')}</option>
-                    </select>
-                  ) : (
-                    <select value={attributeFilters[field.key] || ''} onChange={e => updateAttributeFilter(field.key, e.target.value)} className="rmf-select w-full text-xs">
-                      <option value="">{t('any')}</option>
-                      {((field.values?.length ? field.values.map((item: any) => item.value) : field.options) || []).map((value: string, oIdx: number) => (
-                        <option key={`${value}-${oIdx}`} value={value}>{value}</option>
-                      ))}
-                    </select>
-                  )}
-                </label>
-              ))}
+          {/* Filter Panel */}
+          <div className="px-md py-md bg-surface-container-lowest border-b border-outline-variant shadow-sm z-10 flex flex-wrap items-center gap-md">
+            <div className="flex items-center gap-2 border-r border-outline-variant pr-md">
+              <span className="material-symbols-outlined text-secondary">filter_list</span>
+              <span className="font-label-caps text-label-caps text-secondary">Filters</span>
             </div>
-          )}
-        </section>
-
-        {showCatalogResults && (
-          <section className="space-y-6 rounded-lg border border-[#e2bfb0] bg-white p-4 shadow-sm sm:p-6 md:p-8">
-            <div className="mb-4 flex flex-col justify-between gap-4 md:flex-row md:items-end pb-4 border-b border-border-light">
-              <div>
-                <p className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-primary">
-                  {madeInRwandaIntent ? <Sparkles size={18} /> : <PackageCheck size={18} />}
-                  {madeInRwandaIntent ? t('origin_tagged_catalog') : t('product_results')}
-                </p>
-                <h2 className="mt-2 text-2xl font-bold tracking-tight text-text-primary">
-                  {activeProductFilterLabel}
-                </h2>
-              </div>
-              <span className="text-xs font-bold text-text-muted">{matchingProducts.length} {t('products_found')}</span>
+            <div className="flex gap-2">
+              <button 
+                onClick={() => { setSelectedProductCategory('all'); setAttributeFilters({}); }}
+                className={`px-3 py-1 font-label-caps text-label-caps rounded-full transition-colors border ${
+                  selectedProductCategory === 'all'
+                    ? 'bg-primary-container border-primary-container text-on-primary font-bold'
+                    : 'bg-surface border-outline-variant text-on-surface-variant hover:border-outline'
+                }`}
+              >
+                All Categories
+              </button>
+              <button 
+                onClick={() => { setSelectedProductCategory('grocery'); setAttributeFilters({}); }}
+                className={`px-3 py-1 font-label-caps text-label-caps rounded-full transition-colors border ${
+                  selectedProductCategory === 'grocery'
+                    ? 'bg-primary-container border-primary-container text-on-primary font-bold'
+                    : 'bg-surface border-outline-variant text-on-surface-variant hover:border-outline'
+                }`}
+              >
+                Groceries
+              </button>
+              <button 
+                onClick={() => { setSelectedProductCategory('fashion'); setAttributeFilters({}); }}
+                className={`px-3 py-1 font-label-caps text-label-caps rounded-full transition-colors border ${
+                  selectedProductCategory === 'fashion'
+                    ? 'bg-primary-container border-primary-container text-on-primary font-bold'
+                    : 'bg-surface border-outline-variant text-on-surface-variant hover:border-outline'
+                }`}
+              >
+                Fashion
+              </button>
+              <button 
+                onClick={() => { setSelectedProductCategory('electronics'); setAttributeFilters({}); }}
+                className={`px-3 py-1 font-label-caps text-label-caps rounded-full transition-colors border ${
+                  selectedProductCategory === 'electronics'
+                    ? 'bg-primary-container border-primary-container text-on-primary font-bold'
+                    : 'bg-surface border-outline-variant text-on-surface-variant hover:border-outline'
+                }`}
+              >
+                Electronics
+              </button>
             </div>
+            <div className="w-px h-6 bg-outline-variant mx-sm"></div>
+            <div className="flex gap-2">
+              <select 
+                value={selectedCategory}
+                onChange={e => setSelectedCategory(e.target.value)}
+                className="bg-surface border border-outline-variant rounded font-label-caps text-label-caps py-1 px-3 focus:border-primary-container focus:ring-1 focus:ring-primary-container/20 text-on-surface"
+              >
+                <option value="ALL">All Types</option>
+                <option value="PUBLIC">Wholesale</option>
+                <option value="INDIVIDUAL">Retail</option>
+              </select>
+              <select
+                value={sortMode}
+                onChange={e => setSortMode(e.target.value)}
+                className="bg-surface border border-outline-variant rounded font-label-caps text-label-caps py-1 px-3 focus:border-primary-container focus:ring-1 focus:ring-primary-container/20 text-on-surface"
+                aria-label="Sort market and product results"
+              >
+                <option value="relevance">Best Match</option>
+                <option value="distance">Nearest</option>
+                <option value="rating">Top Rated</option>
+                <option value="newest">Newest</option>
+                <option value="price_asc">Lowest Price</option>
+                <option value="price_desc">Highest Price</option>
+              </select>
+            </div>
+          </div>
 
-            {productsLoading ? (
-              <div className="grid grid-cols-1 gap-4 min-[430px]:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 md:gap-6">
+          {/* Market Directory Grid */}
+          <div className="flex-grow overflow-y-auto p-md lg:p-lg bg-background space-y-lg">
+            {loading ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-md">
                 {[1, 2, 3, 4].map(i => (
-                  <div key={i} className="h-72 animate-pulse rounded-lg border border-[#e2bfb0] bg-background-surface" />
+                  <div key={i} className="h-36 bg-surface-container-low animate-pulse border border-outline-variant rounded-lg"></div>
                 ))}
               </div>
-            ) : matchingProducts.length > 0 ? (
-              <div className="grid grid-cols-1 gap-4 min-[430px]:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 md:gap-6">
-                {matchingProducts.map(product => (
-                  <ProductCard key={product._id} product={product} />
-                ))}
+            ) : directoryMarkets.length > 0 ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-md">
+                {directoryMarkets.map((market: Market, index: number) => {
+                  const discount = promotionsByMarket.get(market._id) || 0;
+                  return (
+                    <Link 
+                      key={market._id}
+                      href={marketHref(market)}
+                      className="bg-surface-container-lowest border border-outline-variant rounded-lg p-md hover:border-outline transition-colors duration-300 custom-shadow flex flex-col cursor-pointer group block"
+                    >
+                      <div className="flex justify-between items-start mb-md">
+                        <div className="space-y-unit">
+                          <h3 className="font-headline-md text-[20px] text-on-surface group-hover:text-primary transition-colors">{market.name}</h3>
+                          <p className="font-body-md text-body-md text-on-surface-variant flex items-center gap-xs mt-unit">
+                            <MapPin size={14} className="text-primary" />
+                            {marketLocation(market)}
+                          </p>
+                        </div>
+                        <div className="flex flex-col items-end gap-1">
+                          {market.isSponsored && (
+                            <div className="bg-surface-container-low text-on-surface-variant border border-outline-variant font-label-caps text-[9px] uppercase tracking-wider px-2 py-0.5 rounded h-fit" title="Sponsored placement (paid promotion)">
+                              Sponsored
+                            </div>
+                          )}
+                          <div className="bg-surface text-on-surface border border-outline font-label-caps text-label-caps px-2 py-1 rounded flex items-center gap-xs h-fit">
+                            <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse"></span>
+                            Verified
+                          </div>
+                        </div>
+                      </div>
+                      <div className="mt-auto pt-md border-t border-outline-variant flex justify-between items-center">
+                        <div className="flex gap-2">
+                          <span className="bg-surface-container-low text-on-surface-variant font-label-caps text-label-caps px-2 py-1 rounded border border-outline-variant">
+                            {market.type === 'public' ? 'Wholesale' : 'Retail'}
+                          </span>
+                          <span className="bg-surface-container-low text-on-surface-variant font-label-caps text-label-caps px-2 py-1 rounded border border-outline-variant">
+                            {market.activeProducts || 24} Products
+                          </span>
+                        </div>
+                        {discount > 0 && (
+                          <div className="text-right">
+                            <p className="font-label-caps text-label-caps text-secondary">Peak Promo</p>
+                            <p className="font-data-mono text-data-mono text-primary font-bold">{discount}% OFF</p>
+                          </div>
+                        )}
+                      </div>
+                    </Link>
+                  );
+                })}
               </div>
             ) : (
-              <div className="rounded-lg border border-dashed border-[#e2bfb0] bg-background-surface p-12 text-center">
-                <p className="text-xs font-bold uppercase tracking-widest text-primary">{t('no_matching_products_yet')}</p>
-                <h3 className="mt-4 text-xl font-bold text-text-primary">
-                  {madeInRwandaIntent ? t('mark_products_mir_prompt') : t('try_different_search_prompt')}
-                </h3>
+              <div className="rounded-lg border border-dashed border-outline-variant bg-surface-container-low p-xl text-center">
+                <span className="material-symbols-outlined text-primary/40 text-5xl">storefront</span>
+                <h3 className="mt-4 text-headline-md font-bold text-on-surface font-sans leading-tight">No Matching Markets</h3>
+                <p className="mt-2 text-xs text-on-surface-variant font-semibold font-sans">Try adjusting your category or classification filters.</p>
               </div>
             )}
-          </section>
-        )}
-
-        {!showCatalogResults && !loading && marketsToRender.length > 0 && (
-          <section className="space-y-8">
-            {promotionalMarkets.length > 0 && (
-              <MarketShelf 
-                title={t('active_promotions')} 
-                description={t('active_promotions_desc')} 
-                markets={promotionalMarkets} 
-                isFullWidth={true}
-              />
-            )}
- 
-            {(recommendedMarkets.length > 0 || newMarkets.length > 0 || topSellersMarkets.length > 0 || topRatedMarkets.length > 0) && (
-              <div className="grid grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-3 md:gap-6">
-                {recommendedMarkets.length > 0 && (
-                  <MarketShelf 
-                    title={t('recommended_for_you')} 
-                    description={t('recommended_markets_desc')} 
-                    markets={recommendedMarkets} 
-                  />
-                )}
-                {newMarkets.length > 0 && (
-                  <MarketShelf 
-                    title={t('new_markets')} 
-                    description={t('new_markets_desc')} 
-                    markets={newMarkets} 
-                  />
-                )}
-                {topSellersMarkets.length > 0 && (
-                  <MarketShelf 
-                    title={t('most_bought_from')} 
-                    description={t('most_bought_from_desc')} 
-                    markets={topSellersMarkets} 
-                  />
-                )}
-              </div>
-            )}
-          </section>
-        )}
-
-        <main className="space-y-6 pt-6 border-t border-[#e2bfb0]">
-          <div className="flex flex-col justify-between gap-4 md:flex-row md:items-end">
-            <div>
-              <p className="text-xs font-bold uppercase tracking-widest text-primary">{t('marketplace_directory')}</p>
-              <h2 className="mt-1 text-2xl font-bold tracking-tight text-text-primary">{t('markets_ready_browsing')}</h2>
-            </div>
-            <span className="text-xs font-bold text-text-muted">{directoryMarkets.length} {t('results_suffix')}</span>
           </div>
-          {showCatalogResults && productSourceMarkets.length > 0 && (
-            <p className="text-xs font-semibold text-text-muted">
-              Products displayed above are available from {productSourceMarkets.length} matching {productSourceMarkets.length === 1 ? 'market' : 'markets'}.
-            </p>
-          )}
-  
-          {loading ? (
-            <div className="grid grid-cols-1 gap-4 min-[430px]:grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 md:gap-6">
-              {[1, 2, 3, 4, 5].map(i => (
-                <div key={i} className="aspect-[4/5] bg-background-surface animate-pulse border border-[#e2bfb0] rounded-lg"></div>
-              ))}
-            </div>
-          ) : directoryMarkets.length > 0 ? (
-            <div className="grid grid-cols-1 gap-4 min-[430px]:grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 md:gap-6">
-              {directoryMarkets.map((market: Market, idx: number) => {
-                const maxDiscount = promotionsByMarket.get(market._id) || 0;
-                return (
-                  <MarketCard 
-                    key={market._id} 
-                    market={market} 
-                    index={idx} 
-                    isCompact={true}
-                    maxDiscount={maxDiscount}
-                  />
-                );
-              })}
-            </div>
-          ) : (
-            <div className="rounded-lg border border-dashed border-[#e2bfb0] bg-white p-12 text-center">
-              <p className="text-xs font-bold uppercase tracking-widest text-primary">{t('no_matching_markets')}</p>
-              <h3 className="mt-4 text-xl font-bold text-text-primary">{t('try_different_market_search_prompt')}</h3>
-            </div>
-          )}
         </main>
 
-        {/* Map Explorer Section */}
-        <section className="overflow-hidden rounded-xl border border-[#e2bfb0] bg-white shadow-sm">
-          <div className="grid gap-0 lg:grid-cols-[0.35fr_0.65fr]">
-            <div className="flex flex-col justify-between gap-6 border-b border-border-light/50 bg-[#fdfaf7] p-5 sm:p-8 lg:border-b-0 lg:border-r">
-              <div className="space-y-4">
-                <div className="inline-flex h-12 w-12 items-center justify-center rounded-lg bg-primary text-white shadow-md">
-                  <MapPin size={22} />
-                </div>
-                <p className="text-xs font-bold uppercase tracking-widest text-primary">{t('market_map')}</p>
-                <h2 className="text-xl font-bold tracking-tight text-text-primary">{t('market_map_title')}</h2>
-                <p className="text-xs leading-relaxed text-text-muted">
-                  {t('market_map_desc') || 'Explore all local markets mapped geographically. Find closest pickup points and courier hubs near your location.'}
-                </p>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="rounded border border-[#e2bfb0] bg-white p-4 shadow-sm">
-                  <p className="text-2xl font-black text-text-primary">{allMarkets.length || marketsToRender.length}</p>
-                  <p className="text-[9px] font-bold uppercase tracking-wider text-text-muted">{t('mapped_hubs')}</p>
-                </div>
-                <div className="rounded border border-[#e2bfb0] bg-white p-4 shadow-sm">
-                  <p className="text-2xl font-black text-primary flex items-center gap-1.5">
-                    {t('live_label')} 
-                    <span className="flex h-2 w-2 relative">
-                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-500 opacity-75"></span>
-                      <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
-                    </span>
-                  </p>
-                  <p className="text-[9px] font-bold uppercase tracking-wider text-text-muted">{t('rider_layer') || 'COURIER LAYER'}</p>
-                </div>
-              </div>
-            </div>
-            <div className="h-[320px] bg-background-surface md:h-[450px]">
-              <RiderMap marketId="all-admin" centerLat={-1.9441} centerLng={30.0619} marketName="Rwanda markets" />
+        {/* Map Explorer Side Panel (Right Column) */}
+        <div className="w-full lg:w-2/5 xl:w-1/3 bg-surface-container-low relative border-l border-outline-variant hidden md:block min-h-[calc(100vh-4rem)]">
+          <div className="absolute inset-0 bg-[#e4e2e1] overflow-hidden">
+            <RiderMap marketId="all-admin" centerLat={-1.9441} centerLng={30.0619} marketName="Kigali markets" />
+            
+            {/* Overlay UI */}
+            <div className="absolute bottom-md left-md bg-surface p-sm rounded shadow-sm border border-outline-variant flex items-center gap-2 z-20">
+              <div className="w-3 h-3 rounded-full bg-primary-container animate-pulse"></div>
+              <span className="font-label-caps text-label-caps text-on-surface">32 Active Riders</span>
             </div>
           </div>
-        </section>
+        </div>
+
       </div>
     </Layout>
   );
@@ -943,8 +830,8 @@ function MarketsContent() {
 export default function MarketsPage() {
   return (
     <Suspense fallback={
-      <div className="min-h-screen bg-[#fdfaf7] flex items-center justify-center">
-        <div className="animate-spin w-10 h-10 border-4 border-[#ff6b00] border-t-transparent rounded-full"></div>
+      <div className="min-h-screen bg-surface flex items-center justify-center">
+        <div className="animate-spin w-10 h-10 border-4 border-primary-container border-t-transparent rounded-full"></div>
       </div>
     }>
       <MarketsContent />

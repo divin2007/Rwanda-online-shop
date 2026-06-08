@@ -75,16 +75,16 @@ function OrderHistoryContent() {
   }, [orders, openOrderId]);
 
   const statusColors: Record<string, string> = {
-    awaiting_quote: 'bg-yellow-100 text-yellow-800 border-yellow-300',
-    quote_sent: 'bg-blue-100 text-blue-800 border-blue-300',
-    placed: 'bg-purple-100 text-purple-800 border-purple-300',
-    confirmed: 'bg-green-100 text-green-800 border-green-300',
-    preparing: 'bg-orange-100 text-orange-800 border-orange-300',
-    ready_for_pickup: 'bg-teal-100 text-teal-800 border-teal-300',
-    delivered: 'bg-gray-100 text-gray-800 border-gray-300',
-    disputed: 'bg-red-100 text-red-800 border-red-300',
-    resolved: 'bg-slate-100 text-slate-800 border-slate-300',
-    cancelled: 'bg-gray-100 text-gray-700 border-gray-300',
+    awaiting_quote: 'bg-amber-50 text-amber-700 border-amber-200',
+    quote_sent: 'bg-[#fff7ed] text-[#a63b00] border-[#ffdbce]',
+    placed: 'bg-[#fff7ed] text-[#9a3412] border-[#ffedd5]',
+    confirmed: 'bg-[#e8f5ed] text-[#12805c] border-[#bfe3cb]',
+    preparing: 'bg-[#fff7ed] text-[#a63b00] border-[#ffdbce]',
+    ready_for_pickup: 'bg-[#eef4ff] text-[#005ac2] border-[#d8e2ff]',
+    delivered: 'bg-[#e8f5ed] text-[#12805c] border-[#bfe3cb]',
+    disputed: 'bg-red-50 text-red-700 border-red-200',
+    resolved: 'bg-[#e8f5ed] text-[#12805c] border-[#bfe3cb]',
+    cancelled: 'bg-[#f8eeee] text-[#ba1a1a] border-[#f2c8c8]',
   };
 
   if (isLoading || !user) {
@@ -108,96 +108,104 @@ function OrderHistoryContent() {
         />
       )}
       
-      <div className="max-w-6xl mx-auto space-y-12 animate-reveal pb-24 pt-10 px-6">
-        
-        {/* Header */}
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-end border-b-2 border-[#e0e0e0] pb-6 gap-6">
-          <div>
-            <p className="text-[10px] font-black text-[#ff6b00] uppercase tracking-[0.5em] mb-2">{t('my_account')}</p>
-            <h1 className="text-3xl md:text-5xl font-sans text-[#1b1c1c] tracking-normal leading-none">{t('order_history')}</h1>
-          </div>
-          <Link href="/markets" className="text-[10px] font-black uppercase tracking-[0.3em] text-[#1b1c1c] hover:text-[#ff6b00] border-b-2 border-transparent hover:border-[#ff6b00] pb-1 transition-all">
-            {t('continue_shopping')} →
-          </Link>
-        </div>
+      <div className="w-full p-6 md:p-8 pt-10 md:pt-12 space-y-lg animate-reveal pb-24">
+        <section className="relative overflow-hidden rounded-lg border border-outline-variant bg-surface-container-lowest p-md md:p-lg custom-shadow">
+          <div className="pointer-events-none absolute -right-10 -top-10 h-36 w-36 rounded-full bg-primary-container/10 blur-3xl" />
 
-        {/* Orders List */}
-        <div className="space-y-6">
+          <div className="relative space-y-xs">
+            <p className="flex items-center gap-xs font-label-caps text-[10px] text-primary">
+              <span className="w-1.5 h-1.5 rounded-full bg-primary-container animate-pulse"></span> {t('my_account') || 'My Account'}
+            </p>
+            <h1 className="max-w-xl font-display-lg text-headline-lg text-on-surface leading-tight">
+              {t('order_history') || 'Order History'}
+            </h1>
+            <p className="max-w-xl text-xs text-on-surface-variant leading-relaxed font-body-md">
+              Review escrow negotiations, live tracking telemetry feeds, and transaction records.
+            </p>
+          </div>
+        </section>
+
+        {/* Orders list */}
+        <div className="space-y-sm">
           {loading ? (
             [1, 2, 3].map(i => (
-              <div key={i} className="h-40 bg-[#f0eded] animate-pulse border border-[#e0e0e0]" />
+              <div key={i} className="h-28 bg-surface-container-low animate-pulse rounded-lg border border-outline-variant" />
             ))
           ) : !orders || orders.length === 0 ? (
-            <div className="bg-white border-2 border-dashed border-[#e0e0e0] p-24 flex flex-col items-center justify-center text-center">
-              <div className="mb-6 opacity-60 text-primary">
-                <ShoppingBag size={56} strokeWidth={1.5} />
+            <div className="border border-dashed border-outline-variant rounded-lg bg-surface-container-low/30 py-20 text-center flex flex-col items-center justify-center shadow-sm">
+              <div className="w-14 h-14 bg-surface-container-lowest border border-outline-variant rounded-full flex items-center justify-center mb-6 text-on-surface-variant shadow-sm">
+                <ShoppingBag size={22} className="text-primary-container" />
               </div>
-              <h3 className="text-2xl font-sans text-[#1b1c1c] mb-2">{t('no_orders_yet')}</h3>
-              <p className="text-[11px] font-black text-[#414844] uppercase tracking-widest opacity-60 mb-8">{t('recent_purchases_appear_here')}</p>
-              <Link href="/markets" className="bg-[#e05300] text-white px-10 py-4 text-[10px] font-black uppercase tracking-[0.4em] hover:bg-[#ff6b00] transition-all inline-block shadow-lg">
-                {t('explore_markets')}
+              <h3 className="font-headline-md text-headline-md text-on-surface mb-2">{t('no_orders_yet') || 'No orders yet'}</h3>
+              <p className="font-data-mono-sm text-[9px] text-on-surface-variant uppercase tracking-wider mb-8">{t('recent_purchases_appear_here') || 'Your purchase telemetries will appear here.'}</p>
+              <Link 
+                href="/markets" 
+                className="rounded-md bg-primary-container text-white px-6 py-3 text-xs font-black uppercase tracking-wider hover:bg-primary transition-all duration-300 shadow-sm active:scale-[0.99]"
+              >
+                {t('explore_markets') || 'Explore Markets'}
               </Link>
             </div>
           ) : (
             orders.map((order: any, idx: number) => (
-              <div key={`${order._id || 'order'}-${idx}`} className="bg-white border border-[#e0e0e0] hover:border-[#ff6b00] transition-colors p-6 md:p-8 flex flex-col lg:flex-row items-start lg:items-center justify-between gap-8 group">
+              <div key={`${order._id || 'order'}-${idx}`} className="bg-surface-container-lowest border border-outline-variant rounded-lg p-md flex flex-col lg:flex-row items-start lg:items-center justify-between gap-md table-row-hover transition-colors custom-shadow">
                 
                 {/* Left: Product Info & Meta */}
-                <div className="flex items-center gap-6 flex-1 min-w-0">
-                  <div className="w-24 h-24 bg-[#fcf9f8] border border-[#e0e0e0] flex-shrink-0 overflow-hidden hidden sm:block">
+                <div className="flex items-center gap-md flex-1 min-w-0">
+                  <div className="w-16 h-16 bg-surface-container-low border border-outline-variant rounded overflow-hidden flex-shrink-0 hidden sm:block">
                     {order.products?.[0]?.imageUrl || order.products?.[0]?.images?.[0] ? (
                       <img 
                         src={resolveUploadUrl(order.products?.[0]?.imageUrl || order.products?.[0]?.images?.[0], 'product')} 
-                        className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" 
+                        className="w-full h-full object-cover transition-transform duration-500 hover:scale-105" 
                         alt="" 
                       />
                     ) : (
-                      <div className="flex h-full w-full items-center justify-center text-[10px] font-black uppercase tracking-widest text-[#414844]">
-                        {t('item')}
+                      <div className="flex h-full w-full items-center justify-center font-data-mono text-[9px] text-on-surface-variant uppercase">
+                        {t('item') || 'Item'}
                       </div>
                     )}
                   </div>
-                  <div className="space-y-3">
-                    <div className="flex items-center gap-3 flex-wrap">
-                      <span className="text-xl font-sans text-[#1b1c1c] tracking-normal leading-none">
+                  <div className="space-y-xs min-w-0 flex-1">
+                    <div className="flex items-center gap-sm flex-wrap">
+                      <span className="font-data-mono text-sm font-bold text-on-surface">
                         #{order._id.substring(0,8).toUpperCase()}
                       </span>
-                      <span className={`text-[9px] font-black px-2.5 py-1 uppercase tracking-widest border ${statusColors[order.status] || 'bg-gray-100 text-gray-700 border-gray-300'}`}>
+                      <span className={`font-data-mono-sm text-[8px] font-bold px-2 py-0.5 rounded-full uppercase border ${statusColors[order.status] || 'bg-surface-container-high/60 text-on-surface border-outline-variant'}`}>
                         {order.status.replace(/_/g, ' ')}
                       </span>
                     </div>
                     <div>
-                      <p className="text-lg font-sans text-[#1b1c1c] leading-snug">
-                        {order.products?.[0]?.name || t('market_item')} 
-                        {order.products?.length > 1 && <span className="text-[#414844]"> +{order.products.length - 1} {t('more')}</span>}
+                      <p className="font-bold text-xs text-on-surface leading-tight truncate">
+                        {order.products?.[0]?.name || t('market_item') || 'Market Item'} 
+                        {order.products?.length > 1 && <span className="text-on-surface-variant font-medium"> +{order.products.length - 1} {t('more') || 'more'}</span>}
                       </p>
-                      <p className="text-[10px] font-black text-[#414844] uppercase tracking-widest mt-1 opacity-70">
-                        {new Date(order.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })} · {order.sellerName || t('verified_seller')}
+                      <p className="font-data-mono-sm text-[9px] text-on-surface-variant uppercase mt-0.5">
+                        {new Date(order.createdAt).toLocaleDateString()} / {order.sellerName || t('verified_seller') || 'Verified Seller'}
                       </p>
                     </div>
                   </div>
                 </div>
 
                 {/* Right: Financials & Actions */}
-                <div className="flex flex-wrap sm:flex-nowrap items-center gap-6 lg:gap-10 w-full lg:w-auto pt-6 lg:pt-0 border-t lg:border-t-0 border-[#f0eded]">
-                  <div className="text-left lg:text-right flex-1 sm:flex-none">
-                    <p className="text-[9px] font-black text-[#414844] uppercase tracking-widest mb-1">{t('total_paid')}</p>
-                    <p className="text-2xl font-sans text-[#1b1c1c] tracking-normal">
-                      {(order.financials?.totalAmount || 0).toLocaleString()} <span className="text-sm font-sans not-italic text-[#ff6b00] tracking-widest uppercase font-bold">RWF</span>
+                <div className="flex flex-wrap sm:flex-nowrap items-center gap-md lg:gap-lg w-full lg:w-auto pt-sm lg:pt-0 border-t lg:border-t-0 border-outline-variant/40">
+                  <div className="text-left lg:text-right flex-grow sm:flex-grow-0">
+                    <p className="font-label-caps text-[8px] text-on-surface-variant mb-0.5">{t('total_paid') || 'Total Amount'}</p>
+                    <p className="font-data-mono text-sm font-bold text-on-surface">
+                      {(order.financials?.totalAmount || 0).toLocaleString()} <span className="font-label-caps text-[9px] text-primary-container font-bold">RWF</span>
                     </p>
                   </div>
-                  <div className="flex gap-3 w-full sm:w-auto">
+                  <div className="flex gap-xs w-full sm:w-auto">
                     <Link 
                       href={`/orders/${order._id}/tracking`} 
-                      className="flex-1 sm:flex-none text-center bg-[#e05300] text-white px-6 py-4 text-[10px] font-black uppercase tracking-[0.3em] hover:bg-[#ff6b00] transition-all shadow-md"
+                      className="rounded-md bg-primary-container text-white px-4 py-2.5 text-xs font-black uppercase tracking-wider hover:bg-primary transition-all duration-300 shadow-sm active:scale-[0.99] text-center flex-grow sm:flex-grow-0"
                     >
                       Open Order
                     </Link>
                     <button 
+                      type="button"
                       onClick={() => setReceiptOrder(order)} 
-                      className="flex-1 sm:flex-none text-center border border-[#e0e0e0] rounded-lg text-[#1b1c1c] px-6 py-4 text-[10px] font-black uppercase tracking-[0.3em] hover:border-[#ff6b00] transition-colors"
+                      className="rounded-md border border-outline-variant bg-surface-container-lowest text-on-surface px-4 py-2.5 text-xs font-black uppercase tracking-wider hover:border-primary hover:text-primary transition-all duration-300 text-center flex-grow sm:flex-grow-0"
                     >
-                      {t('receipt')}
+                      {t('receipt') || 'Receipt'}
                     </button>
                   </div>
                 </div>
@@ -214,7 +222,7 @@ function OrderHistoryContent() {
 export default function OrderHistoryPage() {
   return (
     <React.Suspense fallback={
-      <div className="min-h-screen bg-[#fdfaf7] flex items-center justify-center">
+      <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="animate-spin w-10 h-10 border-4 border-[#ff6b00] border-t-transparent rounded-full"></div>
       </div>
     }>

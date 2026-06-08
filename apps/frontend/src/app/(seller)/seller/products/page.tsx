@@ -10,8 +10,9 @@ import { CatalogAttributeFields } from '@/components/catalog/CatalogAttributeFie
 import { useAuth } from '@/context/AuthContext';
 import { useApi } from '@/hooks/useApi';
 import { CatalogCategory, ProductVariantDraft, categoryFor, fallbackCatalogCategories } from '@/lib/catalog';
-import { productApi, sellerApi } from '@/lib/api';
+import { productApi, sellerApi, walletApi } from '@/lib/api';
 import { resolveUploadUrl } from '@/lib/uploadUrls';
+import { PerishableBadge } from '@/components/ui/PerishableBadge';
 
 type Product = {
   _id: string;
@@ -29,6 +30,8 @@ type Product = {
   inStock?: boolean;
   isMadeInRwanda?: boolean;
   isNegotiable?: boolean;
+  perishable?: boolean;
+  maxDeliveryMinutes?: number;
   attributes?: Record<string, unknown>;
   variants?: ProductVariantDraft[];
   variantAxes?: Array<{ key: string; label: string; values?: string[] }>;
@@ -92,6 +95,7 @@ export default function SellerProductsPage() {
 
   const profileUrl = user?.id ? `/sellers/me?userId=${user.id}` : '';
   const { data: profile } = useApi<any>(sellerApi, 'get', profileUrl);
+  const { data: walletData } = useApi<any>(walletApi, 'get', user?.id ? `/wallets/me?userId=${user.id}` : '');
 
   const [showBulkUpload, setShowBulkUpload] = useState(false);
   const [bulkFile, setBulkFile] = useState<File | null>(null);
@@ -167,13 +171,10 @@ export default function SellerProductsPage() {
   }, []);
 
   const rootCategories = useMemo(() => {
-    const CORE_ROOT_IDS = [
-      'grocery', 'fashion', 'shoes', 'sportswear', 'bakery', 
-      'hardware', 'handicrafts', 'home', 'electronics', 
-      'cosmetics', 'automotive', 'education', 'other'
-    ];
-    return catalogCategories.filter(cat => !cat.parentId && CORE_ROOT_IDS.includes(cat.id));
+    return catalogCategories.filter(cat => !cat.parentId);
   }, [catalogCategories]);
+  const settlementBalance = Number(walletData?.availableBalance ?? walletData?.balance ?? 0);
+  const pendingSettlementBalance = Number(walletData?.pendingBalance ?? 0);
 
   const allProducts = useMemo(() => Array.isArray(products) ? products : [], [products]);
   const filteredProducts = useMemo(() => {
@@ -222,7 +223,7 @@ export default function SellerProductsPage() {
   };
 
   const openEdit = (product: Product) => {
-    router.push(`/seller/products/${product._id}/edit`);
+    router.push(`/seller/products/new?id=${product._id}`);
   };
 
   const handleArchive = async (product: Product) => {
@@ -244,37 +245,30 @@ export default function SellerProductsPage() {
 
   return (
     <Layout>
-      <div className="animate-reveal space-y-8 pb-20">
-        <section className="flex flex-col items-start justify-between gap-6 rounded-lg border border-[#d9e0db] bg-white p-5 shadow-sm md:flex-row md:items-center md:p-6">
+      <div className="animate-reveal space-y-8 p-gutter pb-20 md:p-xl">
+        <section className="flex flex-col items-start justify-between gap-6 md:flex-row md:items-start">
           <div>
-            <p className="mb-2 text-[10px] font-black uppercase tracking-[0.28em] text-[#ff6b00]">Inventory Management</p>
-            <h1 className="text-4xl font-black tracking-normal text-[#1b1c1c]">My Products</h1>
-            <div className="mt-4 flex items-center gap-4">
+            <h1 className="font-display-lg text-display-lg font-bold tracking-normal text-[#1b1c1c]">Product Inventory</h1>
+            <p className="mt-2 text-base font-medium text-[#574e47]">Manage your catalog, stock levels, and pricing.</p>
+            <div className="mt-5 flex items-center gap-4">
               <p className="text-[9px] font-bold uppercase tracking-widest text-[#414844] opacity-70">{allProducts.length} total</p>
               <div className="h-1 w-1 rounded-full bg-[#ff6b00]" />
               <p className="text-[9px] font-bold uppercase tracking-widest text-[#ff6b00]">{visibleProducts.length} of {filteredProducts.length} shown</p>
             </div>
           </div>
           <div className="flex flex-wrap gap-3">
-            <Link
-              href="/seller/bulk-upload"
-              className="inline-flex items-center gap-3 rounded-md border border-[#e05300] bg-white px-6 py-3 text-[10px] font-black uppercase tracking-[0.22em] text-[#e05300] shadow-sm transition hover:bg-[#fcf9f8]"
-            >
-              <FileSpreadsheet size={16} />
-              Bulk Upload
-            </Link>
             {profile?.capabilities?.bulk && (
               <button
                 type="button"
                 onClick={() => setShowBulkUpload(!showBulkUpload)}
                 className={`inline-flex items-center gap-3 rounded-md border px-6 py-3 text-[10px] font-black uppercase tracking-[0.22em] shadow-sm transition ${
-                  showBulkUpload
+                  showBulkUpload 
                     ? 'border-[#ff6b00] bg-[#ff6b00] text-white'
                     : 'border-[#e05300] bg-white text-[#e05300] hover:bg-[#fcf9f8]'
                 }`}
               >
                 <FileSpreadsheet size={16} />
-                {showBulkUpload ? 'Close Bulk Import' : 'Quick Import'}
+                {showBulkUpload ? 'Close Bulk Import' : 'Bulk Import'}
               </button>
             )}
             <button
@@ -283,7 +277,7 @@ export default function SellerProductsPage() {
               className="inline-flex items-center gap-3 rounded-md bg-[#e05300] px-6 py-3 text-[10px] font-black uppercase tracking-[0.22em] text-white shadow-sm transition hover:bg-[#ff6b00]"
             >
               <PackagePlus size={16} />
-              Add New
+              Add New Product
             </button>
           </div>
         </section>
@@ -403,7 +397,7 @@ export default function SellerProductsPage() {
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-[#8b938d]" size={16} />
             <input
               type="text"
-              placeholder="Search by name or description..."
+              placeholder="Search by SKU, Name, or Category..."
               className="h-11 w-full rounded-md border border-[#d9e0db] bg-white pl-11 pr-4 text-[11px] font-black uppercase tracking-widest outline-none transition focus:border-[#ff6b00] focus:ring-2 focus:ring-[#ffedd5]"
               value={searchTerm}
               onChange={event => setSearchTerm(event.target.value)}
@@ -425,6 +419,26 @@ export default function SellerProductsPage() {
               </button>
             ))}
           </div>
+        </section>
+
+        <section className="flex flex-col gap-5 rounded-lg border border-[#d9e0db] bg-white p-5 shadow-sm md:flex-row md:items-center md:justify-between">
+          <div className="flex items-center gap-5">
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded bg-[#ffdbce] text-[#a63b00]">
+              <span className="material-symbols-outlined">account_balance_wallet</span>
+            </div>
+            <div>
+              <p className="text-[10px] font-black uppercase tracking-[0.22em] text-[#3d2b23]">MTN MoMo Escrow Status</p>
+              <div className="mt-2 flex flex-wrap items-baseline gap-3">
+                <p className="font-data-mono text-[24px] font-black text-[#1b1c1c]">RWF {settlementBalance.toLocaleString()}</p>
+                <span className="text-sm font-semibold text-[#574e47]">
+                  {pendingSettlementBalance.toLocaleString()} RWF pending clearing
+                </span>
+              </div>
+            </div>
+          </div>
+          <Link href="/seller/earnings" className="text-[10px] font-black uppercase tracking-[0.2em] text-[#a63b00] hover:text-[#ff6b00]">
+            View Details -&gt;
+          </Link>
         </section>
 
         <section className="overflow-hidden rounded-lg border border-[#d9e0db] bg-white shadow-sm">
@@ -462,6 +476,11 @@ export default function SellerProductsPage() {
                         <div>
                           <h4 className="text-base font-black tracking-normal text-[#1b1c1c]">{product.name || 'Untitled product'}</h4>
                           <p className="mt-1 text-[9px] font-black uppercase tracking-widest text-[#5f7569]">{product.categoryLabel || product.category || 'other'}</p>
+                          {product.perishable && (
+                            <div className="mt-1">
+                              <PerishableBadge maxDeliveryMinutes={product.maxDeliveryMinutes} />
+                            </div>
+                          )}
                         </div>
                       </td>
                       <td className="p-5 text-base font-black text-[#1b1c1c]">

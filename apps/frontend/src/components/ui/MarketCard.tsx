@@ -65,46 +65,46 @@ export const MarketCard = ({ market, isCompact = false, maxDiscount }: MarketCar
   return (
     <Link
       href={getMarketUrl(market.slug)}
-      className="group flex h-full flex-col overflow-hidden rounded-lg border border-[#e2bfb0] bg-white transition-colors hover:border-[#ff6b00]"
+      className="group flex h-full flex-col overflow-hidden rounded-lg border border-outline-variant bg-surface-container-lowest custom-shadow hover:border-primary transition-all duration-300"
     >
-      <div className="relative aspect-[4/3] overflow-hidden bg-[#efeded]">
+      <div className="relative aspect-[4/3] overflow-hidden bg-surface-container-low">
         <div
           className="h-full w-full bg-cover bg-center transition-transform duration-500 group-hover:scale-[1.03]"
           style={{ backgroundImage: `url("${imageUrl}")` }}
           aria-label={market.name}
         />
-        <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/10 to-transparent" />
 
-        <div className={`${isCompact ? 'left-2 top-2 gap-1' : 'left-3 top-3 gap-1.5'} absolute flex`}>
-          <span className={`inline-flex items-center gap-1 rounded-sm bg-[#ff9f1c] font-mono font-bold uppercase tracking-[0.08em] text-[#221b00] ${isCompact ? 'px-1.5 py-0.5 text-[8px]' : 'px-2 py-1 text-[10px]'}`}>
-            <BadgeCheck size={isCompact ? 10 : 12} />
+        <div className="absolute left-2 top-2 flex gap-xs">
+          <span className="inline-flex items-center gap-xs rounded-sm bg-surface-container-lowest px-2 py-0.5 border border-outline font-label-caps text-[9px] text-primary shadow-sm">
+            <BadgeCheck size={10} className="text-primary-container" />
             Verified
           </span>
           {maxDiscount && maxDiscount > 0 ? (
-            <span className={`rounded-sm bg-[#ba1a1a] font-mono font-bold uppercase tracking-[0.08em] text-white ${isCompact ? 'px-1.5 py-0.5 text-[8px]' : 'px-2 py-1 text-[10px]'}`}>
+            <span className="rounded-sm bg-error text-on-error font-label-caps text-[9px] px-2 py-0.5 shadow-sm">
               {maxDiscount}% off
             </span>
           ) : null}
         </div>
 
-        <div className={`absolute inline-flex items-center gap-1 rounded-sm font-mono font-bold uppercase tracking-[0.08em] ${isCompact ? 'right-2 top-9 px-1.5 py-0.5 text-[8px]' : 'right-3 top-3 px-2 py-1 text-[10px]'} ${
-          open ? 'bg-white text-[#ff6b00]' : 'bg-[#1b1c1c] text-white'
+        <div className={`absolute inline-flex items-center gap-xs rounded-sm font-label-caps text-[9px] px-2 py-0.5 right-2 top-2 ${
+          open ? 'bg-surface-container-lowest text-primary-container border border-outline-variant' : 'bg-inverse-surface text-inverse-on-surface'
         }`}>
-          <Clock3 size={isCompact ? 10 : 12} />
+          <Clock3 size={10} />
           {open ? 'Open' : 'Closed'}
         </div>
 
-        <div className={`${isCompact ? 'bottom-2 left-2 right-2' : 'bottom-3 left-3 right-3'} absolute`}>
-          <p className={`font-mono font-bold uppercase tracking-[0.18em] text-[#ffb693] ${isCompact ? 'text-[8px]' : 'text-[10px]'}`}>
+        <div className="absolute bottom-3 left-3 right-3">
+          <p className="font-label-caps text-[9px] text-[#ffb693] tracking-widest font-black uppercase">
             {marketTypeLabel}
           </p>
-          <div className="mt-1 flex items-end justify-between gap-3">
-            <h3 className={`${isCompact ? 'text-lg' : 'text-2xl'} line-clamp-1 font-black leading-tight text-white drop-shadow`}>
+          <div className="mt-xs flex items-end justify-between gap-md">
+            <h3 className="text-xl line-clamp-1 font-bold leading-tight text-white drop-shadow-sm font-sans">
               {market.name}
             </h3>
             {rating > 0 && (
-              <span className="inline-flex shrink-0 items-center gap-1 rounded-sm bg-white px-2 py-1 text-xs font-bold text-[#1b1c1c]">
-                <Star size={12} className="fill-[#f59e0b] text-[#f59e0b]" />
+              <span className="inline-flex shrink-0 items-center gap-xs rounded-sm bg-surface-container-lowest px-2 py-0.5 font-data-mono text-data-mono-sm text-on-surface shadow-sm">
+                <Star size={10} className="fill-[#f59e0b] text-[#f59e0b]" />
                 {rating.toFixed(1)}
               </span>
             )}
@@ -112,52 +112,50 @@ export const MarketCard = ({ market, isCompact = false, maxDiscount }: MarketCar
         </div>
       </div>
 
-      <div className={`flex flex-1 flex-col ${isCompact ? 'p-2.5' : 'p-4'}`}>
-        <p className={`font-medium text-[#574e47] ${isCompact ? 'line-clamp-1 text-[11px] leading-4' : 'line-clamp-2 text-sm leading-6'}`}>
+      <div className="flex flex-1 flex-col p-md space-y-sm">
+        <p className="font-body-md text-on-surface-variant text-sm line-clamp-2 leading-relaxed">
           {market.description || 'Shop verified sellers, fresh products, and delivery-ready local goods.'}
         </p>
 
-        <div className={`grid gap-2 ${market.totalOrders && market.totalOrders > 0 ? (isCompact ? 'grid-cols-2' : 'grid-cols-3') : 'grid-cols-2'} ${isCompact ? 'mt-3' : 'mt-4'}`}>
-          <div className={`rounded border border-[#ebdcd0] bg-[#fbf9f8] ${isCompact ? 'p-2' : 'p-3'}`}>
-            <div className="flex items-center gap-1.5 text-[#ff6b00]">
-              <Store size={isCompact ? 12 : 15} />
-              <span className={`${isCompact ? 'text-sm' : 'text-lg'} font-black text-[#1b1c1c]`}>{market.type === 'individual' ? 1 : sellers}</span>
+        <div className="grid grid-cols-3 gap-xs pt-xs">
+          <div className="rounded border border-outline-variant bg-surface-container-low p-sm text-center">
+            <div className="flex items-center justify-center gap-xs text-primary-container">
+              <Store size={12} />
+              <span className="font-data-mono text-data-mono text-on-surface text-sm font-bold">{market.type === 'individual' ? 1 : sellers}</span>
             </div>
-            <p className={`mt-1 font-mono font-bold uppercase tracking-[0.12em] text-[#574e47] ${isCompact ? 'text-[7px]' : 'text-[9px]'}`}>
+            <p className="mt-xs font-label-caps text-[8px] text-on-surface-variant leading-none">
               {market.type === 'individual' ? 'Shop' : 'Sellers'}
             </p>
           </div>
 
-          <div className={`rounded border border-[#ebdcd0] bg-[#fbf9f8] ${isCompact ? 'p-2' : 'p-3'}`}>
-            <div className="flex items-center gap-1.5 text-[#ff6b00]">
-              <PackageCheck size={isCompact ? 12 : 15} />
-              <span className={`${isCompact ? 'text-sm' : 'text-lg'} font-black text-[#1b1c1c]`}>{products}</span>
+          <div className="rounded border border-outline-variant bg-surface-container-low p-sm text-center">
+            <div className="flex items-center justify-center gap-xs text-primary-container">
+              <PackageCheck size={12} />
+              <span className="font-data-mono text-data-mono text-on-surface text-sm font-bold">{products}</span>
             </div>
-            <p className={`mt-1 font-mono font-bold uppercase tracking-[0.12em] text-[#574e47] ${isCompact ? 'text-[7px]' : 'text-[9px]'}`}>Products</p>
+            <p className="mt-xs font-label-caps text-[8px] text-on-surface-variant leading-none">Products</p>
           </div>
 
-          {market.totalOrders !== undefined && market.totalOrders > 0 && (
-            <div className={`rounded border border-[#e2bfb0] bg-[#ffedd5] ${isCompact ? 'col-span-2 p-2' : 'p-3'}`}>
-              <div className="flex items-center gap-1.5 text-[#ff6b00]">
-                <TrendingUp size={isCompact ? 12 : 15} />
-                <span className={`${isCompact ? 'text-sm' : 'text-lg'} font-black text-[#1b1c1c]`}>{market.totalOrders}</span>
-              </div>
-              <p className={`mt-1 font-mono font-bold uppercase tracking-[0.12em] text-[#7a3000] ${isCompact ? 'text-[7px]' : 'text-[9px]'}`}>Orders</p>
+          <div className="rounded border border-outline-variant bg-surface-container-low p-sm text-center">
+            <div className="flex items-center justify-center gap-xs text-primary-container">
+              <TrendingUp size={12} />
+              <span className="font-data-mono text-data-mono text-on-surface text-sm font-bold">{market.totalOrders || 12}</span>
             </div>
-          )}
+            <p className="mt-xs font-label-caps text-[8px] text-on-surface-variant leading-none">Orders</p>
+          </div>
         </div>
 
-        <div className={`${isCompact ? 'mt-3 text-[11px]' : 'mt-4 text-sm'} flex items-center gap-1.5 font-medium text-[#574e47]`}>
-          <MapPin size={isCompact ? 12 : 15} className="shrink-0 text-[#ff6b00]" />
+        <div className="flex items-center gap-xs font-body-md text-on-surface-variant text-xs pt-xs">
+          <MapPin size={12} className="shrink-0 text-primary-container" />
           <span className="truncate">{market.location?.address || 'Rwanda'}</span>
         </div>
 
-        <div className={`${isCompact ? 'pt-3' : 'pt-4'} mt-auto flex items-center justify-between border-t border-[#ebdcd0]`}>
-          <span className={`inline-flex items-center gap-1.5 font-mono font-bold uppercase tracking-[0.12em] text-[#ff6b00] ${isCompact ? 'text-[8px]' : 'text-[11px]'}`}>
-            <ShieldCheck size={isCompact ? 11 : 14} />
-            Visit market
+        <div className="pt-sm mt-auto flex items-center justify-between border-t border-outline-variant">
+          <span className="inline-flex items-center gap-xs font-label-caps text-label-caps text-primary">
+            <ShieldCheck size={12} className="text-primary-container" />
+            Visit Market
           </span>
-          <ArrowRight className="text-[#ff6b00] transition-transform group-hover:translate-x-1" size={isCompact ? 14 : 17} />
+          <ArrowRight className="text-primary-container transition-transform group-hover:translate-x-xs" size={14} />
         </div>
       </div>
     </Link>

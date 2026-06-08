@@ -68,34 +68,42 @@ export default function PreferencesPage() {
 
   return (
     <Layout>
-      <main className="mx-auto max-w-[1200px] space-y-8 px-4 py-8 md:px-8">
-        <section className="overflow-hidden rounded-3xl bg-[#e05300] p-8 text-white shadow-xl md:p-10">
-          <p className="flex items-center gap-2 text-[11px] font-black uppercase tracking-[0.24em] text-[#ffedd5]">
-            <Sparkles size={16} /> Recommendation setup
-          </p>
-          <h1 className="mt-3 max-w-3xl text-4xl font-black tracking-tight md:text-5xl">
-            Tell RMF what you want to see more often.
-          </h1>
-          <p className="mt-3 max-w-2xl text-sm font-semibold leading-6 text-white/80">
-            Pick a few categories and markets now. As you view products, save items, watch seller videos, and add to cart, RMF keeps learning from those signals.
-          </p>
+      <main className="w-full p-6 md:p-8 space-y-lg animate-reveal">
+        {/* Banner with brand hero-glow */}
+        <section className="relative overflow-hidden rounded-lg border border-outline-variant bg-[#1b1c1b] p-md text-white shadow-md custom-shadow">
+          <div className="absolute inset-0 bg-gradient-to-r from-black/85 via-black/40 to-transparent z-10"></div>
+          <div className="absolute inset-0 hero-glow pointer-events-none z-10"></div>
+          
+          <div className="relative z-20 space-y-xs">
+            <p className="flex items-center gap-xs text-[10px] font-black uppercase tracking-wider text-primary-container">
+              <Sparkles size={14} className="animate-pulse" /> Recommendation Setup
+            </p>
+            <h1 className="max-w-xl font-display-lg text-headline-lg text-white leading-tight">
+              Personalize your RMF discovery catalog.
+            </h1>
+            <p className="max-w-xl text-xs text-white/80 leading-relaxed font-body-md">
+              Pick a few categories and public markets now. As you view products, watch seller videos, and add items to your cart, our system tunes recommendations automatically.
+            </p>
+          </div>
         </section>
 
         {loading ? (
-          <div className="grid gap-4 md:grid-cols-3">
-            {[0, 1, 2, 3, 4, 5].map(item => <div key={item} className="h-28 animate-pulse rounded-2xl bg-[#fff0e4]" />)}
+          <div className="grid gap-md md:grid-cols-3">
+            {[0, 1, 2].map(item => <div key={item} className="h-28 animate-pulse rounded-lg bg-surface-container-low" />)}
           </div>
         ) : (
           <>
-            <section className="rounded-2xl border border-[#eaded4] bg-white p-5 shadow-sm">
-              <div className="flex items-end justify-between gap-4">
+            {/* Step 1: Categories selector */}
+            <section className="rounded-lg border border-outline-variant bg-surface-container-lowest p-md custom-shadow">
+              <div className="flex items-end justify-between gap-sm border-b border-outline-variant pb-sm mb-md">
                 <div>
-                  <p className="text-[11px] font-black uppercase tracking-[0.22em] text-[#ff6b00]">Step 1</p>
-                  <h2 className="mt-1 text-2xl font-black text-[#1b1c1c]">Choose product categories</h2>
+                  <p className="font-label-caps text-[10px] text-primary uppercase tracking-wider">Step 1</p>
+                  <h2 className="font-headline-md text-headline-md text-on-surface">Choose Product Categories</h2>
                 </div>
-                <span className="text-xs font-black uppercase text-[#63736a]">{categoryIds.length} selected</span>
+                <span className="font-data-mono text-[10px] text-on-surface-variant bg-surface-container-low px-2 py-0.5 rounded border border-outline-variant/60">{categoryIds.length} Selected</span>
               </div>
-              <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+              
+              <div className="grid gap-xs sm:grid-cols-2 lg:grid-cols-4">
                 {categories.map(category => {
                   const active = categoryIds.includes(category.id);
                   return (
@@ -103,28 +111,34 @@ export default function PreferencesPage() {
                       key={category.id}
                       type="button"
                       onClick={() => toggle(category.id, categoryIds, setCategoryIds)}
-                      className={`flex min-h-20 items-start justify-between rounded-xl border p-4 text-left transition ${active ? 'border-[#ff6b00] bg-[#fff7ed]' : 'border-[#eaded4] bg-white hover:border-[#ff6b00]/50'}`}
+                      className={`flex min-h-[4.5rem] items-start justify-between rounded border p-md text-left transition-all ${
+                        active 
+                          ? 'border-primary-container bg-primary/5 shadow-sm' 
+                          : 'border-outline-variant bg-surface-container-lowest hover:border-primary/50'
+                      }`}
                     >
-                      <span>
-                        <span className="block text-sm font-black text-[#1b1c1c]">{category.label}</span>
-                        <span className="mt-1 line-clamp-1 block text-xs font-semibold text-[#63736a]">{category.aliases?.slice(0, 3).join(', ') || 'Live RMF catalog'}</span>
+                      <span className="min-w-0">
+                        <span className={`block text-xs font-black text-on-surface ${active ? 'text-primary' : ''}`}>{category.label}</span>
+                        <span className="mt-xs line-clamp-1 block font-data-mono-sm text-[9px] text-on-surface-variant uppercase">{category.aliases?.slice(0, 3).join(', ') || 'RMF Catalog'}</span>
                       </span>
-                      {active ? <Check size={17} className="text-[#ff6b00]" /> : null}
+                      {active && <Check size={14} className="text-primary-container shrink-0 mt-0.5 ml-xs" />}
                     </button>
                   );
                 })}
               </div>
             </section>
 
-            <section className="rounded-2xl border border-[#eaded4] bg-white p-5 shadow-sm">
-              <div className="flex items-end justify-between gap-4">
+            {/* Step 2: Markets selector */}
+            <section className="rounded-lg border border-outline-variant bg-surface-container-lowest p-md custom-shadow">
+              <div className="flex items-end justify-between gap-sm border-b border-outline-variant pb-sm mb-md">
                 <div>
-                  <p className="text-[11px] font-black uppercase tracking-[0.22em] text-[#ff6b00]">Step 2</p>
-                  <h2 className="mt-1 text-2xl font-black text-[#1b1c1c]">Choose favorite markets</h2>
+                  <p className="font-label-caps text-[10px] text-primary uppercase tracking-wider">Step 2</p>
+                  <h2 className="font-headline-md text-headline-md text-on-surface">Choose Favorite Markets</h2>
                 </div>
-                <span className="text-xs font-black uppercase text-[#63736a]">{marketIds.length} selected</span>
+                <span className="font-data-mono text-[10px] text-on-surface-variant bg-surface-container-low px-2 py-0.5 rounded border border-outline-variant/60">{marketIds.length} Selected</span>
               </div>
-              <div className="mt-5 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+              
+              <div className="grid gap-md md:grid-cols-2 lg:grid-cols-3">
                 {markets.map(market => {
                   const active = marketIds.includes(market._id);
                   return (
@@ -132,16 +146,20 @@ export default function PreferencesPage() {
                       key={market._id}
                       type="button"
                       onClick={() => toggle(market._id, marketIds, setMarketIds, 8)}
-                      className={`overflow-hidden rounded-2xl border text-left transition ${active ? 'border-[#ff6b00] bg-[#fff7ed]' : 'border-[#eaded4] bg-white hover:border-[#ff6b00]/50'}`}
+                      className={`overflow-hidden rounded border text-left transition-all ${
+                        active 
+                          ? 'border-primary-container bg-primary/5 shadow-sm scale-[0.99]' 
+                          : 'border-outline-variant bg-surface-container-lowest hover:border-primary/50'
+                      }`}
                     >
-                      <div className="relative h-32 bg-[#fff7ed]">
+                      <div className="relative h-24 bg-surface-container-low">
                         {market.imageUrl ? <img src={market.imageUrl} alt="" className="h-full w-full object-cover" /> : null}
-                        {active ? <div className="absolute right-3 top-3 rounded-full bg-[#ff6b00] p-2 text-white"><Check size={15} /></div> : null}
+                        {active && <div className="absolute right-2 top-2 rounded-full bg-primary-container p-1 text-white shadow"><Check size={12} /></div>}
                       </div>
-                      <div className="p-4">
-                        <p className="font-black text-[#1b1c1c]">{market.name}</p>
-                        <p className="mt-1 flex items-center gap-1 text-xs font-bold text-[#63736a]">
-                          <MapPin size={13} /> {market.location?.district || market.location?.address || 'Rwanda'}
+                      <div className="p-md">
+                        <p className={`font-bold text-xs text-on-surface ${active ? 'text-primary' : ''}`}>{market.name}</p>
+                        <p className="mt-xs flex items-center gap-xs font-data-mono-sm text-[9px] text-on-surface-variant">
+                          <MapPin size={11} /> {market.location?.district || market.location?.address || 'Rwanda'}
                         </p>
                       </div>
                     </button>
@@ -150,9 +168,15 @@ export default function PreferencesPage() {
               </div>
             </section>
 
-            <div className="sticky bottom-4 rounded-2xl border border-[#eaded4] bg-white/95 p-4 shadow-2xl backdrop-blur">
-              <button onClick={save} disabled={saving} className="min-h-12 w-full rounded-xl bg-[#ff6b00] px-5 text-sm font-black uppercase tracking-widest text-white disabled:opacity-50">
-                {saving ? 'Saving...' : 'Save recommendation profile'}
+            {/* Bottom sticky action row */}
+            <div className="sticky bottom-4 rounded-lg border border-outline-variant bg-surface-container-lowest/90 p-md shadow-lg backdrop-blur">
+              <button 
+                type="button"
+                onClick={save} 
+                disabled={saving} 
+                className="flex min-h-[2.75rem] w-full items-center justify-center rounded bg-primary-container px-4 text-xs font-black uppercase tracking-widest text-white hover:bg-primary transition-all duration-300 shadow active:scale-[0.99] disabled:opacity-50"
+              >
+                {saving ? 'Saving...' : 'Save Recommendation Profile'}
               </button>
             </div>
           </>
