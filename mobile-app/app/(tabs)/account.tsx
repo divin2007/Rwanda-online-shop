@@ -50,6 +50,11 @@ export default function AccountScreen() {
             <Text style={s.createBtnText}>Create account - it's free</Text>
           </TouchableOpacity>
 
+          <TouchableOpacity style={s.guestDirectoryBtn} onPress={() => router.push('/riders' as any)} activeOpacity={0.88}>
+            <Truck color={ORANGE_DARK} size={18} />
+            <Text style={s.guestDirectoryText}>Browse riders</Text>
+          </TouchableOpacity>
+
           <TouchableOpacity onPress={() => router.replace('/')}>
             <Text style={s.skipText}>Continue browsing as guest</Text>
           </TouchableOpacity>
@@ -268,6 +273,19 @@ const s = StyleSheet.create({
     justifyContent: 'center',
   },
   createBtnText: { color: ORANGE_DARK, fontSize: 15, fontWeight: '800' },
+  guestDirectoryBtn: {
+    width: '100%',
+    height: 48,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: LINE,
+    backgroundColor: CARD,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexDirection: 'row',
+    gap: 8,
+  },
+  guestDirectoryText: { color: ORANGE_DARK, fontSize: 14, fontWeight: '900' },
   skipText: { color: MUTED, fontSize: 13, fontWeight: '600', textDecorationLine: 'underline', marginTop: 4 },
   trustRow: { flexDirection: 'row', justifyContent: 'center', gap: 14, flexWrap: 'wrap' },
   trustText: { color: '#9CA3AF', fontSize: 11, fontWeight: '600' },

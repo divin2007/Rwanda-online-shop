@@ -20,7 +20,7 @@ import { existsSync, mkdirSync, writeFileSync } from 'fs';
 import { join } from 'path';
 import { RiderService } from './rider.service';
 import type { Coordinates } from '@rmf/location';
-import { Roles, JwtAuthGuard } from '@rmf/auth';
+import { Roles, JwtAuthGuard, Public } from '@rmf/auth';
 import { UserRole } from '@rmf/shared-types';
 
 @Controller('riders')
@@ -123,6 +123,13 @@ export class RiderController {
     return { success: true, data: rider };
   }
 
+  @Public()
+  @Get('directory')
+  async findPublicDirectory() {
+    const riders = await this.riderService.findPublicDirectory();
+    return { success: true, data: riders };
+  }
+
   @UseGuards(JwtAuthGuard)
   @Put('user/:userId/status')
   async updateStatus(
@@ -197,6 +204,7 @@ export class RiderController {
     };
   }
 
+  @Public()
   @Get('nearby')
   async getNearbyRiders(
     @Query('lat') lat: string,

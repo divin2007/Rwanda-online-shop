@@ -32,6 +32,29 @@ export class RiderService {
     return changes;
   }
 
+  private toPublicRider(rider: any, extra: Record<string, any> = {}): Record<string, any> {
+    const user = rider?.userId && typeof rider.userId === 'object' ? rider.userId : null;
+    return {
+      _id: rider?._id,
+      id: rider?._id?.toString?.() || rider?.id,
+      fullName: user?.fullName || rider?.fullName || 'Approved rider',
+      phone: user?.phone || rider?.phone,
+      plateNumber: rider?.plateNumber,
+      vehicleType: rider?.vehicleType || 'Motorbike',
+      rating: Number(rider?.rating || 0),
+      totalDeliveries: Number(rider?.totalDeliveries || 0),
+      completedDeliveries: Number(rider?.completedDeliveries || rider?.totalDeliveries || 0),
+      reviewCount: Number(rider?.reviewCount || rider?.totalReviews || 0),
+      totalReviews: Number(rider?.totalReviews || rider?.reviewCount || 0),
+      isApproved: rider?.isApproved === true,
+      isActive: rider?.isActive === true,
+      premiumPlan: rider?.premiumPlan,
+      personPickupPremium: Boolean(rider?.personPickupPremium || rider?.plan === 'premium'),
+      currentLocation: rider?.isActive === true ? rider?.currentLocation : undefined,
+      ...extra,
+    };
+  }
+
   async create(riderData: any): Promise<any> {
     const existing = await this.riderModel.findOne({ 
       $or: [{ userId: riderData.userId }, { plateNumber: riderData.plateNumber }]
@@ -66,6 +89,18 @@ export class RiderService {
       }
     }
     return this.riderModel.find(query).sort({ createdAt: -1 }).exec();
+  }
+
+  async findPublicDirectory(): Promise<any[]> {
+    const riders = await this.riderModel.find({
+      isApproved: true,
+      deletedAt: null,
+    })
+      .populate('userId', 'fullName phone')
+      .sort({ isActive: -1, rating: -1, totalDeliveries: -1, createdAt: -1 })
+      .exec();
+
+    return riders.map(rider => this.toPublicRider(rider));
   }
 
   async approve(id: string): Promise<any> {
@@ -337,7 +372,9 @@ export class RiderService {
       deletedAt: null,
       'currentLocation.lat': { $ne: null },
       'currentLocation.lng': { $ne: null }
-    }).exec();
+    })
+      .populate('userId', 'fullName phone')
+      .exec();
 
     const center = { lat, lng };
     return activeRiders
@@ -348,10 +385,7 @@ export class RiderService {
         };
         const distanceKm = this.locationService.calculateDistance(center, riderCoords);
         const distanceMeters = Math.round(distanceKm * 1000);
-        return {
-          rider,
-          distanceMeters
-        };
+        return this.toPublicRider(rider, { distanceMeters });
       })
       .filter(item => item.distanceMeters <= maxDistanceMeters)
       .sort((a, b) => a.distanceMeters - b.distanceMeters);

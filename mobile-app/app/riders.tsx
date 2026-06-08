@@ -26,14 +26,20 @@ type Rider = {
   completedDeliveries?: number;
   isApproved?: boolean;
   isActive?: boolean;
+  distanceMeters?: number;
+  currentLocation?: { lat?: number; lng?: number; updatedAt?: string };
   premiumPlan?: { isActive?: boolean; status?: string; expiresAt?: string };
   personPickupPremium?: boolean;
   userId?: { fullName?: string; phone?: string } | string;
 };
 
 const loadRiders = async () => {
-  const riders = await api.get<Rider[]>('rider', '/riders?isApproved=true', { auth: false }).catch(() => []);
-  return asArray<Rider>(riders);
+  const directory = await api.get<Rider[]>('rider', '/riders/directory', { auth: false }).catch(() => []);
+  const riders = asArray<Rider>(directory);
+  if (riders.length) return riders;
+
+  const legacy = await api.get<Rider[]>('rider', '/riders?isApproved=true', { auth: false }).catch(() => []);
+  return asArray<Rider>(legacy).filter(rider => rider.isApproved !== false);
 };
 
 const riderName = (rider: Rider) =>
@@ -149,6 +155,7 @@ function RiderCard({ rider, onSystem, onDirect }: { rider: Rider; onSystem: () =
   const rating = Number(rider.rating || 5);
   const reviews = Number(rider.reviewCount || rider.totalReviews || rider.totalDeliveries || rider.completedDeliveries || 0);
   const premium = isPremium(rider);
+  const distanceKm = rider.distanceMeters ? rider.distanceMeters / 1000 : null;
 
   return (
     <View style={styles.riderCard}>
@@ -161,6 +168,7 @@ function RiderCard({ rider, onSystem, onDirect }: { rider: Rider; onSystem: () =
             <Text style={styles.riderName} numberOfLines={1}>{riderName(rider)}</Text>
             <Text style={styles.riderMeta} numberOfLines={1}>
               {rider.vehicleType || 'Motorbike'} {rider.plateNumber ? `- ${rider.plateNumber}` : ''}
+              {distanceKm !== null ? ` - ${distanceKm.toFixed(1)} km away` : ''}
             </Text>
           </View>
           {premium ? (
