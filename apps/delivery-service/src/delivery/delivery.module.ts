@@ -19,6 +19,6 @@ import { DeliveryGateway } from './delivery.gateway';
   ],
   providers: [DeliveryService, DeliveryGateway],
   controllers: [DeliveryController],
-  exports: [DeliveryService],
+  exports: [DeliveryService, DeliveryGateway],
 })
 export class DeliveryModule {}

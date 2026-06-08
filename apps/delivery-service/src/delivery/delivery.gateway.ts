@@ -186,6 +186,45 @@ export class DeliveryGateway implements OnGatewayConnection, OnGatewayDisconnect
     this.server.emit('delivery:assigned', delivery);
   }
 
+  @SubscribeMessage('join:errand')
+  handleJoinErrandRoom(@ConnectedSocket() client: Socket, @MessageBody() errandId: string) {
+    client.join(`errand:${errandId}`);
+    return { success: true, room: `errand:${errandId}` };
+  }
+
+  @SubscribeMessage('join:buyer')
+  handleJoinBuyerRoom(@ConnectedSocket() client: Socket, @MessageBody() buyerId: string) {
+    const user = (client as any).user;
+    if (!user || (user.userId !== buyerId && user.sub !== buyerId && user.role !== 'ADMIN')) {
+      return { success: false, error: 'Unauthorized' };
+    }
+    client.join(`buyer:${buyerId}`);
+    return { success: true, room: `buyer:${buyerId}` };
+  }
+
+  broadcastErrand(errand: any, allowedRiderIds?: string[]) {
+    const maxLocationAgeMs = Number(process.env.RIDER_LOCATION_MAX_AGE_MS || 120000);
+    const allowed = allowedRiderIds ? new Set(allowedRiderIds.map(String)) : null;
+    for (const [riderId, data] of this.activeRiders.entries()) {
+      if (Date.now() - Number(data.updatedAt || 0) > maxLocationAgeMs) continue;
+      if (allowed && !allowed.has(String(riderId))) continue;
+      this.server.to(data.socketId).emit('errand:new', errand);
+    }
+  }
+
+  emitErrandAccepted(buyerId: string, errand: any) {
+    this.server.to(`buyer:${buyerId}`).emit('errand:accepted', errand);
+  }
+
+  emitErrandLocation(errandId: string, coords: { lat: number; lng: number }) {
+    this.server.to(`errand:${errandId}`).emit('errand:location', { ...coords, recordedAt: new Date() });
+  }
+
+  emitErrandCompleted(errandId: string, buyerId: string, errand: any) {
+    this.server.to(`errand:${errandId}`).emit('errand:completed', errand);
+    this.server.to(`buyer:${buyerId}`).emit('errand:completed', errand);
+  }
+
   // Calculate distance between two coordinates in meters
   private getDistanceMeters(lat1: number, lon1: number, lat2: number, lon2: number): number {
     const R = 6371e3; // Earth radius in meters
