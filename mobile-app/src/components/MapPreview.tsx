@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Linking, Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { MapPin, Navigation } from 'lucide-react-native';
 import { WebView } from 'react-native-webview';
@@ -39,6 +39,10 @@ const openPoint = async (point: MapPoint) => {
   const geoUrl = `geo:${lat},${lng}?q=${lat},${lng}(${label})`;
 
   try {
+    if (Platform.OS === 'web') {
+      await Linking.openURL(googleMapsUrl);
+      return;
+    }
     if (Platform.OS === 'ios') {
       const supported = await Linking.canOpenURL(appleMapsUrl).catch(() => false);
       if (supported) {
@@ -183,10 +187,34 @@ const leafletHtml = `
 </html>
 `;
 
+const leafletHtmlFor = (points: MapPoint[], mode: 'standard' | 'satellite') => {
+  const initialPoints = JSON.stringify(points);
+  const initialMode = JSON.stringify(mode);
+  return leafletHtml.replace(
+    '  </script>\n</body>',
+    `    setTimeout(function() {\n      window.updatePoints(${initialPoints});\n      window.setMapMode(${initialMode});\n    }, 80);\n  </script>\n</body>`,
+  );
+};
+
+function WebMapFrame({ html, title }: { html: string; title: string }) {
+  return React.createElement('iframe' as any, {
+    srcDoc: html,
+    title,
+    style: {
+      border: 0,
+      width: '100%',
+      height: '100%',
+      display: 'block',
+      backgroundColor: colors.surfaceLow,
+    },
+  });
+}
+
 export function MapPreview({ title = 'Live map', points }: { title?: string; points: MapPoint[] }) {
   const webViewRef = useRef<WebView>(null);
   const [mapMode, setMapMode] = useState<'standard' | 'satellite'>('standard');
   const valid = points.filter(point => point.coordinates);
+  const mapHtml = useMemo(() => leafletHtmlFor(points, mapMode), [mapMode, points]);
 
   useEffect(() => {
     if (webViewRef.current && valid.length > 0) {
@@ -213,7 +241,7 @@ export function MapPreview({ title = 'Live map', points }: { title?: string; poi
         <View style={styles.actions}>
           <TouchableOpacity style={styles.mapModeButton} onPress={toggleMapMode} activeOpacity={0.85}>
             <Text style={styles.mapModeText}>
-              {mapMode === 'standard' ? '🛰️ Satellite' : '🗺️ Standard'}
+              {mapMode === 'standard' ? 'Satellite' : 'Standard'}
             </Text>
           </TouchableOpacity>
           {valid[0] ? (
@@ -227,21 +255,25 @@ export function MapPreview({ title = 'Live map', points }: { title?: string; poi
 
       <View style={styles.mapContainer}>
         {valid.length > 0 ? (
-          <WebView
-            ref={webViewRef}
-            source={{ html: leafletHtml }}
-            style={styles.mapWebview}
-            onLoadEnd={() => {
-              if (webViewRef.current) {
-                webViewRef.current.postMessage(JSON.stringify({ type: 'updatePoints', points }));
-                webViewRef.current.postMessage(JSON.stringify({ type: 'setMapMode', mode: mapMode }));
-              }
-            }}
-            originWhitelist={['*']}
-            javaScriptEnabled={true}
-            domStorageEnabled={true}
-            scrollEnabled={false}
-          />
+          Platform.OS === 'web' ? (
+            <WebMapFrame html={mapHtml} title={title} />
+          ) : (
+            <WebView
+              ref={webViewRef}
+              source={{ html: mapHtml }}
+              style={styles.mapWebview}
+              onLoadEnd={() => {
+                if (webViewRef.current) {
+                  webViewRef.current.postMessage(JSON.stringify({ type: 'updatePoints', points }));
+                  webViewRef.current.postMessage(JSON.stringify({ type: 'setMapMode', mode: mapMode }));
+                }
+              }}
+              originWhitelist={['*']}
+              javaScriptEnabled={true}
+              domStorageEnabled={true}
+              scrollEnabled={false}
+            />
+          )
         ) : (
           <View style={styles.empty}>
             <Text style={styles.emptyText}>Location appears when RMF receives coordinates.</Text>

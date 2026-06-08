@@ -47,6 +47,28 @@ const orderIdFromNotif = (n: NotificationLog): string | null => {
   return n.params?.orderId || n.params?.order_id || null;
 };
 
+const deliveryIdFromNotif = (n: NotificationLog): string | null => {
+  return n.params?.deliveryId || n.params?.delivery_id || null;
+};
+
+const routeForNotification = (n: NotificationLog, role?: string): string | null => {
+  const orderId = orderIdFromNotif(n);
+  const deliveryId = deliveryIdFromNotif(n);
+  const normalizedRole = String(role || '').toUpperCase();
+  const type = String(n.type || `${n.title || ''} ${n.message || n.body || ''}`).toLowerCase();
+  const targetRole = String(n.params?.targetRole || n.params?.recipientRole || '').toUpperCase();
+
+  if (normalizedRole === 'RIDER' || targetRole === 'RIDER' || deliveryId || type.includes('rider') || type.includes('delivery')) {
+    return '/rider/deliveries';
+  }
+  if (orderId && (normalizedRole === 'SELLER' || targetRole === 'SELLER' || type.includes('seller'))) {
+    return `/seller/orders/${orderId}`;
+  }
+  if (orderId) return `/orders/${orderId}`;
+  if (type.includes('wallet') || type.includes('payment') || type.includes('payout')) return '/wallet';
+  return null;
+};
+
 export default function NotificationsScreen() {
   const router = useRouter();
   const { user, isAuthenticated } = useAuth();
@@ -87,8 +109,8 @@ export default function NotificationsScreen() {
     // Mark as read
     try { await api.patch('notification', `/notifications/${n._id}/read`, {}); } catch { /* silent */ }
     // Navigate to relevant screen
-    const orderId = orderIdFromNotif(n);
-    if (orderId) { router.push(`/orders/${orderId}` as any); refresh(); }
+    const route = routeForNotification(n, user?.role);
+    if (route) { router.push(route as any); refresh(); }
     else { refresh(); }
   };
 
@@ -144,6 +166,7 @@ export default function NotificationsScreen() {
         const IconComp = meta.icon;
         const isUnread = !n.isRead;
         const orderId = orderIdFromNotif(n);
+        const route = routeForNotification(n, user?.role);
         const body = n.message || n.body;
 
         return (
@@ -170,7 +193,7 @@ export default function NotificationsScreen() {
               )}
               <Text style={s.notifTime}>{formatDateTime(n.createdAt)}</Text>
             </View>
-            {orderId && <ChevronRight color="#c0b8b0" size={15} />}
+            {route && <ChevronRight color="#c0b8b0" size={15} />}
           </TouchableOpacity>
         );
       })}

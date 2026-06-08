@@ -32,6 +32,16 @@ Follow-up error pass:
 - Verified Orders, Inbox, Videos, and Riders in a fresh mobile browser tab with zero console errors.
 - Verified video search input and Products chip interaction with zero console errors.
 
+Second replica/error pass:
+- Product detail now follows the Stitch product-detail reference: image stage, tags, seller row, base price/minimum order, variant grid, quantity stepper, specification grid, review block, and fixed Negotiate/Add to Cart bar.
+- Header bell now routes to `/notifications` and selects the Inbox tab, not Orders.
+- Notification taps now route by role/channel so seller messages open seller order context and rider/delivery notifications open rider deliveries.
+- Order detail now separates seller/buyer order chat from rider delivery chat.
+- Rider active-delivery screen now exposes rider delivery chat and sends messages as `RIDER` on the `DELIVERY` channel.
+- Map preview now uses a web iframe renderer with initial Leaflet points and opens Google Maps directly on web.
+- Verified product detail and bell routing in the in-app browser.
+- `npm.cmd run typecheck` passed in `mobile-app`.
+
 Remaining notes:
 - Authenticated Inbox category filters appear after sign-in; guest state intentionally shows the sign-in card.
 - Person pickup booking still routes into the protected market/order path because mobile does not yet expose a dedicated person-pickup creation form.

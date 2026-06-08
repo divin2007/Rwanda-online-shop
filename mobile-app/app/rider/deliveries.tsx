@@ -3,20 +3,20 @@ import * as Location from 'expo-location';
 import React, { useState } from 'react';
 import {
   Alert, RefreshControl, ScrollView, StyleSheet,
-  Text, TouchableOpacity, View,
+  Text, TextInput, TouchableOpacity, View,
 } from 'react-native';
 import {
-  Bike, Camera, CheckCircle2, MapPin, Package,
-  ShieldCheck, ThumbsDown, Truck, X,
+  Bike, Camera, CheckCircle2, MapPin, MessageCircle, Package,
+  Send, ShieldCheck, ThumbsDown, Truck, X,
 } from 'lucide-react-native';
 import { MapPreview, coordinatesFromAny } from '../../src/components/MapPreview';
 import { EmptyBlock, ErrorBlock, LoadingBlock } from '../../src/components/StateView';
 import { useAuth } from '../../src/context/AuthContext';
 import { api } from '../../src/lib/api';
 import { formatDateTime, money, shortId } from '../../src/lib/format';
-import { asArray } from '../../src/lib/normalize';
+import { asArray, idOf } from '../../src/lib/normalize';
 import { colors } from '../../src/theme';
-import { Delivery } from '../../src/types';
+import { Delivery, Order, OrderMessage } from '../../src/types';
 import { useRemote } from '../../src/hooks/useRemote';
 
 // Delivery fee from financials (matches web which uses financials.deliveryFee)
@@ -35,6 +35,8 @@ type RiderPayload = {
 
 export default function RiderDeliveriesScreen() {
   const { user, isAuthenticated } = useAuth();
+  const [chatMessage, setChatMessage] = useState('');
+  const [sendingMessage, setSendingMessage] = useState(false);
   const { data, loading, refreshing, error, refresh } = useRemote<RiderPayload>(async () => {
     if (!isAuthenticated) return { active: null, available: [], history: [] };
     const [active, available, history] = await Promise.all([
@@ -46,6 +48,11 @@ export default function RiderDeliveriesScreen() {
   }, [isAuthenticated]);
 
   const active = data?.active;
+  const activeOrderId = idOf((active as any)?.orderId || (active as any)?.order?._id);
+  const { data: activeOrder, refresh: refreshActiveOrder, setData: setActiveOrder } = useRemote<Order | null>(
+    () => activeOrderId ? api.get<Order>('order', `/orders/${activeOrderId}`).catch(() => null) : Promise.resolve(null),
+    [activeOrderId],
+  );
 
   // Background GPS stream while delivery is active (matches web rider tracking)
   React.useEffect(() => {
@@ -154,6 +161,28 @@ export default function RiderDeliveriesScreen() {
     ]);
   };
 
+  const sendRiderMessage = async () => {
+    if (!activeOrderId || !chatMessage.trim() || !user) return;
+    setSendingMessage(true);
+    try {
+      const updated = await api.post<Order>('order', `/orders/${activeOrderId}/messages`, {
+        senderId: user.id || (user as any)._id || (user as any).userId,
+        senderRole: 'RIDER',
+        channel: 'DELIVERY',
+        recipientRole: 'BUYER',
+        content: chatMessage.trim(),
+        type: 'TEXT',
+      });
+      setActiveOrder(updated);
+      setChatMessage('');
+      refreshActiveOrder();
+    } catch (err) {
+      Alert.alert('Message failed', err instanceof Error ? err.message : 'Could not send rider chat message.');
+    } finally {
+      setSendingMessage(false);
+    }
+  };
+
   if (!isAuthenticated || user?.role !== 'RIDER') {
     return <EmptyBlock title="Rider account required" body="Sign in with an approved rider account to accept and track deliveries." />;
   }
@@ -162,6 +191,8 @@ export default function RiderDeliveriesScreen() {
 
   const available = data?.available || [];
   const history = data?.history || [];
+  const deliveryMessages = asArray<OrderMessage>(activeOrder?.messages)
+    .filter(msg => msg.channel === 'DELIVERY' || msg.senderRole === 'RIDER' || msg.recipientRole === 'RIDER');
 
   return (
     <ScrollView
@@ -218,6 +249,42 @@ export default function RiderDeliveriesScreen() {
               { label: 'Rider', tone: 'rider', coordinates: coordinatesFromAny((active as any).currentLocation) },
             ]}
           />
+
+          <View style={styles.chatBox}>
+            <View style={styles.chatTitleRow}>
+              <MessageCircle color={colors.orange} size={17} />
+              <Text style={styles.sectionTitle}>Rider delivery chat</Text>
+            </View>
+            {deliveryMessages.length ? deliveryMessages.map((msg, index) => (
+              <View
+                key={`${msg.timestamp || index}`}
+                style={[styles.chatBubble, msg.senderRole === 'RIDER' && styles.chatBubbleMine]}
+              >
+                <Text style={styles.chatRole}>{msg.senderRole}</Text>
+                <Text style={styles.chatText}>{msg.content}</Text>
+                <Text style={styles.chatTime}>{formatDateTime(msg.timestamp)}</Text>
+              </View>
+            )) : (
+              <Text style={styles.muted}>No rider delivery messages yet.</Text>
+            )}
+            <View style={styles.composer}>
+              <TextInput
+                value={chatMessage}
+                onChangeText={setChatMessage}
+                placeholder="Message buyer or seller..."
+                placeholderTextColor={colors.faint}
+                style={styles.chatInput}
+              />
+              <TouchableOpacity
+                style={[styles.chatSend, (!chatMessage.trim() || sendingMessage) && styles.chatSendDisabled]}
+                onPress={sendRiderMessage}
+                disabled={!chatMessage.trim() || sendingMessage}
+                activeOpacity={0.85}
+              >
+                <Send color={colors.card} size={14} />
+              </TouchableOpacity>
+            </View>
+          </View>
 
           {/* Status-based action buttons (matches web exactly) */}
           <View style={styles.actionGrid}>
@@ -348,6 +415,18 @@ const styles = StyleSheet.create({
   actionText: { color: colors.greenDark, fontSize: 12, fontWeight: '900', textTransform: 'uppercase' },
   gpsBtn: { height: 40, borderRadius: 8, borderWidth: 1, borderColor: colors.orange, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 },
   gpsBtnText: { color: colors.orangeDark, fontSize: 11, fontWeight: '900' },
+  // Delivery chat
+  chatBox: { backgroundColor: colors.paper, borderRadius: 10, borderWidth: 1, borderColor: colors.line, padding: 12, gap: 10 },
+  chatTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  chatBubble: { alignSelf: 'flex-start', maxWidth: '88%', borderRadius: 8, backgroundColor: colors.card, borderWidth: 1, borderColor: colors.line, padding: 10, gap: 3 },
+  chatBubbleMine: { alignSelf: 'flex-end', backgroundColor: colors.orangeSoft, borderColor: colors.orange },
+  chatRole: { color: colors.orangeDark, fontSize: 9, fontWeight: '900', textTransform: 'uppercase' },
+  chatText: { color: colors.ink, fontSize: 13, lineHeight: 18, fontWeight: '700' },
+  chatTime: { color: colors.faint, fontSize: 10, fontWeight: '700' },
+  composer: { flexDirection: 'row', gap: 8 },
+  chatInput: { flex: 1, minHeight: 42, borderRadius: 8, borderWidth: 1, borderColor: colors.line, backgroundColor: colors.card, paddingHorizontal: 12, color: colors.ink, fontSize: 13, fontWeight: '700' },
+  chatSend: { width: 44, minHeight: 42, borderRadius: 8, backgroundColor: colors.orange, alignItems: 'center', justifyContent: 'center' },
+  chatSendDisabled: { opacity: 0.55 },
   // No active
   noActiveCard: { backgroundColor: colors.card, borderRadius: 12, borderWidth: 1, borderColor: colors.line, padding: 24, alignItems: 'center', gap: 10 },
   noActiveText: { color: colors.muted, fontSize: 13, fontWeight: '700', textAlign: 'center' },

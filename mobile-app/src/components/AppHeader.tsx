@@ -47,7 +47,7 @@ export function AppHeaderSearch() {
         )}
       </TouchableOpacity>
 
-      <TouchableOpacity style={styles.iconBtn} onPress={() => router.push('/notifications')} activeOpacity={0.8}>
+      <TouchableOpacity style={styles.iconBtn} onPress={() => router.push('/(tabs)/notifications' as any)} activeOpacity={0.8}>
         <Bell color={colors.primary} size={18} strokeWidth={2.2} />
       </TouchableOpacity>
     </View>

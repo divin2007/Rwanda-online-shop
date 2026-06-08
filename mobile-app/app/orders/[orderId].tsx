@@ -158,9 +158,11 @@ export default function OrderTrackingScreen() {
   const { user } = useAuth();
   const userId = idOf(user?.id || (user as any)?._id || (user as any)?.userId);
   const [message, setMessage] = useState('');
+  const [deliveryMessage, setDeliveryMessage] = useState('');
   const [disputeReason, setDisputeReason] = useState('');
   const [showDisputeForm, setShowDisputeForm] = useState(false);
   const [sending, setSending] = useState(false);
+  const [sendingDelivery, setSendingDelivery] = useState(false);
   const [confirming, setConfirming] = useState(false);
   const [riderLocation, setRiderLocation] = useState<Coordinates | null>(null);
   const [deliveryData, setDeliveryData] = useState<any>(null);
@@ -290,13 +292,31 @@ export default function OrderTrackingScreen() {
     }
   };
 
+  const currentRole = String(user?.role || 'BUYER').toUpperCase();
+  const senderRole = (['SELLER', 'RIDER', 'ADMIN'].includes(currentRole) ? currentRole : 'BUYER') as OrderMessage['senderRole'];
+  const allMessages = asArray<OrderMessage>(order?.messages);
+  const deliveryMessages = allMessages.filter(msg =>
+    msg.channel === 'DELIVERY' || msg.senderRole === 'RIDER' || msg.recipientRole === 'RIDER'
+  );
+  const orderMessages = allMessages.filter(msg =>
+    !(msg.channel === 'DELIVERY' || msg.senderRole === 'RIDER' || msg.recipientRole === 'RIDER')
+  );
+  const deliveryChatVisible = Boolean(deliveryId || deliveryData || deliveryMessages.length || senderRole === 'RIDER');
+  const messageFromMe = (msg: OrderMessage) => {
+    const senderId = idOf(msg.senderId);
+    return Boolean((senderId && senderId === userId) || msg.senderRole === senderRole);
+  };
+  const deliveryRecipientRole = senderRole === 'RIDER' ? 'BUYER' : 'RIDER';
+
   const sendMessage = async () => {
     if (!order || !userId || !message.trim()) return;
     setSending(true);
     try {
       const updated = await api.post<Order>('order', `/orders/${order._id}/messages`, {
         senderId: userId,
-        senderRole: user?.role === 'SELLER' ? 'SELLER' : 'BUYER',
+        senderRole,
+        channel: 'ORDER',
+        recipientRole: senderRole === 'SELLER' ? 'BUYER' : 'SELLER',
         content: message.trim(),
         type: 'TEXT',
       });
@@ -306,6 +326,27 @@ export default function OrderTrackingScreen() {
       Alert.alert('Message failed', err instanceof Error ? err.message : 'Unable to send this message.');
     } finally {
       setSending(false);
+    }
+  };
+
+  const sendDeliveryMessage = async () => {
+    if (!order || !userId || !deliveryMessage.trim()) return;
+    setSendingDelivery(true);
+    try {
+      const updated = await api.post<Order>('order', `/orders/${order._id}/messages`, {
+        senderId: userId,
+        senderRole,
+        channel: 'DELIVERY',
+        recipientRole: deliveryRecipientRole,
+        content: deliveryMessage.trim(),
+        type: 'TEXT',
+      });
+      setData(updated);
+      setDeliveryMessage('');
+    } catch (err) {
+      Alert.alert('Delivery chat failed', err instanceof Error ? err.message : 'Unable to send this delivery message.');
+    } finally {
+      setSendingDelivery(false);
     }
   };
 
@@ -579,9 +620,14 @@ export default function OrderTrackingScreen() {
           <MessageCircle color={colors.orange} size={18} />
           <Text style={styles.sectionTitle}>Order chat</Text>
         </View>
-        {asArray<OrderMessage>(order.messages).length ? asArray<OrderMessage>(order.messages).map((msg, index) => (
-          <View key={`${msg.timestamp || index}`} style={[styles.message, msg.senderRole === 'SELLER' && styles.messageSeller]}>
-            <Text style={styles.messageRole}>{msg.senderRole}</Text>
+        {orderMessages.length ? orderMessages.map((msg, index) => (
+          <View key={`${msg.timestamp || index}`} style={[
+            styles.message,
+            msg.senderRole === 'SELLER' && styles.messageSeller,
+            msg.senderRole === 'ADMIN' && styles.messageAdmin,
+            messageFromMe(msg) && styles.messageMine,
+          ]}>
+            <Text style={styles.messageRole}>{msg.senderRole} ORDER</Text>
             <Text style={styles.messageText}>{msg.content}</Text>
             {msg.quoteAmount ? <Text style={styles.quote}>{money(msg.quoteAmount)}</Text> : null}
             <Text style={styles.messageTime}>{formatDateTime(msg.timestamp)}</Text>
@@ -598,6 +644,35 @@ export default function OrderTrackingScreen() {
       </View>
 
       {/* ── Dispute ───────────────────────────────────────────── */}
+      {deliveryChatVisible ? (
+        <View style={styles.panel}>
+          <View style={styles.panelTitleRow}>
+            <MessageCircle color={colors.orange} size={18} />
+            <Text style={styles.sectionTitle}>Rider delivery chat</Text>
+          </View>
+          {deliveryMessages.length ? deliveryMessages.map((msg, index) => (
+            <View key={`${msg.timestamp || index}-delivery`} style={[
+              styles.message,
+              msg.senderRole === 'RIDER' && styles.messageRider,
+              msg.senderRole === 'ADMIN' && styles.messageAdmin,
+              messageFromMe(msg) && styles.messageMine,
+            ]}>
+              <Text style={styles.messageRole}>{msg.senderRole} DELIVERY</Text>
+              <Text style={styles.messageText}>{msg.content}</Text>
+              <Text style={styles.messageTime}>{formatDateTime(msg.timestamp)}</Text>
+            </View>
+          )) : (
+            <Text style={styles.muted}>No rider delivery messages yet.</Text>
+          )}
+          <View style={styles.composer}>
+            <TextInput value={deliveryMessage} onChangeText={setDeliveryMessage} placeholder="Message the rider..." placeholderTextColor={colors.faint} style={styles.input} />
+            <TouchableOpacity style={styles.sendButton} onPress={sendDeliveryMessage} disabled={sendingDelivery || !deliveryMessage.trim()} activeOpacity={0.85}>
+              <Text style={styles.sendText}>{sendingDelivery ? '...' : 'Send'}</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      ) : null}
+
       {showDispute && (
         <View style={styles.panel}>
           <View style={styles.panelTitleRow}>
@@ -756,6 +831,9 @@ const styles = StyleSheet.create({
   // Chat
   message: { alignSelf: 'flex-start', maxWidth: '88%', borderRadius: 12, backgroundColor: colors.paper, borderWidth: 1, borderColor: colors.line, padding: 12, gap: 4 },
   messageSeller: { alignSelf: 'flex-end', backgroundColor: colors.orangeSoft, borderColor: colors.orange },
+  messageRider: { backgroundColor: '#fff7ed', borderColor: '#fdba74' },
+  messageAdmin: { backgroundColor: '#eef2ff', borderColor: '#c7d2fe' },
+  messageMine: { alignSelf: 'flex-end' },
   messageRole: { color: colors.orangeDark, fontSize: 9, fontWeight: '900' },
   messageText: { color: colors.ink, fontSize: 13, lineHeight: 18, fontWeight: '600' },
   quote: { color: colors.greenDark, fontSize: 18, fontWeight: '900', marginTop: 4 },

@@ -229,7 +229,9 @@ export type Order = {
 
 export type OrderMessage = {
   senderId: string;
-  senderRole: 'BUYER' | 'SELLER';
+  senderRole: 'BUYER' | 'SELLER' | 'RIDER' | 'ADMIN';
+  channel?: 'ORDER' | 'DELIVERY' | 'DISPUTE';
+  recipientRole?: 'BUYER' | 'SELLER' | 'RIDER' | 'ADMIN';
   content: string;
   imageUrl?: string;
   type?: string;

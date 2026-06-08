@@ -8,13 +8,13 @@ import { WebView } from 'react-native-webview';
 import { useLocalSearchParams, useRouter, Stack } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
-  ArrowLeft, Check, Heart, Minus, Play, Plus, Share2, ShieldCheck, ShoppingBag, Star, Store,
+  ArrowLeft, Check, Heart, MessageCircle, Minus, Play, Plus, Share2, ShieldCheck, ShoppingBag, Star, Store,
   MapPin, Lock, Truck, Shield
 } from 'lucide-react-native';
 import { EmptyBlock, ErrorBlock, LoadingBlock } from '../../src/components/StateView';
 import { useCart } from '../../src/context/CartContext';
 import { api } from '../../src/lib/api';
-import { money, safeText } from '../../src/lib/format';
+import { formatDateTime, money, safeText } from '../../src/lib/format';
 import { asArray, imageOf, productToCartItem, sellerProfileOf, normalizeImageUrl, normalizeMediaUrl, idOf, imagesOfVariant } from '../../src/lib/normalize';
 import { colors } from '../../src/theme';
 import { OrderMessage, Product, ProductVariant } from '../../src/types';
@@ -106,6 +106,7 @@ export default function ProductDetailScreen() {
     ? Number(selectedVariant.price)
     : 0;
   const effectivePrice = basePrice + markupPrice;
+  const refMoney = (amount: number) => `RWF  ${Math.round(amount || 0).toLocaleString()}`;
   const effectiveUnit = selectedVariant?.unit || product?.unit || 'piece';
   const effectiveStockQuantity = selectedVariant?.stockQuantity ?? product?.stockQuantity;
   const inStock = selectedVariant?.inStock ?? product?.inStock;
@@ -259,316 +260,297 @@ export default function ProductDetailScreen() {
   if (!product) return <EmptyBlock title="Product not found" body="The product service did not return this item." />;
 
   const reviewList = asArray<Review>(reviews);
+  const sellerName = seller?.shopDetails?.name || seller?.stallName || (product as any).sellerName || 'Verified RMF seller';
+  const minOrder = Number((selectedVariant as any)?.minOrderQuantity || (product as any)?.minOrderQuantity || 1);
+  const ratingValue = avgRating || Number((product as any).rating || 0);
+  const reviewCount = reviewList.length || Number((product as any).reviewCount || (product as any).totalReviews || 0);
+  const specRows = [
+    { label: 'ORIGIN', value: (product as any).origin || (seller as any)?.marketName || product.categoryLabel || 'Rwanda' },
+    { label: 'UNIT', value: effectiveUnit },
+    { label: 'QUALITY', value: (product as any).qualityGrade || (product as any).quality || 'Seller marked' },
+    { label: 'STOCK', value: effectiveStockQuantity ? `${effectiveStockQuantity} ${effectiveUnit}` : inStock ? 'Available' : 'Out of stock' },
+  ];
 
   return (
-    <View style={styles.container}>
+    <View style={styles.refScreen}>
       <Stack.Screen options={{ headerShown: false }} />
-
-      {/* ── Off-white Header ── */}
-      <View style={[styles.header, { paddingTop: Math.max(insets.top, 12), height: 56 + Math.max(insets.top, 12) }]}>
-        <TouchableOpacity style={styles.headerBtn} onPress={() => router.back()} activeOpacity={0.7}>
-          <ArrowLeft color="#1b1c1c" size={22} />
+      <View style={[styles.refTopBar, { paddingTop: Math.max(insets.top, 12) }]}>
+        <TouchableOpacity style={styles.refIconBtn} onPress={() => router.back()} activeOpacity={0.8}>
+          <ArrowLeft color={colors.ink} size={24} />
         </TouchableOpacity>
-        <View style={styles.headerTitleRow}>
-          <MapPin color="#a63f00" size={14} style={{ marginRight: 4 }} />
-          <Text style={styles.headerLogoTxt}>RMF Kigali</Text>
+        <View style={styles.refTopActions}>
+          <TouchableOpacity
+            style={styles.refIconBtn}
+            onPress={() => Share.share({ message: `${product.name} on RMF` }).catch(() => undefined)}
+            activeOpacity={0.8}
+          >
+            <Share2 color={colors.ink} size={22} />
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.refIconBtn} onPress={toggleWishlist} activeOpacity={0.8}>
+            <Heart color={wishlisted ? colors.primary : colors.ink} fill={wishlisted ? colors.primary : 'transparent'} size={24} />
+          </TouchableOpacity>
         </View>
-        <TouchableOpacity style={styles.headerBtn} onPress={() => router.push('/cart' as any)} activeOpacity={0.7}>
-          <View style={styles.bagWrapper}>
-            <ShoppingBag color="#1b1c1c" size={22} />
-            {itemCount > 0 && (
-              <View style={styles.badgeContainer}>
-                <Text style={styles.badgeTxt}>{itemCount}</Text>
+      </View>
+
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.refScroll}>
+        <View style={styles.refImageStage}>
+          <Image source={{ uri: displayedImage }} style={styles.refHeroImage} resizeMode="contain" />
+          <View style={styles.refDots}>
+            {galleryImages.slice(0, 4).map((_, idx) => (
+              <TouchableOpacity
+                key={`dot-${idx}`}
+                style={[styles.refDot, activeImageIndex === idx && styles.refDotActive]}
+                onPress={() => setActiveImageIndex(idx)}
+                activeOpacity={0.85}
+              />
+            ))}
+          </View>
+        </View>
+
+        <View style={styles.refInfoBlock}>
+          <View style={styles.refTags}>
+            {(product as any).isMadeInRwanda !== false && (
+              <View style={styles.refTag}>
+                <View style={styles.refTagDot} />
+                <Text style={styles.refTagText}>MADE IN RWANDA</Text>
+              </View>
+            )}
+            {isNegotiable && (
+              <View style={styles.refTagMuted}>
+                <MessageCircle color={colors.body} size={13} />
+                <Text style={styles.refTagText}>NEGOTIABLE</Text>
               </View>
             )}
           </View>
-        </TouchableOpacity>
-      </View>
 
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
-        {/* Product image showcase */}
-        <View style={styles.imageGalleryContainer}>
-          <Image source={{ uri: displayedImage }} style={styles.mainProductImage} />
-          
-          <TouchableOpacity 
-            style={styles.floatingWishlist} 
-            onPress={() => setWishlisted(!wishlisted)}
-            activeOpacity={0.8}
-          >
-            <Heart 
-              color={wishlisted ? '#a63f00' : '#8e9e95'} 
-              fill={wishlisted ? '#a63f00' : 'none'} 
-              size={18} 
-            />
-          </TouchableOpacity>
-
-          {/* Underneath image gallery thumbnails grid */}
-          {galleryImages.length > 1 && (
-            <View style={styles.thumbnailsContainer}>
-              {galleryImages.slice(0, 4).map((img, idx) => (
-                <TouchableOpacity 
-                  key={idx} 
-                  style={[styles.thumbCard, activeImageIndex === idx && styles.thumbCardActive]}
-                  onPress={() => setActiveImageIndex(idx)}
-                  activeOpacity={0.8}
-                >
-                  <Image source={{ uri: img }} style={styles.thumbImg} />
-                </TouchableOpacity>
-              ))}
-            </View>
-          )}
-          {galleryImages.length > 0 && (
-             <Text style={styles.galleryLabel}>PRODUCT SHOWCASE • Image {activeImageIndex + 1} of {galleryImages.length}</Text>
-          )}
-        </View>
-
-        {/* ── Details Section ── */}
-        <View style={styles.detailsContainer}>
-          <Text style={styles.detailsHeading}>Product Details</Text>
-          
-          <View style={styles.descriptionWrapper}>
-            <View style={styles.verticalHighlightBar} />
-            <Text style={styles.descriptionText}>{product.description || 'No description provided.'}</Text>
-          </View>
-
-          {/* Specs grid cards (2x2) */}
-          <View style={styles.specsGrid}>
-            <View style={styles.specItemCard}>
-              <Text style={styles.specCardLabel}>CATALOG CATEGORY</Text>
-              <Text style={styles.specCardVal}>{product.categoryLabel || product.category || 'General'}</Text>
-            </View>
-
-            <View style={styles.specItemCard}>
-              <Text style={styles.specCardLabel}>DELIVERY UNIT</Text>
-              <Text style={styles.specCardVal}>per {effectiveUnit.toUpperCase()}</Text>
-            </View>
-
-            <View style={styles.specItemCard}>
-              <Text style={styles.specCardLabel}>FULFILLMENT TYPE</Text>
-              <Text style={styles.specCardVal}>{product.stockType === 'on_demand' ? 'On Demand' : 'Finite'}</Text>
-            </View>
-
-            <View style={styles.specItemCard}>
-              <Text style={styles.specCardLabel}>RATING SUMMARY</Text>
-              <Text style={styles.specCardVal}>{avgRating > 0 ? `${avgRating.toFixed(1)} / 5.0` : 'No ratings'}</Text>
-            </View>
-          </View>
-
-          {/* Local Origin Card */}
-          {product.isMadeInRwanda && (
-            <View style={styles.localOriginCard}>
-              <View style={styles.localOriginLeft}>
-                <Text style={styles.specCardLabel}>LOCAL ORIGIN</Text>
-                <Text style={styles.localOriginSub}>Verified Made in Rwanda</Text>
-              </View>
-              <ShieldCheck color="#22c55e" size={24} />
-            </View>
-          )}
-
+          <Text style={styles.refProductTitle}>{product.name}</Text>
           <TouchableOpacity
-            style={styles.sellerCard}
+            style={styles.refSellerLine}
             onPress={() => {
               const marketId = idOf(seller?.marketId) || idOf(product.marketId);
               if (marketId) router.push(`/market/${marketId}` as any);
             }}
             activeOpacity={0.85}
           >
-            <View style={styles.sellerIcon}><Store color="#a63f00" size={18} /></View>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.specCardLabel}>VERIFIED SELLER</Text>
-              <Text style={styles.localOriginSub}>{seller?.shopDetails?.name || seller?.stallName || 'Seller profile pending'}</Text>
-            </View>
-            <ShieldCheck color="#16a34a" size={18} />
+            <Store color={colors.body} size={17} />
+            <Text style={styles.refSellerText}>{sellerName}</Text>
           </TouchableOpacity>
 
-          {/* Verified Customer Feedback */}
-          <Text style={[styles.detailsHeading, { marginTop: 24 }]}>Product Reviews</Text>
-          {reviewList.length > 0 ? (
-            reviewList.map(review => (
-              <View key={review._id} style={styles.reviewCard}>
-                <View style={styles.reviewTop}>
-                  <Stars rating={review.rating} size={13} />
-                  <Text style={styles.reviewerName}>{review.buyer?.fullName || 'Verified buyer'}</Text>
-                </View>
-                {review.comment ? <Text style={styles.reviewComment}>{review.comment}</Text> : null}
+          <View style={styles.refPriceRow}>
+            <View>
+              <Text style={styles.refCaps}>BASE PRICE</Text>
+              <View style={styles.refPriceInline}>
+                <Text style={styles.refPrice}>{refMoney(effectivePrice)}</Text>
+                <Text style={styles.refUnit}>/ {effectiveUnit}</Text>
               </View>
-            ))
+            </View>
+            <View style={styles.refMinOrder}>
+              <Text style={styles.refCaps}>MIN ORDER</Text>
+              <Text style={styles.refMono}>{minOrder} {effectiveUnit}</Text>
+            </View>
+          </View>
+        </View>
+
+        <View style={styles.refSection}>
+          <View style={styles.refSectionHeader}>
+            <Text style={styles.refCapsDark}>ROAST PROFILE</Text>
+            <Text style={styles.refSpecsLink}>Specs</Text>
+          </View>
+          <View style={styles.refVariantGrid}>
+            {(variants.length ? variants.slice(0, 3) : [{ title: selectedVariant?.title || 'Standard' } as ProductVariant]).map((variant, index) => {
+              const selected = variants.length ? selectedVariantIndex === index : true;
+              return (
+                <TouchableOpacity
+                  key={`${variant.title || 'variant'}-${index}`}
+                  style={[styles.refVariantBtn, selected && styles.refVariantBtnActive]}
+                  onPress={() => variants.length && setSelectedVariantIndex(index)}
+                  activeOpacity={0.85}
+                >
+                  {selected && <View style={styles.refVariantDot} />}
+                  <Text style={[styles.refVariantText, selected && styles.refVariantTextActive]} numberOfLines={1}>
+                    {variant.title || variant.sku || `Option ${index + 1}`}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+
+          <Text style={[styles.refCapsDark, { marginTop: 18 }]}>QUANTITY ({effectiveUnit.toUpperCase()})</Text>
+          <View style={styles.refQtyBox}>
+            <TouchableOpacity style={styles.refQtyBtn} onPress={() => setQty(prev => Math.max(1, prev - 1))} activeOpacity={0.85}>
+              <Minus color={colors.ink} size={18} />
+            </TouchableOpacity>
+            <Text style={styles.refQtyValue}>{qty}</Text>
+            <TouchableOpacity style={styles.refQtyBtn} onPress={() => setQty(prev => prev + 1)} activeOpacity={0.85}>
+              <Plus color={colors.ink} size={18} />
+            </TouchableOpacity>
+          </View>
+          <Text style={styles.refTotal}>Total: {refMoney(effectivePrice * qty)}</Text>
+        </View>
+
+        <View style={styles.refSectionWhite}>
+          <Text style={styles.refCapsDark}>PRODUCT SPECIFICATIONS</Text>
+          <View style={styles.refSpecsGrid}>
+            {specRows.map((row, index) => (
+              <View key={row.label} style={[styles.refSpecCell, index > 1 && styles.refSpecCellTop]}>
+                <Text style={styles.refSpecLabel}>{row.label}</Text>
+                <Text style={styles.refSpecValue} numberOfLines={2}>{String(row.value)}</Text>
+              </View>
+            ))}
+          </View>
+          <Text style={styles.refDescription}>{product.description || 'Seller has not added a detailed product description yet.'}</Text>
+        </View>
+
+        <View style={styles.refSection}>
+          <View style={styles.refReviewHeader}>
+            <View>
+              <Text style={styles.refReviewScore}>{ratingValue ? ratingValue.toFixed(1) : '0.0'}</Text>
+              <Stars rating={ratingValue || 0} size={15} />
+            </View>
+            <Text style={styles.refCapsDark}>{reviewCount} REVIEWS</Text>
+          </View>
+          <View style={styles.refRatingBars}>
+            {[5, 4, 3].map((star, index) => (
+              <View key={star} style={styles.refRatingBarRow}>
+                <Text style={styles.refRatingNo}>{star}</Text>
+                <Star color={colors.body} size={12} />
+                <View style={styles.refRatingTrack}>
+                  <View style={[styles.refRatingFill, { width: `${index === 0 ? 80 : index === 1 ? 30 : 8}%` }]} />
+                </View>
+              </View>
+            ))}
+          </View>
+          {reviewList[0] ? (
+            <View style={styles.refReviewCard}>
+              <View style={styles.refReviewTop}>
+                <View style={styles.refAvatar}>
+                  <Text style={styles.refAvatarText}>{(reviewList[0].buyer?.fullName || 'VB').slice(0, 2).toUpperCase()}</Text>
+                </View>
+                <Text style={styles.refReviewName}>{reviewList[0].buyer?.fullName || 'Verified buyer'}</Text>
+                <Text style={styles.refReviewDate}>{formatDateTime(reviewList[0].createdAt).split(',')[0]}</Text>
+              </View>
+              <Text style={styles.refReviewText} numberOfLines={3}>{reviewList[0].comment || 'Verified purchase review.'}</Text>
+            </View>
           ) : (
-            <View style={styles.reviewsEmptyCard}>
-              <Star color="#8e9e95" size={32} style={styles.emptyStar} />
-              <Text style={styles.emptyReviewTxt}>No customer ratings submitted yet for this product.</Text>
+            <View style={styles.refReviewCard}>
+              <Text style={styles.refReviewText}>No customer ratings submitted yet for this product.</Text>
             </View>
           )}
         </View>
       </ScrollView>
 
-      <Modal visible={Boolean(variantVideoUrl)} animationType="fade" onRequestClose={() => setVariantVideoUrl(null)}>
-        <View style={styles.videoModal}>
-          <WebView
-            source={{ html: variantVideoHtml(variantVideoUrl) }}
-            style={StyleSheet.absoluteFillObject}
-            allowsInlineMediaPlayback
-            allowsFullscreenVideo={false}
-            mediaPlaybackRequiresUserAction={false}
-            javaScriptEnabled
-            domStorageEnabled
-            mixedContentMode="always"
-            originWhitelist={['*']}
-            backgroundColor="#000"
-          />
-          <TouchableOpacity style={styles.videoCloseButton} onPress={() => setVariantVideoUrl(null)} activeOpacity={0.85}>
-            <Text style={styles.videoCloseText}>Close</Text>
-          </TouchableOpacity>
-        </View>
-      </Modal>
-
-      {/* ── Fixed Bottom Panel ── */}
-      <View style={styles.bottomPanel}>
-        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.bottomPanelScroll}>
-          <Text style={styles.bottomCat}>{(product.categoryLabel || product.category || 'Product').toUpperCase()}</Text>
-          <Text style={styles.bottomTitle} numberOfLines={1}>{product.name}</Text>
-
-          {/* Price Container */}
-          <View style={styles.bottomPriceCard}>
-            <View style={styles.priceRow}>
-              <Text style={styles.bottomPriceVal}>{effectivePrice.toLocaleString()}</Text>
-              <Text style={styles.bottomPriceCur}>RWF</Text>
-              <Text style={styles.bottomPriceUnit}>PER {effectiveUnit.toUpperCase()}</Text>
-            </View>
-            <Text style={styles.updatedDateTxt}>PRICE UPDATED RECENTLY</Text>
-          </View>
-
-          {/* Variant Selector */}
-          {variants.length > 0 && (
-            <View style={styles.variantsBlock}>
-              <Text style={styles.blockLabel}>CHOOSE OPTION / VARIANT</Text>
-              <View style={styles.variantsList}>
-                {variants.map((v, index) => {
-                  const isSelected = selectedVariantIndex === index;
-                  const variantImagesList = imagesOfVariant(v);
-                  const hasVariantImg = variantImagesList.length > 0;
-                  return (
-                    <TouchableOpacity
-                      key={`variant-${index}`}
-                      style={[styles.variantRowCard, isSelected && styles.variantRowCardActive]}
-                      onPress={() => setSelectedVariantIndex(index)}
-                      activeOpacity={0.8}
-                    >
-                      <View style={styles.variantLeft}>
-                        {hasVariantImg ? (
-                          <Image 
-                            source={{ uri: variantImagesList[0] }} 
-                            style={{ width: 32, height: 32, borderRadius: 6, backgroundColor: '#f5f5f5' }} 
-                          />
-                        ) : (
-                          <View style={[styles.colorPreviewCircle, { backgroundColor: (v as any).color || '#a63f00' }]} />
-                        )}
-                        <View style={styles.variantMeta}>
-                          <Text style={styles.variantTitleTxt}>{v.title || 'Variant'}</Text>
-                          {v.sku && <Text style={styles.variantSkuTxt}>SKU: {v.sku}</Text>}
-                        </View>
-                      </View>
-
-                      <View style={styles.variantRight}>
-                        <Text style={styles.variantPriceTxt}>{(basePrice + (Number(v.price) || 0)).toLocaleString()} RWF</Text>
-                        <Text style={styles.variantMarkupTxt}>
-                          {!v.price ? '+0 RWF' : `+${Number(v.price).toLocaleString()} RWF`}
-                        </Text>
-                      </View>
-                    </TouchableOpacity>
-                  );
-                })}
-              </View>
-            </View>
-          )}
-
-          {/* Status Row */}
-          <View style={styles.statusBlock}>
-            <View style={styles.statusCol}>
-              <Text style={styles.blockLabel}>STATUS</Text>
-              <View style={styles.statusIndicator}>
-                <View style={[styles.greenDot, !inStock && { backgroundColor: '#ef4444' }]} />
-                <Text style={styles.statusValTxt}>{inStock ? 'IN STOCK' : 'OUT OF STOCK'}</Text>
-              </View>
-            </View>
-            <View style={styles.statusColRight}>
-              <Text style={styles.blockLabel}>STOCK LEVEL</Text>
-              <Text style={styles.stockQtyVal}>{effectiveStockQuantity ?? 'MANAGED'} {effectiveUnit.toUpperCase()} AVAILABLE</Text>
-            </View>
-          </View>
-
-          {/* Quantity Selector and Badges */}
-          <View style={styles.controlsRow}>
-            <View style={styles.quantityPicker}>
-              <TouchableOpacity 
-                style={styles.qtyPickerBtn} 
-                onPress={() => setQty(prev => Math.max(1, prev - 1))}
-                activeOpacity={0.7}
-              >
-                <Minus color="#1b1c1c" size={14} />
-              </TouchableOpacity>
-              <Text style={styles.qtyTextVal}>{qty}</Text>
-              <TouchableOpacity 
-                style={styles.qtyPickerBtn} 
-                onPress={() => setQty(prev => prev + 1)}
-                activeOpacity={0.7}
-              >
-                <Plus color="#1b1c1c" size={14} />
-              </TouchableOpacity>
-            </View>
-
-            {/* Micro badges */}
-            <View style={styles.microBadgesCol}>
-              <View style={styles.microBadge}>
-                <Lock color="#1b1c1c" size={10} />
-                <Text style={styles.microBadgeTxt}>SECURE</Text>
-              </View>
-              <View style={styles.microBadge}>
-                <Truck color="#1b1c1c" size={10} />
-                <Text style={styles.microBadgeTxt}>RIDER</Text>
-              </View>
-              <View style={styles.microBadge}>
-                <Shield color="#1b1c1c" size={10} />
-                <Text style={styles.microBadgeTxt}>WARRANTY</Text>
-              </View>
-            </View>
-          </View>
-
-          {/* Primary CTA */}
-          {isNegotiable ? (
-            <TouchableOpacity 
-              style={[styles.primaryCta, { backgroundColor: colors.orange }, negotiating && { opacity: 0.7 }]} 
-              onPress={handleStartNegotiation}
-              disabled={negotiating}
-              activeOpacity={0.9}
-            >
-              {negotiating ? (
-                <ActivityIndicator size="small" color="#ffffff" style={{ marginRight: 8 }} />
-              ) : (
-                <ShoppingBag color="#ffffff" size={16} style={{ marginRight: 8 }} />
-              )}
-              <Text style={[styles.primaryCtaTxt, { color: '#ffffff' }]}>
-                {negotiating ? 'STARTING NEGOTIATION...' : 'START ESCROW NEGOTIATION'}
-              </Text>
-            </TouchableOpacity>
-          ) : (
-            <TouchableOpacity 
-              style={[styles.primaryCta, !inStock && { opacity: 0.5 }]} 
-              onPress={handleAddToCart}
-              disabled={!inStock}
-              activeOpacity={0.9}
-            >
-              <ShoppingBag color="#ffffff" size={16} style={{ marginRight: 8 }} />
-              <Text style={styles.primaryCtaTxt}>ADD PRODUCT TO CART</Text>
-            </TouchableOpacity>
-          )}
-        </ScrollView>
+      <View style={[styles.refBottomBar, { paddingBottom: Math.max(insets.bottom, 12) }]}>
+        <TouchableOpacity
+          style={[styles.refNegotiateBtn, !isNegotiable && styles.refDisabledBtn]}
+          onPress={handleStartNegotiation}
+          disabled={!isNegotiable || negotiating}
+          activeOpacity={0.88}
+        >
+          <MessageCircle color={colors.ink} size={18} />
+          <Text style={styles.refNegotiateText}>{negotiating ? 'STARTING' : 'NEGOTIATE'}</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.refCartBtn, !inStock && styles.refDisabledBtn]}
+          onPress={handleAddToCart}
+          disabled={!inStock}
+          activeOpacity={0.9}
+        >
+          <ShoppingBag color={colors.card} size={18} />
+          <Text style={styles.refCartText}>ADD TO CART</Text>
+        </TouchableOpacity>
       </View>
     </View>
   );
+
 }
 
 const styles = StyleSheet.create({
+  refScreen: { flex: 1, backgroundColor: colors.surface },
+  refTopBar: {
+    minHeight: 64,
+    paddingHorizontal: 8,
+    paddingBottom: 8,
+    backgroundColor: 'rgba(251,249,248,0.96)',
+    borderBottomWidth: 1,
+    borderBottomColor: colors.surfaceHighest,
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    justifyContent: 'space-between',
+  },
+  refIconBtn: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center' },
+  refTopActions: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  refScroll: { paddingBottom: 106 },
+  refImageStage: {
+    width: '100%',
+    height: SCREEN_W,
+    backgroundColor: colors.card,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.surfaceHighest,
+    alignItems: 'center',
+    justifyContent: 'center',
+    position: 'relative',
+  },
+  refHeroImage: { width: '94%', height: '94%' },
+  refDots: { position: 'absolute', bottom: 14, left: 0, right: 0, flexDirection: 'row', justifyContent: 'center', gap: 5 },
+  refDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: colors.divider },
+  refDotActive: { backgroundColor: colors.primaryMid },
+  refInfoBlock: { backgroundColor: colors.card, borderBottomWidth: 1, borderBottomColor: colors.surfaceHighest, paddingHorizontal: 16, paddingVertical: 18 },
+  refTags: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 8, marginBottom: 12 },
+  refTag: { flexDirection: 'row', alignItems: 'center', gap: 6, borderRadius: 999, borderWidth: 1, borderColor: colors.surfaceHighest, backgroundColor: '#fffff8', paddingHorizontal: 10, paddingVertical: 5 },
+  refTagMuted: { flexDirection: 'row', alignItems: 'center', gap: 5, borderRadius: 999, borderWidth: 1, borderColor: colors.divider, backgroundColor: colors.surfaceHigh, paddingHorizontal: 10, paddingVertical: 5 },
+  refTagDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: colors.primaryMid },
+  refTagText: { color: colors.body, fontSize: 11, lineHeight: 14, fontWeight: '900', letterSpacing: 0.8 },
+  refProductTitle: { color: colors.ink, fontSize: 30, lineHeight: 36, fontWeight: '800', marginBottom: 8 },
+  refSellerLine: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 22 },
+  refSellerText: { flex: 1, color: colors.body, fontSize: 16, lineHeight: 22, fontWeight: '500' },
+  refPriceRow: { flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', gap: 14 },
+  refCaps: { color: colors.body, fontSize: 11, lineHeight: 15, fontWeight: '900', letterSpacing: 0.8, marginBottom: 5 },
+  refCapsDark: { color: colors.ink, fontSize: 12, lineHeight: 16, fontWeight: '900', letterSpacing: 0.8 },
+  refPriceInline: { flexDirection: 'row', alignItems: 'baseline', gap: 4 },
+  refPrice: { color: colors.ink, fontSize: 25, lineHeight: 32, fontWeight: '900' },
+  refUnit: { color: colors.body, fontSize: 16, fontWeight: '500' },
+  refMinOrder: { alignItems: 'flex-end' },
+  refMono: { color: colors.ink, fontSize: 16, lineHeight: 22, fontWeight: '800' },
+  refSection: { backgroundColor: colors.surface, borderBottomWidth: 1, borderBottomColor: colors.surfaceHighest, paddingHorizontal: 16, paddingVertical: 20 },
+  refSectionWhite: { backgroundColor: colors.card, borderBottomWidth: 1, borderBottomColor: colors.surfaceHighest, paddingHorizontal: 16, paddingVertical: 20 },
+  refSectionHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 },
+  refSpecsLink: { color: colors.primary, fontSize: 12, fontWeight: '900', textDecorationLine: 'underline' },
+  refVariantGrid: { flexDirection: 'row', gap: 8 },
+  refVariantBtn: { flex: 1, minHeight: 43, borderRadius: 4, borderWidth: 1, borderColor: colors.surfaceHighest, backgroundColor: colors.card, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 6, position: 'relative' },
+  refVariantBtnActive: { borderColor: colors.primary, backgroundColor: colors.card },
+  refVariantDot: { position: 'absolute', top: 5, right: 7, width: 8, height: 8, borderRadius: 4, backgroundColor: colors.primaryMid },
+  refVariantText: { color: colors.body, fontSize: 15, fontWeight: '500' },
+  refVariantTextActive: { color: colors.ink },
+  refQtyBox: { height: 49, marginTop: 8, borderRadius: 4, borderWidth: 1, borderColor: colors.surfaceHighest, backgroundColor: colors.card, flexDirection: 'row', alignItems: 'center' },
+  refQtyBtn: { width: 49, height: '100%', alignItems: 'center', justifyContent: 'center', borderColor: colors.surfaceHighest },
+  refQtyValue: { flex: 1, textAlign: 'center', color: colors.ink, fontSize: 25, fontWeight: '900' },
+  refTotal: { color: colors.body, fontSize: 14, fontWeight: '600', marginTop: 8 },
+  refSpecsGrid: { marginTop: 12, borderWidth: 1, borderColor: colors.surfaceHighest, borderRadius: 6, backgroundColor: colors.card, flexDirection: 'row', flexWrap: 'wrap', padding: 16 },
+  refSpecCell: { width: '50%', minHeight: 62, paddingRight: 10 },
+  refSpecCellTop: { borderTopWidth: 1, borderTopColor: colors.surfaceHighest, paddingTop: 14, marginTop: 8 },
+  refSpecLabel: { color: colors.body, fontSize: 10, lineHeight: 14, fontWeight: '700', letterSpacing: 0.5, marginBottom: 4 },
+  refSpecValue: { color: colors.ink, fontSize: 14, lineHeight: 20, fontWeight: '600' },
+  refDescription: { color: colors.body, fontSize: 14, lineHeight: 21, fontWeight: '500', marginTop: 14 },
+  refReviewHeader: { flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', marginBottom: 14 },
+  refReviewScore: { color: colors.ink, fontSize: 25, lineHeight: 32, fontWeight: '900', marginBottom: 4 },
+  refRatingBars: { gap: 8, marginBottom: 20 },
+  refRatingBarRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  refRatingNo: { width: 12, color: colors.body, fontSize: 13, fontWeight: '700' },
+  refRatingTrack: { flex: 1, height: 6, borderRadius: 999, backgroundColor: colors.surfaceHighest, overflow: 'hidden' },
+  refRatingFill: { height: '100%', borderRadius: 999, backgroundColor: colors.primaryMid },
+  refReviewCard: { backgroundColor: colors.card, borderWidth: 1, borderColor: colors.surfaceHighest, borderRadius: 6, padding: 16, gap: 10 },
+  refReviewTop: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  refAvatar: { width: 25, height: 25, borderRadius: 13, backgroundColor: '#d9c3ae', alignItems: 'center', justifyContent: 'center' },
+  refAvatarText: { color: colors.primaryDark, fontSize: 10, fontWeight: '800' },
+  refReviewName: { flex: 1, color: colors.ink, fontSize: 14, fontWeight: '600' },
+  refReviewDate: { color: colors.body, fontSize: 12, fontWeight: '800' },
+  refReviewText: { color: colors.body, fontSize: 14, lineHeight: 21, fontWeight: '500' },
+  refBottomBar: { position: 'absolute', left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(251,249,248,0.98)', borderTopWidth: 1, borderTopColor: colors.surfaceHighest, paddingTop: 14, paddingHorizontal: 16, flexDirection: 'row', gap: 8 },
+  refNegotiateBtn: { flex: 1, height: 50, borderRadius: 6, borderWidth: 1, borderColor: colors.surfaceHighest, backgroundColor: colors.card, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7 },
+  refNegotiateText: { color: colors.ink, fontSize: 12, fontWeight: '900', letterSpacing: 0.8 },
+  refCartBtn: { flex: 1.5, height: 50, borderRadius: 6, backgroundColor: colors.primaryMid, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7 },
+  refCartText: { color: colors.card, fontSize: 12, fontWeight: '900', letterSpacing: 0.8 },
+  refDisabledBtn: { opacity: 0.55 },
   container: {
     flex: 1,
     backgroundColor: '#faf8f5',
