@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import {
   Platform,
+  ScrollView,
   StatusBar,
   StyleSheet,
   Text,
@@ -8,60 +9,97 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { Search, X } from 'lucide-react-native';
+import { Search, SlidersHorizontal, X } from 'lucide-react-native';
 import { SellerVideoFeed } from '../../src/components/SellerVideoFeed';
 import { colors } from '../../src/theme';
 
+type PlacementFilter = undefined | 'PRODUCT_AD' | 'SHOP_AD';
+
+const VIDEO_FILTERS: Array<{ label: string; search: string; placement?: PlacementFilter }> = [
+  { label: 'All', search: '' },
+  { label: 'Products', search: '', placement: 'PRODUCT_AD' },
+  { label: 'Shops', search: '', placement: 'SHOP_AD' },
+  { label: 'Deals', search: 'deal' },
+  { label: 'Groceries', search: 'grocery' },
+  { label: 'Markets', search: 'market' },
+];
+
 export default function VideosScreen() {
   const [search, setSearch] = useState('');
-  const [showSearch, setShowSearch] = useState(false);
+  const [placement, setPlacement] = useState<PlacementFilter>(undefined);
+  const [activeFilter, setActiveFilter] = useState('All');
+
+  const applyFilter = (filter: typeof VIDEO_FILTERS[number]) => {
+    setActiveFilter(filter.label);
+    setPlacement(filter.placement);
+    setSearch(filter.search);
+  };
+
+  const clearSearch = () => {
+    setSearch('');
+    setPlacement(undefined);
+    setActiveFilter('All');
+  };
 
   return (
     <View style={styles.root}>
       <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
 
-      {/* Full-screen TikTok video feed — fills root exactly */}
       <SellerVideoFeed
         search={search}
-        onTagClick={(tag) => { setSearch(`#${tag}`); setShowSearch(true); }}
+        placement={placement}
+        onTagClick={(tag) => {
+          setSearch(tag.startsWith('#') ? tag : `#${tag}`);
+          setPlacement(undefined);
+          setActiveFilter('Tag');
+        }}
         fullScreen
       />
 
-      {/* Floating search toggle — transparent, sits on top of video */}
-      <View style={styles.topBar} pointerEvents="box-none">
-        <View style={styles.brandRow} pointerEvents="none">
+      <View style={styles.topBar}>
+        <View style={styles.brandRow}>
           <Text style={styles.brand}>RMF</Text>
-          <Text style={styles.brandSub}>Seller videos</Text>
+          <Text style={styles.brandSub}>Find seller videos fast</Text>
         </View>
 
-        {showSearch ? (
-          <View style={styles.searchRow} pointerEvents="box-none">
-            <Search color="rgba(255,255,255,0.7)" size={14} />
-            <TextInput
-              value={search}
-              onChangeText={setSearch}
-              placeholder="Search sellers, products..."
-              placeholderTextColor="rgba(255,255,255,0.4)"
-              style={styles.searchInput}
-              autoFocus
-              returnKeyType="search"
-            />
+        <View style={styles.searchRow}>
+          <Search color="rgba(255,255,255,0.76)" size={15} />
+          <TextInput
+            value={search}
+            onChangeText={(value) => {
+              setSearch(value);
+              setActiveFilter(value.trim() ? 'Search' : 'All');
+              if (value.trim()) setPlacement(undefined);
+            }}
+            placeholder="Search seller, product, hashtag..."
+            placeholderTextColor="rgba(255,255,255,0.48)"
+            style={styles.searchInput}
+            returnKeyType="search"
+          />
+          {search || placement ? (
             <TouchableOpacity
-              onPress={() => { setSearch(''); setShowSearch(false); }}
+              onPress={clearSearch}
               hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
             >
-              <X color="rgba(255,255,255,0.8)" size={16} />
+              <X color="rgba(255,255,255,0.86)" size={16} />
             </TouchableOpacity>
-          </View>
-        ) : (
-          <TouchableOpacity
-            style={styles.searchIcon}
-            onPress={() => setShowSearch(true)}
-            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-          >
-            <Search color="#fff" size={20} />
-          </TouchableOpacity>
-        )}
+          ) : (
+            <SlidersHorizontal color="rgba(255,255,255,0.72)" size={16} />
+          )}
+        </View>
+
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filters}>
+          {VIDEO_FILTERS.map(filter => (
+            <TouchableOpacity
+              key={filter.label}
+              style={[styles.filterChip, activeFilter === filter.label && styles.filterChipActive]}
+              onPress={() => applyFilter(filter)}
+              activeOpacity={0.86}
+            >
+              <Text style={[styles.filterText, activeFilter === filter.label && styles.filterTextActive]}>{filter.label}</Text>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
       </View>
     </View>
   );
@@ -77,23 +115,16 @@ const styles = StyleSheet.create({
     top: Platform.OS === 'ios' ? 52 : (StatusBar.currentHeight || 24) + 8,
     left: 0,
     right: 0,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
     paddingHorizontal: 16,
-    gap: 10,
+    gap: 9,
     zIndex: 10,
-    // No background — fully transparent over the video
   },
-  brandRow: { gap: 1 },
+  brandRow: { gap: 1, alignSelf: 'flex-start' },
   brand: {
     color: '#fff',
     fontSize: 20,
     fontWeight: '900',
     letterSpacing: -0.5,
-    textShadowColor: 'rgba(0,0,0,0.7)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 5,
   },
   brandSub: {
     color: colors.orange,
@@ -102,19 +133,10 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
     letterSpacing: 1.2,
   },
-  searchIcon: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: 'rgba(0,0,0,0.35)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
   searchRow: {
-    flex: 1,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: 'rgba(0,0,0,0.5)',
+    height: 40,
+    borderRadius: 999,
+    backgroundColor: 'rgba(0,0,0,0.62)',
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 12,
@@ -127,6 +149,19 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 13,
     fontWeight: '700',
-    height: 36,
+    height: 40,
   },
+  filters: { gap: 8, paddingRight: 8 },
+  filterChip: {
+    height: 30,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.22)',
+    backgroundColor: 'rgba(0,0,0,0.44)',
+    paddingHorizontal: 12,
+    justifyContent: 'center',
+  },
+  filterChipActive: { backgroundColor: colors.orange, borderColor: colors.orange },
+  filterText: { color: 'rgba(255,255,255,0.82)', fontSize: 12, fontWeight: '900' },
+  filterTextActive: { color: colors.primaryDark },
 });

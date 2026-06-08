@@ -86,7 +86,7 @@ const posterOf = (video: SellerVideo) => {
   return normalizeImageUrl(video.thumbnailUrl) || imageOf(product);
 };
 
-export function SellerVideoFeed({ marketId, sellerId, placement, compact, search, fullScreen = false }: Props) {
+export function SellerVideoFeed({ marketId, sellerId, placement, compact, search, onTagClick, fullScreen = false }: Props) {
   const router = useRouter();
   const navigation = useNavigation();
   const [isFocused, setIsFocused] = useState(true);
@@ -112,6 +112,7 @@ export function SellerVideoFeed({ marketId, sellerId, placement, compact, search
   const [openComments, setOpenComments] = useState<string | null>(null);
   const [commentText, setCommentText] = useState<Record<string, string>>({});
   const [layoutHeight, setLayoutHeight] = useState<number>(0);
+  const [loading, setLoading] = useState(true);
 
   const cardHeight = layoutHeight > 0 ? layoutHeight : Math.max(480, height - (fullScreen ? TAB_BAR_HEIGHT : 0));
 
@@ -122,11 +123,14 @@ export function SellerVideoFeed({ marketId, sellerId, placement, compact, search
     if (placement) params.set('placement', placement);
     if (search?.trim()) params.set('search', search.trim());
 
+    setLoading(true);
     try {
       const data = await api.get<SellerVideo[]>('product', `/seller-videos?${params.toString()}`, { auth: false });
       setVideos(asArray<SellerVideo>(data).filter(video => Boolean(video.videoUrl)));
     } catch {
       setVideos([]);
+    } finally {
+      setLoading(false);
     }
   }, [compact, marketId, placement, search, sellerId]);
 
@@ -175,7 +179,17 @@ export function SellerVideoFeed({ marketId, sellerId, placement, compact, search
     }
   }).current;
 
-  if (!videos.length) return null;
+  if (!videos.length) {
+    return (
+      <View style={[styles.emptyState, fullScreen && styles.emptyStateFull]}>
+        <Play color={colors.orange} size={36} />
+        <Text style={styles.emptyTitle}>{loading ? 'Finding videos...' : 'No seller videos found'}</Text>
+        <Text style={styles.emptyBody}>
+          {loading ? 'RMF is checking the seller video feed.' : 'Try another search, clear the filter, or check again after sellers upload videos.'}
+        </Text>
+      </View>
+    );
+  }
 
   if (compact) {
     return (
@@ -212,7 +226,7 @@ export function SellerVideoFeed({ marketId, sellerId, placement, compact, search
             <TouchableOpacity style={styles.closeButton} onPress={() => setModalVideo(null)} activeOpacity={0.85}>
               <X color={colors.card} size={24} />
             </TouchableOpacity>
-            {modalVideo ? <VideoCaption video={modalVideo} onOpenMarket={() => openMarket(router, modalVideo)} /> : null}
+            {modalVideo ? <VideoCaption video={modalVideo} onOpenMarket={() => openMarket(router, modalVideo)} onTagClick={onTagClick} /> : null}
           </View>
         </Modal>
       </>
@@ -250,6 +264,7 @@ export function SellerVideoFeed({ marketId, sellerId, placement, compact, search
             onReact={reaction => reactToVideo(item, reaction)}
             onSubmitComment={() => submitComment(item)}
             onToggleComments={() => setOpenComments(current => current === item._id ? null : item._id)}
+            onTagClick={onTagClick}
           />
         )}
       />
@@ -272,7 +287,7 @@ function CompactVideoCard({ video, onPress }: { video: SellerVideo; onPress: () 
       <View style={styles.compactBody}>
         <Text style={styles.compactTitle} numberOfLines={2}>{video.title}</Text>
         <Text style={styles.compactMeta} numberOfLines={1}>{sellerNameOf(video)}</Text>
-        <Text style={styles.compactStats}>{video.likeCount || 0} likes · {video.commentCount || 0} comments</Text>
+        <Text style={styles.compactStats}>{video.likeCount || 0} likes - {video.commentCount || 0} comments</Text>
       </View>
     </TouchableOpacity>
   );
@@ -290,6 +305,7 @@ function FullVideoCard({
   onReact,
   onSubmitComment,
   onToggleComments,
+  onTagClick,
 }: {
   video: SellerVideo;
   active: boolean;
@@ -302,6 +318,7 @@ function FullVideoCard({
   onReact: (reaction: 'like' | 'dislike') => void;
   onSubmitComment: () => void;
   onToggleComments: () => void;
+  onTagClick?: (tag: string) => void;
 }) {
   const product = typeof video.productId === 'object' ? video.productId as Product : null;
 
@@ -327,9 +344,9 @@ function FullVideoCard({
         <FastImage uri={posterOf(video)} style={StyleSheet.absoluteFillObject} />
       )}
 
-      <View style={styles.videoShade} pointerEvents="none" />
+      <View style={[styles.videoShade, styles.noPointerEvents]} />
       <View style={styles.videoInfo}>
-        <VideoCaption video={video} onOpenMarket={onOpenMarket} />
+        <VideoCaption video={video} onOpenMarket={onOpenMarket} onTagClick={onTagClick} />
         {product ? (
           <TouchableOpacity style={styles.productButton} onPress={onOpenProduct} activeOpacity={0.85}>
             <Text style={styles.productButtonText} numberOfLines={1}>View {product.name}</Text>
@@ -397,7 +414,7 @@ function FullVideoCard({
   );
 }
 
-function VideoCaption({ video, onOpenMarket }: { video: SellerVideo; onOpenMarket: () => void }) {
+function VideoCaption({ video, onOpenMarket, onTagClick }: { video: SellerVideo; onOpenMarket: () => void; onTagClick?: (tag: string) => void }) {
   // Extract hashtags from caption if tags are empty
   const displayTags = (video.tags && video.tags.length > 0)
     ? video.tags.map(t => t.startsWith('#') ? t : `#${t}`)
@@ -412,9 +429,19 @@ function VideoCaption({ video, onOpenMarket }: { video: SellerVideo; onOpenMarke
       <Text style={styles.videoTitle} numberOfLines={2}>{video.title}</Text>
       {video.caption ? <Text style={styles.videoCaption} numberOfLines={3}>{video.caption}</Text> : null}
       {displayTags.length > 0 ? (
-        <Text style={styles.tags} numberOfLines={1}>
-          {displayTags.join(' ')}
-        </Text>
+        <View style={styles.tagRow}>
+          {displayTags.slice(0, 4).map(tag => (
+            <TouchableOpacity
+              key={`${video._id}-${tag}`}
+              style={styles.tagPill}
+              onPress={() => onTagClick?.(tag.replace(/^#/, ''))}
+              activeOpacity={0.82}
+              disabled={!onTagClick}
+            >
+              <Text style={styles.tagText}>{tag}</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
       ) : null}
     </View>
   );
@@ -441,6 +468,32 @@ function openProduct(router: ReturnType<typeof useRouter>, video: SellerVideo) {
 }
 
 const styles = StyleSheet.create({
+  emptyState: {
+    minHeight: 220,
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 24,
+    gap: 10,
+    backgroundColor: colors.ink,
+  },
+  emptyStateFull: {
+    flex: 1,
+    paddingTop: 160,
+  },
+  emptyTitle: {
+    color: colors.card,
+    fontSize: 18,
+    fontWeight: '900',
+    textAlign: 'center',
+  },
+  emptyBody: {
+    color: 'rgba(255,255,255,0.72)',
+    fontSize: 13,
+    lineHeight: 19,
+    fontWeight: '700',
+    textAlign: 'center',
+    maxWidth: 280,
+  },
   compactRail: {
     gap: 12,
     paddingRight: 16,
@@ -532,6 +585,9 @@ const styles = StyleSheet.create({
     height: 270,
     backgroundColor: 'transparent',
   },
+  noPointerEvents: {
+    pointerEvents: 'none',
+  },
   videoInfo: {
     position: 'absolute',
     left: 16,
@@ -564,7 +620,20 @@ const styles = StyleSheet.create({
     lineHeight: 19,
     fontWeight: '700',
   },
-  tags: {
+  tagRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+  },
+  tagPill: {
+    borderRadius: 999,
+    backgroundColor: 'rgba(255,107,0,0.22)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,219,204,0.38)',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+  },
+  tagText: {
     color: colors.orangeSoft,
     fontSize: 12,
     fontWeight: '900',

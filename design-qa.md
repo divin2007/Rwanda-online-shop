@@ -25,6 +25,13 @@ Verification:
 - Browser console errors: none during the checked mobile route pass.
 - Cart flow: first product added to cart, `/cart` loaded with one cart item.
 
+Follow-up error pass:
+- Fixed root stack warning from a stale `notifications` screen registration.
+- Fixed Orders hook-order crash by keeping all hooks before early returns.
+- Added video discovery controls: persistent search, product/shop/deal/grocery/market chips, no-result state, and clickable video hashtags.
+- Verified Orders, Inbox, Videos, and Riders in a fresh mobile browser tab with zero console errors.
+- Verified video search input and Products chip interaction with zero console errors.
+
 Remaining notes:
 - Authenticated Inbox category filters appear after sign-in; guest state intentionally shows the sign-in card.
 - Person pickup booking still routes into the protected market/order path because mobile does not yet expose a dedicated person-pickup creation form.

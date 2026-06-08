@@ -85,11 +85,11 @@ export default function RootLayout() {
                 <Stack.Screen name="seller/qr" options={{ title: 'My Stall QR' }} />
                 <Stack.Screen name="rider/deliveries" options={{ title: 'Deliveries' }} />
                 <Stack.Screen name="rider/earnings" options={{ title: 'Rider Earnings' }} />
+                <Stack.Screen name="riders" options={{ title: 'Rider Directory' }} />
                 <Stack.Screen name="settings" options={{ title: 'Settings' }} />
                 <Stack.Screen name="preferences" options={{ title: 'Recommendations' }} />
                 <Stack.Screen name="wallet" options={{ title: 'Wallet' }} />
                 <Stack.Screen name="wishlist" options={{ title: 'Wishlist' }} />
-                <Stack.Screen name="notifications" options={{ title: 'Notifications' }} />
               </Stack>
             </View>
           </CartProvider>

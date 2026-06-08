@@ -46,21 +46,6 @@ export default function OrdersScreen() {
     [isAuthenticated],
   );
 
-  if (!isAuthenticated) {
-    return (
-      <View style={styles.container}>
-        <EmptyBlock
-          title="Sign in to view orders"
-          body="Your escrow orders and live tracking are attached to your RMF account."
-          actionLabel="Sign in"
-          onAction={() => router.push('/(auth)/login')}
-        />
-      </View>
-    );
-  }
-  if (loading && !data) return <LoadingBlock />;
-  if (error && !data) return <ErrorBlock message={error} onRetry={refresh} />;
-
   const orders = asArray<Order>(data);
   const filteredOrders = useMemo(() => {
     const norm = query.trim().toLowerCase();
@@ -77,7 +62,22 @@ export default function OrdersScreen() {
       ].filter(Boolean).join(' ').toLowerCase();
       return haystack.includes(norm);
     });
-  }, [filter, orders, query]);
+  }, [data, filter, query]);
+
+  if (!isAuthenticated) {
+    return (
+      <View style={styles.container}>
+        <EmptyBlock
+          title="Sign in to view orders"
+          body="Your escrow orders and live tracking are attached to your RMF account."
+          actionLabel="Sign in"
+          onAction={() => router.push('/(auth)/login')}
+        />
+      </View>
+    );
+  }
+  if (loading && !data) return <LoadingBlock />;
+  if (error && !data) return <ErrorBlock message={error} onRetry={refresh} />;
 
   return (
     <ScrollView
