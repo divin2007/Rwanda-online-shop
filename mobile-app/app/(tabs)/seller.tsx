@@ -1,422 +1,294 @@
-import React, { useState } from 'react';
-import { RefreshControl, ScrollView, StyleSheet, Text, TouchableOpacity, View, Dimensions } from 'react-native';
+import React from 'react';
+import {
+  Dimensions, RefreshControl, ScrollView,
+  StyleSheet, Text, TouchableOpacity, View,
+} from 'react-native';
 import { useRouter } from 'expo-router';
-import { BadgeCheck, Bike, Box, ClipboardList, Heart, MapPin, ReceiptText, Settings, ShieldCheck, Store, Wallet, Activity, Truck, CheckCircle2, TrendingUp, Clock, ArrowRight, Package } from 'lucide-react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import {
+  BarChart3, Bike, Box, CheckCircle2, ChevronRight,
+  ClipboardList, DollarSign, LogIn, MapPin, Package,
+  QrCode, ReceiptText, ShieldCheck, Star, Store,
+  Truck, UserCheck, Video, Wallet, Zap,
+} from 'lucide-react-native';
 import { AdminHub } from '../../src/components/AdminHub';
-import { MapPreview, coordinatesFromAny } from '../../src/components/MapPreview';
 import { EmptyBlock, ErrorBlock, LoadingBlock } from '../../src/components/StateView';
 import { useAuth } from '../../src/context/AuthContext';
 import { api } from '../../src/lib/api';
-import { formatDateTime, money, shortId } from '../../src/lib/format';
+import { money } from '../../src/lib/format';
 import { asArray } from '../../src/lib/normalize';
 import { colors } from '../../src/theme';
-import { Delivery, Order, Product, SellerProfile, Wallet as WalletType } from '../../src/types';
 import { useRemote } from '../../src/hooks/useRemote';
 
-const { width: SCREEN_W } = Dimensions.get('window');
+const { width: W } = Dimensions.get('window');
 
-type HubPayload = {
-  seller: SellerProfile | null;
-  products: Product[];
-  orders: Order[];
-  wallet: WalletType | null;
-  activeDelivery: Delivery | null;
-  availableDeliveries: Delivery[];
-  deliveryHistory: Delivery[];
-};
-
-const emptyPayload: HubPayload = {
-  seller: null,
-  products: [],
-  orders: [],
-  wallet: null,
-  activeDelivery: null,
-  availableDeliveries: [],
-  deliveryHistory: [],
-};
-
-const loadHub = async (enabled: boolean, role?: string, userId?: string): Promise<HubPayload> => {
-  if (!enabled) return emptyPayload;
-
-  if (role === 'ADMIN') {
-    return emptyPayload;
-  }
-
-  if (role === 'SELLER') {
-    const seller = await api.get<SellerProfile | null>('seller', '/sellers/me').catch(() => null);
-    const [products, orders, wallet] = await Promise.all([
-      api.get<Product[]>('product', `/products?sellerId=${encodeURIComponent(userId || '')}`).catch(() => []),
-      api.get<Order[]>('order', '/orders').catch(() => []),
-      api.get<WalletType>('wallet', '/wallets/me').catch(() => null),
-    ]);
-    return { ...emptyPayload, seller, products: asArray(products), orders: asArray(orders), wallet };
-  }
-
-  if (role === 'RIDER') {
-    const [activeDelivery, availableDeliveries, deliveryHistory, wallet] = await Promise.all([
-      api.get<Delivery | null>('delivery', '/deliveries/active').catch(() => null),
-      api.get<Delivery[]>('delivery', '/deliveries/available').catch(() => []),
-      api.get<Delivery[]>('delivery', '/deliveries/history').catch(() => []),
-      api.get<WalletType>('wallet', '/wallets/me').catch(() => null),
-    ]);
-    return {
-      ...emptyPayload,
-      activeDelivery,
-      availableDeliveries: asArray(availableDeliveries),
-      deliveryHistory: asArray(deliveryHistory),
-      wallet,
-    };
-  }
-
-  const [orders, wallet] = await Promise.all([
-    api.get<Order[]>('order', '/orders').catch(() => []),
-    api.get<WalletType>('wallet', '/wallets/me').catch(() => null),
-  ]);
-  return { ...emptyPayload, orders: asArray(orders), wallet };
-};
-
-export default function RoleHubScreen() {
+// ─── Reusable nav card ────────────────────────────────────────────────────────
+function NavCard({
+  icon, label, sub, route, badge, accent = colors.primary, iconBg,
+}: {
+  icon: React.ReactNode; label: string; sub?: string; route: string;
+  badge?: string | number; accent?: string; iconBg?: string;
+}) {
   const router = useRouter();
-  const { user, isAuthenticated } = useAuth();
-  const { data, loading, refreshing, error, refresh } = useRemote(
-    () => loadHub(isAuthenticated, user?.role, user?.id),
-    [isAuthenticated, user?.role, user?.id],
-  );
-
-  if (!isAuthenticated) {
-    return <EmptyBlock title="Sign in for your dashboard" body="Your RMF role dashboard appears after login." actionLabel="Sign in" onAction={() => router.push('/(auth)/login')} />;
-  }
-  if (loading && !data) return <LoadingBlock label="Loading your premium dashboard..." />;
-  if (error && !data) return <ErrorBlock message={error} onRetry={refresh} />;
-
-  if (user?.role === 'ADMIN') {
-    return <AdminHub />;
-  }
-  if (user?.role === 'RIDER') {
-    return <RiderHub data={data || emptyPayload} refreshing={refreshing} refresh={refresh} />;
-  }
-  if (user?.role === 'SELLER') {
-    return <SellerHub data={data || emptyPayload} refreshing={refreshing} refresh={refresh} />;
-  }
-  return <BuyerHub data={data || emptyPayload} refreshing={refreshing} refresh={refresh} />;
-}
-
-function BuyerHub({ data, refreshing, refresh }: { data: HubPayload; refreshing: boolean; refresh: () => void }) {
-  const router = useRouter();
-  const activeOrder = data.orders.find(order => !['delivered', 'cancelled', 'resolved'].includes(String(order.status || '').toLowerCase()));
-  
   return (
-    <HubScroll refreshing={refreshing} refresh={refresh}>
-      <View style={[styles.heroCard, { backgroundColor: '#1b1c1c' }]}>
-        <View style={styles.heroTopRow}>
-          <ShieldCheck color="#a63f00" size={32} />
-          <View style={styles.heroBadge}>
-            <Text style={styles.heroBadgeTxt}>BUYER</Text>
-          </View>
-        </View>
-        <Text style={[styles.title, { color: '#ffffff' }]}>Welcome back,</Text>
-        <Text style={[styles.subtitle, { color: '#8e9e95' }]}>Orders, tracking, and wallet overview.</Text>
+    <TouchableOpacity
+      style={nc.card}
+      onPress={() => router.push(route as any)}
+      activeOpacity={0.82}
+    >
+      <View style={[nc.iconWrap, { backgroundColor: iconBg || `${accent}18` }]}>{icon}</View>
+      <View style={{ flex: 1 }}>
+        <Text style={nc.label}>{label}</Text>
+        {sub && <Text style={nc.sub} numberOfLines={1}>{sub}</Text>}
       </View>
-
-      <View style={styles.metricsGrid}>
-        <PremiumMetric icon={<ReceiptText color="#a63f00" size={20} />} value={data.orders.length} label="Active Orders" />
-        <PremiumMetric icon={<Wallet color="#a63f00" size={20} />} value={money(data.wallet?.availableBalance ?? data.wallet?.balance)} label="Available Balance" />
-      </View>
-
-      <Text style={styles.sectionHeading}>Quick Actions</Text>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.actionsScroll}>
-        <PremiumAction label="Markets" onPress={() => router.push('/markets' as any)} icon={<Store color="#1b1c1c" size={18} />} />
-        <PremiumAction label="Orders" onPress={() => router.push('/orders' as any)} icon={<Package color="#1b1c1c" size={18} />} />
-        <PremiumAction label="Wishlist" onPress={() => router.push('/wishlist' as any)} icon={<Heart color="#1b1c1c" size={18} />} />
-        <PremiumAction label="Settings" onPress={() => router.push('/settings' as any)} icon={<Settings color="#1b1c1c" size={18} />} />
-      </ScrollView>
-
-      {activeOrder?.delivery ? (
-        <View style={styles.panel}>
-          <View style={styles.panelHeaderRow}>
-            <Text style={styles.sectionHeading}>Live Tracking</Text>
-            <View style={styles.livePulse} />
-          </View>
-          <MapPreview
-            title={`Order #${shortId(activeOrder.orderNumber || activeOrder._id)}`}
-            points={[
-              { label: 'Pickup', tone: 'pickup', coordinates: coordinatesFromAny(activeOrder.delivery?.pickup || activeOrder.delivery?.pickupLocation) },
-              { label: 'Drop-off', tone: 'dropoff', coordinates: coordinatesFromAny(activeOrder.delivery?.dropoff || activeOrder.delivery?.dropoffLocation || activeOrder.delivery?.destination) },
-              { label: 'Rider', tone: 'rider', coordinates: coordinatesFromAny(activeOrder.delivery?.currentLocation || activeOrder.delivery?.riderLocation) },
-            ]}
-          />
-          <TouchableOpacity style={styles.fullWidthBtn} onPress={() => router.push(`/orders/${activeOrder._id}` as any)}>
-            <Text style={styles.fullWidthBtnTxt}>Open Full Tracking</Text>
-            <ArrowRight color="#ffffff" size={16} />
-          </TouchableOpacity>
+      {badge !== undefined && badge !== 0 ? (
+        <View style={[nc.badge, { backgroundColor: accent }]}>
+          <Text style={nc.badgeText}>{badge}</Text>
         </View>
       ) : null}
-      
-      <RecentOrders orders={data.orders} />
-    </HubScroll>
-  );
-}
-
-function SellerHub({ data, refreshing, refresh }: { data: HubPayload; refreshing: boolean; refresh: () => void }) {
-  const router = useRouter();
-  const seller = data.seller;
-
-  if (!seller) {
-    return <EmptyBlock title="Complete seller onboarding" body="Your seller profile has not been created yet." actionLabel="Start onboarding" onAction={() => router.push('/seller/onboarding' as any)} />;
-  }
-
-  return (
-    <HubScroll refreshing={refreshing} refresh={refresh}>
-      <View style={[styles.heroCard, { backgroundColor: '#a63f00' }]}>
-        <View style={styles.heroTopRow}>
-          <Store color="#ffffff" size={32} />
-          <View style={[styles.heroBadge, { backgroundColor: 'rgba(255,255,255,0.2)' }]}>
-            <BadgeCheck color={seller.isApproved ? '#22c55e' : '#fbbf24'} size={14} style={{ marginRight: 4 }} />
-            <Text style={[styles.heroBadgeTxt, { color: '#ffffff' }]}>
-              {seller.isApproved ? 'VERIFIED' : 'PENDING'}
-            </Text>
-          </View>
-        </View>
-        <Text style={[styles.title, { color: '#ffffff' }]}>{seller.shopDetails?.name || seller.stallName}</Text>
-        <Text style={[styles.subtitle, { color: 'rgba(255,255,255,0.8)' }]}>Seller Performance Overview</Text>
-      </View>
-
-      <View style={styles.metricsGrid}>
-        <PremiumMetric icon={<Wallet color="#a63f00" size={20} />} value={money(data.wallet?.balance || data.wallet?.availableBalance)} label="Total Earnings" />
-        <PremiumMetric icon={<Box color="#a63f00" size={20} />} value={data.products.length} label="Active Products" />
-        <PremiumMetric icon={<TrendingUp color="#a63f00" size={20} />} value={data.orders.length} label="Total Orders" />
-      </View>
-
-      <Text style={styles.sectionHeading}>Business Management</Text>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.actionsScroll}>
-        <PremiumAction label="Inventory" onPress={() => router.push('/seller/products' as any)} icon={<Box color="#1b1c1c" size={18} />} />
-        <PremiumAction label="Promotions" onPress={() => router.push('/seller/promotions' as any)} icon={<TrendingUp color="#1b1c1c" size={18} />} />
-        <PremiumAction label="Video Ads" onPress={() => router.push('/seller/videos' as any)} icon={<Activity color="#1b1c1c" size={18} />} />
-        <PremiumAction label="Payouts" onPress={() => router.push('/wallet' as any)} icon={<Wallet color="#1b1c1c" size={18} />} />
-        <PremiumAction label="Settings" onPress={() => router.push('/seller/onboarding' as any)} icon={<Settings color="#1b1c1c" size={18} />} />
-      </ScrollView>
-
-      <RecentOrders orders={data.orders} seller />
-    </HubScroll>
-  );
-}
-
-function RiderHub({ data, refreshing, refresh }: { data: HubPayload; refreshing: boolean; refresh: () => void }) {
-  const router = useRouter();
-  const active = data.activeDelivery;
-
-  return (
-    <HubScroll refreshing={refreshing} refresh={refresh}>
-      <View style={[styles.heroCard, { backgroundColor: '#1b1c1c' }]}>
-        <View style={styles.heroTopRow}>
-          <Bike color="#a63f00" size={32} />
-          <View style={styles.heroBadge}>
-            <Text style={styles.heroBadgeTxt}>FLEET RIDER</Text>
-          </View>
-        </View>
-        <Text style={[styles.title, { color: '#ffffff' }]}>Ready to deliver?</Text>
-        <Text style={[styles.subtitle, { color: '#8e9e95' }]}>Track earnings, active routes, and new requests.</Text>
-      </View>
-
-      <View style={styles.metricsGrid}>
-        <PremiumMetric icon={<MapPin color="#a63f00" size={20} />} value={active ? 1 : 0} label="Active Route" />
-        <PremiumMetric icon={<Truck color="#a63f00" size={20} />} value={data.availableDeliveries.length} label="Job Requests" />
-        <PremiumMetric icon={<Wallet color="#a63f00" size={20} />} value={money(data.wallet?.availableBalance ?? data.wallet?.balance)} label="Total Earnings" />
-      </View>
-
-      <Text style={styles.sectionHeading}>Fleet Tools</Text>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.actionsScroll}>
-        <PremiumAction label="Available Jobs" onPress={() => router.push('/rider/deliveries' as any)} icon={<ClipboardList color="#1b1c1c" size={18} />} />
-        <PremiumAction label="Earnings Payout" onPress={() => router.push('/wallet' as any)} icon={<Wallet color="#1b1c1c" size={18} />} />
-      </ScrollView>
-
-      <View style={styles.panel}>
-        <View style={styles.panelHeaderRow}>
-          <Text style={styles.sectionHeading}>Live Mission Map</Text>
-          {active && <View style={styles.livePulse} />}
-        </View>
-        <MapPreview
-          title={active ? `Mission #${shortId(active._id)}` : 'Standby Area'}
-          points={[
-            { label: 'Pickup', tone: 'pickup', coordinates: coordinatesFromAny(active?.pickup) },
-            { label: 'Drop-off', tone: 'dropoff', coordinates: coordinatesFromAny(active?.dropoff) },
-            { label: 'Rider', tone: 'rider', coordinates: coordinatesFromAny(active?.currentLocation) },
-          ]}
-        />
-        {active ? (
-          <View style={styles.deliverySummaryCard}>
-            <View style={styles.summaryLeft}>
-              <Text style={styles.summaryTitle}>Mission Active</Text>
-              <Text style={styles.summaryStatus}>{String(active.status || 'pending').toUpperCase()}</Text>
-            </View>
-            <View style={styles.summaryRight}>
-              <Text style={styles.summaryFeeVal}>{money(active.earnings || active.fee)}</Text>
-              <Text style={styles.summaryFeeLbl}>EARNINGS</Text>
-            </View>
-          </View>
-        ) : (
-          <View style={styles.emptyStateCard}>
-            <Clock color="#8e9e95" size={24} />
-            <Text style={styles.muted}>Awaiting dispatch assignment.</Text>
-          </View>
-        )}
-      </View>
-
-      <View style={styles.panel}>
-        <Text style={styles.sectionHeading}>Dispatch Requests</Text>
-        {data.availableDeliveries.length ? data.availableDeliveries.slice(0, 5).map(delivery => (
-          <TouchableOpacity key={delivery._id} style={styles.jobRow} onPress={() => router.push('/rider/deliveries' as any)}>
-            <View style={styles.jobIconWrap}>
-              <MapPin color="#a63f00" size={18} />
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.jobTitle}>Request #{shortId(delivery._id)}</Text>
-              <Text style={styles.jobMeta}>{formatDateTime(delivery.createdAt)}</Text>
-            </View>
-            <View style={styles.jobRight}>
-              <Text style={styles.jobFee}>{money(delivery.earnings || delivery.fee)}</Text>
-              <ArrowRight color="#a63f00" size={16} />
-            </View>
-          </TouchableOpacity>
-        )) : (
-          <View style={styles.emptyStateCard}>
-            <CheckCircle2 color="#8e9e95" size={24} />
-            <Text style={styles.muted}>No open jobs right now.</Text>
-          </View>
-        )}
-      </View>
-    </HubScroll>
-  );
-}
-
-function RecentOrders({ orders, seller }: { orders: Order[], seller?: boolean }) {
-  const router = useRouter();
-  if (!orders.length) return null;
-  return (
-    <View style={styles.panel}>
-      <Text style={styles.sectionHeading}>Recent Transactions</Text>
-      {orders.slice(0, 4).map(order => (
-        <TouchableOpacity key={order._id} style={styles.orderCardRow} onPress={() => router.push(`/orders/${order._id}` as any)}>
-          <View style={styles.jobIconWrap}>
-            <Package color="#a63f00" size={18} />
-          </View>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.orderCardTitle}>Order #{shortId(order.orderNumber || order._id)}</Text>
-            <Text style={styles.orderCardStatus}>{String(order.status).toUpperCase()}</Text>
-          </View>
-          <View style={styles.jobRight}>
-            <Text style={styles.orderCardTotal}>{money(order.financials?.totalAmount)}</Text>
-            <Text style={styles.jobMeta}>{formatDateTime(order.createdAt).split(',')[0]}</Text>
-          </View>
-        </TouchableOpacity>
-      ))}
-    </View>
-  );
-}
-
-function HubScroll({ children, refreshing, refresh }: any) {
-  const insets = useSafeAreaInsets();
-  return (
-    <ScrollView 
-      style={styles.container} 
-      contentContainerStyle={[styles.content, { paddingTop: Math.max(insets.top, 16) }]}
-      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor="#a63f00" />}
-      showsVerticalScrollIndicator={false}
-    >
-      {children}
-    </ScrollView>
-  );
-}
-
-function PremiumMetric({ icon, value, label }: any) {
-  return (
-    <View style={styles.premiumMetricCard}>
-      <View style={styles.metricIconWrap}>{icon}</View>
-      <Text style={styles.metricValTxt} numberOfLines={1}>{value}</Text>
-      <Text style={styles.metricLblTxt}>{label}</Text>
-    </View>
-  );
-}
-
-function PremiumAction({ icon, label, onPress }: any) {
-  return (
-    <TouchableOpacity style={styles.premiumActionBtn} onPress={onPress} activeOpacity={0.8}>
-      <View style={styles.actionIconWrap}>{icon}</View>
-      <Text style={styles.actionLabelTxt}>{label}</Text>
+      <ChevronRight color="#c0b8b0" size={16} strokeWidth={2} />
     </TouchableOpacity>
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#faf8f5' },
-  content: { paddingHorizontal: 16, paddingBottom: 100, gap: 24 },
-  heroCard: { 
-    padding: 24, 
-    borderRadius: 24, 
-    shadowColor: '#000', 
-    shadowOffset: { width: 0, height: 8 }, 
-    shadowOpacity: 0.1, 
-    shadowRadius: 16, 
-    elevation: 8 
+const nc = StyleSheet.create({
+  card: { flexDirection: 'row', alignItems: 'center', gap: 14, backgroundColor: '#fff', borderRadius: 14, paddingHorizontal: 16, paddingVertical: 14, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 6, elevation: 2 },
+  iconWrap: { width: 44, height: 44, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
+  label: { fontSize: 14, fontWeight: '700', color: '#17201a' },
+  sub: { fontSize: 11, color: '#80756c', marginTop: 1 },
+  badge: { minWidth: 22, height: 22, borderRadius: 11, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 6 },
+  badgeText: { color: '#fff', fontSize: 11, fontWeight: '800' },
+});
+
+// ─── Section header ───────────────────────────────────────────────────────────
+function Section({ title }: { title: string }) {
+  return <Text style={s.sectionTitle}>{title}</Text>;
+}
+
+// ─── Metric pill ──────────────────────────────────────────────────────────────
+function MetricPill({ label, value, color = colors.primary }: { label: string; value: string; color?: string }) {
+  return (
+    <View style={[mp.pill, { borderTopColor: color, borderTopWidth: 3 }]}>
+      <Text style={mp.value}>{value}</Text>
+      <Text style={mp.label}>{label}</Text>
+    </View>
+  );
+}
+const mp = StyleSheet.create({
+  pill: { flex: 1, backgroundColor: '#fff', borderRadius: 12, padding: 14, alignItems: 'center', gap: 4, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 6, elevation: 2 },
+  value: { fontSize: 20, fontWeight: '800', color: '#17201a' },
+  label: { fontSize: 10, color: '#80756c', fontWeight: '600', textAlign: 'center' },
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// SELLER HUB
+// ═══════════════════════════════════════════════════════════════════════════════
+function SellerHub({ userId }: { userId: string }) {
+  const { data, loading, refreshing, error, refresh } = useRemote(async () => {
+    const [seller, orders, wallet, products] = await Promise.all([
+      api.get<any>('seller', '/sellers/me').catch(() => null),
+      api.get<any[]>('order', '/orders?limit=50').catch(() => []),
+      api.get<any>('wallet', '/wallets/me').catch(() => null),
+      api.get<any[]>('product', `/products?sellerId=${encodeURIComponent(userId)}&limit=5`).catch(() => []),
+    ]);
+    const allOrders = asArray<any>(orders);
+    const pending = allOrders.filter((o: any) => ['placed','confirmed','preparing'].includes(o.status || '')).length;
+    return { seller, orders: allOrders, pending, wallet, products: asArray(products) };
+  }, [userId]);
+
+  if (loading && !data) return <LoadingBlock label="Loading your seller hub..." />;
+  if (error && !data) return <ErrorBlock message={error} onRetry={refresh} />;
+
+  const seller = data?.seller;
+  const shopName = seller?.shopDetails?.name || seller?.stallName || 'My Store';
+  const available = data?.wallet?.availableBalance ?? data?.wallet?.balance ?? 0;
+
+  return (
+    <ScrollView style={s.root} contentContainerStyle={s.content} showsVerticalScrollIndicator={false}
+      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor={colors.primary} />}>
+
+      {/* Hero */}
+      <View style={s.hero}>
+        <View style={s.heroBlobA} /><View style={s.heroBlobB} />
+        <View style={s.heroRow}>
+          <View style={s.heroAvatar}>
+            <Store color="#fff" size={26} />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={s.heroName}>{shopName}</Text>
+            <View style={s.heroBadgeRow}>
+              {seller?.isApproved
+                ? <View style={s.approvedBadge}><CheckCircle2 color="#fff" size={11} /><Text style={s.badgeTxt}>Verified</Text></View>
+                : <View style={[s.approvedBadge, { backgroundColor: '#d97706' }]}><Text style={s.badgeTxt}>Pending approval</Text></View>}
+            </View>
+          </View>
+        </View>
+        <View style={s.metricsRow}>
+          <MetricPill label="Available" value={money(available)} color={colors.primary} />
+          <MetricPill label="Orders" value={String(data?.orders.length || 0)} color="#2563eb" />
+          <MetricPill label="Pending" value={String(data?.pending || 0)} color="#d97706" />
+          <MetricPill label="Products" value={String(data?.products.length || 0)} color="#16a34a" />
+        </View>
+      </View>
+
+      <Section title="Store" />
+      <NavCard icon={<Package color={colors.primary} size={20} />} label="Products" sub="Manage your inventory" route="/seller/products" />
+      <NavCard icon={<ReceiptText color="#2563eb" size={20} />} label="Orders" sub={`${data?.pending || 0} awaiting action`} route="/seller/orders" badge={data?.pending} accent="#2563eb" iconBg="#eff6ff" />
+      <NavCard icon={<Zap color="#d97706" size={20} />} label="Promotions" sub="Discount offers & flash deals" route="/seller/promotions" accent="#d97706" iconBg="#fffbeb" />
+      <NavCard icon={<Video color="#7c3aed" size={20} />} label="Videos" sub="Shop & product video ads" route="/seller/videos" accent="#7c3aed" iconBg="#f5f3ff" />
+
+      <Section title="Performance" />
+      <NavCard icon={<BarChart3 color="#16a34a" size={20} />} label="Analytics" sub="Sales charts & order stats" route="/seller/analytics" accent="#16a34a" iconBg="#f0fdf4" />
+      <NavCard icon={<Wallet color={colors.primary} size={20} />} label="Earnings" sub={`${money(available)} available`} route="/seller/earnings" />
+      <NavCard icon={<Star color="#f59e0b" size={20} />} label="Reviews" sub="Customer feedback" route="/seller/reviews" accent="#f59e0b" iconBg="#fffbeb" />
+
+      <Section title="Tools" />
+      <NavCard icon={<QrCode color="#0891b2" size={20} />} label="Stall QR Code" sub="Print & share with buyers" route="/seller/qr" accent="#0891b2" iconBg="#ecfeff" />
+      {!seller && (
+        <NavCard icon={<UserCheck color={colors.primary} size={20} />} label="Complete onboarding" sub="Finish your seller profile" route="/seller/onboarding" />
+      )}
+    </ScrollView>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// RIDER HUB
+// ═══════════════════════════════════════════════════════════════════════════════
+function RiderHub({ userId }: { userId: string }) {
+  const { data, loading, refreshing, error, refresh } = useRemote(async () => {
+    const [active, available, wallet] = await Promise.all([
+      api.get<any>('delivery', '/deliveries/active').catch(() => null),
+      api.get<any[]>('delivery', '/deliveries/available').catch(() => []),
+      api.get<any>('wallet', '/wallets/me').catch(() => null),
+    ]);
+    return { active, available: asArray(available), wallet };
+  }, [userId]);
+
+  if (loading && !data) return <LoadingBlock label="Loading rider hub..." />;
+  if (error && !data) return <ErrorBlock message={error} onRetry={refresh} />;
+
+  const walletBalance = data?.wallet?.availableBalance ?? data?.wallet?.balance ?? 0;
+  const availCount = data?.available?.length || 0;
+  const hasActive = Boolean(data?.active);
+
+  return (
+    <ScrollView style={s.root} contentContainerStyle={s.content} showsVerticalScrollIndicator={false}
+      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor={colors.primary} />}>
+
+      {/* Hero */}
+      <View style={[s.hero, { backgroundColor: '#1e293b' }]}>
+        <View style={s.heroBlobA} /><View style={s.heroBlobB} />
+        <View style={s.heroRow}>
+          <View style={[s.heroAvatar, { backgroundColor: 'rgba(255,255,255,0.2)' }]}>
+            <Bike color="#fff" size={26} />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={s.heroName}>Rider Dashboard</Text>
+            {hasActive
+              ? <View style={[s.approvedBadge, { backgroundColor: '#16a34a' }]}><Zap color="#fff" size={11} /><Text style={s.badgeTxt}>Active delivery</Text></View>
+              : <View style={[s.approvedBadge, { backgroundColor: 'rgba(255,255,255,0.2)' }]}><Text style={s.badgeTxt}>Awaiting job</Text></View>}
+          </View>
+        </View>
+        <View style={s.metricsRow}>
+          <MetricPill label="Wallet" value={money(walletBalance)} color={colors.primary} />
+          <MetricPill label="Available" value={String(availCount)} color={availCount > 0 ? '#16a34a' : '#d97706'} />
+          <MetricPill label="Status" value={hasActive ? 'On job' : 'Free'} color={hasActive ? '#16a34a' : '#80756c'} />
+        </View>
+      </View>
+
+      {hasActive && (
+        <View style={s.alertBanner}>
+          <Truck color={colors.primary} size={18} />
+          <Text style={s.alertText}>You have an active delivery in progress</Text>
+          <TouchableOpacity onPress={() => {}} activeOpacity={0.8}>
+            <Text style={s.alertLink}>View →</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+
+      <Section title="Deliveries" />
+      <NavCard icon={<Truck color={colors.primary} size={20} />} label="Deliveries" sub={`${availCount} job${availCount !== 1 ? 's' : ''} available`} route="/rider/deliveries" badge={availCount} />
+
+      <Section title="Earnings" />
+      <NavCard icon={<Wallet color="#16a34a" size={20} />} label="Earnings" sub={`${money(walletBalance)} available`} route="/rider/earnings" accent="#16a34a" iconBg="#f0fdf4" />
+
+      <Section title="Profile" />
+      <NavCard icon={<MapPin color="#0891b2" size={20} />} label="Location & status" sub="Update your availability" route="/rider/deliveries" accent="#0891b2" iconBg="#ecfeff" />
+    </ScrollView>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// GUEST
+// ═══════════════════════════════════════════════════════════════════════════════
+function GuestHub() {
+  const router = useRouter();
+  return (
+    <ScrollView style={s.root} contentContainerStyle={s.content} showsVerticalScrollIndicator={false}>
+      <View style={[s.hero, { alignItems: 'center', paddingVertical: 40 }]}>
+        <View style={s.heroBlobA} /><View style={s.heroBlobB} />
+        <ShieldCheck color="#fff" size={40} />
+        <Text style={[s.heroName, { textAlign: 'center', marginTop: 12 }]}>Join RMF as a Seller or Rider</Text>
+        <Text style={{ color: 'rgba(255,255,255,0.75)', fontSize: 13, textAlign: 'center', lineHeight: 20, marginTop: 8 }}>
+          Digitise your stall, manage inventory, accept orders — or earn money delivering packages across Rwanda.
+        </Text>
+      </View>
+      <TouchableOpacity style={s.bigBtn} onPress={() => router.push('/(auth)/login')} activeOpacity={0.85}>
+        <LogIn color="#fff" size={18} />
+        <Text style={s.bigBtnText}>Sign in</Text>
+      </TouchableOpacity>
+      <TouchableOpacity style={[s.bigBtn, { backgroundColor: '#fff', borderWidth: 1.5, borderColor: colors.primary }]} onPress={() => router.push('/(auth)/register')} activeOpacity={0.85}>
+        <Text style={[s.bigBtnText, { color: colors.primary }]}>Create account</Text>
+      </TouchableOpacity>
+    </ScrollView>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// MAIN EXPORT — routes to correct hub by role
+// ═══════════════════════════════════════════════════════════════════════════════
+export default function RoleHubScreen() {
+  const { user, isAuthenticated } = useAuth();
+
+  if (!isAuthenticated || !user) return <GuestHub />;
+  if (user.role === 'SELLER') return <SellerHub userId={user.id} />;
+  if (user.role === 'RIDER') return <RiderHub userId={user.id} />;
+  if (user.role === 'ADMIN') return <AdminHub />;
+
+  // Buyer: quick links to seller/rider registration
+  return (
+    <ScrollView style={s.root} contentContainerStyle={s.content} showsVerticalScrollIndicator={false}>
+      <View style={s.hero}>
+        <View style={s.heroBlobA} /><View style={s.heroBlobB} />
+        <Text style={s.heroName}>Hi, {user.fullName?.split(' ')[0] || 'there'} 👋</Text>
+        <Text style={{ color: 'rgba(255,255,255,0.8)', fontSize: 13, marginTop: 4 }}>You're logged in as a buyer.</Text>
+      </View>
+      <Section title="Want to earn on RMF?" />
+      <NavCard icon={<Store color={colors.primary} size={20} />} label="Become a seller" sub="Digitise your stall and start selling" route="/seller/onboarding" />
+      <NavCard icon={<Bike color="#0891b2" size={20} />} label="Become a rider" sub="Deliver orders and earn per trip" route="/(auth)/rider-onboarding" accent="#0891b2" iconBg="#ecfeff" />
+    </ScrollView>
+  );
+}
+
+const s = StyleSheet.create({
+  root: { flex: 1, backgroundColor: '#f7f7f8' },
+  content: { padding: 14, gap: 10, paddingBottom: 48 },
+  hero: {
+    backgroundColor: colors.primary, borderRadius: 20, padding: 20, gap: 14, overflow: 'hidden', marginBottom: 4,
+    shadowColor: colors.primary, shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.25, shadowRadius: 16, elevation: 6,
   },
-  heroTopRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
-  heroBadge: { backgroundColor: 'rgba(166, 63, 0, 0.15)', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 12, flexDirection: 'row', alignItems: 'center' },
-  heroBadgeTxt: { color: '#a63f00', fontSize: 10, fontWeight: '900', letterSpacing: 1 },
-  title: { fontSize: 26, fontWeight: '900', marginBottom: 4 },
-  subtitle: { fontSize: 13, fontWeight: '500', lineHeight: 20 },
-  metricsGrid: { flexDirection: 'row', gap: 12, flexWrap: 'wrap' },
-  premiumMetricCard: { 
-    flex: 1, 
-    minWidth: '45%', 
-    backgroundColor: '#ffffff', 
-    padding: 16, 
-    borderRadius: 20, 
-    borderWidth: 1, 
-    borderColor: '#f1eee9',
-    shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.03, shadowRadius: 4, elevation: 1
-  },
-  metricIconWrap: { width: 40, height: 40, borderRadius: 20, backgroundColor: '#fff7ed', alignItems: 'center', justifyContent: 'center', marginBottom: 12 },
-  metricValTxt: { fontSize: 18, fontWeight: '900', color: '#1b1c1c', marginBottom: 2 },
-  metricLblTxt: { fontSize: 11, fontWeight: '700', color: '#8e9e95' },
-  sectionHeading: { fontSize: 18, fontWeight: '900', color: '#1b1c1c', letterSpacing: 0.5 },
-  actionsScroll: { gap: 12, paddingRight: 24, paddingVertical: 4 },
-  premiumActionBtn: { 
-    backgroundColor: '#ffffff', 
-    paddingHorizontal: 16, 
-    paddingVertical: 12, 
-    borderRadius: 100, 
-    flexDirection: 'row', 
-    alignItems: 'center', 
-    gap: 8, 
-    borderWidth: 1, 
-    borderColor: '#e0e0e0',
-    shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 4, elevation: 1
-  },
-  actionIconWrap: { backgroundColor: '#f1eee9', width: 28, height: 28, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
-  actionLabelTxt: { fontSize: 13, fontWeight: '800', color: '#1b1c1c' },
-  panel: { backgroundColor: '#ffffff', padding: 20, borderRadius: 24, borderWidth: 1, borderColor: '#f1eee9', gap: 16 },
-  panelHeaderRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  livePulse: { width: 10, height: 10, borderRadius: 5, backgroundColor: '#ef4444' }, // Need animation ideally
-  fullWidthBtn: { backgroundColor: '#a63f00', borderRadius: 14, height: 50, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 },
-  fullWidthBtnTxt: { color: '#ffffff', fontSize: 13, fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: 1 },
-  deliverySummaryCard: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#faf8f5', padding: 16, borderRadius: 16, borderWidth: 1, borderColor: '#e0e0e0' },
-  summaryLeft: { gap: 4 },
-  summaryTitle: { fontSize: 14, fontWeight: 'bold', color: '#1b1c1c' },
-  summaryStatus: { fontSize: 11, fontWeight: '900', color: '#22c55e', letterSpacing: 1 },
-  summaryRight: { alignItems: 'flex-end', gap: 2 },
-  summaryFeeVal: { fontSize: 18, fontWeight: '900', color: '#a63f00' },
-  summaryFeeLbl: { fontSize: 9, fontWeight: '900', color: '#8e9e95', letterSpacing: 1 },
-  emptyStateCard: { padding: 24, alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: '#faf8f5', borderRadius: 16, borderWidth: 1, borderColor: '#e0e0e0' },
-  muted: { color: '#8e9e95', fontSize: 13, fontWeight: '600', textAlign: 'center' },
-  jobRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: '#f1eee9', gap: 12 },
-  jobIconWrap: { width: 44, height: 44, borderRadius: 22, backgroundColor: '#fff7ed', alignItems: 'center', justifyContent: 'center' },
-  jobTitle: { fontSize: 14, fontWeight: 'bold', color: '#1b1c1c', marginBottom: 2 },
-  jobMeta: { fontSize: 11, fontWeight: '600', color: '#8e9e95' },
-  jobRight: { alignItems: 'flex-end', gap: 4 },
-  jobFee: { fontSize: 14, fontWeight: '900', color: '#1b1c1c' },
-  orderCardRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: '#f1eee9', gap: 12 },
-  orderCardTitle: { fontSize: 14, fontWeight: 'bold', color: '#1b1c1c', marginBottom: 2 },
-  orderCardStatus: { fontSize: 10, fontWeight: '900', color: '#a63f00', letterSpacing: 1 },
-  orderCardTotal: { fontSize: 14, fontWeight: '900', color: '#1b1c1c' },
+  heroBlobA: { position: 'absolute', right: -60, top: -60, width: 220, height: 220, borderRadius: 110, backgroundColor: 'rgba(255,255,255,0.08)' },
+  heroBlobB: { position: 'absolute', left: -40, bottom: -40, width: 160, height: 160, borderRadius: 80, backgroundColor: 'rgba(255,255,255,0.06)' },
+  heroRow: { flexDirection: 'row', alignItems: 'center', gap: 14 },
+  heroAvatar: { width: 54, height: 54, borderRadius: 27, backgroundColor: 'rgba(255,255,255,0.25)', alignItems: 'center', justifyContent: 'center' },
+  heroName: { color: '#fff', fontSize: 20, fontWeight: '800' },
+  heroBadgeRow: { flexDirection: 'row', marginTop: 5 },
+  approvedBadge: { flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: '#16a34a', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 999, alignSelf: 'flex-start' },
+  badgeTxt: { color: '#fff', fontSize: 11, fontWeight: '700' },
+  metricsRow: { flexDirection: 'row', gap: 8 },
+  alertBanner: { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: '#ffedd5', borderRadius: 12, padding: 14 },
+  alertText: { flex: 1, fontSize: 13, fontWeight: '600', color: '#17201a' },
+  alertLink: { color: colors.primary, fontSize: 13, fontWeight: '700' },
+  sectionTitle: { fontSize: 11, fontWeight: '800', color: '#80756c', textTransform: 'uppercase', letterSpacing: 1, paddingLeft: 2, marginTop: 4 },
+  bigBtn: { height: 52, borderRadius: 14, backgroundColor: colors.primary, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10 },
+  bigBtnText: { color: '#fff', fontSize: 15, fontWeight: '700' },
 });
