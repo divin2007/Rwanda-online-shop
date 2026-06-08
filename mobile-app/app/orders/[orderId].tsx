@@ -259,6 +259,7 @@ export default function OrderTrackingScreen() {
   };
 
   const openMapPicker = async () => {
+    if (!order) return;
     const orderCoords = coordinatesFromAny(order.buyer?.deliveryAddress);
     const initialCenter = orderCoords || marketCoords || { lat: -1.9441, lng: 30.0619 };
     setMapCenter(initialCenter);
@@ -370,8 +371,10 @@ export default function OrderTrackingScreen() {
 
   // Security gate: Ensure user is authorized to view this order
   const isBuyer = sameId(userId, order?.buyer?.userId ?? (order as any)?.buyerId);
-  const isSeller = sameId(order?.seller?.userId, userId) || sameId(order?.seller?.sellerId, user?.sellerId);
-  const isRider = sameId(order?.delivery?.riderId, user?.riderId) || sameId(deliveryData?.riderId, user?.riderId);
+  const currentSellerId = (user as any)?.sellerId;
+  const currentRiderId = (user as any)?.riderId;
+  const isSeller = sameId(order?.seller?.userId, userId) || sameId(order?.seller?.sellerId, currentSellerId);
+  const isRider = sameId(order?.delivery?.riderId, currentRiderId) || sameId(deliveryData?.riderId, currentRiderId);
   const isAdmin = user?.role === 'ADMIN';
 
   if (!isAdmin && !isBuyer && !isSeller && !isRider) {

@@ -47,13 +47,17 @@ export default function SellerOrdersScreen() {
   const [filter, setFilter] = useState('All');
 
   const { data, loading, refreshing, error, refresh } = useRemote<Order[]>(
-    () => api.get<Order[]>('order', `/orders?sellerId=${user?._id}&limit=100`).catch(() => []),
-    [user?._id],
+    () => {
+      const sellerId = (user as any)?._id || user?.id;
+      if (!sellerId) return Promise.resolve([]);
+      return api.get<Order[]>('order', `/orders?sellerId=${sellerId}&limit=100`).catch(() => []);
+    },
+    [(user as any)?._id, user?.id],
   );
 
   const orders = asArray<Order>(data);
   const allowed = FILTER_MAP[filter];
-  const filtered = allowed.length ? orders.filter(o => allowed.includes(o.status)) : orders;
+  const filtered = allowed.length ? orders.filter(o => allowed.includes(String(o.status || ''))) : orders;
 
   if (loading && !data) return <LoadingBlock label="Loading orders..." />;
   if (error && !data) return <ErrorBlock message={error} onRetry={refresh} />;
@@ -65,7 +69,7 @@ export default function SellerOrdersScreen() {
       {/* Filter chips */}
       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={s.filterRow} contentContainerStyle={{ gap: 8, paddingHorizontal: 14 }}>
         {FILTERS.map(f => {
-          const count = f === 'All' ? orders.length : (orders.filter(o => FILTER_MAP[f].includes(o.status)).length);
+          const count = f === 'All' ? orders.length : (orders.filter(o => FILTER_MAP[f].includes(String(o.status || ''))).length);
           const active = filter === f;
           return (
             <TouchableOpacity key={f} onPress={() => setFilter(f)} style={[s.chip, active && s.chipActive]}>
@@ -80,9 +84,9 @@ export default function SellerOrdersScreen() {
       )}
 
       {filtered.map((order, i) => {
-        const sc = STATUS_COLORS[order.status] || { bg: '#f5f5f5', text: '#555' };
-        const total = order.totals?.grandTotal ?? order.total ?? 0;
-        const itemCount = order.items?.length ?? 0;
+        const sc = STATUS_COLORS[String(order.status || '')] || { bg: '#f5f5f5', text: '#555' };
+        const total = (order as any).totals?.grandTotal ?? (order as any).total ?? order.financials?.grandTotal ?? order.financials?.total ?? 0;
+        const itemCount = (order as any).items?.length ?? order.products?.length ?? 0;
         return (
           <TouchableOpacity key={order._id || i} style={s.card}
             onPress={() => router.push(`/seller/orders/${order._id}` as any)} activeOpacity={0.85}>

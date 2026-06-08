@@ -1,18 +1,18 @@
 import React, { useState, useEffect } from 'react';
-import { StyleSheet, Text, View, ScrollView, Image, TouchableOpacity, TextInput, Platform, ActivityIndicator } from 'react-native';
+import { ImageStyle, StyleSheet, Text, View, ScrollView, Image, TouchableOpacity, TextInput, Platform, ActivityIndicator } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { 
   ArrowLeft, ShoppingBag, Menu, ShieldCheck, Clock, MapPin, 
   Store, Box, Star, Truck, Filter, ChevronDown, ShieldAlert,
   Search, Heart
 } from 'lucide-react-native';
-import { useCart } from '../_layout';
+import { useCart } from '../../src/context/CartContext';
 import { api } from '../../src/lib/api';
 
 export default function StallDetailScreen() {
   const { stallId } = useLocalSearchParams();
   const router = useRouter();
-  const { addToCart, items } = useCart();
+  const { addItem, items } = useCart();
   const [activeTab, setActiveTab] = useState('SHOP PRODUCTS');
   const [searchQuery, setSearchQuery] = useState('');
   const [minPrice, setMinPrice] = useState('');
@@ -53,19 +53,24 @@ export default function StallDetailScreen() {
   };
 
   const handleAddToCart = (product: any) => {
-    addToCart({
-      id: product._id,
+    addItem({
+      productId: product._id,
       name: product.name,
-      price: product.price,
+      unitPrice: Number(product.price || 0),
       quantity: 1,
       unit: product.unit || 'pcs',
       category: product.categoryLabel || 'General',
-      image: product.images?.[0]
+      imageUrl: product.images?.[0],
+      sellerId: String(product.sellerId?._id || product.sellerId || seller?._id || stallId || ''),
+      sellerUserId: String(seller?.userId || ''),
+      sellerName: String(seller?.stallName || seller?.shopDetails?.name || ''),
+      stallId: String(stallId || ''),
+      marketId: String(seller?.marketId?._id || seller?.marketId || ''),
     });
     router.push('/cart');
   };
 
-  const itemCount = items.reduce((sum, item) => sum + item.quantity, 0);
+  const itemCount = items.reduce((sum: number, item) => sum + item.quantity, 0);
 
   // Compute dynamic categories
   const categoriesList = ['ALL PRODUCTS', ...Array.from(new Set(products.map(p => (p.categoryLabel || p.category || 'GENERAL').toUpperCase())))];
@@ -298,7 +303,7 @@ export default function StallDetailScreen() {
                     activeOpacity={0.9}
                     onPress={() => router.push(`/product/${product._id}`)}
                   >
-                    <Image source={{ uri: imgUrl }} style={styles.favProductImg} />
+                    <Image source={{ uri: imgUrl }} style={styles.favProductImg as ImageStyle} />
                     
                     {/* Top-left VERIFIED stamp */}
                     <View style={styles.verifiedBadgeBadge}>
@@ -369,7 +374,7 @@ export default function StallDetailScreen() {
                     activeOpacity={0.9}
                     onPress={() => router.push(`/product/${product._id}`)}
                   >
-                    <Image source={{ uri: imgUrl }} style={styles.favProductImg} />
+                    <Image source={{ uri: imgUrl }} style={styles.favProductImg as ImageStyle} />
                     <View style={styles.verifiedBadgeBadge}>
                       <ShieldCheck color="#a63f00" size={10} />
                       <Text style={styles.verifiedBadgeTxt}>VERIFIED</Text>
@@ -637,7 +642,7 @@ const styles = StyleSheet.create({
   },
   filterTitle: {
     fontSize: 11,
-    fontWeight: '950',
+    fontWeight: '900',
     color: '#1b1c1c',
     letterSpacing: 1,
   },
@@ -779,7 +784,7 @@ const styles = StyleSheet.create({
     fontSize: 10,
     color: '#7c2d12',
     lineHeight: 14,
-    fontWeight: '550',
+    fontWeight: '500',
   },
   favoritesSection: {
     paddingHorizontal: 16,

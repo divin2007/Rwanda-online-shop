@@ -3,6 +3,8 @@ export const money = (value?: number | null) => {
   return `${amount.toLocaleString('en-RW')} RWF`;
 };
 
+export const formatRWF = money;
+
 export const compactNumber = (value?: number | null) => {
   const amount = typeof value === 'number' && Number.isFinite(value) ? value : 0;
   return amount.toLocaleString('en-RW');
