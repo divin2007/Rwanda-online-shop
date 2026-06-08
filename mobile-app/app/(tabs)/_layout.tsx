@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { Platform, StyleSheet } from 'react-native';
+import { Platform, StyleSheet, View } from 'react-native';
 import { Tabs, useRouter } from 'expo-router';
 import {
   Bike, BriefcaseBusiness, Home, MapPinned,
@@ -50,17 +50,22 @@ export default function TabsLayout() {
   }, [isAuthenticated, user?.role]);
 
   const TAB_BAR_HEIGHT = Platform.OS === 'ios' ? 82 : 60;
+  const renderTabIcon = (Icon: any) => ({ color, size, focused }: { color: string; size: number; focused: boolean }) => (
+    <View style={[styles.tabIconWrap, focused && styles.tabIconActive]}>
+      <Icon color={focused ? colors.card : color} size={size - 1} strokeWidth={focused ? 2.4 : 2} />
+    </View>
+  );
 
   return (
     <Tabs
       screenOptions={{
         // ── Header — Alibaba signature orange-red ──────────────────────────
         headerStyle: {
-          backgroundColor: colors.primary,
+          backgroundColor: colors.surface,
           shadowColor: 'transparent',
           elevation: 0,
         },
-        headerTintColor: colors.card,
+        headerTintColor: colors.primary,
         headerTitle: () => <AppHeaderSearch />,
         headerTitleAlign: 'left',
         headerTitleContainerStyle: {
@@ -74,25 +79,27 @@ export default function TabsLayout() {
         headerShadowVisible: false,
 
         // ── Tab bar — clean white with orange active state ─────────────────
-        tabBarActiveTintColor: colors.primary,
-        tabBarInactiveTintColor: '#999999',
+        tabBarActiveTintColor: colors.primaryMid,
+        tabBarInactiveTintColor: '#5e5e5e',
         tabBarStyle: {
           backgroundColor: colors.card,
-          borderTopWidth: 0.5,
-          borderTopColor: colors.divider,
+          borderTopWidth: 1,
+          borderTopColor: colors.surfaceHigh,
           height: TAB_BAR_HEIGHT,
           paddingBottom: Platform.OS === 'ios' ? 22 : 8,
           paddingTop: 6,
           // Subtle top shadow
-          shadowColor: '#000',
-          shadowOffset: { width: 0, height: -2 },
-          shadowOpacity: 0.06,
-          shadowRadius: 8,
-          elevation: 8,
+          borderTopLeftRadius: 18,
+          borderTopRightRadius: 18,
+          shadowColor: '#1b1c1b',
+          shadowOffset: { width: 0, height: -4 },
+          shadowOpacity: 0.05,
+          shadowRadius: 18,
+          elevation: 10,
         },
         tabBarLabelStyle: {
           fontSize: 10,
-          fontWeight: '600',
+          fontWeight: '700',
           marginTop: 1,
         },
         tabBarIconStyle: {
@@ -105,7 +112,7 @@ export default function TabsLayout() {
         options={{
           title: 'Home',
           tabBarLabel: 'Home',
-          tabBarIcon: ({ color, size }) => <Home color={color} size={size - 1} strokeWidth={2} />,
+          tabBarIcon: renderTabIcon(Home),
         }}
       />
       <Tabs.Screen
@@ -113,7 +120,7 @@ export default function TabsLayout() {
         options={{
           title: 'Markets',
           tabBarLabel: 'Markets',
-          tabBarIcon: ({ color, size }) => <MapPinned color={color} size={size - 1} strokeWidth={2} />,
+          tabBarIcon: renderTabIcon(MapPinned),
         }}
       />
       <Tabs.Screen
@@ -121,7 +128,7 @@ export default function TabsLayout() {
         options={{
           title: 'Products',
           tabBarLabel: 'Products',
-          tabBarIcon: ({ color, size }) => <Tag color={color} size={size - 1} strokeWidth={2} />,
+          tabBarIcon: renderTabIcon(Tag),
         }}
       />
       <Tabs.Screen
@@ -129,7 +136,7 @@ export default function TabsLayout() {
         options={{
           title: 'Videos',
           tabBarLabel: 'Videos',
-          tabBarIcon: ({ color, size }) => <Video color={color} size={size - 1} strokeWidth={2} />,
+          tabBarIcon: renderTabIcon(Video),
           headerShown: false,
           tabBarHideOnKeyboard: true,
         }}
@@ -160,7 +167,7 @@ export default function TabsLayout() {
         name="orders"
         options={{
           tabBarLabel: 'Orders',
-          tabBarIcon: ({ color, size }) => <ReceiptText color={color} size={size - 1} strokeWidth={2} />,
+          tabBarIcon: renderTabIcon(ReceiptText),
           headerStyle: { backgroundColor: colors.card, shadowColor: 'transparent', elevation: 0 },
           headerTintColor: colors.ink,
           headerTitle: 'My Orders',
@@ -177,7 +184,7 @@ export default function TabsLayout() {
           title: roleLabel,
           tabBarLabel: roleLabel,
           href: isAuthenticated ? roleHref : null,
-          tabBarIcon: ({ color, size }) => <RoleIcon color={color} size={size - 1} strokeWidth={2} />,
+          tabBarIcon: renderTabIcon(RoleIcon),
           headerStyle: { backgroundColor: colors.card, shadowColor: 'transparent', elevation: 0 },
           headerTintColor: colors.ink,
           headerTitle: roleLabel,
@@ -192,7 +199,7 @@ export default function TabsLayout() {
         name="account"
         options={{
           tabBarLabel: 'Me',
-          tabBarIcon: ({ color, size }) => <UserCircle color={color} size={size - 1} strokeWidth={2} />,
+          tabBarIcon: renderTabIcon(UserCircle),
           headerStyle: { backgroundColor: colors.card, shadowColor: 'transparent', elevation: 0 },
           headerTintColor: colors.ink,
           headerTitle: 'My Account',
@@ -207,4 +214,15 @@ export default function TabsLayout() {
   );
 }
 
-const styles = StyleSheet.create({});
+const styles = StyleSheet.create({
+  tabIconWrap: {
+    width: 38,
+    height: 32,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  tabIconActive: {
+    backgroundColor: colors.primaryMid,
+  },
+});

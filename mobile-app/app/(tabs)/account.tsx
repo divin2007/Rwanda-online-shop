@@ -7,15 +7,16 @@ import {
   Bell, ChevronRight, Heart, LogOut, Settings, Sparkles, Wallet, Clock, Truck, ShieldCheck,
 } from 'lucide-react-native';
 import { useAuth } from '../../src/context/AuthContext';
+import { colors } from '../../src/theme';
 
-const ORANGE = '#FF6B00';
-const ORANGE_DARK = '#E05300';
-const ORANGE_SOFT = '#FFF3EB';
-const INK = '#1A1A1A';
-const MUTED = '#6B7280';
-const LINE = '#E5E7EB';
-const CARD = '#FFFFFF';
-const RED = '#DC2626';
+const ORANGE = colors.primaryMid;
+const ORANGE_DARK = colors.primary;
+const ORANGE_SOFT = colors.primarySoft;
+const INK = colors.ink;
+const MUTED = colors.body;
+const LINE = colors.surfaceHigh;
+const CARD = colors.card;
+const RED = colors.danger;
 
 export default function AccountScreen() {
   const router = useRouter();
@@ -76,7 +77,7 @@ export default function AccountScreen() {
 
   return (
     <ScrollView style={s.root} contentContainerStyle={s.content} showsVerticalScrollIndicator={false}>
-      {/* Premium Alibaba Orange Banner Header */}
+      {/* Solaris Ivory account banner */}
       <View style={s.alibabaHeader}>
         <View style={s.alibabaBlob1} />
         <View style={s.alibabaBlob2} />
@@ -157,7 +158,7 @@ export default function AccountScreen() {
 
       {/* Services List Panel */}
       <View style={s.servicesPanel}>
-        <Text style={s.servicesTitle}>My Alibaba Services</Text>
+        <Text style={s.servicesTitle}>My RMF Services</Text>
         {rows.map((row, idx) => {
           const Icon = row.icon;
           return (
@@ -186,13 +187,13 @@ export default function AccountScreen() {
         <Text style={s.logoutBtnPremiumText}>Log Out Account</Text>
       </TouchableOpacity>
 
-      <Text style={s.version}>RMF Mobile · Alibaba Redesign v1.0</Text>
+      <Text style={s.version}>RMF Mobile · Solaris Ivory</Text>
     </ScrollView>
   );
 }
 
 const s = StyleSheet.create({
-  root: { flex: 1, backgroundColor: '#F5F5F7' },
+  root: { flex: 1, backgroundColor: colors.bg },
   // Guest
   guestContent: { flexGrow: 1, padding: 24, justifyContent: 'center', gap: 20 },
   guestCard: {

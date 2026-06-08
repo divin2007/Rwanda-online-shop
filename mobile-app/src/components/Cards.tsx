@@ -1,15 +1,12 @@
 import React from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { MapPin, Star, Store } from 'lucide-react-native';
+import { MapPin, ShoppingCart, Star, Store } from 'lucide-react-native';
 import { FastImage } from './FastImage';
 import { money, safeText } from '../lib/format';
-import { coordinatesOfMarket, idOf, imageOf, marketOf, sellerProfileOf, normalizeMarketImageUrl, normalizeImageUrl } from '../lib/normalize';
-import { colors, shadow, radii } from '../theme';
+import { idOf, imageOf, marketOf, normalizeImageUrl, normalizeMarketImageUrl, sellerProfileOf } from '../lib/normalize';
+import { colors, radii, shadow } from '../theme';
 import { Market, Product } from '../types';
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Image fallback (initials)
-// ─────────────────────────────────────────────────────────────────────────────
 function ImageFallback({ label }: { label: string }) {
   return (
     <View style={styles.fallback}>
@@ -18,21 +15,15 @@ function ImageFallback({ label }: { label: string }) {
   );
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Star rating row
-// ─────────────────────────────────────────────────────────────────────────────
-function RatingRow({ rating }: { rating: number }) {
+function MadeInRwandaBadge() {
   return (
-    <View style={styles.ratingRow}>
-      <Star color={colors.gold} fill={colors.gold} size={9} />
-      <Text style={styles.ratingText}>{rating.toFixed(1)}</Text>
+    <View style={styles.rwandaBadge}>
+      <View style={styles.rwandaDot} />
+      <Text style={styles.rwandaBadgeText}>MADE IN RWANDA</Text>
     </View>
   );
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// ProductCard — Alibaba 3-column compact card
-// ─────────────────────────────────────────────────────────────────────────────
 export function ProductCard({
   product,
   onPress,
@@ -47,7 +38,6 @@ export function ProductCard({
   const seller = sellerProfileOf(product);
   const market = marketOf(product.marketId);
   const image = imageOf(product);
-  const isNegotiable = String(product.isNegotiable) === 'true' || product.isNegotiable === true;
   const hasPromo = Boolean(product.promotion);
   const isMadeInRwanda = Boolean(product.isMadeInRwanda);
 
@@ -57,72 +47,48 @@ export function ProductCard({
       onPress={onPress}
       activeOpacity={0.9}
     >
-      {/* Image */}
       <View style={[styles.productImage, compact && styles.productImageCompact]}>
         <FastImage
           uri={image}
           style={StyleSheet.absoluteFillObject}
           fallback={<ImageFallback label={product.name} />}
         />
-
-        {/* Badges overlaid on image */}
-        <View style={styles.imageBadges}>
-          {hasPromo && (
-            <View style={styles.promoBadge}>
-              <Text style={styles.promoBadgeText}>SALE</Text>
-            </View>
-          )}
-          {!hasPromo && isNegotiable && (
-            <View style={styles.chatBadge}>
-              <Text style={styles.chatBadgeText}>Chat</Text>
-            </View>
-          )}
-        </View>
-
-        {isMadeInRwanda && (
-          <View style={styles.rwandaBadge}>
-            <Text style={styles.rwandaBadgeText}>🇷🇼</Text>
+        {isMadeInRwanda ? <MadeInRwandaBadge /> : null}
+        {hasPromo ? (
+          <View style={styles.promoBadge}>
+            <Text style={styles.promoBadgeText}>SALE</Text>
           </View>
-        )}
+        ) : null}
       </View>
 
-      {/* Body */}
       <View style={[styles.productBody, compact && styles.productBodyCompact]}>
-        {/* Price — most prominent, like Alibaba */}
-        <Text style={[styles.price, compact && styles.priceCompact]} numberOfLines={1}>
-          {money(product.price)}
-        </Text>
+        <View style={styles.supplierRow}>
+          <Store color={colors.body} size={12} strokeWidth={2} />
+          <Text style={styles.supplierText} numberOfLines={1}>
+            {market?.name || seller?.stallName || 'Verified Supplier'}
+          </Text>
+        </View>
 
-        {/* Minimum Order */}
-        <Text style={styles.minOrder} numberOfLines={1}>
-          Min. Order: 1 {product.unit || 'unit'}
-        </Text>
-
-        {/* Product name */}
         <Text style={[styles.productName, compact && styles.productNameCompact]} numberOfLines={2}>
           {product.name}
         </Text>
 
-        {/* Supplier / Market Location */}
-        <Text style={styles.supplierText} numberOfLines={1}>
-          {market?.name || seller?.stallName || 'Verified Supplier'}
-        </Text>
-
-        {/* Seller + Rating row */}
-        <View style={styles.metaRow}>
-          {product.rating ? <RatingRow rating={product.rating} /> : null}
-          {product.totalOrders ? (
-            <Text style={styles.ordersText}>{product.totalOrders} sold</Text>
-          ) : null}
+        <View style={styles.priceRow}>
+          <View style={{ flex: 1 }}>
+            <Text style={[styles.price, compact && styles.priceCompact]} numberOfLines={1}>
+              {money(product.price)}
+            </Text>
+            <Text style={styles.unit} numberOfLines={1}>/{product.unit || 'unit'}</Text>
+          </View>
+          <View style={styles.cartMini}>
+            <ShoppingCart color={colors.ink} size={15} strokeWidth={2.2} />
+          </View>
         </View>
       </View>
     </TouchableOpacity>
   );
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// MarketCard — Alibaba market stall card
-// ─────────────────────────────────────────────────────────────────────────────
 export function MarketCard({
   market,
   onPress,
@@ -146,69 +112,56 @@ export function MarketCard({
       onPress={onPress}
       activeOpacity={0.9}
     >
-      {/* Image */}
       <View style={[styles.marketImage, compact && styles.marketImageCompact]}>
         <FastImage
           uri={market.imageUrl ? normalizeMarketImageUrl(market.imageUrl) : undefined}
           style={StyleSheet.absoluteFillObject}
           fallback={<ImageFallback label={market.name} />}
         />
-
-        {/* Rank badge */}
         {rank !== undefined && rank <= 3 ? (
-          <View style={[styles.rankBadge, rank === 1 && styles.rankGold, rank === 2 && styles.rankSilver, rank === 3 && styles.rankBronze]}>
+          <View style={styles.rankBadge}>
             <Text style={styles.rankText}>#{rank}</Text>
           </View>
         ) : null}
-
-        {/* Discount badge */}
         {maxDiscount && maxDiscount > 0 ? (
           <View style={styles.discountBadge}>
             <Text style={styles.discountText}>{maxDiscount}% OFF</Text>
           </View>
         ) : null}
-
-        {/* Distance */}
         {distance !== undefined && distance !== Number.POSITIVE_INFINITY ? (
           <View style={styles.distanceBadge}>
-            <Text style={styles.distanceText}>{distance.toFixed(1)}km</Text>
+            <Text style={styles.distanceText}>{distance.toFixed(1)} km</Text>
           </View>
         ) : null}
       </View>
 
-      {/* Body */}
       <View style={[styles.marketBody, compact && styles.marketBodyCompact]}>
         <Text style={[styles.marketName, compact && styles.marketNameCompact]} numberOfLines={1}>
           {market.name}
         </Text>
-
         <View style={styles.marketMeta}>
-          <MapPin color={colors.primary} size={compact ? 9 : 11} strokeWidth={2.5} />
+          <MapPin color={colors.primary} size={compact ? 10 : 12} strokeWidth={2.4} />
           <Text style={[styles.marketMetaText, compact && styles.marketMetaCompact]} numberOfLines={1}>
             {market.location?.district || market.location?.address || market.code || 'Rwanda'}
           </Text>
         </View>
-
-        {!compact && (
+        {!compact ? (
           <View style={styles.marketMeta}>
-            <Store color={colors.muted} size={11} strokeWidth={2} />
+            <Store color={colors.body} size={12} strokeWidth={2} />
             <Text style={styles.marketMetaText}>{market.totalSellers || 0} sellers</Text>
             {market.rating ? (
               <>
-                <Star color={colors.gold} fill={colors.gold} size={10} style={{ marginLeft: 6 }} />
-                <Text style={styles.ratingText}>{market.rating.toFixed(1)}</Text>
+                <Star color={colors.primaryMid} fill={colors.primaryMid} size={11} style={{ marginLeft: 6 }} />
+                <Text style={styles.marketMetaText}>{market.rating.toFixed(1)}</Text>
               </>
             ) : null}
           </View>
-        )}
+        ) : null}
       </View>
     </TouchableOpacity>
   );
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// OrderLineCard
-// ─────────────────────────────────────────────────────────────────────────────
 export function OrderLineCard({ item }: { item: any }) {
   return (
     <View style={styles.orderLine}>
@@ -220,20 +173,15 @@ export function OrderLineCard({ item }: { item: any }) {
         />
       </View>
       <View style={{ flex: 1 }}>
-        <Text style={styles.productName} numberOfLines={1}>{safeText(item.name, 'Product')}</Text>
-        <Text style={styles.orderQty}>{item.quantity || 1} × {money(item.unitPrice)}</Text>
-        {item.variantTitle ? (
-          <Text style={styles.variantTag}>🏷 {item.variantTitle}</Text>
-        ) : null}
+        <Text style={styles.orderName} numberOfLines={1}>{safeText(item.name, 'Product')}</Text>
+        <Text style={styles.orderQty}>{item.quantity || 1} x {money(item.unitPrice)}</Text>
+        {item.variantTitle ? <Text style={styles.variantTag}>{item.variantTitle}</Text> : null}
       </View>
       <Text style={styles.orderTotal}>{money((item.unitPrice || 0) * (item.quantity || 1))}</Text>
     </View>
   );
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Helper
-// ─────────────────────────────────────────────────────────────────────────────
 export const productIdentity = (product: Product) => ({
   id: product._id,
   sellerId: idOf(product.sellerId),
@@ -241,274 +189,267 @@ export const productIdentity = (product: Product) => ({
   market: marketOf(product.marketId),
 });
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Styles
-// ─────────────────────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
-  // ── Product card ────────────────────────────────────────────────────────────
   product: {
-    width: 160,
+    width: 168,
     backgroundColor: colors.card,
-    borderRadius: radii.md,
+    borderRadius: radii.lg,
     overflow: 'hidden',
-    borderWidth: 0.5,
-    borderColor: colors.divider,
+    borderWidth: 1,
+    borderColor: colors.surfaceHigh,
     ...shadow,
   },
   productCompact: {
     width: '48.2%',
   },
   productImage: {
-    height: 120,
-    backgroundColor: '#F0F0F0',
+    height: 136,
+    backgroundColor: colors.surfaceMid,
     overflow: 'hidden',
   },
   productImageCompact: {
-    height: 130,
-  },
-  imageBadges: {
-    position: 'absolute',
-    top: 4,
-    left: 4,
-    flexDirection: 'row',
-    gap: 3,
-    zIndex: 5,
-  },
-  promoBadge: {
-    backgroundColor: colors.primary,
-    paddingHorizontal: 4,
-    paddingVertical: 2,
-    borderRadius: 2,
-  },
-  promoBadgeText: {
-    color: '#fff',
-    fontSize: 7,
-    fontWeight: '800',
-    letterSpacing: 0.5,
-  },
-  chatBadge: {
-    backgroundColor: '#FFF3CD',
-    borderWidth: 0.5,
-    borderColor: colors.warning,
-    paddingHorizontal: 4,
-    paddingVertical: 2,
-    borderRadius: 2,
-  },
-  chatBadgeText: {
-    color: colors.warning,
-    fontSize: 7,
-    fontWeight: '800',
+    height: 150,
   },
   rwandaBadge: {
     position: 'absolute',
-    bottom: 4,
-    right: 4,
+    top: 8,
+    left: 8,
     zIndex: 5,
-    backgroundColor: 'rgba(0,0,0,0.45)',
-    borderRadius: 3,
-    paddingHorizontal: 3,
-    paddingVertical: 1,
-  },
-  rwandaBadgeText: {
-    fontSize: 8,
-  },
-  productBody: {
-    padding: 8,
-    gap: 3,
-  },
-  productBodyCompact: {
-    padding: 5,
-    gap: 2,
-  },
-  price: {
-    color: colors.primary,
-    fontSize: 15,
-    fontWeight: '700',
-  },
-  priceCompact: {
-    fontSize: 11,
-    fontWeight: '800',
-  },
-  minOrder: {
-    color: '#e05300',
-    fontSize: 9,
-    fontWeight: '700',
-    marginTop: 1,
-  },
-  supplierText: {
-    color: colors.muted,
-    fontSize: 9,
-    fontWeight: '600',
-    marginTop: 1,
-  },
-  productName: {
-    color: colors.ink,
-    fontSize: 12,
-    fontWeight: '500',
-    lineHeight: 16,
-  },
-  productNameCompact: {
-    fontSize: 10,
-    lineHeight: 13,
-  },
-  metaRow: {
+    backgroundColor: colors.surface,
+    borderRadius: 4,
+    paddingHorizontal: 7,
+    paddingVertical: 4,
+    borderWidth: 1,
+    borderColor: colors.faint,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    marginTop: 1,
   },
-  ratingRow: {
+  rwandaDot: {
+    width: 7,
+    height: 7,
+    borderRadius: 4,
+    backgroundColor: colors.primaryMid,
+  },
+  rwandaBadgeText: {
+    color: colors.ink,
+    fontSize: 9,
+    fontWeight: '900',
+    letterSpacing: 0.3,
+  },
+  promoBadge: {
+    position: 'absolute',
+    bottom: 8,
+    left: 8,
+    backgroundColor: colors.primaryMid,
+    paddingHorizontal: 7,
+    paddingVertical: 4,
+    borderRadius: 4,
+  },
+  promoBadgeText: {
+    color: colors.card,
+    fontSize: 9,
+    fontWeight: '900',
+  },
+  productBody: {
+    padding: 12,
+    gap: 7,
+  },
+  productBodyCompact: {
+    padding: 10,
+  },
+  supplierRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 2,
+    gap: 5,
   },
-  ratingText: {
-    color: colors.muted,
-    fontSize: 9,
+  supplierText: {
+    color: colors.body,
+    fontSize: 11,
     fontWeight: '600',
+    flex: 1,
   },
-  ordersText: {
-    color: colors.muted,
-    fontSize: 9,
+  productName: {
+    color: colors.ink,
+    fontSize: 16,
+    fontWeight: '700',
+    lineHeight: 22,
+  },
+  productNameCompact: {
+    fontSize: 15,
+    lineHeight: 21,
+  },
+  priceRow: {
+    marginTop: 2,
+    paddingTop: 8,
+    borderTopWidth: 1,
+    borderTopColor: colors.surfaceHigh,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 8,
+  },
+  price: {
+    color: colors.ink,
+    fontSize: 15,
+    fontWeight: '900',
+    letterSpacing: 0.4,
+  },
+  priceCompact: {
+    fontSize: 13,
+  },
+  unit: {
+    color: colors.body,
+    fontSize: 10,
     fontWeight: '500',
   },
-
-  // ── Market card ─────────────────────────────────────────────────────────────
+  cartMini: {
+    width: 30,
+    height: 30,
+    borderRadius: 4,
+    backgroundColor: colors.surfaceLow,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: colors.surfaceHigh,
+  },
   market: {
     backgroundColor: colors.card,
-    borderRadius: radii.md,
+    borderRadius: radii.lg,
     overflow: 'hidden',
-    borderWidth: 0.5,
-    borderColor: colors.divider,
+    borderWidth: 1,
+    borderColor: colors.surfaceHigh,
     ...shadow,
   },
   marketCompact: {
     width: '31.3%',
   },
   marketImage: {
-    height: 130,
-    backgroundColor: '#F0F0F0',
+    height: 132,
+    backgroundColor: colors.surfaceMid,
     overflow: 'hidden',
   },
   marketImageCompact: {
-    height: 80,
+    height: 84,
   },
   rankBadge: {
     position: 'absolute',
-    top: 6,
-    left: 6,
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    backgroundColor: colors.muted,
-    alignItems: 'center',
-    justifyContent: 'center',
-    zIndex: 10,
+    top: 8,
+    left: 8,
+    backgroundColor: colors.primary,
+    borderRadius: 4,
+    paddingHorizontal: 7,
+    paddingVertical: 4,
   },
-  rankGold: { backgroundColor: colors.gold },
-  rankSilver: { backgroundColor: '#B0B8C1' },
-  rankBronze: { backgroundColor: '#CD7F32' },
-  rankText: { color: '#fff', fontSize: 9, fontWeight: '900' },
+  rankText: {
+    color: colors.card,
+    fontSize: 10,
+    fontWeight: '900',
+  },
   discountBadge: {
     position: 'absolute',
-    top: 6,
-    right: 6,
-    backgroundColor: colors.primary,
-    paddingHorizontal: 6,
-    paddingVertical: 3,
-    borderRadius: 3,
-    zIndex: 10,
+    top: 8,
+    right: 8,
+    backgroundColor: colors.primaryMid,
+    paddingHorizontal: 7,
+    paddingVertical: 4,
+    borderRadius: 4,
   },
-  discountText: { color: '#fff', fontSize: 9, fontWeight: '800' },
+  discountText: {
+    color: colors.card,
+    fontSize: 10,
+    fontWeight: '900',
+  },
   distanceBadge: {
     position: 'absolute',
-    bottom: 6,
-    right: 6,
-    backgroundColor: 'rgba(0,0,0,0.55)',
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 3,
-    zIndex: 10,
+    bottom: 8,
+    right: 8,
+    backgroundColor: 'rgba(27,28,27,0.72)',
+    paddingHorizontal: 7,
+    paddingVertical: 4,
+    borderRadius: 4,
   },
-  distanceText: { color: '#fff', fontSize: 9, fontWeight: '700' },
+  distanceText: {
+    color: colors.card,
+    fontSize: 10,
+    fontWeight: '800',
+  },
   marketBody: {
-    padding: 10,
-    gap: 4,
+    padding: 12,
+    gap: 6,
   },
   marketBodyCompact: {
-    padding: 5,
-    gap: 2,
+    padding: 7,
+    gap: 3,
   },
   marketName: {
     color: colors.ink,
-    fontSize: 14,
-    fontWeight: '700',
+    fontSize: 15,
+    fontWeight: '800',
   },
   marketNameCompact: {
-    fontSize: 9,
-    fontWeight: '700',
-    lineHeight: 12,
+    fontSize: 10,
+    lineHeight: 13,
   },
   marketMeta: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
+    gap: 5,
   },
   marketMetaText: {
-    color: colors.muted,
-    fontSize: 11,
-    fontWeight: '500',
-    flex: 1,
+    color: colors.body,
+    fontSize: 12,
+    fontWeight: '600',
   },
   marketMetaCompact: {
-    fontSize: 8,
-    fontWeight: '500',
+    fontSize: 9,
   },
-
-  // ── Order line ──────────────────────────────────────────────────────────────
   orderLine: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
-    paddingVertical: 10,
-    borderBottomWidth: 0.5,
-    borderBottomColor: colors.divider,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.surfaceHigh,
   },
   orderThumb: {
-    width: 52,
-    height: 52,
-    borderRadius: radii.sm,
+    width: 54,
+    height: 54,
+    borderRadius: radii.lg,
     overflow: 'hidden',
-    backgroundColor: '#F0F0F0',
+    backgroundColor: colors.surfaceMid,
+  },
+  orderName: {
+    color: colors.ink,
+    fontSize: 14,
+    fontWeight: '700',
   },
   orderQty: {
-    color: colors.muted,
+    color: colors.body,
     fontSize: 12,
     fontWeight: '500',
     marginTop: 2,
   },
   orderTotal: {
-    color: colors.primary,
+    color: colors.ink,
     fontSize: 13,
-    fontWeight: '700',
+    fontWeight: '900',
   },
   variantTag: {
     color: colors.primary,
     fontSize: 10,
-    fontWeight: '600',
+    fontWeight: '700',
     marginTop: 2,
   },
-
-  // ── Shared ──────────────────────────────────────────────────────────────────
   fallback: {
     flex: 1,
-    backgroundColor: '#E8E8E8',
+    backgroundColor: colors.surfaceMid,
     alignItems: 'center',
     justifyContent: 'center',
   },
   fallbackText: {
-    color: colors.muted,
+    color: colors.body,
     fontSize: 20,
-    fontWeight: '700',
+    fontWeight: '800',
   },
 });

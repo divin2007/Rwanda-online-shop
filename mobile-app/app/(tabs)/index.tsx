@@ -10,6 +10,7 @@ import {
   Package, Truck, Shield, Gift,
 } from 'lucide-react-native';
 import { MarketCard, ProductCard } from '../../src/components/Cards';
+import { FastImage } from '../../src/components/FastImage';
 import { EmptyBlock, ErrorBlock, LoadingBlock } from '../../src/components/StateView';
 import { SellerVideoFeed } from '../../src/components/SellerVideoFeed';
 import { api } from '../../src/lib/api';
@@ -72,6 +73,8 @@ const QUICK_ACTIONS = [
   { id: 'promo', label: 'Vouchers', icon: Gift, color: '#E91E8C', bg: '#FCE4F3', badge: null },
   { id: 'secure', label: 'Secure\nBuy', icon: Shield, color: '#27AE60', bg: '#E8F8EF', badge: null },
 ];
+
+const SOLARIS_HERO_IMAGE = 'https://lh3.googleusercontent.com/aida-public/AB6AXuCLvngkj79vD4VvohHYO8PWrnpDZYw2mO5h2LCjD4fy3UR58Gq21QOSyb-K6Msfgl4q2cwcO_E6UAq4j0pVyVeyfSVpyqKrz7f_RMyJrvJQvatDHNPfLlSBrhgDqjsEVLDn83EY-OSt2KCQfGukNwMaOUE56Lzms4yvuTsnzJ6UlkFD-AIP6m3a5hRTrrJ4sxXZE6j2Zayxv4i_I8i72987ImTs42WLrILzyH56-itBLoK1v6YjoQNBRszwo5WUSMX5bI6S3s2mQPjK';
 
 export default function HomeScreen() {
   const router = useRouter();
@@ -191,15 +194,16 @@ export default function HomeScreen() {
       showsVerticalScrollIndicator={false}
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor={colors.primary} />}
     >
-      <View style={[styles.banner, { backgroundColor: banner.color }]}>
-        <View style={[styles.bannerBlob, { backgroundColor: banner.color2 }]} />
+      <View style={styles.banner}>
+        <FastImage uri={SOLARIS_HERO_IMAGE} style={StyleSheet.absoluteFillObject} />
+        <View style={styles.bannerBlob} />
         <View style={styles.bannerLeft}>
           <View style={styles.bannerTag}>
-            <Flame color="#fff" size={9} />
+            <Flame color={colors.primaryMid} size={9} />
             <Text style={styles.bannerTagText}>{banner.tag}</Text>
           </View>
-          <Text style={styles.bannerTitle}>{banner.title}</Text>
-          <Text style={styles.bannerSub}>{banner.sub}</Text>
+          <Text style={styles.bannerTitle}>Trusted markets delivered to you</Text>
+          <Text style={styles.bannerSub} numberOfLines={2}>Fresh produce, verified sellers, escrow protection, and rider delivery across Kigali.</Text>
           <TouchableOpacity
             style={styles.bannerBtn}
             onPress={() => {
@@ -212,7 +216,7 @@ export default function HomeScreen() {
             activeOpacity={0.85}
           >
             <Text style={styles.bannerBtnText}>Shop Now</Text>
-            <ArrowRight color={banner.color} size={12} />
+            <ArrowRight color={colors.card} size={12} />
           </TouchableOpacity>
         </View>
         <View style={styles.bannerDots}>
@@ -436,47 +440,46 @@ const styles = StyleSheet.create({
   banner: {
     marginHorizontal: 12,
     marginTop: 12,
-    borderRadius: 12,
+    borderRadius: 8,
     padding: 16,
-    minHeight: 140,
+    minHeight: 164,
     overflow: 'hidden',
-    ...shadowMd,
+    borderWidth: 1,
+    borderColor: colors.surfaceHigh,
   },
   bannerBlob: {
     position: 'absolute',
-    right: -30,
-    top: -30,
-    width: 160,
-    height: 160,
-    borderRadius: 80,
-    opacity: 0.3,
+    inset: 0,
+    backgroundColor: 'rgba(251,249,248,0.72)',
   },
-  bannerLeft: { gap: 6, maxWidth: '80%' },
+  bannerLeft: { gap: 7, maxWidth: '84%' },
   bannerTag: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    backgroundColor: 'rgba(255,255,255,0.2)',
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.faint,
     alignSelf: 'flex-start',
     paddingHorizontal: 7,
     paddingVertical: 3,
     borderRadius: 4,
   },
-  bannerTagText: { color: '#fff', fontSize: 9, fontWeight: '800', letterSpacing: 0.5 },
-  bannerTitle: { color: '#fff', fontSize: 22, fontWeight: '900', lineHeight: 26 },
-  bannerSub: { color: 'rgba(255,255,255,0.88)', fontSize: 12, fontWeight: '500', lineHeight: 17 },
+  bannerTagText: { color: colors.ink, fontSize: 9, fontWeight: '900', letterSpacing: 0.5 },
+  bannerTitle: { color: colors.ink, fontSize: 27, fontWeight: '900', lineHeight: 32 },
+  bannerSub: { color: colors.body, fontSize: 13, fontWeight: '600', lineHeight: 18 },
   bannerBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 5,
-    backgroundColor: '#fff',
+    backgroundColor: colors.primaryMid,
     alignSelf: 'flex-start',
     paddingHorizontal: 12,
     paddingVertical: 6,
-    borderRadius: 999,
+    borderRadius: 4,
     marginTop: 4,
   },
-  bannerBtnText: { color: colors.primary, fontSize: 12, fontWeight: '800' },
+  bannerBtnText: { color: colors.card, fontSize: 12, fontWeight: '900' },
   bannerDots: {
     position: 'absolute',
     bottom: 10,
@@ -484,18 +487,18 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 5,
   },
-  dot: { width: 5, height: 5, borderRadius: 3, backgroundColor: 'rgba(255,255,255,0.4)' },
-  dotActive: { backgroundColor: '#fff', width: 14 },
+  dot: { width: 5, height: 5, borderRadius: 3, backgroundColor: colors.surfaceHighest },
+  dotActive: { backgroundColor: colors.primaryMid, width: 14 },
   quickGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    backgroundColor: colors.card,
+    backgroundColor: colors.surface,
     marginTop: 10,
     paddingVertical: 12,
     paddingHorizontal: 8,
-    borderBottomWidth: 0.5,
-    borderTopWidth: 0.5,
-    borderColor: colors.divider,
+    borderBottomWidth: 1,
+    borderTopWidth: 1,
+    borderColor: colors.surfaceHigh,
   },
   quickItem: {
     width: '25%',
@@ -506,7 +509,7 @@ const styles = StyleSheet.create({
   quickIcon: {
     width: 48,
     height: 48,
-    borderRadius: 12,
+    borderRadius: 8,
     alignItems: 'center',
     justifyContent: 'center',
     position: 'relative',
@@ -529,11 +532,11 @@ const styles = StyleSheet.create({
   },
   section: {
     marginTop: 10,
-    backgroundColor: colors.card,
+    backgroundColor: colors.surface,
     paddingVertical: 12,
-    borderTopWidth: 0.5,
-    borderBottomWidth: 0.5,
-    borderColor: colors.divider,
+    borderTopWidth: 1,
+    borderBottomWidth: 1,
+    borderColor: colors.surfaceHigh,
     gap: 10,
   },
   sectionHead: {

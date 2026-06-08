@@ -71,10 +71,10 @@ const styles = StyleSheet.create({
   empty: {
     margin: 16,
     padding: 28,
-    borderRadius: 12,
+    borderRadius: 8,
     backgroundColor: colors.card,
-    borderWidth: 0.5,
-    borderColor: colors.divider,
+    borderWidth: 1,
+    borderColor: colors.surfaceHigh,
     alignItems: 'center',
     gap: 8,
     ...shadow,
@@ -82,7 +82,7 @@ const styles = StyleSheet.create({
   emptyIcon: {
     width: 64,
     height: 64,
-    borderRadius: 32,
+    borderRadius: 8,
     backgroundColor: colors.primarySoft,
     alignItems: 'center',
     justifyContent: 'center',
@@ -94,7 +94,7 @@ const styles = StyleSheet.create({
   title: {
     color: colors.ink,
     fontSize: 16,
-    fontWeight: '800',
+    fontWeight: '900',
     textAlign: 'center',
   },
   body: {
@@ -108,8 +108,8 @@ const styles = StyleSheet.create({
     marginTop: 8,
     height: 40,
     paddingHorizontal: 20,
-    borderRadius: 999,
-    backgroundColor: colors.primary,
+    borderRadius: 4,
+    backgroundColor: colors.primaryMid,
     alignItems: 'center',
     justifyContent: 'center',
     flexDirection: 'row',
