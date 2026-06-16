@@ -22,7 +22,7 @@ import { DisputeResolution, OrderStatus, PaymentStatus, UserRole } from '@rmf/sh
 import axios from 'axios';
 import * as crypto from 'crypto';
 import { existsSync, mkdirSync, writeFileSync } from 'fs';
-import { extname, join } from 'path';
+import { join } from 'path';
 import { AddMessageDto } from './dto/add-message.dto';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { SendQuoteDto } from './dto/send-quote.dto';
@@ -33,16 +33,19 @@ import { PaymentService } from './payment.service';
  * Verify internal microservice calls via shared secret header.
  * Used for status transitions initiated by delivery-service / payment callbacks.
  */
-function verifyInternalOrJwt(req: any): string {
+function verifyInternalOrJwt(req: any): { userId: string; role: string } {
   const authHeader = req.headers?.authorization;
   if (authHeader && authHeader.startsWith('Bearer ')) {
     try {
       const token = authHeader.substring(7);
       const jwt = require('jsonwebtoken');
+      if (process.env.NODE_ENV === 'production' && !process.env.JWT_SECRET) {
+        throw new Error('JWT_SECRET is not configured');
+      }
       const jwtSecret = process.env.JWT_SECRET || 'dev-secret-change-in-prod';
       const decoded = jwt.verify(token, jwtSecret);
       const userId = decoded?.sub || decoded?.userId || decoded?.id;
-      if (userId) return String(userId);
+      if (userId) return { userId: String(userId), role: String(decoded?.role || '').toUpperCase() };
     } catch {
       // Fall through to internal secret check.
     }
@@ -51,7 +54,7 @@ function verifyInternalOrJwt(req: any): string {
   const secret = process.env.INTERNAL_SERVICE_SECRET;
   if (secret) {
     const provided = req.headers?.['x-internal-service-key'] || req.headers?.['x-internal-secret'];
-    if (provided === secret) return 'internal-service';
+    if (provided === secret) return { userId: 'internal-service', role: 'INTERNAL' };
   }
 
   throw new UnauthorizedException('Valid JWT or internal service key required');
@@ -213,8 +216,8 @@ export class OrderController {
   @Public()
   @Put(':id/status')
   async updateStatus(@Param('id') id: string, @Body() body: { status: OrderStatus; userId?: string }, @Req() req: any) {
-    const userId = verifyInternalOrJwt(req);
-    const order = await this.orderService.updateOrderStatus(id, body.status, userId);
+    const actor = verifyInternalOrJwt(req);
+    const order = await this.orderService.updateOrderStatus(id, body.status, actor.userId, actor.role);
     return { success: true, data: order };
   }
 
@@ -274,11 +277,16 @@ export class OrderController {
     const internalSecret = req.headers['x-internal-secret'] || req.headers['x-internal-service-key'];
 
     const expectedInternalSecret = process.env.INTERNAL_SERVICE_SECRET;
-    const webhookSecret = process.env.PAYMENT_WEBHOOK_SECRET || 'dev-webhook-secret';
 
     if (expectedInternalSecret && internalSecret === expectedInternalSecret) {
       return true;
     }
+
+    // Fail closed: with the known dev fallback secret anyone could forge a paid callback.
+    if (process.env.NODE_ENV === 'production' && !process.env.PAYMENT_WEBHOOK_SECRET) {
+      throw new UnauthorizedException('Payment webhook secret is not configured');
+    }
+    const webhookSecret = process.env.PAYMENT_WEBHOOK_SECRET || 'dev-webhook-secret';
 
     const signature = mtnSignature || airtelSignature;
     if (!signature) {
@@ -465,14 +473,20 @@ export class OrderController {
   }
 
   @Post('upload-image')
-  @UseInterceptors(FileInterceptor('file'))
+  @UseInterceptors(FileInterceptor('file', { limits: { fileSize: 5 * 1024 * 1024 } }))
   async uploadImage(@UploadedFile() file: any) {
     if (!file) {
       return { success: false, message: 'No file uploaded' };
     }
+    const allowedMimeTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'image/avif'];
+    if (!allowedMimeTypes.includes(file.mimetype)) {
+      throw new BadRequestException('Only image uploads are allowed (jpeg, png, webp, gif, avif)');
+    }
     const uploadDir = join(process.cwd(), 'uploads', 'order-images');
     if (!existsSync(uploadDir)) mkdirSync(uploadDir, { recursive: true });
-    const extension = extname(file.originalname || '') || this.extensionFromMime(file.mimetype);
+    // Extension derives from the validated mime type, never the client-supplied
+    // filename — prevents serving e.g. an .html file from the uploads directory.
+    const extension = this.extensionFromMime(file.mimetype);
     const fileName = `${crypto.randomUUID()}${extension}`;
     writeFileSync(join(uploadDir, fileName), file.buffer);
     const port = (process.env.PORT && process.env.PORT !== '3000') ? process.env.PORT : 3006;

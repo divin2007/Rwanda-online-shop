@@ -1,15 +1,16 @@
 import { Controller, Get, Query, Param, Patch, Body, Req, UseGuards, ForbiddenException } from '@nestjs/common';
 import { AdminService } from './admin.service';
-import { Roles, JwtAuthGuard } from '@rmf/auth';
+import { Roles, JwtAuthGuard, RolesGuard } from '@rmf/auth';
 import { UserRole } from '@rmf/shared-types';
 
+// Defense in depth: the global guards from AuthGuardModule.forRoot() already cover these
+// routes, but this controller is admin-only so it also pins JwtAuthGuard + RolesGuard
+// explicitly — removing the forRoot() import can never silently expose the admin API.
+@UseGuards(JwtAuthGuard, RolesGuard)
 @Controller()
 export class AdminController {
   constructor(private readonly adminService: AdminService) {}
 
-  // FIX [ADMIN-SUMMARY]: Was unauthenticated — platform financial summary was public.
-  // Now requires ADMIN role.
-  @UseGuards(JwtAuthGuard)
   @Roles(UserRole.ADMIN)
   @Get('analytics/summary')
   async getSummaryAnalytics() {

@@ -426,7 +426,7 @@ export default function SellerEarningsPage() {
                  "All settled earnings are audited by the RMF Financial Gateway. Commission is automatically processed during the acquisition lifecycle."
                </p>
                <div className="pt-8 border-t border-[#e0e0e0]">
-                  <Link href="/support" className="text-[9px] font-black uppercase tracking-widest text-[#ff6b00] hover:text-[#1b1c1c] transition-colors">Request Support Handshake →</Link>
+                  <Link href="/contact" className="text-[9px] font-black uppercase tracking-widest text-[#ff6b00] hover:text-[#1b1c1c] transition-colors">Request Support Handshake →</Link>
                </div>
             </div>
           </div>

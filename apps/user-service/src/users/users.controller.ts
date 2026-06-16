@@ -37,6 +37,9 @@ export class UsersController {
 
     try {
       const jwt = require('jsonwebtoken');
+      if (process.env.NODE_ENV === 'production' && !process.env.JWT_SECRET) {
+        throw new Error('JWT_SECRET is not configured');
+      }
       const payload = jwt.verify(token, process.env.JWT_SECRET || 'dev-secret-change-in-prod');
       if (payload?.role === 'ADMIN') {
         return;

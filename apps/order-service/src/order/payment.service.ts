@@ -1,7 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import axios from 'axios';
 import * as crypto from 'crypto';
-import { v4 as uuidv4 } from 'uuid';
+import { randomUUID as uuidv4 } from 'crypto';
 
 type PaymentProviderMethod = 'MTN_MOMO' | 'AIRTEL_MONEY' | 'TIGO_CASH';
 

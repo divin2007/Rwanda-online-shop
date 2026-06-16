@@ -19,7 +19,9 @@ export class JwtAuthGuard extends AuthGuard('jwt') {
 
   handleRequest(err: any, user: any, info: any, context: ExecutionContext) {
     if (err || !user) {
-      if (process.env.NODE_ENV !== 'production') {
+      // Mock auth is a deliberate test backdoor: it must be explicitly opted into
+      // via ALLOW_MOCK_AUTH=true and can never activate in production.
+      if (process.env.NODE_ENV !== 'production' && process.env.ALLOW_MOCK_AUTH === 'true') {
         const request = context.switchToHttp().getRequest();
         const authHeader = request.headers?.authorization;
         if (authHeader && authHeader.startsWith('Mock-Bearer ')) {

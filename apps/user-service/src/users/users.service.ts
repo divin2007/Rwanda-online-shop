@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable, ConflictException, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, ConflictException, ForbiddenException, NotFoundException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import * as bcrypt from 'bcrypt';
@@ -237,6 +237,12 @@ export class UsersService {
   }
 
   async create(userData: any): Promise<any> {
+    // Privilege-escalation guard: ADMIN accounts can never be self-registered.
+    // They are provisioned via scripts/create-admin.js or promoted by an existing admin.
+    if (String(userData.role || '').toUpperCase() === UserRole.ADMIN) {
+      throw new ForbiddenException('ADMIN accounts cannot be created through registration');
+    }
+
     // 1C fix: build dedup filter carefully — only include phone if actually provided.
     // Google OAuth users have phone=undefined, which would match any other user with no phone.
     const dedupFilter: any[] = [{ email: userData.email }];

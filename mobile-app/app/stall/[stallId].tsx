@@ -6,13 +6,14 @@ import {
   Store, Box, Star, Truck, Filter, ChevronDown, ShieldAlert,
   Search, Heart
 } from 'lucide-react-native';
-import { useCart } from '../_layout';
+import { useCart } from '../../src/context/CartContext';
 import { api } from '../../src/lib/api';
+import { productToCartItem } from '../../src/lib/normalize';
 
 export default function StallDetailScreen() {
   const { stallId } = useLocalSearchParams();
   const router = useRouter();
-  const { addToCart, items } = useCart();
+  const { addItem, items } = useCart();
   const [activeTab, setActiveTab] = useState('SHOP PRODUCTS');
   const [searchQuery, setSearchQuery] = useState('');
   const [minPrice, setMinPrice] = useState('');
@@ -53,16 +54,12 @@ export default function StallDetailScreen() {
   };
 
   const handleAddToCart = (product: any) => {
-    addToCart({
-      id: product._id,
-      name: product.name,
-      price: product.price,
-      quantity: 1,
-      unit: product.unit || 'pcs',
-      category: product.categoryLabel || 'General',
-      image: product.images?.[0]
-    });
-    router.push('/cart');
+    try {
+      addItem(productToCartItem(product, 1));
+      router.push('/cart');
+    } catch (err) {
+      console.warn('Cannot add item to cart:', err instanceof Error ? err.message : err);
+    }
   };
 
   const itemCount = items.reduce((sum, item) => sum + item.quantity, 0);
@@ -637,7 +634,7 @@ const styles = StyleSheet.create({
   },
   filterTitle: {
     fontSize: 11,
-    fontWeight: '950',
+    fontWeight: '900',
     color: '#1b1c1c',
     letterSpacing: 1,
   },
@@ -779,7 +776,7 @@ const styles = StyleSheet.create({
     fontSize: 10,
     color: '#7c2d12',
     lineHeight: 14,
-    fontWeight: '550',
+    fontWeight: '500',
   },
   favoritesSection: {
     paddingHorizontal: 16,

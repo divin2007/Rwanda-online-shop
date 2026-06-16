@@ -80,7 +80,11 @@ export class DeliveryGateway implements OnGatewayConnection, OnGatewayDisconnect
     if (token) {
       try {
         const jwt = require('jsonwebtoken');
-        const secret = process.env.JWT_SECRET || 'change-me-to-a-strong-random-secret-at-least-32-chars';
+        if (process.env.NODE_ENV === 'production' && !process.env.JWT_SECRET) {
+          throw new Error('JWT_SECRET is not configured');
+        }
+        // Same dev fallback the token issuer (user-service) uses, so dev sockets authenticate.
+        const secret = process.env.JWT_SECRET || 'dev-secret-change-in-prod';
         const decoded = jwt.verify(token, secret);
         (client as any).user = decoded;
       } catch (err) {

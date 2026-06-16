@@ -128,6 +128,7 @@ export class WalletService {
       this.payoutRequestModel
         .find({ userId: userObjectId })
         .sort({ requestedAt: -1 })
+        .skip(skip)
         .limit(limit)
         .lean()
         .exec(),
@@ -173,22 +174,23 @@ export class WalletService {
       throw new BadRequestException('Provide a valid Rwanda MoMo number (07xxxxxxxx or +25078xxxxxxxx)');
     }
 
-    // ── Check balance ──
+    // ── Lock funds atomically ──
+    // The balance condition lives inside the update filter so two concurrent
+    // withdrawals can never both pass a separate read-then-check (double spend).
     const userObjectId = new Types.ObjectId(userId);
-    const wallet = await this.walletModel.findOne({ userId: userObjectId }).exec();
-    const available = wallet ? (wallet.availableBalance ?? wallet.balance ?? 0) : 0;
+    const lockedWallet = await this.walletModel.findOneAndUpdate(
+      { userId: userObjectId, availableBalance: { $gte: amountRwf } },
+      { $inc: { availableBalance: -amountRwf, pendingBalance: amountRwf } },
+      { new: true },
+    );
 
-    if (available < amountRwf) {
+    if (!lockedWallet) {
+      const wallet = await this.walletModel.findOne({ userId: userObjectId }).lean().exec();
+      const available = wallet ? (wallet.availableBalance ?? wallet.balance ?? 0) : 0;
       throw new BadRequestException(
         `Insufficient balance. Available: ${available} RWF, Requested: ${amountRwf} RWF`,
       );
     }
-
-    // ── Lock funds (deduct from available, add to pending) ──
-    await this.walletModel.findOneAndUpdate(
-      { userId: userObjectId },
-      { $inc: { availableBalance: -amountRwf, pendingBalance: amountRwf } },
-    );
 
     // ── Create withdrawal request ──
     const withdrawalRequest = await new this.payoutRequestModel({
@@ -354,8 +356,15 @@ export class WalletService {
   }
 
   async requestPayout(userId: string, amount: number, _method: string, recipientPhone: string): Promise<any> {
-    // Legacy route — delegate to new withdrawal flow
-    return this.requestWithdrawal(userId, 'SELLER', amount, recipientPhone);
+    // Legacy route — delegate to new withdrawal flow.
+    // Use the wallet's recorded role (set on first credit); hardcoding 'SELLER'
+    // here would let non-earning roles bypass the SELLER/RIDER restriction.
+    const wallet = await this.walletModel.findOne({ userId: new Types.ObjectId(userId) }).lean().exec();
+    const role = String((wallet as any)?.role || '').toUpperCase();
+    if (!['SELLER', 'RIDER'].includes(role)) {
+      throw new ForbiddenException('Only sellers and riders can withdraw from their wallet');
+    }
+    return this.requestWithdrawal(userId, role, amount, recipientPhone);
   }
 
   async completePayout(_payoutId: string): Promise<any> {

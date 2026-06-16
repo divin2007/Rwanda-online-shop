@@ -55,7 +55,23 @@ async function bootstrap() {
   const corsOrigin = process.env.CORS_ORIGIN || 'http://localhost:3000,https://rwshop.org,https://www.rwshop.org';
   const allowedOrigins = corsOrigin.split(',').map(s => s.trim());
   app.enableCors({
-    origin: (origin: any, callback: any) => callback(null, true),
+    origin(origin: any, callback: any) {
+      if (!origin) return callback(null, true);
+      const originHost = origin.replace(/^https?:\/\//, '').replace(/:\d+$/, '');
+      if (originHost === 'rwshop.org' || originHost.endsWith('.rwshop.org')) {
+        return callback(null, true);
+      }
+      for (const allowed of allowedOrigins) {
+        const allowedHost = allowed.replace(/^https?:\/\//, '').replace(/:\d+$/, '');
+        if (originHost === allowedHost || originHost.endsWith('.' + allowedHost)) {
+          return callback(null, true);
+        }
+      }
+      // Reject unknown origins: reflecting arbitrary origins with credentials enabled
+      // would let any website make authenticated requests against the API.
+      console.warn(`[CORS] Blocked request from non-whitelisted origin: ${origin}`);
+      callback(null, false);
+    },
     credentials: true,
   });
 

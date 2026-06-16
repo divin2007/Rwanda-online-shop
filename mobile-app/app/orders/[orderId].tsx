@@ -259,7 +259,7 @@ export default function OrderTrackingScreen() {
   };
 
   const openMapPicker = async () => {
-    const orderCoords = coordinatesFromAny(order.buyer?.deliveryAddress);
+    const orderCoords = coordinatesFromAny(order?.buyer?.deliveryAddress);
     const initialCenter = orderCoords || marketCoords || { lat: -1.9441, lng: 30.0619 };
     setMapCenter(initialCenter);
     setPendingPin(orderCoords || initialCenter);

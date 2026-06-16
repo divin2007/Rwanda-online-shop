@@ -10,11 +10,15 @@ export type ApiEnvelope<T> = {
 
 export type User = {
   id: string;
+  _id?: string;
   fullName: string;
   email: string;
   phone?: string;
   role: Role;
   avatarUrl?: string;
+  // Present only when the profile has been enriched with role-specific records.
+  sellerId?: string;
+  riderId?: string;
 };
 
 export type Coordinates = {

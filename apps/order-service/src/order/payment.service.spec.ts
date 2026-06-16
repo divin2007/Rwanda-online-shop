@@ -1,8 +1,6 @@
 import * as crypto from 'crypto';
 import { PaymentService } from './payment.service';
 
-jest.mock('uuid', () => ({ v4: () => '00000000-0000-4000-8000-000000000000' }));
-
 describe('PaymentService Paypack webhook verification', () => {
   const secret = 'test-paypack-webhook-secret';
   let service: PaymentService;

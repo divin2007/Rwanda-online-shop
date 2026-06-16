@@ -18,7 +18,7 @@ import {
 import { FileInterceptor } from '@nestjs/platform-express';
 import { randomUUID } from 'crypto';
 import { existsSync, mkdirSync, writeFileSync } from 'fs';
-import { extname, join } from 'path';
+import { join } from 'path';
 import { DeliveryService } from './delivery.service';
 import type { Coordinates } from '@rmf/location';
 import { DeliveryStatus, UserRole } from '@rmf/shared-types';
@@ -177,14 +177,18 @@ export class DeliveryController {
   // FIX [DELIVERY-PHOTO]: Was unauthenticated — anyone could upload files.
   @UseGuards(JwtAuthGuard)
   @Post(':id/pickup-photo')
-  @UseInterceptors(FileInterceptor('file'))
+  @UseInterceptors(FileInterceptor('file', { limits: { fileSize: 5 * 1024 * 1024 } }))
   async uploadPhoto(@UploadedFile() file: any) {
     if (!file) {
       throw new BadRequestException('No photo file uploaded');
     }
+    if (!['image/jpeg', 'image/png', 'image/webp', 'image/gif'].includes(file.mimetype)) {
+      throw new BadRequestException('Only image uploads are allowed (jpeg, png, webp, gif)');
+    }
     const uploadDir = join(process.cwd(), 'uploads', 'pickup-photos');
     if (!existsSync(uploadDir)) mkdirSync(uploadDir, { recursive: true });
-    const extension = extname(file.originalname || '') || this.extensionFromMime(file.mimetype);
+    // Extension derives from the validated mime type, never the client filename.
+    const extension = this.extensionFromMime(file.mimetype);
     const fileName = `${randomUUID()}${extension}`;
     writeFileSync(join(uploadDir, fileName), file.buffer);
     const port = (process.env.PORT && process.env.PORT !== '3000') ? process.env.PORT : 3008;

@@ -2,8 +2,8 @@ import { Injectable, NotFoundException, BadRequestException, Logger, OnModuleIni
 import axios from 'axios';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
-import { v4 as uuidv4 } from 'uuid';
-import { OrderStatus, PaymentStatus, DisputeResolution } from '@rmf/shared-types';
+import { randomUUID as uuidv4 } from 'crypto';
+import { OrderStatus, PaymentStatus, DisputeResolution, UserRole } from '@rmf/shared-types';
 import { StateConflictError } from '@rmf/shared-utils';
 import { LocationService } from '@rmf/location';
 import { FraudDetectionService } from './fraud-detection.service';
@@ -243,9 +243,16 @@ export class OrderService implements OnModuleInit, OnModuleDestroy {
     ]);
   }
 
-  private async snapshotOrderProducts(products: any[] = []): Promise<any[]> {
+  private async snapshotOrderProducts(products: any[] = [], options: { strict?: boolean } = {}): Promise<any[]> {
     const productIds = products.map(line => line?.productId).filter(Boolean).filter(id => Types.ObjectId.isValid(id));
-    if (productIds.length === 0) return products;
+    if (productIds.length === 0) {
+      // Strict mode (purchasable orders): every line must map to a real product,
+      // otherwise the client-supplied unitPrice would survive into the financials.
+      if (options.strict && products.length > 0) {
+        throw new BadRequestException('Order items must reference valid products');
+      }
+      return products;
+    }
 
     const dbProducts = await this.productModel.find({ _id: { $in: productIds }, deletedAt: null })
       .select('_id name images category categoryId unit price priceUpdatedAt weight attributes variants')
@@ -255,7 +262,12 @@ export class OrderService implements OnModuleInit, OnModuleDestroy {
 
     return products.map(line => {
       const product = productMap.get(String(line.productId));
-      if (!product) return line;
+      if (!product) {
+        if (options.strict) {
+          throw new BadRequestException(`Order item "${line?.name || line?.productId || 'unknown'}" does not match an available product`);
+        }
+        return line;
+      }
       const variant = line.variantId
         ? (product.variants || []).find((candidate: any) => 
             (candidate._id && String(candidate._id) === String(line.variantId)) || 
@@ -395,7 +407,7 @@ export class OrderService implements OnModuleInit, OnModuleDestroy {
 
       const orderNumber = `ORD-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
       const status = isQuoteRequest ? OrderStatus.AWAITING_QUOTE : (orderData.schedule ? OrderStatus.SCHEDULED : OrderStatus.PLACED);
-      orderData.products = await this.snapshotOrderProducts(orderData.products || []);
+      orderData.products = await this.snapshotOrderProducts(orderData.products || [], { strict: !isQuoteRequest });
 
       // CRITICAL FIX: Recalculate financials server-side to prevent cart manipulation
       if (!isQuoteRequest) {
@@ -605,7 +617,7 @@ export class OrderService implements OnModuleInit, OnModuleDestroy {
     }
   }
 
-  async updateOrderStatus(id: string, newStatus: OrderStatus, userId: string): Promise<any> {
+  async updateOrderStatus(id: string, newStatus: OrderStatus, userId: string, actorRole?: string): Promise<any> {
     const order = await this.orderModel.findById(id);
     if (!order) throw new NotFoundException('Order not found');
 
@@ -619,12 +631,18 @@ export class OrderService implements OnModuleInit, OnModuleDestroy {
       OrderStatus.CANCELLED
     ];
     const riderActions = [OrderStatus.PICKED_UP, OrderStatus.IN_TRANSIT, OrderStatus.AWAITING_CONFIRMATION];
-    
+
+    // Rider-side transitions only come from delivery-service (internal key), the
+    // scheduler ('system'), or an admin — never directly from an arbitrary JWT,
+    // otherwise any authenticated user could walk any order through fulfillment.
+    const isInternalActor = userId === 'system' || userId === 'internal-service';
+    const isAdminActor = String(actorRole || '').toUpperCase() === UserRole.ADMIN;
+
     const isBuyerAction = buyerActions.includes(newStatus) && isBuyer;
     const isSellerAction = sellerActions.includes(newStatus) && isSeller;
-    const isRiderOrSystemAction = riderActions.includes(newStatus) || userId === 'system';
+    const isRiderOrSystemAction = riderActions.includes(newStatus) && (isInternalActor || isAdminActor);
 
-    if (!isBuyerAction && !isSellerAction && !isRiderOrSystemAction) {
+    if (!isAdminActor && !isInternalActor && !isBuyerAction && !isSellerAction && !isRiderOrSystemAction) {
       throw new BadRequestException('You do not have permission to perform this status transition');
     }
 

@@ -5,7 +5,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Project Overview
 
 **RMF Platform** (Rwanda Market Facilitator) — a full-stack e-commerce marketplace for Rwanda. It is a monorepo with:
-- 12 NestJS microservices (`apps/*-service`)
+- 11 NestJS microservices (`apps/*-service`)
 - 1 Next.js web frontend (`apps/frontend`)
 - 1 Expo React Native mobile app (`mobile-app/`)
 - 6 shared packages (`packages/`)
@@ -31,9 +31,16 @@ npm run lint
 # Test everything
 npm run test
 
-# Seed the database (runs market-service seed)
+# Seed the database (runs market-service seed: scripts/seed-full.ts)
 npm run seed
+
+# Wipe the local database
+npm run clear-db
 ```
+
+On Windows, `.\local-dev.ps1` is a one-shot dev launcher: it loads `.env`/`.env.local`, starts the Docker infrastructure, and runs the platform.
+
+Other utility scripts live in `scripts/` (run with `node scripts/<name>.js`): `create-admin.js`, `simulate-payment.js`, `simulate_paypack_callback.js`, `setup-momo-sandbox.js`, `wait-for-services.js`.
 
 ### Individual microservice (from root)
 
@@ -81,7 +88,7 @@ docker compose up -d   # MongoDB :27017, Redis :6379, MailDev SMTP :1025 / UI :1
 
 - **Turbo** (`turbo.json`) orchestrates builds, dev, lint, and test across workspaces.
 - **npm workspaces**: `apps/*` and `packages/*` are all linked at the root.
-- `npm run dev` at the root first builds `@rmf/database`, then starts all 13 apps concurrently with `--concurrency=20`.
+- `npm run dev` at the root first builds `@rmf/database`, then starts all 12 apps (11 services + frontend) concurrently with `--concurrency=20`.
 
 ### Shared packages (`packages/`)
 
@@ -109,16 +116,18 @@ Default dev ports:
 | user-service | 3001 |
 | market-service | 3002 |
 | product-service | 3003 |
-| order-service | 3004 |
-| delivery-service | 3005 |
-| wallet-service | 3006 |
-| notification-service | 3007 |
-| admin-service | 3008 |
-| seller-service | 3009 |
-| rider-service | 3010 |
-| review-service | 3011 |
+| seller-service | 3004 |
+| rider-service | 3005 |
+| order-service | 3006 |
+| wallet-service | 3007 |
+| delivery-service | 3008 |
+| notification-service | 3009 |
+| review-service | 3010 |
+| admin-service | 3011 |
 
-Services call each other over HTTP using the `*_SERVICE_URL` env vars. Cross-service requests are authenticated with the `INTERNAL_SERVICE_SECRET` header.
+Each service's `main.ts` ignores `PORT=3000` (treats it as unset) and falls back to its default port, so a root `.env` with `PORT=3000` doesn't break the port assignments.
+
+Services call each other over HTTP using the `*_SERVICE_URL` env vars. Cross-service requests are authenticated with the `x-internal-service-key: <INTERNAL_SERVICE_SECRET>` header (some controllers also accept the legacy `x-internal-secret` name).
 
 ### Frontend (`apps/frontend`)
 
@@ -138,7 +147,7 @@ MongoDB via Mongoose. All schemas are defined in `packages/database/` and import
 2. `user-service` returns a JWT signed with `JWT_SECRET`.
 3. Frontend/mobile stores the token and sends it as `Authorization: Bearer <token>`.
 4. Each service validates the token using the shared `@rmf/auth` Passport JWT strategy.
-5. Service-to-service calls add an `x-internal-secret: <INTERNAL_SERVICE_SECRET>` header instead.
+5. Service-to-service calls add an `x-internal-service-key: <INTERNAL_SERVICE_SECRET>` header instead.
 
 ### Payments / Wallet
 
@@ -181,3 +190,11 @@ cd apps/order-service && npm run test:cov
 ## Deployment
 
 Production is deployed to **Render** (`render.yaml`). Build and start entry points are `build.sh` and `start.sh` at the repo root, which delegate to Turbo with the service name as the filter. Health checks at `/api/v1/health` must pass before traffic is routed.
+
+---
+
+## Additional docs
+
+- `docs/OPENAPI.md` — API reference for the services
+- `docs/STITCH_REBUILD_MAP.md` — frontend rebuild mapping for the Stitch design
+- `PROJECT_WALKTHROUGH.md`, `PROJECT_ANALYSIS.md` — broader project context

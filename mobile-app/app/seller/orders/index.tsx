@@ -8,7 +8,7 @@ import { ChevronRight, Clock, Package, ShoppingBag } from 'lucide-react-native';
 import { EmptyBlock, ErrorBlock, LoadingBlock } from '../../../src/components/StateView';
 import { useAuth } from '../../../src/context/AuthContext';
 import { api } from '../../../src/lib/api';
-import { formatDateTime, formatRWF } from '../../../src/lib/format';
+import { formatDateTime, money } from '../../../src/lib/format';
 import { asArray } from '../../../src/lib/normalize';
 import { colors } from '../../../src/theme';
 import { Order } from '../../../src/types';
@@ -46,14 +46,15 @@ export default function SellerOrdersScreen() {
   const { user } = useAuth();
   const [filter, setFilter] = useState('All');
 
+  const sellerUserId = user?.id || user?._id;
   const { data, loading, refreshing, error, refresh } = useRemote<Order[]>(
-    () => api.get<Order[]>('order', `/orders?sellerId=${user?._id}&limit=100`).catch(() => []),
-    [user?._id],
+    () => api.get<Order[]>('order', `/orders?sellerId=${sellerUserId}&limit=100`).catch(() => []),
+    [sellerUserId],
   );
 
   const orders = asArray<Order>(data);
   const allowed = FILTER_MAP[filter];
-  const filtered = allowed.length ? orders.filter(o => allowed.includes(o.status)) : orders;
+  const filtered = allowed.length ? orders.filter(o => allowed.includes(o.status ?? '')) : orders;
 
   if (loading && !data) return <LoadingBlock label="Loading orders..." />;
   if (error && !data) return <ErrorBlock message={error} onRetry={refresh} />;
@@ -65,7 +66,7 @@ export default function SellerOrdersScreen() {
       {/* Filter chips */}
       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={s.filterRow} contentContainerStyle={{ gap: 8, paddingHorizontal: 14 }}>
         {FILTERS.map(f => {
-          const count = f === 'All' ? orders.length : (orders.filter(o => FILTER_MAP[f].includes(o.status)).length);
+          const count = f === 'All' ? orders.length : (orders.filter(o => FILTER_MAP[f].includes(o.status ?? '')).length);
           const active = filter === f;
           return (
             <TouchableOpacity key={f} onPress={() => setFilter(f)} style={[s.chip, active && s.chipActive]}>
@@ -80,9 +81,9 @@ export default function SellerOrdersScreen() {
       )}
 
       {filtered.map((order, i) => {
-        const sc = STATUS_COLORS[order.status] || { bg: '#f5f5f5', text: '#555' };
-        const total = order.totals?.grandTotal ?? order.total ?? 0;
-        const itemCount = order.items?.length ?? 0;
+        const sc = STATUS_COLORS[order.status ?? ''] || { bg: '#f5f5f5', text: '#555' };
+        const total = order.financials?.totalAmount ?? 0;
+        const itemCount = order.products?.length ?? 0;
         return (
           <TouchableOpacity key={order._id || i} style={s.card}
             onPress={() => router.push(`/seller/orders/${order._id}` as any)} activeOpacity={0.85}>
@@ -110,7 +111,7 @@ export default function SellerOrdersScreen() {
             <View style={s.cardBottom}>
               <Text style={s.totalLabel}>Total</Text>
               <View style={s.totalRight}>
-                <Text style={s.totalValue}>{formatRWF(total)}</Text>
+                <Text style={s.totalValue}>{money(total)}</Text>
                 <ChevronRight color="#c0b8b0" size={16} />
               </View>
             </View>
